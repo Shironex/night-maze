@@ -57,6 +57,10 @@ namespace game {
 /// moon, by the flashlight of the player and by the glowing crystals. Grass grows along
 /// the walls, and above them is the night sky, a skybox.
 ///
+/// Through the same maze walks the shade (game/Shade.hpp), which moves only while the
+/// flashlight is not on it and carries the player back to the start when it gets there.
+/// A calm night has none.
+///
 /// The moon and the flashlight cast shadows. Before the scene, everything that casts
 /// one is drawn twice into a depth texture (game::ShadowMap): from the direction of the
 /// moon and from the hand that holds the flashlight. The lit programs look every
@@ -345,6 +349,11 @@ protected:
     const char* lastCueName() const { return m_lastCueName; }
     int cuesPlayed() const { return m_cuesPlayed; }
 
+    /// True when the mazes of this run have a shade: the switch "Calm night" of the main
+    /// menu is off and the command line did not ask for a calm run (--calm). Texts that
+    /// differ between a night with and without the shadow ask here.
+    bool shadeInGame() const { return !m_settings.calmNight && !m_calmRun; }
+
 private:
     // Camera turn for one screen coordinate unit of mouse movement, in degrees. The mouse
     // is measured in the units of the window size, not in framebuffer pixels, so the same
@@ -421,8 +430,8 @@ private:
     void startNewGame(const NewGame& newGame);
 
     /// The four functions that write what a screen shows into its document. The main
-    /// menu: the chosen difficulty and its numbers. The pause menu: the difficulty and
-    /// the seed of the round. The result screen: the time, the crystals, the
+    /// menu: the chosen difficulty and its numbers, and the switch "Calm night". The pause menu:
+    /// the difficulty and the seed of the round. The result screen: the time, the crystals, the
     /// difficulty and the seed. The settings screen: where its controls stand.
     void fillMainMenuDocument();
     void fillPauseDocument();
@@ -454,6 +463,12 @@ private:
     /// first maze, after every regeneration and when the round is restarted (key R or the debug
     /// UI).
     void beginRound();
+
+    /// The shade has reached the player: the round starts again in the same maze, the
+    /// way the restart key does it (beginRound), the next caught line is shown and the
+    /// sound of the catch plays. The story line counter does not move and nothing is
+    /// written to the settings file.
+    void carryPlayerBack();
 
     /// The picking ray of this frame and what it hits (game::pickInRound). The ray goes
     /// through the middle of the picture while the cursor is captured and through the
@@ -619,6 +634,10 @@ private:
     // the size of the difficulty the settings name.
     GameSettings m_settings;
     GameSettings m_savedSettings;
+    // True when the command line asked for a calm run (--calm): no maze of this run has
+    // a shade, whatever m_settings says, and the settings are not changed by it.
+    // Declared before m_mazeSettings, which asks shadeInGame for the first maze.
+    bool m_calmRun = false;
 
     // The request for the next maze (edited by the debug UI, and written by a new game).
     MazeSettings m_mazeSettings;
@@ -655,6 +674,14 @@ private:
     // while it sinks. Built once per frame in onRender and used by the shadow passes and
     // by the scene pass, so the shadow of a wall always fits the wall.
     std::vector<glm::mat4> m_wallMatrices;
+
+    // Whether the shade is drawn in the frame that is being drawn, and its model matrix:
+    // where it stands between two fixed steps, turned towards the player. Set once per
+    // frame in onRender, like m_wallMatrices, and used by the shadow passes and by the
+    // scene pass. The shade is drawn only while a round is played: never under a menu,
+    // behind the main menu or in the picture of the menu camera.
+    bool m_shadeDrawn = false;
+    glm::mat4 m_shadeMatrix{1.0F};
 
     // The picking of this frame: the ray, what it hits and what the interaction key
     // does. Built in onRender, read by the drawing (the highlight), the HUD and the
@@ -775,6 +802,12 @@ private:
     LowBatteryPulse m_lowBatteryPulse;
     // The clock of the breathing of a winded player: the same kind of state.
     WindedBreath m_windedBreath;
+    // The clock of the hum of the shade: the same kind of state.
+    ShadeHum m_shadeHum;
+    // The caught line that was shown last (game::caughtLine), so the next catch shows
+    // the next one. It lives as long as the program: a new round does not reset it, and
+    // it is not saved.
+    int m_lastCaughtLine = NO_CAUGHT_LINE;
     // What playCue remembers for the debug UI: the name of the last cue (a text of the
     // cue table, which lives as long as the program) and the number of cues so far.
     const char* m_lastCueName = "none";

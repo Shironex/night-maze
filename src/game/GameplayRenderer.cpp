@@ -30,12 +30,18 @@ constexpr const char* GATE_MODEL_FILE = "models/gate.obj";
 // the crystals.
 constexpr const char* FLASK_MODEL_FILE = "models/flask.obj";
 
+// The model of the shade: a hooded figure 2.1 m tall, in metres, upright, with its origin
+// on the ground under it and its front along +Z. This one name is all the code knows
+// about its look.
+constexpr const char* SHADE_MODEL_FILE = "models/shade.obj";
+
 } // namespace
 
 GameplayRenderer::GameplayRenderer(assets::AssetCache& assets)
     : m_crystals{assets.model(core::assetPath(CRYSTAL_A_MODEL_FILE)),
                  assets.model(core::assetPath(CRYSTAL_B_MODEL_FILE))},
       m_flask(assets.model(core::assetPath(FLASK_MODEL_FILE))),
+      m_shade(assets.model(core::assetPath(SHADE_MODEL_FILE))),
       m_gate(assets.model(core::assetPath(GATE_MODEL_FILE))) {}
 
 void GameplayRenderer::draw(const gfx::Shader& shader, const MazeWorld& world, const Round& round,
@@ -119,6 +125,14 @@ void GameplayRenderer::drawFlasks(const gfx::Shader& shader, const MazeWorld& wo
     }
     // Back to black: what is drawn next with this program must not glow by accident.
     shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
+}
+
+void GameplayRenderer::drawShade(const gfx::Shader& shader, const glm::mat4& modelMatrix) const {
+    setModelSamplers(shader);
+    // No light of its own: it is seen by the light that falls on it, or as a darker
+    // shape against the dark.
+    shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
+    drawModel(shader, m_shade, std::span<const glm::mat4>(&modelMatrix, 1));
 }
 
 } // namespace game

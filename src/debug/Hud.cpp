@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <cstdio>
 #include <string>
+#include <string_view>
 
 namespace debug {
 
@@ -78,6 +79,10 @@ constexpr ImVec2 BELOW_CENTER{MIDDLE, 0.74F};
 constexpr float CROSSHAIR_DOT_RADIUS = 2.0F;
 constexpr float CROSSHAIR_RING_RADIUS = 8.0F;
 constexpr float CROSSHAIR_RING_THICKNESS = 1.5F;
+
+// The line after a catch stands between the crosshair and the place of a note card. It
+// is a line of text and not a card: the round goes on behind it.
+constexpr ImVec2 CAUGHT_LINE_PLACE{MIDDLE, 0.62F};
 
 // The prompt ("E: pull lever") stands near the bottom edge of the window, in the
 // middle. The thing the player points at is around the crosshair, so down there the
@@ -349,6 +354,22 @@ void drawNoteCard(const game::MazeWorld& world, const game::Round& round, float 
     ImGui::PopStyleVar();
 }
 
+// The line the player reads after the shade carried them back (game::caughtLine).
+void drawCaughtLine(const game::Round& round) {
+    if (round.caughtLine == game::NO_CAUGHT_LINE) {
+        return;
+    }
+    ImGui::SetNextWindowPos(windowPoint(CAUGHT_LINE_PLACE), ImGuiCond_Always, CENTER);
+    ImGui::SetNextWindowBgAlpha(PROMPT_OPACITY);
+
+    if (ImGui::Begin("Caught line", nullptr, STATUS_WINDOW_FLAGS)) {
+        const std::string_view line = game::caughtLine(round.caughtLine);
+        // A string_view has no closing zero: "%.*s" takes the length and the letters.
+        ImGui::TextColored(HUD_NOTE_COLOR, "%.*s", static_cast<int>(line.size()), line.data());
+    }
+    ImGui::End();
+}
+
 } // namespace
 
 void drawHud(const game::MazeWorld& world, const game::Round& round,
@@ -367,6 +388,7 @@ void drawHud(const game::MazeWorld& world, const game::Round& round,
     if (round.noteOpen) {
         drawNoteCard(world, round, scale);
     }
+    drawCaughtLine(round);
     if (round.state == game::RoundState::Won) {
         drawWinCard(round, scale);
     }

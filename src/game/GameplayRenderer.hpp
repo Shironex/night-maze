@@ -33,7 +33,8 @@ struct Round;
 /// object, and all positions come from the MazeWorld and the Round given to draw.
 class GameplayRenderer {
 public:
-    /// Asks the cache for the two crystal models, the flask model and the gate model.
+    /// Asks the cache for the two crystal models, the flask model, the shade model and the
+    /// gate model.
     /// A model that fails to load is logged by the cache and simply not drawn.
     explicit GameplayRenderer(assets::AssetCache& assets);
 
@@ -65,12 +66,20 @@ public:
     /// never take the reflect program of the crystals.
     void drawFlasks(const gfx::Shader& shader, const MazeWorld& world, const Round& round) const;
 
+    /// Draws the shade once, with the given model matrix: where it stands, turned
+    /// towards the player (the application builds the matrix for the frame). shader is
+    /// prepared as for draw. The shade gives off no light: uEmissive is set to black.
+    /// Like drawFlasks it is called once by each shadow pass and once by the scene.
+    /// Whether a frame has a shade at all is decided by the caller.
+    void drawShade(const gfx::Shader& shader, const glm::mat4& modelMatrix) const;
+
 private:
     // Not owned. nullptr when the model could not be loaded. One crystal model per
     // variant: the number of a variant is its index here.
     std::array<const assets::LoadedModel*, static_cast<std::size_t>(CRYSTAL_VARIANT_COUNT)>
         m_crystals;
     const assets::LoadedModel* m_flask;
+    const assets::LoadedModel* m_shade;
     const assets::LoadedModel* m_gate;
 };
 

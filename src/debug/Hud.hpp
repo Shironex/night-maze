@@ -37,6 +37,8 @@ namespace debug {
 ///     names the key,
 ///   - below the middle, while a note is being read: a card with its text
 ///     (game::openNoteText),
+///   - a little below the middle, for a few seconds after the shade carried the player
+///     back to the start: one line that says so (Round::caughtLine),
 ///   - in the middle of the window, once the round is won: a card with the time, the
 ///     crystals and the key that starts a new round.
 ///

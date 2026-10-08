@@ -10,9 +10,11 @@
 #include "game/Crystals.hpp"
 #include "game/Interactables.hpp"
 #include "game/Puddles.hpp"
+#include "game/Shade.hpp"
 #include "game/ShaderUniforms.hpp"
 #include "gfx/ColorSpace.hpp"
 #include "scene/Raycast.hpp"
+#include "scene/Transform.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -138,6 +140,8 @@ constexpr const char* INFO_MAZE_ID = "info-maze";
 constexpr const char* INFO_CRYSTALS_ID = "info-crystals";
 constexpr const char* INFO_BATTERY_ID = "info-battery";
 constexpr const char* DIFFICULTY_ID_PREFIX = "difficulty-";
+// The switch "Calm night" of the main menu.
+constexpr const char* CALM_NIGHT_ID = "calm-night";
 // The settings screen: the two sliders (their ids are the names of their settings), the
 // text next to each control and the row of the window size.
 constexpr const char* TEXT_ID_SUFFIX = "-text";
@@ -154,6 +158,7 @@ constexpr const char* OFF_CLASS = "off";
 // button is named by the same prefix as its id.
 constexpr const char* NEW_SEED_ACTION = "new-seed";
 constexpr const char* TOGGLE_FULLSCREEN_ACTION = "toggle-fullscreen";
+constexpr const char* TOGGLE_CALM_NIGHT_ACTION = "toggle-calm-night";
 constexpr const char* WINDOW_SIZE_SMALLER_ACTION = "window-size-smaller";
 constexpr const char* WINDOW_SIZE_LARGER_ACTION = "window-size-larger";
 constexpr const char* RESET_SETTINGS_ACTION = "reset-settings";
@@ -211,8 +216,10 @@ GameSettings loadSettings() {
 
 // The request for the maze of a new game: the size and the crystals of its difficulty
 // level and its seed. The numbers of levers and notes keep their defaults, and the story
-// notes start with the line the settings file says is the next unread one.
-MazeSettings mazeSettingsFor(Difficulty difficulty, std::uint32_t seed, int nextStoryLine) {
+// notes start with the line the settings file says is the next unread one. shadeLines is
+// false for a calm night: the notes then leave out the lines about the shadow.
+MazeSettings mazeSettingsFor(Difficulty difficulty, std::uint32_t seed, int nextStoryLine,
+                             bool shadeLines) {
     const DifficultyLevel& level = difficultyLevel(difficulty);
     MazeSettings settings;
     settings.width = level.mazeWidth;
@@ -220,6 +227,7 @@ MazeSettings mazeSettingsFor(Difficulty difficulty, std::uint32_t seed, int next
     settings.crystalCount = level.crystalCount;
     settings.seed = seed;
     settings.interactables.firstStoryLine = nextStoryLine;
+    settings.interactables.shadeLines = shadeLines;
     return settings;
 }
 
@@ -237,6 +245,9 @@ constexpr float NEUTRAL_EXPOSURE = 1.0F;
 // wide highlight of the rough stone (LightingSettings::specularStrength and shininess).
 constexpr float PUDDLE_SPECULAR_STRENGTH = 1.0F;
 constexpr float PUDDLE_SHININESS = 128.0F;
+
+// The highlight of the cloak of the shade: dull cloth, far weaker than the stone.
+constexpr float SHADE_SPECULAR_STRENGTH = 0.03F;
 
 // A puddle only mirrors the sky: all of what it shows is the reflected picture, none
 // the refracted one (the uniform uReflectShare of reflect.frag).
@@ -305,10 +316,11 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
       // of the difficulty that was chosen last.
       m_settings(loadSettings()),
       m_savedSettings(m_settings),
+      m_calmRun(options.calm),
       // The first maze: the seed of the command line and the level of the settings. It
       // is the maze behind the main menu, and the maze of the round --play starts in.
-      m_mazeSettings(
-          mazeSettingsFor(m_settings.difficulty, options.seed, m_settings.nextStoryLine)),
+      m_mazeSettings(mazeSettingsFor(m_settings.difficulty, options.seed, m_settings.nextStoryLine,
+                                     shadeInGame())),
       m_heightmap(loadHeightmap()),
       m_mazeWorld(buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed,
                                  m_heightmap, m_terrainSettings.heightScale,
@@ -337,6 +349,8 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     m_gameplay.requiredFraction = level.requiredFraction;
     m_gameplay.batteryLifetimeSeconds = level.batteryLifetimeSeconds;
     m_gameplay.flaskCount = level.flaskCount;
+    // A calm night has no shade: the first round is started with that already known.
+    m_gameplay.shade.enabled = shadeInGame();
 
     // The first maze was built in the initializer list, because MazeWorld cannot be
     // created empty. What is left is the same as after every later regeneration.
@@ -542,6 +556,13 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
         rollSeed();
         return true;
     }
+    // The switch "Calm night" of the main menu. It is a setting like the difficulty: the
+    // next game uses it, and it is written to the file when that game starts.
+    if (action == TOGGLE_CALM_NIGHT_ACTION) {
+        m_settings.calmNight = !m_settings.calmNight;
+        fillMainMenuDocument();
+        return true;
+    }
 
     // The buttons of the settings screen. Each one changes m_settings, uses the new
     // value at once and shows it. The file is written when the screen is left.
@@ -566,13 +587,16 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
         return true;
     }
     if (action == RESET_SETTINGS_ACTION) {
-        // Everything this screen shows goes back to its default. The difficulty is
-        // chosen in the main menu and stays, and so does the story line counter.
+        // Everything this screen shows goes back to its default. The difficulty and the
+        // calm night are chosen in the main menu and stay, and so does the story line
+        // counter.
         const Difficulty difficulty = m_settings.difficulty;
         const int nextStoryLine = m_settings.nextStoryLine;
+        const bool calmNight = m_settings.calmNight;
         m_settings = GameSettings{};
         m_settings.difficulty = difficulty;
         m_settings.nextStoryLine = nextStoryLine;
+        m_settings.calmNight = calmNight;
         applyViewSettings();
         applyWindowSettings();
         applyAudioSettings();
@@ -681,6 +705,9 @@ void NightMazeApp::startNewGame(const NewGame& newGame) {
     m_gameplay.requiredFraction = level.requiredFraction;
     m_gameplay.batteryLifetimeSeconds = level.batteryLifetimeSeconds;
     m_gameplay.flaskCount = level.flaskCount;
+    // The shade: in the game unless this is a calm night. Like the numbers above it
+    // overwrites what the debug UI may have switched.
+    m_gameplay.shade.enabled = shadeInGame();
 
     // The maze is always built again, also for the seed that is in play: the level may
     // be another one, and the numbers of levers and notes may have been changed.
@@ -701,6 +728,9 @@ void NightMazeApp::fillMainMenuDocument() {
                       std::string(DIFFICULTY_ID_PREFIX) + difficultyLevel(difficulty).key,
                       CHOSEN_CLASS, difficulty == m_newGame.difficulty);
     }
+
+    // The switch "Calm night": a class moves its knob.
+    m_ui.setClass(m_mainMenuDocument, CALM_NIGHT_ID, ON_CLASS, m_settings.calmNight);
 
     // The info block: what the chosen level means in numbers.
     const DifficultyLevel& level = difficultyLevel(m_newGame.difficulty);
@@ -809,6 +839,8 @@ void NightMazeApp::regenerateMaze() {
     // Every maze starts its story notes at the next unread line, also a maze built again
     // for the same seed (the counter only moves when a maze is finished).
     interactables.firstStoryLine = m_settings.nextStoryLine;
+    // A maze without a shade does not talk about one.
+    interactables.shadeLines = shadeInGame();
 
     // The height scale can be typed into its slider too.
     m_terrainSettings.heightScale =
@@ -930,6 +962,9 @@ void NightMazeApp::beginRound() {
     // (Player::staminaSettings), which the debug UI may have changed, stay.
     m_windedBreath = {};
     m_player.stamina = {};
+    // The hum of the shade starts anew as well. The shade itself is part of the round:
+    // startRound has put it back in its start cell, with its grace time ahead of it.
+    m_shadeHum = {};
 
     // The player goes to the start, feet on the ground there. After a regeneration the
     // old position may be inside a wall of the new maze, or outside of it.
@@ -941,6 +976,16 @@ void NightMazeApp::beginRound() {
     m_camera.position = m_player.eyePosition();
     m_camera.yawDegrees = m_mazeWorld.startYawDegrees;
     m_camera.pitchDegrees = LEVEL_PITCH_DEGREES;
+}
+
+void NightMazeApp::carryPlayerBack() {
+    // The same call the restart key makes: everything of the round is as it was at its
+    // start (crystals, battery, levers, discovery, stamina, flasks, the shade).
+    beginRound();
+    // The next line of the five, so the same one never shows twice in a row.
+    m_lastCaughtLine = nextCaughtLine(m_lastCaughtLine);
+    showCaughtLine(m_round, m_lastCaughtLine);
+    playCue(SoundCue::Caught);
 }
 
 void NightMazeApp::onUpdate(double fixedDt) {
@@ -1041,6 +1086,29 @@ void NightMazeApp::onUpdate(double fixedDt) {
         m_obstacles = roundObstacles(m_mazeWorld, m_round);
     }
 
+    // The shade, after the rules of the round: it needs the battery of this step (an
+    // empty one gives no light). The flashlight is where the hand holds it now, built
+    // from the eyes of this step and the angles of the camera, the same way onRender
+    // builds the one that is drawn. Like everything above it runs only in the steps of
+    // a round that is played, so the shade stands still under a menu and in the pause,
+    // and goes on while the map or a note card is on the screen.
+    const FlashlightPose lampPose =
+        flashlightPose(m_lighting, m_player.eyePosition(), m_camera.forward(), m_camera.right());
+    const bool caught = updateRoundShade(m_round, m_mazeWorld, m_gameplay, m_player.position,
+                                         roundShadeLamp(m_lighting, m_round, lampPose), m_obstacles,
+                                         static_cast<float>(fixedDt));
+    // Its hum, on a clock like the pulse: more often the nearer the shade is.
+    if (advanceShadeHum(m_shadeHum, m_round, m_player.position, static_cast<float>(fixedDt))) {
+        playCue(SoundCue::ShadeNear);
+    }
+    // Caught: back to the start of the same maze. A player who flies (noclip, a tool for
+    // looking around) is left alone. The steps that may follow in the same frame play
+    // the new round.
+    if (caught && !m_player.noclip) {
+        carryPlayerBack();
+        return;
+    }
+
     // This step took the player through the open gate: the result screen comes up. The
     // steps that may follow in the same frame then find the round stopped.
     if (m_round.state == RoundState::Won) {
@@ -1049,8 +1117,11 @@ void NightMazeApp::onUpdate(double fixedDt) {
         // when something changed). The counter is moved on from the line THIS maze started
         // with, so winning the same maze twice ("Play again") does not skip a line. The
         // maze keeps its lines until a new one is built.
+        // Whether the maze skipped the lines about the shadow is asked from the request
+        // it was built with, not from the settings of this moment.
         m_settings.nextStoryLine = advanceStoryLine(m_mazeSettings.interactables.firstStoryLine,
-                                                    storyNoteCount(m_mazeWorld.interactables));
+                                                    storyNoteCount(m_mazeWorld.interactables),
+                                                    m_mazeSettings.interactables.shadeLines);
         saveSettings();
         handleGameEvent(GameEvent::RoundWon);
     }
@@ -1297,6 +1368,19 @@ void NightMazeApp::onRender(double alpha) {
     // into the ground. One list for the shadow passes and for the scene pass.
     m_wallMatrices = roundWallMatrices(m_mazeWorld, m_round);
 
+    // The shade of this frame: between its place before the last fixed step and after
+    // it, like the player, and turned towards the place the frame is drawn from. It is
+    // part of the picture only while a round is played and the player is the one who
+    // looks: not under a menu, not behind the main menu and not for the menu camera.
+    m_shadeDrawn = m_mode == GameMode::Playing && !m_menuCamera.enabled && m_round.shade.present;
+    if (m_shadeDrawn) {
+        scene::Transform shade;
+        shade.position = glm::mix(m_round.shade.previousPosition, m_round.shade.position,
+                                  static_cast<float>(alpha));
+        shade.rotationDegrees = {0.0F, shadeYawDegrees(shade.position, feet), 0.0F};
+        m_shadeMatrix = shade.matrix();
+    }
+
     // The lighting of this frame. The round changes two things for this frame only:
     // a low battery dims the flashlight (an empty one switches it off) and the crystal
     // lights pulse. That happens in a copy, so the settings the debug UI shows stay as
@@ -1425,6 +1509,9 @@ void NightMazeApp::onRender(double alpha) {
         compositeSettings.fog.enabled = false;
         compositeSettings.vignette.enabled = false;
     }
+    // Right after the shade carried the player back the picture comes up from black: the
+    // exposure multiplies every colour, so a factor of 0 is a black picture.
+    compositeSettings.exposure *= roundBrightness(m_round);
 
     // The bloom: the bright parts of the finished scene, blurred in targets of half the
     // size. It is called in every frame, also with the bloom switched off: it then
@@ -1553,7 +1640,7 @@ void NightMazeApp::drawMinimap(core::Size framebuffer, const glm::vec3& feet) {
     const MinimapPlayer player{.position = feet, .yawDegrees = m_camera.yawDegrees};
     const std::vector<MinimapVertex> vertices =
         buildMinimapVertices(m_mazeWorld, m_round, m_minimapSettings.revealAll, player,
-                             minimapMetresPerPixel(maze, rect.size));
+                             minimapMetresPerPixel(maze, rect.size), m_gameplay.shade.showOnMap);
 
     // The offscreen pass, and then the picture into the middle of the window.
     if (m_minimapRenderer.drawMap(m_minimapShader, vertices, minimapProjection(maze), rect.size)) {
@@ -1660,6 +1747,10 @@ void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const 
                         m_mazeSettings.wallVariants);
     m_gameplayRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, crystalEmissive());
     m_gameplayRenderer.drawFlasks(m_shadowDepthShader, m_mazeWorld, m_round);
+    // The shade casts a shadow like everything that stands in the maze.
+    if (m_shadeDrawn) {
+        m_gameplayRenderer.drawShade(m_shadowDepthShader, m_shadeMatrix);
+    }
     // The levers and the notes cast shadows too. An empty PickState: nothing is
     // highlighted, the depth program has no colours.
     m_interactableRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, PickState{},
@@ -1772,6 +1863,16 @@ void NightMazeApp::drawGateAndCrystals(const gfx::Shader& shader) const {
     // The flasks, always with the program of the walls: they are brass, not glass, and
     // show no sky.
     m_gameplayRenderer.drawFlasks(shader, m_mazeWorld, m_round);
+    // The shade, with the program of the walls too: it is lit like them, so the beam of
+    // the flashlight shows it and the dark hides it. Its cloth has almost no highlight:
+    // with the highlight of the stone the flashlight, which shines from where the player
+    // looks, would paint a bright board on the dark figure. The strength of the stone is
+    // put back for what is drawn next. (The textured program has no such uniform.)
+    if (m_shadeDrawn) {
+        shader.setFloat(SPECULAR_STRENGTH_UNIFORM, SHADE_SPECULAR_STRENGTH);
+        m_gameplayRenderer.drawShade(shader, m_shadeMatrix);
+        shader.setFloat(SPECULAR_STRENGTH_UNIFORM, m_lighting.specularStrength);
+    }
     // Every crystal is drawn exactly once per frame: here, with the program of the
     // walls, or later by drawReflections with the reflect program.
     if (!crystalsReflect()) {
