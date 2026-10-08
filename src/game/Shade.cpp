@@ -8,6 +8,8 @@
 #include "game/Terrain.hpp"
 #include "scene/Raycast.hpp"
 
+#include <glm/gtc/constants.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -310,17 +312,22 @@ int nextCaughtLine(int previous) {
     return (previous + 1) % CAUGHT_LINE_COUNT;
 }
 
+// The shortest swing the pose divides by (a period of 0 would divide by 0), and one half.
+constexpr float MIN_SWAY_PERIOD_SECONDS = 0.01F;
+constexpr float HALF = 0.5F;
+
 ShadePose shadeSwayPose(float walkAmount, float speed, float seconds,
                         const ShadeSwaySettings& sway) {
     const float walk = std::clamp(walkAmount, 0.0F, 1.0F);
-    constexpr float TWO_PI = 6.2831853F;
     // Standing: a slow swing to the side, and a breath that is a quarter of a swing
     // late, so the figure never rises exactly when it is most bent.
-    const float swing = TWO_PI * seconds / std::max(sway.periodSeconds, 0.01F);
+    const float swing =
+        glm::two_pi<float>() * seconds / std::max(sway.periodSeconds, MIN_SWAY_PERIOD_SECONDS);
     const float sideStand = sway.standLeanDegrees * std::sin(swing);
-    const float riseStand = sway.standRiseMetres * 0.5F * (1.0F + std::sin(swing - 1.5707963F));
+    const float riseStand =
+        sway.standRiseMetres * HALF * (1.0F + std::sin(swing - glm::half_pi<float>()));
     // Walking: one beat per step. |sin| makes one bump per step, as a bob does.
-    const float beat = TWO_PI * 0.5F * speed / SHADE_STRIDE_METRES * seconds;
+    const float beat = glm::two_pi<float>() * HALF * speed / SHADE_STRIDE_METRES * seconds;
     const float riseWalk = sway.walkBobMetres * std::abs(std::sin(beat));
     return {.riseMetres = glm::mix(riseStand, riseWalk, walk),
             .forwardLeanDegrees = sway.walkLeanDegrees * walk,

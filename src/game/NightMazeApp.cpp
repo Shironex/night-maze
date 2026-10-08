@@ -112,18 +112,6 @@ constexpr int FLASHLIGHT_KEY = GLFW_KEY_F;
 // Key that starts the round again on the same maze.
 constexpr int RESTART_KEY = GLFW_KEY_R;
 
-// How long the drawn shade takes to change between the standing and the walking pose.
-constexpr float SHADE_SWAY_BLEND_SECONDS = 0.3F;
-
-// Puts the pose of the shade (game::shadeSwayPose) on its transform: a rise, and two
-// turns around the feet, the forward lean after the turn to the player (Transform turns
-// y, then x, then z).
-void applyShadeSway(scene::Transform& transform, const ShadePose& pose) {
-    transform.position.y += pose.riseMetres;
-    transform.rotationDegrees.x = pose.forwardLeanDegrees;
-    transform.rotationDegrees.z = pose.sideLeanDegrees;
-}
-
 // Key that shows the map for as long as it is held.
 constexpr int MINIMAP_KEY = GLFW_KEY_M;
 
@@ -313,6 +301,18 @@ Heightmap loadHeightmap() {
     }
     core::logInfo("Loaded heightmap: " + core::pathText(path));
     return heightmapFromImage(image);
+}
+
+// How long the drawn shade takes to change between the standing and the walking pose.
+constexpr float SHADE_SWAY_BLEND_SECONDS = 0.3F;
+
+// Puts the pose of the shade (game::shadeSwayPose) on its transform: a rise, and two
+// turns around the feet, the forward lean after the turn to the player (Transform turns
+// y, then x, then z).
+void applyShadeSway(scene::Transform& transform, const ShadePose& pose) {
+    transform.position.y += pose.riseMetres;
+    transform.rotationDegrees.x = pose.forwardLeanDegrees;
+    transform.rotationDegrees.z = pose.sideLeanDegrees;
 }
 
 } // namespace
@@ -1283,6 +1283,10 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // the new round.
     if (caught && !m_player.noclip) {
         m_catchSeconds = 0.0F;
+        // The shade stands still from now on, so the picture of it must too: its last step
+        // was drawn between two places (the frames blend them), and without this the
+        // figure would swing between them for the whole fade.
+        m_round.shade.previousPosition = m_round.shade.position;
         playCue(SoundCue::Caught);
         return;
     }
@@ -1590,7 +1594,7 @@ void NightMazeApp::onRender(double alpha) {
         // second (the frame time, as the pose is a picture and not a rule).
         const float blendStep =
             static_cast<float>(time().deltaSeconds()) / SHADE_SWAY_BLEND_SECONDS;
-        const float target = shadeWalking(m_round.shade) ? 1.0F : 0.0F;
+        const float target = shadeWalking(m_round.shade) && m_catchSeconds < 0.0F ? 1.0F : 0.0F;
         m_shadeWalkAmount += std::clamp(target - m_shadeWalkAmount, -blendStep, blendStep);
         applyShadeSway(shade, shadeSwayPose(m_shadeWalkAmount, m_gameplay.shade.speed,
                                             m_round.animationSeconds, m_gameplay.shade.sway));
