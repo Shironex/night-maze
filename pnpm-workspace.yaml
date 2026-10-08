@@ -1,0 +1,7 @@
+# One package. This file exists for the setting below, which pnpm reads from
+# here so that it travels with the repository.
+packages:
+  - '.'
+
+# No version younger than 7 days (in minutes) is installed, on any machine.
+minimumReleaseAge: 10080

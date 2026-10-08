@@ -26,3 +26,9 @@ night-maze-settings.txt
 
 # Python bytecode of the scripts in tools/
 __pycache__/
+
+# Node packages of the README picture tooling (package.json)
+node_modules/
+
+# Raw pictures of tools/capture_showcase.py. The framed ones in docs/showcase/ are committed.
+showcase-out/

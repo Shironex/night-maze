@@ -1,0 +1,13 @@
+{
+  "name": "night-maze",
+  "description": "Tooling for the README pictures only. The game itself is built with CMake.",
+  "private": true,
+  "packageManager": "pnpm@10.34.5",
+  "scripts": {
+    "showcase": "showcase frame && showcase hero"
+  },
+  "devDependencies": {
+    "@noctcore/showcase-kit": "0.3.0",
+    "playwright": "1.63.0"
+  }
+}
