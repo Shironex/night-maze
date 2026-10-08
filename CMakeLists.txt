@@ -374,6 +374,8 @@ add_executable(night_maze
     src/debug/DebugWindow.hpp
     src/debug/Hud.cpp
     src/debug/Hud.hpp
+    src/debug/HudRules.cpp
+    src/debug/HudRules.hpp
     src/debug/Icons.cpp
     src/debug/Icons.hpp
     src/debug/MazePlan.cpp
@@ -429,6 +431,7 @@ add_executable(night_maze_tests
     tests/FramebufferTests.cpp
     tests/GameStateTests.cpp
     tests/GrassTests.cpp
+    tests/HudRulesTests.cpp
     tests/ImageLoaderTests.cpp
     tests/InteractablesTests.cpp
     tests/InteractionTests.cpp
@@ -462,8 +465,11 @@ add_executable(night_maze_tests
     tests/VideoClockTests.cpp
     tests/VignetteTests.cpp
     tests/WallVariantTests.cpp
-    # The one file of the debug UI that needs neither ImGui nor a window: the text
-    # search of the debug window. It is compiled into the test program directly.
+    # The files of the debug UI that need neither ImGui nor a window: the text search
+    # of the debug window and the arithmetic of the HUD. They are compiled into the
+    # test program directly.
+    src/debug/HudRules.cpp
+    src/debug/HudRules.hpp
     src/debug/Search.cpp
     src/debug/Search.hpp
     # The same for the video library: the arithmetic of its clock needs neither
