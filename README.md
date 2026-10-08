@@ -37,7 +37,7 @@ I write the game to learn how real time graphics work, so most of what is on the
 
 The game needs a graphics card and driver with OpenGL 4.1.
 
-Windows is what ships. The code also compiles on macOS and its unit tests pass there on a GitHub runner, but the game as it is today has never been run on a Mac, so I do not know whether it works there.
+Windows is what ships. I last ran the game on a Mac around version 0.9.0. Since then the code is only compiled and unit tested on macOS by a GitHub runner, so I do not know whether the newest version works there.
 
 ## Screenshots
 
