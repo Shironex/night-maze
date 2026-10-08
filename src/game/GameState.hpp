@@ -4,6 +4,7 @@
 
 #include "game/Difficulty.hpp"
 #include "game/MazeWorld.hpp"
+#include "game/StartOptions.hpp"
 
 #include <cstdint>
 #include <string_view>
@@ -27,6 +28,9 @@ enum class GameMode {
     /// leads and what is shown behind it.
     SettingsFromMenu,
     SettingsFromPause, ///< the settings screen, opened from the pause menu
+    /// The intro: five cards of text over pictures of the maze, before the main menu
+    /// (game/Intro.hpp). It ends by itself, and any key ends it earlier.
+    Intro,
 };
 
 /// Something that can change the screen: a button of a menu, the Escape key, or the
@@ -43,6 +47,7 @@ enum class GameEvent {
     CloseSettings, ///< button "Back" of the settings screen
     NewMaze,       ///< button "New maze" of the result screen: a new game, another maze
     FocusLost,     ///< the window of the game stopped being the active window
+    IntroFinished, ///< the intro reached its end, or a key or a mouse button skipped it
 };
 
 /// What the button "Play" asks for: the game that is started next.
@@ -78,12 +83,36 @@ struct NewGame {
 ///     SettingsFromMenu   Escape         MainMenu
 ///     SettingsFromPause  CloseSettings  Paused
 ///     SettingsFromPause  Escape         Paused
+///     Intro              IntroFinished  MainMenu
+///     Intro              Escape         MainMenu
 ///
 /// Escape goes one screen back: out of the game into the pause menu, out of the pause
 /// menu back into the game, out of the result to the main menu, out of the settings to
 /// the screen they were opened from. In the main menu there is nothing to go back to,
 /// and leaving the program is a button, not a key.
+///
+/// The intro is left in one direction only, to the main menu. Losing the focus does not
+/// touch it: it runs on a clock of its own and ends by itself, so a player who switches
+/// to another program comes back to the rest of it or to the main menu, never to
+/// a screen that waits for something. No event leads back into the intro: the
+/// application starts it (startMode at the start, a button of the debug window later).
 GameMode nextMode(GameMode mode, GameEvent event);
+
+/// The screen the game starts on. options is what the command line asked for and
+/// introSeen what the settings file says (GameSettings::introSeen). The first row that
+/// fits decides:
+///
+///     --intro without --skip-intro         Intro, whatever else was given
+///     --play or --menu-camera              Playing
+///     --skip-intro                         MainMenu
+///     a switch of a tool (toolSwitch)      MainMenu
+///     the intro was seen                   MainMenu
+///     otherwise                            Intro
+///
+/// A run driven by a tool never opens with the intro: its scripts start the game in
+/// fresh folders, where nothing says that it was seen. --skip-intro means never, also
+/// next to --intro.
+GameMode startMode(const StartOptions& options, bool introSeen);
 
 /// True when the event, sent on this screen, starts a round from the beginning on the
 /// maze that is in play: Restart in the pause menu or on the result screen.
@@ -114,7 +143,7 @@ bool isMenuOpen(GameMode mode);
 
 /// True while the HUD of the round is drawn (counter, battery, crosshair, cards): only
 /// while playing. It is drawn after the menu documents, so in the pause menu it would
-/// lie on top of the buttons.
+/// lie on top of the buttons. The intro has no HUD, no crosshair and no map.
 bool showsHud(GameMode mode);
 
 /// What decides whether the map is on the screen, besides the screen the game is on.
@@ -150,7 +179,8 @@ bool showsMap(GameMode mode, const MapRequest& request);
 
 /// True while the picture is taken by the menu camera and not from the eyes of the
 /// player: in the main menu, which has no round to show, and in the settings opened
-/// from it.
+/// from it. The intro is not among them: it places the camera itself, shot by shot
+/// (game/Intro.hpp), and its scene is always drawn.
 bool usesMenuCamera(GameMode mode);
 
 /// True when the scene has to be drawn. fullscreenBackground tells whether the menu

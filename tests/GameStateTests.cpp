@@ -4,6 +4,8 @@
 #include <doctest/doctest.h>
 
 #include <array>
+#include <initializer_list>
+#include <vector>
 
 namespace {
 
@@ -11,13 +13,14 @@ using game::GameEvent;
 using game::GameMode;
 
 // Every screen and every event, for the tests that go through all of them.
-constexpr std::array<GameMode, 7> ALL_MODES = {
-    GameMode::MainMenu, GameMode::Playing,          GameMode::Paused,           GameMode::RoundEnd,
-    GameMode::Quitting, GameMode::SettingsFromMenu, GameMode::SettingsFromPause};
-constexpr std::array<GameEvent, 11> ALL_EVENTS = {
-    GameEvent::Play,          GameEvent::Resume,  GameEvent::Restart,  GameEvent::BackToMenu,
-    GameEvent::Quit,          GameEvent::Escape,  GameEvent::RoundWon, GameEvent::OpenSettings,
-    GameEvent::CloseSettings, GameEvent::NewMaze, GameEvent::FocusLost};
+constexpr std::array<GameMode, 8> ALL_MODES = {
+    GameMode::MainMenu,          GameMode::Playing,  GameMode::Paused,
+    GameMode::RoundEnd,          GameMode::Quitting, GameMode::SettingsFromMenu,
+    GameMode::SettingsFromPause, GameMode::Intro};
+constexpr std::array<GameEvent, 12> ALL_EVENTS = {
+    GameEvent::Play,          GameEvent::Resume,  GameEvent::Restart,   GameEvent::BackToMenu,
+    GameEvent::Quit,          GameEvent::Escape,  GameEvent::RoundWon,  GameEvent::OpenSettings,
+    GameEvent::CloseSettings, GameEvent::NewMaze, GameEvent::FocusLost, GameEvent::IntroFinished};
 
 } // namespace
 
@@ -308,4 +311,127 @@ TEST_CASE("a new game asks for the normal difficulty and the default seed") {
     const game::NewGame newGame;
     CHECK(newGame.difficulty == game::Difficulty::Normal);
     CHECK(newGame.seed == game::DEFAULT_MAZE_SEED);
+}
+
+TEST_CASE("the intro ends in the main menu, at its end, when skipped and with Escape") {
+    CHECK(game::nextMode(GameMode::Intro, GameEvent::IntroFinished) == GameMode::MainMenu);
+    CHECK(game::nextMode(GameMode::Intro, GameEvent::Escape) == GameMode::MainMenu);
+}
+
+TEST_CASE("nothing else leaves the intro, and losing the focus does not stop it") {
+    for (const GameEvent event : ALL_EVENTS) {
+        if (event == GameEvent::IntroFinished || event == GameEvent::Escape) {
+            continue;
+        }
+        CHECK(game::nextMode(GameMode::Intro, event) == GameMode::Intro);
+    }
+    // Named once more, because it is a decision: the intro goes on behind another
+    // program and ends by itself. It is never paused, so it cannot be left stuck.
+    CHECK(game::nextMode(GameMode::Intro, GameEvent::FocusLost) == GameMode::Intro);
+}
+
+TEST_CASE("no event leads into the intro, and its end means nothing on another screen") {
+    for (const GameMode mode : ALL_MODES) {
+        if (mode == GameMode::Intro) {
+            continue;
+        }
+        for (const GameEvent event : ALL_EVENTS) {
+            CHECK(game::nextMode(mode, event) != GameMode::Intro);
+        }
+        CHECK(game::nextMode(mode, GameEvent::IntroFinished) == mode);
+    }
+}
+
+TEST_CASE("the end of the intro starts no round and no game") {
+    for (const GameEvent event : ALL_EVENTS) {
+        CHECK_FALSE(game::startsRound(GameMode::Intro, event));
+        CHECK_FALSE(game::startsNewGame(GameMode::Intro, event));
+    }
+    for (const GameMode mode : ALL_MODES) {
+        CHECK_FALSE(game::startsRound(mode, GameEvent::IntroFinished));
+        CHECK_FALSE(game::startsNewGame(mode, GameEvent::IntroFinished));
+    }
+}
+
+TEST_CASE("the intro is a film: no round, no menu, no HUD, no map, a scene that moves") {
+    CHECK_FALSE(game::updatesRound(GameMode::Intro));
+    CHECK_FALSE(game::isMenuOpen(GameMode::Intro));
+    CHECK_FALSE(game::showsHud(GameMode::Intro));
+    CHECK_FALSE(game::showsMap(GameMode::Intro, {.keyHeld = true, .pinned = true}));
+    CHECK(game::animatesScene(GameMode::Intro));
+    // It places the camera itself, and the scene is drawn also when the main menu has
+    // a video that covers the window.
+    CHECK_FALSE(game::usesMenuCamera(GameMode::Intro));
+    CHECK(game::drawsScene(GameMode::Intro, true));
+    CHECK(game::drawsScene(GameMode::Intro, false));
+}
+
+TEST_CASE("the first start opens with the intro, every later one with the main menu") {
+    const game::StartOptions none;
+    CHECK(game::startMode(none, false) == GameMode::Intro);
+    CHECK(game::startMode(none, true) == GameMode::MainMenu);
+}
+
+TEST_CASE("a run driven by a tool never opens with the intro") {
+    game::StartOptions play;
+    play.play = true;
+    play.toolSwitch = true;
+    CHECK(game::startMode(play, false) == GameMode::Playing);
+
+    game::StartOptions menuCamera;
+    menuCamera.menuCamera.enabled = true;
+    menuCamera.toolSwitch = true;
+    CHECK(game::startMode(menuCamera, false) == GameMode::Playing);
+
+    // --seed, --menu-shot, --menu-time and --menu-background leave the main menu as the
+    // first screen: what they have in common is the mark of a tool.
+    game::StartOptions tool;
+    tool.toolSwitch = true;
+    CHECK(game::startMode(tool, false) == GameMode::MainMenu);
+    CHECK(game::startMode(tool, true) == GameMode::MainMenu);
+}
+
+TEST_CASE("--skip-intro never plays the intro and --intro always does") {
+    game::StartOptions skip;
+    skip.skipIntro = true;
+    CHECK(game::startMode(skip, false) == GameMode::MainMenu);
+    CHECK(game::startMode(skip, true) == GameMode::MainMenu);
+
+    game::StartOptions intro;
+    intro.intro = true;
+    CHECK(game::startMode(intro, true) == GameMode::Intro);
+    CHECK(game::startMode(intro, false) == GameMode::Intro);
+    // Also next to the switches of a tool, and before --play.
+    intro.toolSwitch = true;
+    CHECK(game::startMode(intro, true) == GameMode::Intro);
+    intro.play = true;
+    intro.menuCamera.enabled = true;
+    CHECK(game::startMode(intro, true) == GameMode::Intro);
+
+    // Both together: "never" wins, and the rest of the line decides.
+    intro.skipIntro = true;
+    CHECK(game::startMode(intro, false) == GameMode::Playing);
+    game::StartOptions both;
+    both.intro = true;
+    both.skipIntro = true;
+    CHECK(game::startMode(both, false) == GameMode::MainMenu);
+}
+
+TEST_CASE("the switches of the command line give the start screen they describe") {
+    // The whole way, from the words to the screen.
+    const auto screen = [](std::initializer_list<const char*> words, bool introSeen) {
+        const std::vector<const char*> list(words);
+        return game::startMode(game::parseStartOptions(list).options, introSeen);
+    };
+    CHECK(screen({}, false) == GameMode::Intro);
+    CHECK(screen({"--seed", "1"}, false) == GameMode::MainMenu);
+    CHECK(screen({"--menu-background", "scene"}, false) == GameMode::MainMenu);
+    CHECK(screen({"--menu-shot", "walk"}, false) == GameMode::MainMenu);
+    CHECK(screen({"--menu-time", "14"}, false) == GameMode::MainMenu);
+    CHECK(screen({"--play"}, false) == GameMode::Playing);
+    CHECK(screen({"--menu-camera"}, false) == GameMode::Playing);
+    CHECK(screen({"--skip-intro"}, false) == GameMode::MainMenu);
+    CHECK(screen({"--intro"}, true) == GameMode::Intro);
+    CHECK(screen({"--intro", "--seed", "1", "--menu-background", "scene"}, true) ==
+          GameMode::Intro);
 }

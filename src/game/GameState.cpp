@@ -76,8 +76,30 @@ GameMode nextMode(GameMode mode, GameEvent event) {
     case GameMode::Quitting:
         // The program is closing: nothing brings it back.
         break;
+    case GameMode::Intro:
+        // To the main menu, at its end or when it is skipped. FocusLost is not named
+        // here on purpose: the intro goes on behind another program and ends by itself.
+        if (event == GameEvent::IntroFinished || event == GameEvent::Escape) {
+            return GameMode::MainMenu;
+        }
+        break;
     }
     return mode;
+}
+
+GameMode startMode(const StartOptions& options, bool introSeen) {
+    if (options.intro && !options.skipIntro) {
+        return GameMode::Intro;
+    }
+    // The menu camera is a tool for recording the game: with it the main menu is
+    // skipped like with --play, so no menu ever lies over the recorded picture.
+    if (options.play || options.menuCamera.enabled) {
+        return GameMode::Playing;
+    }
+    if (options.skipIntro || options.toolSwitch || introSeen) {
+        return GameMode::MainMenu;
+    }
+    return GameMode::Intro;
 }
 
 bool startsRound(GameMode mode, GameEvent event) {

@@ -136,6 +136,8 @@ const char* screenName(game::GameMode mode) {
         return "Settings (from menu)";
     case game::GameMode::SettingsFromPause:
         return "Settings (from pause)";
+    case game::GameMode::Intro:
+        return "Intro";
     }
     // Only reached with a number that is no screen at all.
     return "Unknown";
