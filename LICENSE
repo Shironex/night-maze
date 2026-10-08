@@ -27,8 +27,9 @@ Assets are not covered
 The MIT licence above applies to the source code in this repository. The
 game's assets are not covered by it and remain all rights reserved: the
 models, textures, sounds, video, user interface art and the story text under
-`assets/` and `docs/story/`. Copying or reusing them needs the owner's
-permission.
+`assets/` and `docs/story/`, and the pictures of the README under
+`docs/showcase/` (which show those assets). Copying or reusing them needs the
+owner's permission.
 
 The exception is a file that states another licence. Third-party fonts and
 libraries keep their own licences; see `THIRD-PARTY-NOTICES.txt`.
