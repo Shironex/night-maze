@@ -69,7 +69,9 @@ constexpr std::array<IntroCard, INTRO_CARD_COUNT> INTRO_CARDS = {{
      .cues = {{{.atSeconds = 1.5F, .cue = SoundCue::LowBatteryPulse},
                {.atSeconds = 3.5F, .cue = SoundCue::LowBatteryPulse}}},
      .cueCount = 2},
-    // 5: past the gate of the exit, and the bell once more.
+    // 5: past the gate of the exit, and the bell once more. It rings right after the cut:
+    // its sound is 5.5 seconds long, so it has rung out when the intro ends. A later
+    // bell would still ring when every sound is stopped there, and be cut off.
     {.firstLine = "One lamp is left in the village.",
      .secondLine = "It is yours.",
      .seconds = 6.0F,
@@ -77,7 +79,7 @@ constexpr std::array<IntroCard, INTRO_CARD_COUNT> INTRO_CARDS = {{
      .shot = MenuShot::CorridorWalk,
      .shotSeconds = 236.5F,
      .flashlightOn = true,
-     .cues = {{{.atSeconds = 2.0F, .cue = SoundCue::IntroBell}}},
+     .cues = {{{.atSeconds = 0.5F, .cue = SoundCue::IntroBell}}},
      .cueCount = 1},
 }};
 

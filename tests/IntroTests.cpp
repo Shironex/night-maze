@@ -315,9 +315,11 @@ TEST_CASE("the sounds of the script, in their order and at their moments") {
     CHECK(cards.at(3).cues.at(0).cue == SoundCue::LowBatteryPulse);
     CHECK(cards.at(3).cues.at(1).cue == SoundCue::LowBatteryPulse);
     CHECK(cards.at(3).cues.at(1).atSeconds - cards.at(3).cues.at(0).atSeconds >= 0.45F);
-    // The bell once more.
+    // The bell once more, early enough to ring out before the intro ends and every
+    // sound is stopped: its file is 5.5 seconds long (tools/make_sounds.py).
     REQUIRE(cards.at(4).cueCount == 1);
     CHECK(cards.at(4).cues.at(0).cue == SoundCue::IntroBell);
+    CHECK(cards.at(4).cues.at(0).atSeconds + 5.5F <= cards.at(4).seconds);
 
     // Every sound lies inside its card, and the sounds of a card are in order.
     for (const IntroCard& card : cards) {
