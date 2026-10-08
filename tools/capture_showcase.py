@@ -317,7 +317,7 @@ class Game:
         left, top = self.place()
         put_on_top(window, left, top)
         # A run that sends keys needs the game window in front, in a round and in a menu.
-        if "--play" in self.run.switches or sends_input(self.run):
+        if starts_round(self.run) or sends_input(self.run):
             bring_to_front(window)
         time.sleep(max(0.0, LEAD_IN_SECONDS - (time.monotonic() - started)))
         width, height = client_size(window)
@@ -344,7 +344,7 @@ class Game:
         if self.process is not None and self.process.poll() is None:
             self.process.terminate()
             self.process.wait(timeout=10)
-        if "--play" in self.run.switches:
+        if starts_round(self.run):
             user32.SetCursorPos(self.pointer.x, self.pointer.y)
         return False
 
@@ -414,7 +414,7 @@ def play(exe, a_run, out_dir):
                 elif kind == "grab":
                     # A round stops with the pause menu when its window is not the
                     # active one any more: that must not be the picture.
-                    if "--play" in a_run.switches:
+                    if starts_round(a_run):
                         keyboard.check()
                     grab(window, os.path.join(out_dir, step[1] + ".png"))
                 elif kind == "hold":
@@ -440,6 +440,11 @@ def play(exe, a_run, out_dir):
                     raise ValueError(f"unknown step: {step}")
         finally:
             keyboard.release_all()
+
+
+def starts_round(a_run):
+    # A run that begins in a round: free play (--play) or a night of the campaign (--night).
+    return "--play" in a_run.switches or "--night" in a_run.switches
 
 
 def sends_input(a_run):
