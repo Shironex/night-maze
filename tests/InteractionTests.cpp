@@ -589,6 +589,13 @@ TEST_CASE("every action has its prompt") {
           "Left Shift: pull lever");
 }
 
+TEST_CASE("every action has its words, without the key") {
+    CHECK(game::interactionWords(game::Interaction::PullLever) == "pull lever");
+    CHECK(game::interactionWords(game::Interaction::ReadNote) == "read note");
+    CHECK(game::interactionWords(game::Interaction::CloseNote) == "close");
+    CHECK(game::interactionWords(game::Interaction::None).empty());
+}
+
 TEST_CASE("the highlight pulses between its weakest and its strongest glow") {
     float weakest = 1.0e9F;
     float strongest = 0.0F;

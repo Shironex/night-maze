@@ -102,6 +102,10 @@ PickState pickNothing(const Round& round);
 /// (game::roundObstacles).
 bool interact(Round& round, const MazeWorld& world, const PickState& pick);
 
+/// What an action does, in words: "pull lever", "read note", "close". The prompt of the
+/// HUD writes them next to the key. An empty text for None.
+std::string_view interactionWords(Interaction action);
+
 /// The line the HUD shows for an action: "E: pull lever", "E: read note", "E: close".
 /// key is the name of the key the player has put "use" on (game::boundKeyName), E in
 /// a game with the default keys. An empty text for None.
