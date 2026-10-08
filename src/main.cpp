@@ -39,7 +39,9 @@ protected:
         // panels are hidden, and in the frame it is switched off they come back as they
         // were. In between the panel key below still works, so the settings of the
         // camera can be changed while it runs. The HUD is left out by DebugUI::draw.
-        const bool menuCameraOn = menuCameraSettings().enabled;
+        // The intro is a film too: while it runs the panels are hidden in the same way.
+        const bool menuCameraOn =
+            menuCameraSettings().enabled || gameMode() == game::GameMode::Intro;
         if (menuCameraOn != m_menuCameraWasOn) {
             m_menuCameraWasOn = menuCameraOn;
             if (menuCameraOn) {
@@ -123,6 +125,7 @@ protected:
             .lastCueName = lastCueName(),
             .cuesPlayed = cuesPlayed(),
             .masterVolume = masterVolumeSetting(),
+            .playIntro = introRequest(),
         });
 
         // ImGui now knows whether it is using the keyboard (a text field is being edited

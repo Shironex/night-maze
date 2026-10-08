@@ -14,6 +14,7 @@
 #include "game/GrassRenderer.hpp"
 #include "game/InteractableRenderer.hpp"
 #include "game/Interaction.hpp"
+#include "game/Intro.hpp"
 #include "game/LightRig.hpp"
 #include "game/Lighting.hpp"
 #include "game/MazeRenderer.hpp"
@@ -101,6 +102,11 @@ namespace game {
 /// (game::MenuBackgroundRenderer), or a still picture when the video cannot be played.
 /// Such a background covers the whole window, so in those frames the scene is not drawn
 /// at all (game::drawsScene): no shadow maps, no HDR picture, no bloom.
+///
+/// The very first start opens with the intro (game/Intro.hpp): five cards of text, the
+/// first on black and the others over pictures the menu camera takes in one fixed maze,
+/// with a wind and a few sounds under them. It is played live, by the same code that
+/// draws a round. Any key ends it, and it is shown once: the settings file remembers.
 ///
 /// A new game has a difficulty (game/Difficulty.hpp), which decides the size of the
 /// maze, its crystals, the gate and the battery, and a seed, which decides the maze.
@@ -354,6 +360,13 @@ protected:
     /// differ between a night with and without the shadow ask here.
     bool shadeInGame() const { return !m_settings.calmNight && !m_calmRun; }
 
+    /// The request to play the intro again, exposed so the debug UI can ask for it: set
+    /// it to true, and the next frame starts the intro, on whatever screen the game is.
+    /// A round that is being played is given up for it, and the intro ends in the main
+    /// menu as always. Besides the switch --intro this is the only way to see the intro
+    /// a second time.
+    bool& introRequest() { return m_introRequested; }
+
 private:
     // Camera turn for one screen coordinate unit of mouse movement, in degrees. The mouse
     // is measured in the units of the window size, not in framebuffer pixels, so the same
@@ -456,6 +469,26 @@ private:
     /// Plays the sound of a cue and remembers it for the debug UI. Without a sound
     /// device nothing is heard, and the cue is counted all the same.
     void playCue(SoundCue cue);
+
+    /// Starts the intro from its beginning, on whatever screen the game is: builds the
+    /// maze of the intro and shows the card. For the request of the debug UI
+    /// (introRequest). The first start of the game needs no call: the constructor
+    /// builds that maze and begins on the screen of the intro (game::startMode).
+    void startIntro();
+
+    /// One frame of the intro, called once per frame while the game is on its screen.
+    /// A key or a mouse button ends it. Otherwise its clock moves on by the time of the
+    /// frame, the sounds whose moments were passed are played (game::introCuesBetween)
+    /// and the card document gets its two lines and its three opacities
+    /// (game::introFrame). At the end of the script it sends GameEvent::IntroFinished.
+    void updateIntro();
+
+    /// What has to happen when the intro is left, at its end, by a key or by Escape:
+    /// called by handleGameEvent, the one place all three come through. Every sound
+    /// stops (the wind is as long as the whole intro), the settings file remembers that
+    /// the intro was seen, and the maze of the intro makes room for the one the player
+    /// has chosen.
+    void leaveIntro();
 
     /// Starts a round on the maze m_mazeWorld holds: every crystal back in its place,
     /// a full battery with the flashlight on, the gate closed, no lever pulled, every
@@ -775,6 +808,9 @@ private:
     // The game the button "Play" starts: the difficulty chosen in the main menu and
     // the seed its seed field shows.
     NewGame m_newGame;
+    // The seed of the command line (StartOptions::seed): the maze behind the main menu
+    // is built from it again when the intro, which has a maze of its own, is over.
+    std::uint32_t m_startSeed = DEFAULT_MAZE_SEED;
     // The name of the difficulty of the game in play, for the pause menu and the
     // result screen: the name of a level, or "Custom" for a maze the debug UI asked for.
     std::string m_playedDifficultyName;
@@ -793,6 +829,20 @@ private:
     // True when all four documents are loaded. Without them a menu screen would show
     // nothing and could not be left, so the game then never enters one.
     bool m_menusLoaded = false;
+
+    // The intro. Its card is a fifth document, without buttons. The clock counts the
+    // seconds since the intro began, in the real time of the frames like the clock of
+    // the menu camera: what is shown is a function of it (game::introFrame).
+    ui::DocumentId m_cardDocument = ui::NO_DOCUMENT;
+    double m_introSeconds = 0.0;
+    // The card whose two lines stand in the document: they are written when the card
+    // changes, not in every frame. INTRO_CARD_COUNT means none yet.
+    std::size_t m_introCardShown = INTRO_CARD_COUNT;
+    // Set by the debug UI: play the intro again (introRequest).
+    bool m_introRequested = false;
+    // True while the main menu is the one that followed the intro: it then comes in out
+    // of black, with the name of the story under its title (fillMainMenuDocument).
+    bool m_menuAfterIntro = false;
 
     // The sound device with the sounds of the cues, loaded once in the constructor in
     // the order of game::SoundCue. Without a device it does nothing (audio::AudioEngine).

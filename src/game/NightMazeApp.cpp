@@ -126,6 +126,8 @@ constexpr const char* MAIN_MENU_DOCUMENT_FILE = "ui/main_menu.rml";
 constexpr const char* PAUSE_DOCUMENT_FILE = "ui/pause.rml";
 constexpr const char* ROUND_END_DOCUMENT_FILE = "ui/round_end.rml";
 constexpr const char* SETTINGS_DOCUMENT_FILE = "ui/settings.rml";
+// The card of text the intro is told with. It has no buttons.
+constexpr const char* CARD_DOCUMENT_FILE = "ui/card.rml";
 
 // The elements of the documents the code writes into or reads: their id attributes.
 // The result screen and the pause menu use the same four names.
@@ -148,11 +150,27 @@ constexpr const char* TEXT_ID_SUFFIX = "-text";
 constexpr const char* FULLSCREEN_ID = "fullscreen";
 constexpr const char* WINDOW_SIZE_ID = "window-size";
 constexpr const char* WINDOW_SIZE_ROW_ID = "window-size-row";
+// The card: the black over the picture, the card with its two lines, and the hint.
+constexpr const char* CARD_BLACK_ID = "black";
+constexpr const char* CARD_ID = "card";
+constexpr const char* CARD_FIRST_LINE_ID = "line-first";
+constexpr const char* CARD_SECOND_LINE_ID = "line-second";
+constexpr const char* CARD_HINT_ID = "hint";
+// The main menu after the intro: the document itself (a name RmlUi knows, see
+// ui::UiLayer::setClass), the black it comes out of and the line under its title.
+constexpr const char* DOCUMENT_ID = "#document";
+constexpr const char* CURTAIN_ID = "curtain";
+constexpr const char* SUBTITLE_ID = "subtitle";
 
 // The classes the code sets on elements. The style sheet says what they look like.
 constexpr const char* CHOSEN_CLASS = "chosen";
 constexpr const char* ON_CLASS = "on";
 constexpr const char* OFF_CLASS = "off";
+// The main menu after the intro: no fade of the whole document, the curtain is there
+// and the subtitle is shown.
+constexpr const char* CUT_CLASS = "cut";
+constexpr const char* DRAWN_CLASS = "drawn";
+constexpr const char* SHOWN_CLASS = "shown";
 
 // The buttons that do not change the screen: their data-action names. A difficulty
 // button is named by the same prefix as its id.
@@ -230,6 +248,23 @@ MazeSettings mazeSettingsFor(Difficulty difficulty, std::uint32_t seed, int next
     settings.interactables.shadeLines = shadeLines;
     return settings;
 }
+
+// The request for the first maze. A game that opens with the intro (game::startMode)
+// builds the maze of the intro, whatever the settings and the command line say: the
+// shots of the intro were picked in that maze. The maze of the player is built when the
+// intro is over. Every other start builds the maze behind the main menu, which is also
+// the maze of the round --play starts in: the seed of the command line and the level of
+// the settings.
+MazeSettings firstMazeSettings(const StartOptions& options, const GameSettings& settings,
+                               bool shadeLines) {
+    if (startMode(options, settings.introSeen) == GameMode::Intro) {
+        return mazeSettingsFor(INTRO_DIFFICULTY, INTRO_MAZE_SEED, settings.nextStoryLine,
+                               shadeLines);
+    }
+    return mazeSettingsFor(settings.difficulty, options.seed, settings.nextStoryLine, shadeLines);
+}
+
+constexpr double MILLISECONDS_PER_SECOND = 1000.0;
 
 // Pitch of a level look, in degrees: how the player looks at the start.
 constexpr float LEVEL_PITCH_DEGREES = 0.0F;
@@ -317,21 +352,20 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
       m_settings(loadSettings()),
       m_savedSettings(m_settings),
       m_calmRun(options.calm),
-      // The first maze: the seed of the command line and the level of the settings. It
-      // is the maze behind the main menu, and the maze of the round --play starts in.
-      m_mazeSettings(mazeSettingsFor(m_settings.difficulty, options.seed, m_settings.nextStoryLine,
-                                     shadeInGame())),
+      // The first maze: the one of the intro, or the one behind the main menu.
+      m_mazeSettings(firstMazeSettings(options, m_settings, shadeInGame())),
       m_heightmap(loadHeightmap()),
       m_mazeWorld(buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed,
                                  m_heightmap, m_terrainSettings.heightScale,
                                  m_mazeSettings.interactables, m_mazeSettings.crystalCount)),
       m_menuCamera(options.menuCamera),
-      // The menu camera is a tool for recording the game: with it the main menu is
-      // skipped like with --play, so no menu ever lies over the recorded picture.
-      m_mode(options.play || options.menuCamera.enabled ? GameMode::Playing : GameMode::MainMenu),
+      // The first screen: the intro on the very first start, a round for the tools
+      // that record the game, and otherwise the main menu.
+      m_mode(startMode(options, m_settings.introSeen)),
       // The game "Play" starts: the difficulty of the settings, and the seed of the
       // command line when one was named there. Otherwise the menu rolls one (below).
       m_newGame{.difficulty = m_settings.difficulty, .seed = options.seed},
+      m_startSeed(options.seed),
       m_playedDifficultyName(difficultyLevel(m_settings.difficulty).name),
       m_ui(window()) {
     // The two lit programs and the grass program read the lights from the uniform buffer
@@ -344,8 +378,10 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     m_lightRig.connect(m_reflectShader);
 
     // The rules of the first round are the ones of the same difficulty level as the
-    // first maze (the gate and the battery).
-    const DifficultyLevel& level = difficultyLevel(m_settings.difficulty);
+    // first maze (the gate and the battery). The number of flasks is among them, and
+    // flasks are seen: the pictures of the intro need the level of the intro.
+    const DifficultyLevel& level =
+        difficultyLevel(m_mode == GameMode::Intro ? INTRO_DIFFICULTY : m_settings.difficulty);
     m_gameplay.requiredFraction = level.requiredFraction;
     m_gameplay.batteryLifetimeSeconds = level.batteryLifetimeSeconds;
     m_gameplay.flaskCount = level.flaskCount;
@@ -422,6 +458,8 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     m_settingsDocument = m_ui.loadDocument(SETTINGS_DOCUMENT_FILE);
     m_menusLoaded = m_mainMenuDocument != ui::NO_DOCUMENT && m_pauseDocument != ui::NO_DOCUMENT &&
                     m_roundEndDocument != ui::NO_DOCUMENT && m_settingsDocument != ui::NO_DOCUMENT;
+    // The card of the intro: a fifth document, not one of the menus.
+    m_cardDocument = m_ui.loadDocument(CARD_DOCUMENT_FILE);
     if (!m_menusLoaded) {
         core::logError("The menus cannot be shown: the game starts straight in a round");
         m_mode = GameMode::Playing;
@@ -446,6 +484,12 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
         m_ui.setValue(m_mainMenuDocument, SEED_ID, std::to_string(m_newGame.seed));
     } else {
         rollSeed();
+    }
+    // An intro without its card would be half a minute of pictures without a word: it
+    // is left at once, like at its end, and the main menu comes up with its own maze.
+    if (m_mode == GameMode::Intro && m_cardDocument == ui::NO_DOCUMENT) {
+        core::logError("The card of the intro cannot be shown: the intro is left out");
+        handleGameEvent(GameEvent::IntroFinished);
     }
     showScreen();
 }
@@ -493,6 +537,12 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
     if (m_mode == before && !roundInsteadOfMenu) {
         return;
     }
+    // The intro is over: at its end, skipped by a key or left with Escape. All three
+    // arrive here.
+    if (before == GameMode::Intro) {
+        leaveIntro();
+    }
+    m_menuAfterIntro = before == GameMode::Intro;
     if (newGame) {
         // "New maze" on the result screen: the same difficulty, another seed. "Play"
         // in the main menu starts the seed its field shows (handleMenuActions has read
@@ -512,8 +562,10 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
         saveSettings();
     }
     // Back in the main menu after a game: the next game gets a fresh seed. Coming back
-    // from the settings the seed stays, with whatever was typed into its field.
-    if (m_mode == GameMode::MainMenu && !wasSettings) {
+    // from the settings the seed stays, with whatever was typed into its field. After
+    // the intro it stays too: that is the first seed the menu offers, and it may be the
+    // one of the command line.
+    if (m_mode == GameMode::MainMenu && !wasSettings && before != GameMode::Intro) {
         rollSeed();
     }
 
@@ -593,10 +645,14 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
         const Difficulty difficulty = m_settings.difficulty;
         const int nextStoryLine = m_settings.nextStoryLine;
         const bool calmNight = m_settings.calmNight;
+        // That the intro was seen is no setting of this screen either: a reset does not
+        // bring the intro back.
+        const bool introSeen = m_settings.introSeen;
         m_settings = GameSettings{};
         m_settings.difficulty = difficulty;
         m_settings.nextStoryLine = nextStoryLine;
         m_settings.calmNight = calmNight;
+        m_settings.introSeen = introSeen;
         applyViewSettings();
         applyWindowSettings();
         applyAudioSettings();
@@ -682,13 +738,105 @@ void NightMazeApp::showScreen() {
     } else if (m_mode == GameMode::SettingsFromMenu || m_mode == GameMode::SettingsFromPause) {
         document = m_settingsDocument;
         fillSettingsDocument();
+    } else if (m_mode == GameMode::Intro) {
+        // The card is not filled here: updateIntro writes it in every frame.
+        document = m_cardDocument;
     }
     m_ui.show(document);
 
     // The cursor follows the screen: captured for mouse look while a round is played,
     // free for the buttons of a menu. The menu camera does not turn with the mouse, so
-    // it leaves the cursor free too.
-    input().setCursorCaptured(updatesRound(m_mode) && !m_menuCamera.enabled);
+    // it leaves the cursor free too. The intro captures it for another reason: a film
+    // has no cursor in its picture, and there is nothing to click.
+    input().setCursorCaptured((updatesRound(m_mode) && !m_menuCamera.enabled) ||
+                              m_mode == GameMode::Intro);
+}
+
+void NightMazeApp::startIntro() {
+    // Not without the card, not twice and not while the program is closing.
+    if (m_cardDocument == ui::NO_DOCUMENT || m_mode == GameMode::Intro ||
+        m_mode == GameMode::Quitting) {
+        return;
+    }
+    // The maze of the intro, built like a new game of its level: the shots were picked
+    // there. This does not go through game::nextMode: no event leads into the intro,
+    // the application puts the game there.
+    startNewGame({.difficulty = INTRO_DIFFICULTY, .seed = INTRO_MAZE_SEED});
+    m_mode = GameMode::Intro;
+    m_introSeconds = 0.0;
+    m_introCardShown = INTRO_CARD_COUNT;
+    showScreen();
+}
+
+void NightMazeApp::updateIntro() {
+    // Any key and any mouse button skip the whole intro. Escape is one of them, and it
+    // also arrives as an event of its own before this function runs (onEscapePressed).
+    // wasKeyPressed is true for one frame, and this function runs once per frame.
+    if (introFrame(static_cast<float>(m_introSeconds)).skippable) {
+        bool pressed = false;
+        // GLFW numbers its keys from GLFW_KEY_SPACE to GLFW_KEY_LAST, with gaps that
+        // are never pressed, and its mouse buttons from 0.
+        for (int key = GLFW_KEY_SPACE; key <= GLFW_KEY_LAST && !pressed; ++key) {
+            pressed = input().wasKeyPressed(key);
+        }
+        for (int button = 0; button <= GLFW_MOUSE_BUTTON_LAST && !pressed; ++button) {
+            pressed = input().wasMouseButtonPressed(button);
+        }
+        if (pressed) {
+            handleGameEvent(GameEvent::IntroFinished);
+            return;
+        }
+    }
+
+    // The clock follows the real time of the frames. The sounds between the moment
+    // before this frame and the moment after it are played now: each one once.
+    const double before = m_introSeconds;
+    m_introSeconds += time().deltaSeconds();
+    for (const SoundCue cue :
+         introCuesBetween(static_cast<float>(before), static_cast<float>(m_introSeconds))) {
+        playCue(cue);
+    }
+
+    const IntroFrame frame = introFrame(static_cast<float>(m_introSeconds));
+    if (frame.finished) {
+        handleGameEvent(GameEvent::IntroFinished);
+        return;
+    }
+
+    // The two lines, when the card has changed. The cut happens while no text is
+    // shown (game::introFrame), so the new lines are never seen replacing the old ones.
+    if (frame.card != m_introCardShown) {
+        m_introCardShown = frame.card;
+        // Whether the shadow, the enemy of the game, takes part in it: the fourth card
+        // has another second line for a game without it (game::introLines).
+        const bool shadeInGame = true;
+        const IntroLines lines = introLines(frame.card, shadeInGame);
+        m_ui.setText(m_cardDocument, CARD_FIRST_LINE_ID, lines.first);
+        m_ui.setText(m_cardDocument, CARD_SECOND_LINE_ID, lines.second);
+    }
+    m_ui.setOpacity(m_cardDocument, CARD_BLACK_ID, frame.blackOpacity);
+    m_ui.setOpacity(m_cardDocument, CARD_ID, frame.textOpacity);
+    m_ui.setOpacity(m_cardDocument, CARD_HINT_ID, frame.hintOpacity);
+}
+
+void NightMazeApp::leaveIntro() {
+    // The wind is one sound of half a minute: without this it would go on over the
+    // main menu after a skip.
+    m_audio.stopAll();
+    // Seen, to its end or to the key that skipped it: the next start opens with the
+    // main menu. An intro that could not be shown at all was not seen.
+    if (m_cardDocument != ui::NO_DOCUMENT) {
+        m_settings.introSeen = true;
+    }
+    // The maze of the player again: the level the main menu shows and the seed the
+    // game was started with. It is built like a new game, which also writes the
+    // settings file, with the line of the intro in it. The time is logged, because the
+    // menu waits for it: it is the price of an intro with a maze of its own.
+    const double started = glfwGetTime();
+    startNewGame({.difficulty = m_newGame.difficulty, .seed = m_startSeed});
+    core::logInfo("The intro is over: the maze of the main menu was built in " +
+                  std::to_string(std::lround((glfwGetTime() - started) * MILLISECONDS_PER_SECOND)) +
+                  " ms");
 }
 
 void NightMazeApp::startNewGame(const NewGame& newGame) {
@@ -740,6 +888,13 @@ void NightMazeApp::fillMainMenuDocument() {
                  std::to_string(requiredCrystalCount(level.crystalCount, level.requiredFraction)) +
                      " of " + std::to_string(level.crystalCount));
     m_ui.setText(m_mainMenuDocument, INFO_BATTERY_ID, timeText(level.batteryLifetimeSeconds));
+
+    // The menu that follows the intro comes in out of black, and the name of the story
+    // stands under its title. Every other time the three classes are taken away, and
+    // the menu is the one it always was.
+    m_ui.setClass(m_mainMenuDocument, DOCUMENT_ID, CUT_CLASS, m_menuAfterIntro);
+    m_ui.setClass(m_mainMenuDocument, CURTAIN_ID, DRAWN_CLASS, m_menuAfterIntro);
+    m_ui.setClass(m_mainMenuDocument, SUBTITLE_ID, SHOWN_CLASS, m_menuAfterIntro);
 }
 
 void NightMazeApp::fillPauseDocument() {
@@ -1134,6 +1289,17 @@ void NightMazeApp::onRender(double alpha) {
     handleMenuActions();
     handleControlChanges();
 
+    // The intro: the request of the debug UI to play it again, and its frame. Both come
+    // before everything below, because the frame may end the intro: the rest of this
+    // function then already draws the main menu.
+    if (m_introRequested) {
+        m_introRequested = false;
+        startIntro();
+    }
+    if (m_mode == GameMode::Intro) {
+        updateIntro();
+    }
+
     // A player who switches to another program does not want the round to go on: the
     // frame in which the window stops being the active one pauses it (game::nextMode,
     // FocusLost). Asked once per frame and compared with the frame before, so it
@@ -1169,12 +1335,19 @@ void NightMazeApp::onRender(double alpha) {
     // scene is its background (--menu-background scene, or neither the video nor the
     // still could be loaded).
     const bool roundInput = updatesRound(m_mode) && !m_menuCamera.enabled;
-    const bool menuCamera = m_menuCamera.enabled || usesMenuCamera(m_mode);
+    // The intro takes its pictures with the menu camera too, but it says itself which
+    // shot, at which moment and with which light (game::introCamera).
+    const bool intro = m_mode == GameMode::Intro;
+    const bool menuCamera = m_menuCamera.enabled || usesMenuCamera(m_mode) || intro;
     // The settings the menu camera uses in this frame. The main menu always shows the
     // high glide over the maze, whatever shot the recording tool is set to.
     MenuCameraSettings menuCameraSettings = m_menuCamera;
     if (!m_menuCamera.enabled) {
         menuCameraSettings.shot = MenuShot::HighGlide;
+    }
+    const IntroCamera introShot = introCamera(introFrame(static_cast<float>(m_introSeconds)));
+    if (intro) {
+        menuCameraSettings = introShot.settings;
     }
 
     // A new round on the same maze, asked for with the restart key or by the debug UI.
@@ -1316,7 +1489,17 @@ void NightMazeApp::onRender(double alpha) {
     // player are still there when the menu camera is switched off, and the field of
     // view and the two planes are the same in both.
     scene::Camera frameCamera = m_camera;
-    if (menuCamera) {
+    if (intro) {
+        // The moment of the shot comes from the script and not from the clock of the
+        // menu camera, which stands still meanwhile. The field of view is the default
+        // one, not the one of the settings: the shots were picked with it.
+        const MenuCameraPose pose = menuCameraPose(m_menuCameraPath, m_mazeWorld,
+                                                   menuCameraSettings, introShot.menuSeconds);
+        eye = pose.eye;
+        frameCamera.yawDegrees = pose.yawDegrees;
+        frameCamera.pitchDegrees = pose.pitchDegrees;
+        frameCamera.fovDegrees = DEFAULT_FIELD_OF_VIEW_DEGREES;
+    } else if (menuCamera) {
         // The clock of the menu camera follows the real time of the frames, not the
         // fixed steps: the pose is a function of time, so it can be asked for the exact
         // moment of every frame and needs no blending. It is kept inside one loop of
@@ -1395,6 +1578,10 @@ void NightMazeApp::onRender(double alpha) {
         // are what that shot shows.
         frameLighting.flashlightOn = menuCameraSettings.shot == MenuShot::CorridorWalk;
         frameLighting.flashlightIntensity = m_lighting.flashlightIntensity;
+        // The script of the intro names the light of every card itself.
+        if (intro) {
+            frameLighting.flashlightOn = introShot.flashlightOn;
+        }
     }
 
     // Where the flashlight is and where it points in this frame: in the hand, a little

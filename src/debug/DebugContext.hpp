@@ -215,6 +215,10 @@ struct DebugContext {
     /// The master volume of the settings, 0 to 100. A plain value, copied when the
     /// context is built: the Diagnostics category only shows it.
     float masterVolume;
+    /// The request to play the intro again, editable: the Gameplay category sets it to
+    /// true and the game starts the intro at the start of its next frame
+    /// (NightMazeApp::introRequest).
+    bool& playIntro;
 };
 
 } // namespace debug
