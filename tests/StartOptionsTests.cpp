@@ -32,6 +32,51 @@ TEST_CASE("without switches the game starts as always") {
     CHECK_FALSE(result.options.startCell.has_value());
     CHECK_FALSE(result.options.startYawDegrees.has_value());
     CHECK_FALSE(result.options.collectAll);
+    CHECK_FALSE(result.options.calm);
+    // Nothing says that a tool drives the game, and nothing about the intro.
+    CHECK_FALSE(result.options.toolSwitch);
+    CHECK_FALSE(result.options.skipIntro);
+    CHECK_FALSE(result.options.intro);
+}
+
+TEST_CASE("each of the ten switches of a tool marks the run as driven by a tool") {
+    CHECK(parse({"--play"}).options.toolSwitch);
+    CHECK(parse({"--seed", "1"}).options.toolSwitch);
+    CHECK(parse({"--menu-camera"}).options.toolSwitch);
+    CHECK(parse({"--menu-shot", "glide"}).options.toolSwitch);
+    CHECK(parse({"--menu-time", "0"}).options.toolSwitch);
+    // Also a value that is the default: the switch was given.
+    CHECK(parse({"--menu-background", "video"}).options.toolSwitch);
+    // The switches that set up a round for a picture, and the one for a calm night: a
+    // run with any of them is a scripted run and must not open with the intro.
+    CHECK(parse({"--start-cell", "3,4"}).options.toolSwitch);
+    CHECK(parse({"--start-yaw", "90"}).options.toolSwitch);
+    CHECK(parse({"--collect-all"}).options.toolSwitch);
+    CHECK(parse({"--calm"}).options.toolSwitch);
+}
+
+TEST_CASE("the two switches of the intro set their fields and are no switches of a tool") {
+    const game::StartOptionsResult skip = parse({"--skip-intro"});
+    CHECK(skip.error.empty());
+    CHECK(skip.options.skipIntro);
+    CHECK_FALSE(skip.options.intro);
+    CHECK_FALSE(skip.options.toolSwitch);
+
+    const game::StartOptionsResult intro = parse({"--intro"});
+    CHECK(intro.error.empty());
+    CHECK(intro.options.intro);
+    CHECK_FALSE(intro.options.skipIntro);
+    CHECK_FALSE(intro.options.toolSwitch);
+
+    // Next to the switches of a tool, in any place, and they take no value.
+    const game::StartOptionsResult mixed = parse({"--seed", "7", "--intro", "--play"});
+    CHECK(mixed.error.empty());
+    CHECK(mixed.options.intro);
+    CHECK(mixed.options.toolSwitch);
+    CHECK(mixed.options.seed == 7U);
+    CHECK_FALSE(parse({"--intro", "now"}).error.empty());
+    // "--intro" is a whole word: a longer one is not known.
+    CHECK_FALSE(parse({"--intros"}).error.empty());
 }
 
 TEST_CASE("the background of the main menu can be named, and only by its three names") {
@@ -122,6 +167,9 @@ TEST_CASE("the list of switches names every switch") {
     CHECK(usage.find("--start-yaw") != std::string::npos);
     CHECK(usage.find("--collect-all") != std::string::npos);
     CHECK(usage.find("--calm") != std::string::npos);
+    CHECK(usage.find("--skip-intro") != std::string::npos);
+    // With the space in front it is not the end of --skip-intro.
+    CHECK(usage.find(" --intro") != std::string::npos);
 }
 
 TEST_CASE("the calm switch asks for a run without a shade and changes nothing else") {

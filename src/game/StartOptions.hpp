@@ -57,9 +57,24 @@ struct StartOptions {
     /// True: the first round starts with every crystal collected, so the gate is open
     /// (--collect-all). The crystals are picked up by the rules of the round, not set.
     bool collectAll = false;
+
     /// True: a calm night for this run, whatever the settings file says: no maze of the
     /// run has a shade. The settings are neither read for it nor changed by it.
     bool calm = false;
+
+    /// True when one of the switches above was on the command line (--seed, --play,
+    /// --menu-camera, --menu-shot, --menu-time, --menu-background, --start-cell,
+    /// --start-yaw, --collect-all or --calm): a tool or a test is driving the game. Such a run never opens with the intro (game::startMode).
+    /// Scripts start the game in fresh folders without a settings file, where the intro
+    /// would count as not seen.
+    bool toolSwitch = false;
+
+    /// True: never play the intro in this run (--skip-intro), also when it was not seen.
+    bool skipIntro = false;
+
+    /// True: play the intro now, also when it was seen and next to the switches of
+    /// a tool (--intro). --skip-intro wins over it when both are given.
+    bool intro = false;
 };
 
 /// What parseStartOptions found.
@@ -94,6 +109,8 @@ extern const char* const START_OPTIONS_USAGE;
 ///     --start-yaw <degrees>  the direction the player looks in at the start
 ///     --collect-all          the first round starts with every crystal collected
 ///     --calm                 no shade in this run (a calm night), settings untouched
+///     --skip-intro           never play the intro in this run
+///     --intro                play the intro now, also when it was seen
 ///
 /// An unknown switch, a missing value or a value that is not a number is an error: the
 /// result then carries a message and the game should not start.

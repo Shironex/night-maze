@@ -23,6 +23,8 @@ constexpr std::string_view START_CELL_SWITCH = "--start-cell";
 constexpr std::string_view START_YAW_SWITCH = "--start-yaw";
 constexpr std::string_view COLLECT_ALL_SWITCH = "--collect-all";
 constexpr std::string_view CALM_SWITCH = "--calm";
+constexpr std::string_view SKIP_INTRO_SWITCH = "--skip-intro";
+constexpr std::string_view INTRO_SWITCH = "--intro";
 
 // The two names --menu-shot accepts.
 constexpr std::string_view WALK_SHOT_NAME = "walk";
@@ -96,7 +98,8 @@ bool parseSeed(std::string_view text, std::uint32_t& seed) {
 const char* const START_OPTIONS_USAGE =
     "Switches: --seed <number>, --play, --menu-camera, --menu-shot <walk|glide>, "
     "--menu-time <seconds>, --menu-background <video|still|scene>, "
-    "--start-cell <column>,<row>, --start-yaw <degrees>, --collect-all, --calm";
+    "--start-cell <column>,<row>, --start-yaw <degrees>, --collect-all, --calm, "
+    "--skip-intro, --intro";
 
 StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
     StartOptionsResult result;
@@ -105,21 +108,36 @@ StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
     for (std::size_t i = 0; i < arguments.size(); ++i) {
         const std::string_view name = arguments[i];
 
-        // The switches without a value.
+        // The two switches of the intro, without a value. They are no switches of
+        // a tool: they do not set toolSwitch.
+        if (name == SKIP_INTRO_SWITCH) {
+            options.skipIntro = true;
+            continue;
+        }
+        if (name == INTRO_SWITCH) {
+            options.intro = true;
+            continue;
+        }
+
+        // The switches of a tool without a value.
         if (name == MENU_CAMERA_SWITCH) {
             options.menuCamera.enabled = true;
+            options.toolSwitch = true;
             continue;
         }
         if (name == PLAY_SWITCH) {
             options.play = true;
+            options.toolSwitch = true;
             continue;
         }
         if (name == COLLECT_ALL_SWITCH) {
             options.collectAll = true;
+            options.toolSwitch = true;
             continue;
         }
         if (name == CALM_SWITCH) {
             options.calm = true;
+            options.toolSwitch = true;
             continue;
         }
 
@@ -137,6 +155,8 @@ StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
         }
         ++i;
         const char* const value = arguments[i];
+        // All six are switches of a tool.
+        options.toolSwitch = true;
 
         bool understood = false;
         if (name == SEED_SWITCH) {
