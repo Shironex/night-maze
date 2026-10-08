@@ -64,6 +64,25 @@ constexpr float SHADE_NO_WAY = 1.0e9F;
 /// at least this many tenths of the way to the farthest cell, counted in passages.
 constexpr int SHADE_START_FAR_TENTHS = 6;
 
+/// How the drawn figure moves when it is not just a statue (drawing only: the position, the
+/// lit test points and the catch distance never see it). The values here are the defaults.
+struct ShadeSwaySettings {
+    /// Standing: the whole figure leans to one side and the other, in degrees, and rises
+    /// and sinks like a slow breath, in metres. One full swing takes periodSeconds.
+    float standLeanDegrees = 1.5F;
+    float standRiseMetres = 0.015F;
+    float periodSeconds = 4.5F;
+
+    /// Walking: the figure leans forward, in degrees, and bobs up and down once per
+    /// step, in metres. The steps follow the speed (see SHADE_STRIDE_METRES).
+    float walkLeanDegrees = 4.0F;
+    float walkBobMetres = 0.04F;
+};
+
+/// How far the shade travels in one step of its walk, in metres: the bob has one beat per
+/// step, so a faster shade bobs faster.
+constexpr float SHADE_STRIDE_METRES = 1.6F;
+
 /// The numbers of the shade that can be changed while the game runs. The debug UI edits
 /// them. The values here are the defaults.
 struct ShadeSettings {
@@ -82,6 +101,9 @@ struct ShadeSettings {
 
     /// Debug switch: draw the shade on the map. The map of the game never shows it.
     bool showOnMap = false;
+
+    /// How the figure sways while it stands and walks (drawing only).
+    ShadeSwaySettings sway;
 };
 
 /// The shade of one round. It is a field of the round (Round::shade), so starting the
@@ -210,6 +232,45 @@ struct ShadeStep {
 /// The feet of the shade are put on the ground of terrain.
 bool advanceShade(Shade& shade, const ShadeSettings& settings, const Maze& maze,
                   const Terrain& terrain, const ShadeStep& step, float stepSeconds);
+
+/// What the drawn shade does on top of its place: a rise and two turns around its feet.
+struct ShadePose {
+    /// Metres up from the ground.
+    float riseMetres = 0.0F;
+    /// Degrees of leaning forward (towards the player) and to the side.
+    float forwardLeanDegrees = 0.0F;
+    float sideLeanDegrees = 0.0F;
+};
+
+/// How the shade is drawn seconds into the round. walkAmount is 0 for a figure that
+/// stands (lit, waiting, in grace) and 1 for one that walks; the values between blend the
+/// two, so the drawing can change from one to the other without a jump. speed is the
+/// walking speed in metres per second (ShadeSettings::speed). Pure: the same numbers
+/// always give the same pose, and the logical shade is not involved.
+ShadePose shadeSwayPose(float walkAmount, float speed, float seconds,
+                        const ShadeSwaySettings& sway);
+
+/// True when the shade is walking in the next fixed step: present, no grace time left, not
+/// lit and not thawing. The drawing uses it to choose the stand or the walk pose.
+bool shadeWalking(const Shade& shade);
+
+/// How the picture goes to black when the shade catches the player, before the round
+/// starts again: CATCH_FADE_OUT_SECONDS of falling brightness, then black. The input of
+/// the player is frozen and the shade stands still in that time.
+constexpr float CATCH_FADE_OUT_SECONDS = 0.6F;
+
+/// The two phases of a catch before the round starts again.
+enum class CatchPhase {
+    FadingOut, ///< the picture is getting darker
+    Black,     ///< fully dark: the round starts again now
+};
+
+/// The phase secondsSinceCatch seconds after the shade reached the player.
+CatchPhase catchPhase(float secondsSinceCatch);
+
+/// How bright the picture is in that time, as a factor from 1 (full) to 0 (black), on the
+/// same smooth curve as caughtBrightness runs the other way.
+float catchFadeBrightness(float secondsSinceCatch);
 
 /// What the player reads after being caught: one of these lines, shown over the play
 /// view for CAUGHT_LINE_SECONDS seconds. The picture comes back from black in the first

@@ -14,6 +14,7 @@
 
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -662,6 +663,84 @@ TEST_CASE("the picture comes back from black smoothly") {
         CHECK(now > before);
         before = now;
     }
+}
+
+TEST_CASE("a catch fades the picture to black, then the round starts again") {
+    CHECK(game::catchFadeBrightness(0.0F) == 1.0F);
+    CHECK(game::catchFadeBrightness(game::CATCH_FADE_OUT_SECONDS) == 0.0F);
+    CHECK(game::catchFadeBrightness(60.0F) == 0.0F);
+    CHECK(game::catchFadeBrightness(-1.0F) == 1.0F);
+    CHECK(game::catchFadeBrightness(game::CATCH_FADE_OUT_SECONDS / 2.0F) == doctest::Approx(0.5F));
+    float before = 1.0F;
+    for (int i = 1; i <= 6; ++i) {
+        const float now = game::catchFadeBrightness(static_cast<float>(i) * 0.1F - 0.01F);
+        CHECK(now < before);
+        before = now;
+    }
+    CHECK(game::catchPhase(0.0F) == game::CatchPhase::FadingOut);
+    CHECK(game::catchPhase(game::CATCH_FADE_OUT_SECONDS - 0.01F) == game::CatchPhase::FadingOut);
+    CHECK(game::catchPhase(game::CATCH_FADE_OUT_SECONDS) == game::CatchPhase::Black);
+}
+
+TEST_CASE("a standing shade sways slowly and stays within its small numbers") {
+    const game::ShadeSwaySettings sway;
+    float maxSide = 0.0F;
+    float minRise = 1.0F;
+    float maxRise = 0.0F;
+    for (int i = 0; i < 900; ++i) {
+        const game::ShadePose pose =
+            game::shadeSwayPose(0.0F, 4.0F, static_cast<float>(i) * 0.01F, sway);
+        CHECK(pose.forwardLeanDegrees == 0.0F);
+        maxSide = std::max(maxSide, std::abs(pose.sideLeanDegrees));
+        minRise = std::min(minRise, pose.riseMetres);
+        maxRise = std::max(maxRise, pose.riseMetres);
+    }
+    CHECK(maxSide == doctest::Approx(sway.standLeanDegrees).epsilon(0.01));
+    CHECK(minRise >= -1.0e-6F);
+    CHECK(maxRise == doctest::Approx(sway.standRiseMetres).epsilon(0.01));
+    // It repeats after one period, and it is at rest-lean 0 at time 0.
+    const game::ShadePose a = game::shadeSwayPose(0.0F, 4.0F, 1.0F, sway);
+    const game::ShadePose b = game::shadeSwayPose(0.0F, 4.0F, 1.0F + sway.periodSeconds, sway);
+    CHECK(a.sideLeanDegrees == doctest::Approx(b.sideLeanDegrees).epsilon(0.001));
+    CHECK(game::shadeSwayPose(0.0F, 4.0F, 0.0F, sway).sideLeanDegrees == 0.0F);
+}
+
+TEST_CASE("a walking shade leans forward and bobs in step with its speed") {
+    const game::ShadeSwaySettings sway;
+    const game::ShadePose walking = game::shadeSwayPose(1.0F, 4.0F, 0.3F, sway);
+    CHECK(walking.forwardLeanDegrees == doctest::Approx(sway.walkLeanDegrees));
+    CHECK(walking.sideLeanDegrees == 0.0F);
+    float maxBob = 0.0F;
+    for (int i = 0; i < 300; ++i) {
+        maxBob = std::max(
+            maxBob,
+            game::shadeSwayPose(1.0F, 4.0F, static_cast<float>(i) * 0.01F, sway).riseMetres);
+    }
+    CHECK(maxBob == doctest::Approx(sway.walkBobMetres).epsilon(0.01));
+    // One bump per step: the bob is back at the same height after one stride of walking.
+    const float stride = game::SHADE_STRIDE_METRES / 4.0F;
+    CHECK(game::shadeSwayPose(1.0F, 4.0F, 0.2F, sway).riseMetres ==
+          doctest::Approx(game::shadeSwayPose(1.0F, 4.0F, 0.2F + stride, sway).riseMetres)
+              .epsilon(0.001));
+    // Halfway between the poses is halfway between the numbers, and speed 0 does not bob.
+    CHECK(game::shadeSwayPose(0.5F, 4.0F, 0.3F, sway).forwardLeanDegrees ==
+          doctest::Approx(sway.walkLeanDegrees / 2.0F));
+    CHECK(game::shadeSwayPose(1.0F, 0.0F, 5.0F, sway).riseMetres == 0.0F);
+}
+
+TEST_CASE("the shade counts as walking only when no rule holds it") {
+    game::Shade shade;
+    CHECK_FALSE(game::shadeWalking(shade));
+    shade.present = true;
+    CHECK(game::shadeWalking(shade));
+    shade.graceLeft = 1.0F;
+    CHECK_FALSE(game::shadeWalking(shade));
+    shade.graceLeft = 0.0F;
+    shade.lit = true;
+    CHECK_FALSE(game::shadeWalking(shade));
+    shade.lit = false;
+    shade.thawLeft = 0.5F;
+    CHECK_FALSE(game::shadeWalking(shade));
 }
 
 TEST_CASE("the shade turns its front towards the player") {

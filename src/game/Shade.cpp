@@ -310,6 +310,36 @@ int nextCaughtLine(int previous) {
     return (previous + 1) % CAUGHT_LINE_COUNT;
 }
 
+ShadePose shadeSwayPose(float walkAmount, float speed, float seconds,
+                        const ShadeSwaySettings& sway) {
+    const float walk = std::clamp(walkAmount, 0.0F, 1.0F);
+    constexpr float TWO_PI = 6.2831853F;
+    // Standing: a slow swing to the side, and a breath that is a quarter of a swing
+    // late, so the figure never rises exactly when it is most bent.
+    const float swing = TWO_PI * seconds / std::max(sway.periodSeconds, 0.01F);
+    const float sideStand = sway.standLeanDegrees * std::sin(swing);
+    const float riseStand = sway.standRiseMetres * 0.5F * (1.0F + std::sin(swing - 1.5707963F));
+    // Walking: one beat per step. |sin| makes one bump per step, as a bob does.
+    const float beat = TWO_PI * 0.5F * speed / SHADE_STRIDE_METRES * seconds;
+    const float riseWalk = sway.walkBobMetres * std::abs(std::sin(beat));
+    return {.riseMetres = glm::mix(riseStand, riseWalk, walk),
+            .forwardLeanDegrees = sway.walkLeanDegrees * walk,
+            .sideLeanDegrees = sideStand * (1.0F - walk)};
+}
+
+bool shadeWalking(const Shade& shade) {
+    return shade.present && shade.graceLeft <= 0.0F && !shade.lit && shade.thawLeft <= 0.0F;
+}
+
+CatchPhase catchPhase(float secondsSinceCatch) {
+    return secondsSinceCatch < CATCH_FADE_OUT_SECONDS ? CatchPhase::FadingOut : CatchPhase::Black;
+}
+
+float catchFadeBrightness(float secondsSinceCatch) {
+    const float t = std::clamp(secondsSinceCatch / CATCH_FADE_OUT_SECONDS, 0.0F, 1.0F);
+    return 1.0F - t * t * (3.0F - 2.0F * t);
+}
+
 float caughtBrightness(float secondsSinceCaught) {
     const float t = std::clamp(secondsSinceCaught / CAUGHT_FADE_SECONDS, 0.0F, 1.0F);
     // The curve 3t^2 - 2t^3: it starts and ends flat, so the light neither jumps on nor
