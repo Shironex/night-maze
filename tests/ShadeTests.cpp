@@ -754,3 +754,30 @@ TEST_CASE("sprinting away from the shade works, walking away and being winded do
     CHECK(flee(true, winded, 9) < 0.0F);
     CHECK(flee(true, winded, 7) > 0.0F);
 }
+
+TEST_CASE("a player who starts on the very spot of the shade has the grace time too") {
+    // What a capture run can do with --start-cell: the first round starts in the cell
+    // the shade starts in. Nobody is caught in the grace time, the numbers stay
+    // numbers (the two stand on one point), and after it the shade has the player.
+    const game::MazeWorld world = worldOf(game::Difficulty::Normal, 7U);
+    const game::GameplaySettings gameplay;
+    game::Round round = game::startRound(world, gameplay);
+    REQUIRE(round.shade.present);
+    const std::vector<scene::Aabb> obstacles = game::roundObstacles(world, round);
+    const glm::vec3 feet = round.shade.position;
+
+    const int graceSteps = static_cast<int>(gameplay.shade.graceSeconds) * STEPS_PER_SECOND;
+    for (int i = 0; i < graceSteps - 1; ++i) {
+        REQUIRE_FALSE(game::updateRoundShade(round, world, gameplay, feet, {}, obstacles, STEP));
+    }
+    CHECK(round.shade.position == feet);
+    CHECK(round.shade.wayMetres == 0.0F);
+    CHECK(std::isfinite(game::shadeYawDegrees(round.shade.position, feet)));
+
+    // The grace time is over: within the next second it has the player.
+    bool caught = false;
+    for (int i = 0; i < STEPS_PER_SECOND && !caught; ++i) {
+        caught = game::updateRoundShade(round, world, gameplay, feet, {}, obstacles, STEP);
+    }
+    CHECK(caught);
+}
