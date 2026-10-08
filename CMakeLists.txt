@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(NightMaze VERSION 0.11.0 LANGUAGES C CXX)
+project(NightMaze VERSION 0.12.0 LANGUAGES C CXX)
 
 # Objective-C and Objective-C++, the two languages of Apple that C and C++ code is mixed
 # with on macOS. Objective-C++ is the language of the one file of ours that talks to the
