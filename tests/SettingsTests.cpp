@@ -211,7 +211,7 @@ TEST_CASE("the file is plain text a person can read and edit") {
           "story_line = 0\n"
           "calm_night = off\n"
           "intro_seen = off\n"
-          "campaign_night = 1\n");
+          "campaign_night = 1\n"
           "key_forward = W\n"
           "key_back = S\n"
           "key_left = A\n"
@@ -245,18 +245,17 @@ TEST_CASE("a file from before the intro means not seen, and nothing else changes
     CHECK(settings.calmNight);
 
     // Marking the intro as seen changes that one field, and in the file that one line:
-    // what is written is the old file with the new line after it. (The two volumes that
-    // came after the intro stand behind the master volume, at their default, and the
-    // lines of the keys follow.)
+    // the lines of the old file are written again as they were, with the new line after
+    // them. (The two volumes that came later stand behind the master volume, at their
+    // default. The campaign and the keys follow, see the test of the whole text above.)
     GameSettings seen = settings;
     seen.introSeen = true;
     CHECK(game::parseSettings(old + "intro_seen = on\n") == seen);
     const std::string written = game::formatSettings(seen);
     const std::string masterLine = "master_volume = 42\n";
     const std::size_t afterMaster = old.find(masterLine) + masterLine.size();
-    CHECK(written.find(old.substr(0, afterMaster) +
-                            "effects_volume = 100\nambient_volume = 100\n" +
-                            old.substr(afterMaster) + "intro_seen = on\n"));
+    CHECK(written.find(old.substr(0, afterMaster) + "effects_volume = 100\nambient_volume = 100\n" +
+                       old.substr(afterMaster) + "intro_seen = on\n") != std::string::npos);
 }
 
 TEST_CASE("the effects and the ambient volume are read and written like the master volume") {
@@ -288,24 +287,6 @@ TEST_CASE("the effects and the ambient volume are read and written like the mast
     CHECK(written.find("effects_volume = 70\n") != std::string::npos);
     CHECK(written.find("ambient_volume = 63\n") != std::string::npos);
     CHECK(game::parseSettings(written) == settings);
-}
-
-TEST_CASE("a file of game 0.12, without the two new volumes, plays both at 100") {
-    // Every line version 0.12.0 wrote.
-    const GameSettings settings = game::parseSettings("mouse_sensitivity = 7.3\n"
-                                                      "field_of_view = 82\n"
-                                                      "fullscreen = on\n"
-                                                      "window_size = 1600x900\n"
-                                                      "difficulty = hard\n"
-                                                      "master_volume = 42\n"
-                                                      "story_line = 5\n"
-                                                      "calm_night = on\n"
-                                                      "intro_seen = on\n");
-    CHECK(settings.effectsVolume == 100.0F);
-    CHECK(settings.ambientVolume == 100.0F);
-    // The lines it has still count.
-    CHECK(settings.masterVolume == 42.0F);
-    CHECK(settings.introSeen);
 }
 
 TEST_CASE("the intro line reads on and off and nothing else") {
@@ -535,8 +516,9 @@ TEST_CASE("the window size steps through the choices and stops at both ends") {
     CHECK(game::steppedWindowSize({}, other, 1) == other);
 }
 
-TEST_CASE("a file of game 0.12, without the campaign lines, means no campaign yet") {
-    // The file exactly as game 0.12.0 wrote it.
+TEST_CASE("a file of game 0.12 loads with the default of everything that came later") {
+    // The file exactly as game 0.12.0 wrote it: no volumes of the effects and of the
+    // ambience, no campaign, no keys.
     const std::string old = "# Night Maze settings. One \"name = value\" per line, a line that "
                             "starts with # is a comment.\n"
                             "mouse_sensitivity = 7.3\n"
@@ -549,24 +531,60 @@ TEST_CASE("a file of game 0.12, without the campaign lines, means no campaign ye
                             "calm_night = on\n"
                             "intro_seen = on\n";
     const GameSettings settings = game::parseSettings(old);
+
+    // Everything the file says is there.
+    GameSettings expected;
+    expected.mouseSensitivity = 7.3F;
+    expected.fieldOfViewDegrees = 82.0F;
+    expected.fullscreen = true;
+    expected.windowSize = {.width = 1600, .height = 900};
+    expected.difficulty = game::Difficulty::Hard;
+    expected.masterVolume = 42.0F;
+    expected.nextStoryLine = 5;
+    expected.calmNight = true;
+    expected.introSeen = true;
+    // And nothing else differs from a game that has no file: the comparison is of every
+    // field, so a setting that is added later is covered without a new line here.
+    CHECK(settings == expected);
+
+    // The same, said field by field for what came after 0.12.0.
+    CHECK(settings.effectsVolume == 100.0F);
+    CHECK(settings.ambientVolume == 100.0F);
     CHECK(settings.campaignNight == 1);
     CHECK(settings.campaignSeed == game::NO_CAMPAIGN_SEED);
     for (const int best : settings.campaignBestSeconds) {
         CHECK(best == game::NO_BEST_TIME);
     }
     CHECK(game::campaignStage(settings.campaignNight) == game::CampaignStage::NotStarted);
+    CHECK(settings.keys == game::defaultKeyBindings());
 
-    // Everything the file did say is still there.
-    CHECK(settings.mouseSensitivity == doctest::Approx(7.3F));
-    CHECK(settings.difficulty == game::Difficulty::Hard);
-    CHECK(settings.masterVolume == 42.0F);
-    CHECK(settings.nextStoryLine == 5);
-    CHECK(settings.calmNight);
-    CHECK(settings.introSeen);
-
-    // Written again, it is the old file with one more line: the seed and the best times
-    // have no line before they exist.
-    CHECK(game::formatSettings(settings) == old + "campaign_night = 1\n");
+    // Written again, the old lines are followed by the new ones: the two volumes behind
+    // the master volume, the night of the campaign (its seed and its best times have no
+    // line before they exist) and the nine keys at the end.
+    CHECK(game::formatSettings(settings) ==
+          "# Night Maze settings. One \"name = value\" per line, a line that starts with # is "
+          "a comment.\n"
+          "mouse_sensitivity = 7.3\n"
+          "field_of_view = 82\n"
+          "fullscreen = on\n"
+          "window_size = 1600x900\n"
+          "difficulty = hard\n"
+          "master_volume = 42\n"
+          "effects_volume = 100\n"
+          "ambient_volume = 100\n"
+          "story_line = 5\n"
+          "calm_night = on\n"
+          "intro_seen = on\n"
+          "campaign_night = 1\n"
+          "key_forward = W\n"
+          "key_back = S\n"
+          "key_left = A\n"
+          "key_right = D\n"
+          "key_sprint = Left Shift\n"
+          "key_use = E\n"
+          "key_flashlight = F\n"
+          "key_map = M\n"
+          "key_restart = R\n");
 }
 
 TEST_CASE("the campaign is written and read back: night, seed and best times") {
@@ -575,10 +593,12 @@ TEST_CASE("the campaign is written and read back: night, seed and best times") {
     settings.campaignSeed = 482113;
     settings.campaignBestSeconds = {95, 204, 0, 0, 0};
     const std::string text = game::formatSettings(settings);
-    CHECK(text.ends_with("campaign_night = 3\n"
-                         "campaign_seed = 482113\n"
-                         "campaign_best_1 = 95\n"
-                         "campaign_best_2 = 204\n"));
+    // The lines of the campaign stand together, and the keys follow them.
+    CHECK(text.find("campaign_night = 3\n"
+                    "campaign_seed = 482113\n"
+                    "campaign_best_1 = 95\n"
+                    "campaign_best_2 = 204\n"
+                    "key_forward = W\n") != std::string::npos);
     CHECK(game::parseSettings(text) == settings);
 
     // A finished campaign, with the largest seed a seed can be.
