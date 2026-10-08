@@ -30,7 +30,7 @@ namespace audio {
 /// the system calls into miniaudio on a thread of the system). A few hundred times per
 /// second that thread asks the engine for the next few milliseconds of sound, and the
 /// engine mixes the sounds that are playing into them. None of OUR code runs there: no
-/// callback of this class is registered with miniaudio. play and setMasterVolume only
+/// callback of this class is registered with miniaudio. play, stopAll and setMasterVolume only
 /// set numbers that the audio thread reads on its next turn (miniaudio guards them
 /// itself), so this class needs no mutex, and nothing the game does (a slow frame,
 /// loading a maze) can make the sound stutter. All functions of this class are called
@@ -59,10 +59,17 @@ public:
     /// plays over the one before, which rings out (cutting a ringing sound would be
     /// heard as a click). Only when one sound is played more often within its own
     /// length than it has voices does the oldest copy start again. Different sounds
-    /// always play over each other. A sound that was started plays to its end: there is
-    /// no stop. Does nothing without a device, for a number that was not loaded and for
-    /// a sound whose file failed to load.
+    /// always play over each other. A sound that was started plays to its end, unless
+    /// stopAll ends it. Does nothing without a device, for a number that was not loaded
+    /// and for a sound whose file failed to load.
     void play(std::size_t index);
+
+    /// Stops every sound that is playing, at once. A sound that is stopped in the
+    /// middle is cut without a fade, so this is for the few places where silence
+    /// matters more than a clean end: the long wind of the intro must not go on over
+    /// the main menu. Each sound can be played again afterwards, from its beginning.
+    /// Does nothing without a device.
+    void stopAll();
 
     /// The loudness of everything together: 0 is silent, 1 is the files as they are.
     /// Values outside of that range are brought into it.

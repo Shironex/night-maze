@@ -231,6 +231,23 @@ void AudioEngine::play(std::size_t index) {
     ma_sound_start(&sound);
 }
 
+void AudioEngine::stopAll() {
+    if (m_backend == nullptr) {
+        return;
+    }
+    // Every voice of every sound. Stopping a voice that is not playing does nothing.
+    // Like play, the call only leaves a note for the audio thread. The place a voice
+    // has reached does not matter: play rewinds a voice before it starts it.
+    for (const std::unique_ptr<LoadedSound>& loaded : m_backend->sounds) {
+        if (loaded == nullptr) {
+            continue;
+        }
+        for (Voice& voice : loaded->voices) {
+            ma_sound_stop(&voice.sound);
+        }
+    }
+}
+
 void AudioEngine::setMasterVolume(float volume) {
     m_masterVolume = std::clamp(volume, 0.0F, 1.0F);
     if (m_backend != nullptr) {
