@@ -2,6 +2,21 @@
 
 Release notes for Night Maze, newest first.
 
+## 0.11.0 (2026-10-08)
+
+A darker night, and the first changes that come straight from friends who played: sprinting now costs breath, and the map is no longer always in the corner.
+
+### What's new
+
+- Sprinting uses stamina. About six seconds of sprint empties a thin bar under the battery. It fills again after a short rest. Run it empty and you are winded: you breathe hard and cannot sprint until the bar is half full again.
+- Flasks of warm tea are hidden in the maze: one on Easy, two on Normal, three on Hard. Walk into one and your stamina is full and sprinting costs nothing for 20 seconds. The bar turns copper while the tea works.
+- The map has left the corner of the screen. Hold M and it opens large in the middle. While you hold it you stand still and cannot look around, and the night goes on: the battery keeps draining.
+- The notes now tell a story. Sixteen lines left by the lamplighter who walked the maze before you, read in order: each maze has six notes, the ones nearest to the start come first, and the next maze carries on where you stopped. The game remembers your place when you finish a maze.
+- Some walls are worn: cracked, mossy or with stones missing. Which ones is decided by the seed, so the same seed gives the same walls. The walls near the start are whole.
+- The night is darker. There is less light away from your flashlight, the moon is dimmer, the fog is darker and the flashlight reaches 10 metres, not 16.
+- Two new sounds: hard breathing while you are winded, and a cork and a soft note for a flask.
+- The round ends with "Through the gate", and a note card is headed "Chalk on the stone".
+
 ## 0.10.1 (2026-10-07)
 
 Fullscreen that a screenshot can see.
