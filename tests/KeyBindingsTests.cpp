@@ -190,26 +190,6 @@ TEST_CASE("an action is found by its settings name") {
     CHECK(action == KeyAction::Map);
 }
 
-TEST_CASE("a settings file of 0.12.0 has no key lines and loads with the default keys") {
-    // The file exactly as 0.12.0 wrote it.
-    const game::GameSettings settings =
-        game::parseSettings("# Night Maze settings. One \"name = value\" per line, a line that "
-                            "starts with # is a comment.\n"
-                            "mouse_sensitivity = 7.3\n"
-                            "field_of_view = 82\n"
-                            "fullscreen = off\n"
-                            "window_size = 1600x900\n"
-                            "difficulty = hard\n"
-                            "master_volume = 42\n"
-                            "story_line = 5\n"
-                            "calm_night = on\n"
-                            "intro_seen = on\n");
-    CHECK(settings.keys == game::defaultKeyBindings());
-    // And the rest of that file is read as before.
-    CHECK(settings.masterVolume == 42.0F);
-    CHECK(settings.introSeen);
-}
-
 TEST_CASE("a key line in the file sets the key of its action") {
     game::GameSettings settings = game::parseSettings("key_sprint = C\nkey_map = Tab\n");
     CHECK(game::boundKey(settings.keys, KeyAction::Sprint) == GLFW_KEY_C);

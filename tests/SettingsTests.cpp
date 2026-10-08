@@ -558,33 +558,9 @@ TEST_CASE("a file of game 0.12 loads with the default of everything that came la
     CHECK(game::campaignStage(settings.campaignNight) == game::CampaignStage::NotStarted);
     CHECK(settings.keys == game::defaultKeyBindings());
 
-    // Written again, the old lines are followed by the new ones: the two volumes behind
-    // the master volume, the night of the campaign (its seed and its best times have no
-    // line before they exist) and the nine keys at the end.
-    CHECK(game::formatSettings(settings) ==
-          "# Night Maze settings. One \"name = value\" per line, a line that starts with # is "
-          "a comment.\n"
-          "mouse_sensitivity = 7.3\n"
-          "field_of_view = 82\n"
-          "fullscreen = on\n"
-          "window_size = 1600x900\n"
-          "difficulty = hard\n"
-          "master_volume = 42\n"
-          "effects_volume = 100\n"
-          "ambient_volume = 100\n"
-          "story_line = 5\n"
-          "calm_night = on\n"
-          "intro_seen = on\n"
-          "campaign_night = 1\n"
-          "key_forward = W\n"
-          "key_back = S\n"
-          "key_left = A\n"
-          "key_right = D\n"
-          "key_sprint = Left Shift\n"
-          "key_use = E\n"
-          "key_flashlight = F\n"
-          "key_map = M\n"
-          "key_restart = R\n");
+    // Written again and read back, nothing is lost. (The order of the lines is the matter
+    // of the test of the whole text above.)
+    CHECK(game::parseSettings(game::formatSettings(settings)) == settings);
 }
 
 TEST_CASE("reset defaults brings back the screen and the keys, and keeps the progress") {
