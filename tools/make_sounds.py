@@ -1,4 +1,4 @@
-# Makes the sounds of the game: nineteen WAV files in assets/audio, one per sound cue
+# Makes the sounds of the game: twenty-one WAV files in assets/audio, one per sound cue
 # (the table of the cues is in src/game/SoundCues.cpp, and the file names there and here
 # must stay the same).
 #
@@ -87,6 +87,9 @@ MAX_SAMPLE = 32767
 # The hum of the shade repeats like the pulse and the breath, but it is the one warning
 # that must not be missed, so it stands above both. The sound of being caught is heard
 # once and is meant to be soft: well below the crystal and the gate.
+# The alert of the shade is heard once per hunt and has to cut through the wind and the
+# steps, so it stands a little above the hum. The banish is a breath going out: soft,
+# about as loud as the hum, because it is good news and nothing to be startled by.
 PEAK_DB = {
     "flashlight_on.wav": -11.0,
     "flashlight_off.wav": -12.5,
@@ -118,6 +121,8 @@ PEAK_DB = {
     # The wind of the maze lies under everything for the whole round: quieter to the
     # ear than every sound that tells the player something.
     "maze_wind.wav": -27.5,
+    "shade_alert.wav": -11.0,
+    "shade_banish.wav": -14.0,
 }
 
 # ---- building blocks: time, envelopes, mixing ------------------------------------------------
@@ -761,6 +766,60 @@ def caught():
     place(sound, with_peak(first, 0.8), 0.0)
     place(sound, with_peak(second, 1.0), 0.35)
     return finish([biquad(sound, "low", 1500.0)])
+def shade_alert():
+    # The shade has noticed you and turns towards you: one short, cold sound. It must
+    # not be taken for the hum (a low drone that swells), for the crystal (a struck glass
+    # far above 1 kHz) or for the click of the lamp, so it is none of them: thin tones in
+    # the middle, close together, that start at once and are gone in a third of a second.
+    #
+    #   - Two sine waves a small step apart (587 and 622 Hz). So close, they do not
+    #     sound like a chord: they grind against each other 35 times a second, which the
+    #     ear hears as something rough and cold.
+    #   - A third one above them (911 Hz), quieter and shorter: a little edge. It is no
+    #     whole multiple and no fifth of the two below, so the three are no chord.
+    #   - A thin band of noise around 2500 Hz for the first twentieth of a second, far
+    #     below the tones: a hiss of frost at the start.
+    #   - It starts within 8 ms. Not a click, but sudden: the hum swells, this does not.
+    generator = random.Random(17)
+    sound = silence(0.42)
+    tones = modes(0.42, [(587.0, 1.0, 0.11), (622.0, 0.9, 0.09), (911.0, 0.35, 0.05)],
+                  start_seconds=0.008)
+    frost_count = count_of(0.05)
+    frost = biquad(scaled(noise(generator, frost_count), decay_curve(frost_count, 0.012)),
+                   "band", 2500.0, 2.0)
+    place(sound, with_peak(tones, 1.0), 0.0)
+    place(sound, with_peak(frost, 0.12), 0.0)
+    return finish([biquad(sound, "low", 4000.0)])
+
+
+def shade_banish():
+    # The beam has burned the shade away: soft, like breath going out. No tone that
+    # could be a note, no knock: air that rushes out and runs dry.
+    #
+    #   - Noise through a band that FALLS, from 900 Hz down to 260 Hz over the whole
+    #     sound: a sigh gets darker as it ends. The band is wide (a low Q), so nothing
+    #     whistles.
+    #   - The loudness comes up within a tenth of a second and takes the rest of the
+    #     second to go, with a little wander so it is not a clean hiss.
+    #   - Far below it a low tone at 110 Hz that dies with it: the weight of the thing
+    #     that is gone.
+    generator = random.Random(18)
+    seconds = 1.0
+    count = count_of(seconds)
+    # The centre of the band, sample by sample: from 900 Hz down to 260 Hz, fast at
+    # first and slower later, like the pitch of air running out.
+    centres = [260.0 + 640.0 * math.exp(-3.0 * i / count) for i in range(count)]
+    air = moving_band_pass(noise(generator, count), centres, 1.1)
+    air = scaled(scaled(air, swell_curve(count, 0.1, 0.8)),
+                 wander_curve(generator, count, 14.0, lowest=0.75))
+    weight = scaled(modes(seconds, [(110.0, 1.0, 0.3)], start_seconds=0.08),
+                    swell_curve(count, 0.08, 0.8))
+    sound = silence(seconds)
+    place(sound, with_peak(air, 1.0), 0.0)
+    place(sound, with_peak(weight, 0.12), 0.0)
+    return finish([biquad(biquad(sound, "low", 2200.0), "high", 80.0)])
+
+
 # ---- the intro: the wind and the bell --------------------------------------------------------
 
 # How long the intro is, in seconds: the five cards of src/game/Intro.cpp (INTRO_CARDS)
@@ -1001,6 +1060,11 @@ SOUNDS = [
     ("shade_step_1.wav", lambda: shade_step(15, 1.0)),
     ("shade_step_2.wav", lambda: shade_step(16, 0.95)),
     ("maze_wind.wav", maze_wind),
+    # Added after the nineteen above, like their cues in the game (SoundCue). Each
+    # sound has a random generator of its own, so the files above stay byte for byte
+    # what they were.
+    ("shade_alert.wav", shade_alert),
+    ("shade_banish.wav", shade_banish),
 ]
 
 
@@ -1256,6 +1320,7 @@ def checks(m, together):
     steps = [m[f"footstep_{number}.wav"] for number in (1, 2, 3)]
     shade_steps = [m[f"shade_step_{number}.wav"] for number in (1, 2)]
     maze = m["maze_wind.wav"]
+    alert, banish = m["shade_alert.wav"], m["shade_banish.wav"]
     constant = ("footstep_1.wav", "footstep_2.wav", "footstep_3.wav", "shade_step_1.wav",
                 "shade_step_2.wav", "maze_wind.wav")
     intro = intro + constant
@@ -1316,6 +1381,22 @@ def checks(m, together):
          caught_sound["loud_at"] > 0.1),
         ("caught: quieter to the ear than the crystal and the gate",
          caught_sound["dba"] < min(crystal["dba"], gate["dba"])),
+        ("alert: short, under half a second", alert["seconds"] < 0.5),
+        ("alert: sudden, loudest within the first 50 ms (the hum swells, this does not)",
+         alert["loud_at"] < 0.05),
+        ("alert: not the hum, under 10 % of its energy below 500 Hz", alert["below500"] < 0.1),
+        ("alert: not the crystal, under 10 % of its energy above 1 kHz", alert["above1k"] < 0.1),
+        ("alert: cold, its strongest frequencies are not in tune", inharmonic(alert["peaks"])),
+        ("alert: easier to hear than the hum, and quieter than the crystal",
+         hum["dba"] < alert["dba"] < crystal["dba"]),
+        ("banish: a breath going out, longer than the alert and at most a second",
+         alert["seconds"] < banish["seconds"] <= 1.0),
+        ("banish: no sudden start, loudest later than 0.05 s after its start",
+         banish["loud_at"] > 0.05),
+        ("banish: soft, under 10 % of its energy above 2 kHz", banish["above2k"] < 0.1),
+        ("banish: air and no rumble, under 20 % of its energy below 120 Hz",
+         banish["below120"] < 0.2),
+        ("banish: quieter to the ear than the alert", banish["dba"] < alert["dba"]),
         ("wind: exactly as long as the intro (30 s)", abs(wind["seconds"] - INTRO_SECONDS) < 0.001),
         ("wind: no hiss, under 10 % of its energy above 2 kHz", wind["above2k"] < 0.1),
         ("wind: a bed, its loudest tenth of a second quieter to the ear than the crystal",
