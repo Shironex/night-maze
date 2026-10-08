@@ -1,6 +1,5 @@
 // Framebuffer: a render target of our own, so a pass can draw into textures instead of
 // the window.
-// See docs/modules/gfx/framebuffers.md
 #include "gfx/Framebuffer.hpp"
 
 #include "core/GlCheck.hpp"

@@ -1,5 +1,4 @@
 // LightRig: sends the lights of a frame to the graphics card.
-// See docs/modules/game/flashlight.md
 #pragma once
 
 #include "gfx/UniformBuffer.hpp"

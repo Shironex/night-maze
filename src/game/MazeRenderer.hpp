@@ -1,5 +1,4 @@
 // MazeRenderer: draws the walls and the pillars of a maze with their models.
-// See docs/modules/game/maze-rendering.md
 #pragma once
 
 #include "game/WallVariants.hpp"

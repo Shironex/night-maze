@@ -1,5 +1,4 @@
 // Categories of the debug window: their names, icons and tabs, as plain data.
-// See docs/modules/debug-ui.md
 #pragma once
 
 #include "debug/Icons.hpp"

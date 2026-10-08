@@ -1,6 +1,5 @@
 // Round: the state of one play through a maze (crystals, gate, levers, battery, time) and
 // its rules.
-// See docs/modules/game/gameplay.md
 #include "game/Round.hpp"
 
 #include "game/Crystals.hpp"

@@ -1,5 +1,4 @@
 // Tangents: computes the tangent of every vertex of a mesh from positions and UVs.
-// See docs/modules/gfx/normal-mapping.md
 #include "assets/Tangents.hpp"
 
 #include <cmath>

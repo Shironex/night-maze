@@ -1,5 +1,4 @@
 // Maze: a grid of cells with a wall on every cell edge that is not a passage.
-// See docs/modules/game/maze-generator.md
 #pragma once
 
 #include <array>

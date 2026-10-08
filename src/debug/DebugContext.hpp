@@ -1,5 +1,4 @@
 // Debug context: the data the debug window may read or edit during one frame.
-// See docs/modules/debug-ui.md
 #pragma once
 
 #include "game/KeyBindings.hpp"

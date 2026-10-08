@@ -1,5 +1,4 @@
 // Raycast: a ray, where it hits a box or a sphere, and the ray that goes through a pixel.
-// See docs/modules/scene/picking.md
 #pragma once
 
 #include "scene/Collider.hpp"

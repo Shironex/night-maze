@@ -1,5 +1,4 @@
 // Base class of a program: owns the window, input and clock, and runs the main loop.
-// See docs/modules/core/main-loop.md
 #include "core/Application.hpp"
 
 #include <GLFW/glfw3.h>

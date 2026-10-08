@@ -1,5 +1,4 @@
 // InteractableRenderer: draws the levers and the notes of a maze with their models.
-// See docs/modules/game/interactables.md
 #pragma once
 
 #include <glm/glm.hpp>

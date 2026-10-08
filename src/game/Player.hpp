@@ -1,5 +1,4 @@
 // Player: the body that walks through the maze, and its movement for one fixed step.
-// See docs/modules/game/player.md
 #pragma once
 
 #include "scene/Collider.hpp"

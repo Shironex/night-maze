@@ -1,5 +1,4 @@
 // Camera: a position and two angles, turned into the view and projection matrices.
-// See docs/modules/scene/camera.md
 #pragma once
 
 #include <glm/glm.hpp>

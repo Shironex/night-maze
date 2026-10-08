@@ -1,5 +1,4 @@
 // AssetCache: loads every model and every texture once and hands out stable references.
-// See docs/modules/assets/asset-cache.md
 #pragma once
 
 #include "gfx/Mesh.hpp"

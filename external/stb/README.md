@@ -14,8 +14,6 @@ The static `stb_image` target is defined in `cmake/Dependencies.cmake`, next to 
 because it needs the directory the header was downloaded to. It is built without the strict
 warnings of the project, and its header is a system header for the code that includes it.
 
-Documentation: `docs/libraries/stb_image.md`.
-
 ## Updating
 
 Change the commit hash in `cmake/Dependencies.cmake` and configure again. Nothing in this

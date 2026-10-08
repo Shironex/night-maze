@@ -1,5 +1,4 @@
 // GrassRenderer: draws the grass, one point per tuft that the geometry shader turns into blades.
-// See docs/modules/renderer/grass-geometry.md
 #include "game/GrassRenderer.hpp"
 
 #include "core/GlCheck.hpp"

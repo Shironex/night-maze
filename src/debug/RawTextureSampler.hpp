@@ -1,5 +1,4 @@
 // RawTextureSampler: lets the debug UI show an sRGB texture as the picture in its file.
-// See docs/modules/debug-ui.md
 #pragma once
 
 #include <glad/gl.h>

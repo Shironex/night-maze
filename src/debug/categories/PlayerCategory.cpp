@@ -1,6 +1,5 @@
 // "Player" category of the debug window: position and noclip, the angles and the
 // projection of the camera, the speeds, the stamina and the menu camera.
-// See docs/modules/scene/camera-controls.md
 #include "debug/categories/PlayerCategory.hpp"
 
 #include "debug/DebugContext.hpp"

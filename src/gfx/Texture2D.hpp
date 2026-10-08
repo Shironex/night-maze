@@ -1,5 +1,4 @@
 // Texture2D: a picture on the graphics card that a fragment shader can sample.
-// See docs/modules/gfx/textures.md
 #pragma once
 
 #include "gfx/ColorSpace.hpp"

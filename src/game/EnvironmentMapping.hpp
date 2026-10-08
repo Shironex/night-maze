@@ -1,6 +1,5 @@
 // Environment mapping: the settings of the reflections of the sky on the crystals and
 // the puddles, and the formulas of a reflected and of a refracted ray.
-// See docs/modules/renderer/env-mapping.md
 #pragma once
 
 #include <glm/glm.hpp>

@@ -1,5 +1,4 @@
 // Grass: where the tufts of grass stand, one point per tuft, chosen from the seed of the maze.
-// See docs/modules/renderer/grass-geometry.md
 #pragma once
 
 #include <glm/glm.hpp>
@@ -78,8 +77,9 @@ struct GrassSettings {
 
 /// Chooses the places of the tufts of a world. The same world and density always give
 /// the same tufts. The random numbers behind them are the same on every compiler: the
-/// choice uses std::mt19937 and game::randomBelow only (see
-/// docs/decisions/deterministic-random.md).
+/// choice uses std::mt19937 and game::randomBelow only: the standard fixes the output of the
+/// generator but not that of std::uniform_int_distribution or std::shuffle, which differ
+/// between compilers.
 ///
 /// The rules:
 ///   - along both sides of every wall, density tufts per metre of wall and side (the

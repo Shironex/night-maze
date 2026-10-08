@@ -1,5 +1,4 @@
 // Debug user interface: owns the Dear ImGui context and draws the debug window and the HUD.
-// See docs/modules/debug-ui.md
 #pragma once
 
 #include "debug/DebugWindow.hpp"

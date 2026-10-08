@@ -1,5 +1,4 @@
 // Exit: which cell of a maze is the exit, where its gate stands and where the round is won.
-// See docs/modules/game/gameplay.md
 #pragma once
 
 #include "game/Maze.hpp"

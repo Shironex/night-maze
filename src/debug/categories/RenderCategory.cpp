@@ -1,6 +1,5 @@
 // "Render" category of the debug window: lighting mode, sky, clear colour, the view of
 // the textured shader and the texture filtering.
-// See docs/modules/debug-ui.md
 #include "debug/categories/RenderCategory.hpp"
 
 #include "assets/AssetCache.hpp"

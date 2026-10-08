@@ -1,7 +1,6 @@
 // Minimap: the settings of the map in the middle of the screen, where it stands, and the
 // flat shapes it is drawn from (floors, walls, gate, crystals, flasks, levers, notes,
 // player).
-// See docs/modules/renderer/minimap.md
 #pragma once
 
 #include "game/Maze.hpp"

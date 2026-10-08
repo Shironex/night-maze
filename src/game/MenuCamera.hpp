@@ -1,5 +1,4 @@
 // MenuCamera: a camera that travels through the maze by itself, the picture behind the menu.
-// See docs/modules/game/menu-camera.md
 #pragma once
 
 #include "game/Maze.hpp"

@@ -1,6 +1,5 @@
 // Game HUD: the crystal counter, the battery bar, the stamina bar, hints, the crosshair
 // with its prompt, the card of a note and the "You escaped" card.
-// See docs/modules/game/gameplay.md
 #include "debug/Hud.hpp"
 
 #include "debug/Theme.hpp"

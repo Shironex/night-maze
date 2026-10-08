@@ -1,5 +1,4 @@
 // StartOptions: what the command line asks the game to start with.
-// See docs/modules/game/menu-camera.md
 #pragma once
 
 #include "game/MazeWorld.hpp"

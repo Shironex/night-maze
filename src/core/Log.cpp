@@ -1,5 +1,4 @@
 // Minimal console logging: one line per message with a severity prefix.
-// See docs/modules/core/window-context.md
 #include "core/Log.hpp"
 
 #include <iostream>

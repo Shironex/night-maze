@@ -1,5 +1,4 @@
 // Pictures of the debug window: a framebuffer shown as an image with a caption.
-// See docs/modules/debug-ui.md
 #pragma once
 
 namespace gfx {

@@ -1,5 +1,4 @@
 // Crystals: how many a maze gets, which cells they float in and how they move and glow.
-// See docs/modules/game/gameplay.md
 #include "game/Crystals.hpp"
 
 #include "game/MazeGenerator.hpp"

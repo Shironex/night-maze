@@ -1,5 +1,4 @@
 // Names of the uniform variables of the shaders in assets/shaders, in one place.
-// See docs/modules/gfx/uniforms.md
 #pragma once
 
 #include <glad/gl.h>

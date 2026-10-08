@@ -1,5 +1,4 @@
 // LightBlock: the bytes of the uniform block the lit shaders read the lights from.
-// See docs/modules/gfx/uniform-buffers.md
 #pragma once
 
 #include "scene/Light.hpp"

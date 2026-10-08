@@ -1,5 +1,4 @@
 // Interactables: the levers and the notes of a maze, where they hang and what they do.
-// See docs/modules/game/interactables.md
 #pragma once
 
 #include "game/Crystals.hpp"
@@ -214,7 +213,9 @@ struct Interactables {
 
 /// Places the levers and the notes of a maze. The same maze, seed, start, exit, crystals
 /// and settings always give the same result, on every compiler: every random choice uses
-/// std::mt19937 and game::randomBelow only (see docs/decisions/deterministic-random.md).
+/// std::mt19937 and game::randomBelow only: the standard fixes the output of the generator
+/// but not that of std::uniform_int_distribution or std::shuffle, which differ between
+/// compilers.
 ///
 /// The levers:
 ///   - first the walls to open are chosen (chooseShortcutWalls). There is one lever per

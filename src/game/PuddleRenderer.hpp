@@ -1,5 +1,4 @@
 // PuddleRenderer: draws the puddles, thin films of water that lie on the ground.
-// See docs/modules/renderer/env-mapping.md
 #pragma once
 
 #include "gfx/Mesh.hpp"

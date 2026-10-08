@@ -1,5 +1,4 @@
 // Transform: position, rotation and scale of an object, turned into a model matrix.
-// See docs/modules/scene/transforms.md
 #include "scene/Transform.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>

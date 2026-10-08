@@ -1,5 +1,4 @@
 // Skybox: the night sky, a cube map drawn behind everything else.
-// See docs/modules/renderer/skybox.md
 #pragma once
 
 #include "gfx/Cubemap.hpp"

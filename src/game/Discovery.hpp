@@ -1,5 +1,4 @@
 // Discovery: which cells of the maze the player has seen so far in this round.
-// See docs/modules/renderer/minimap.md
 #pragma once
 
 #include "game/Maze.hpp"

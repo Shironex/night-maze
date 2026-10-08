@@ -1,6 +1,5 @@
 // Vertex: the layout of one vertex of a mesh (position, normal, texture coordinate,
 // tangent).
-// See docs/modules/gfx/mesh.md
 #pragma once
 
 #include <glm/glm.hpp>
@@ -29,9 +28,9 @@ struct Vertex {
 
     /// Direction along the surface in which the texture coordinate u grows, in the local
     /// space of the model. Expected to have length 1 and to be perpendicular to normal.
-    /// Together with the normal it fixes the tangent space a normal map is written in
-    /// (docs/modules/gfx/normal-mapping.md). It is all zeros until someone computes it:
-    /// an OBJ file has no tangents, assets::computeTangents fills them in.
+    /// Together with the normal it fixes the tangent space a normal map is written in.
+    /// It is all zeros until someone computes it: an OBJ file has no tangents,
+    /// assets::computeTangents fills them in.
     glm::vec3 tangent{0.0F};
 };
 

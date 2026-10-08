@@ -1,5 +1,4 @@
 // ComparisonSampler: a sampler object that makes a depth texture answer "lit or in shadow".
-// See docs/modules/renderer/shadows.md
 #include "gfx/ComparisonSampler.hpp"
 
 #include "core/GlCheck.hpp"

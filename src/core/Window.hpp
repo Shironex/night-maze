@@ -1,5 +1,4 @@
 // RAII wrapper over a GLFW window with an OpenGL 4.1 Core context.
-// See docs/modules/core/window-context.md
 #pragma once
 
 #include <string>

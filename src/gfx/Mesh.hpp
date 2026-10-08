@@ -1,5 +1,4 @@
 // Mesh: vertices and indices of one model on the graphics card, ready to draw.
-// See docs/modules/gfx/mesh.md
 #pragma once
 
 #include "gfx/Buffer.hpp"

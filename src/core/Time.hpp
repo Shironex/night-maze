@@ -1,5 +1,4 @@
 // Frame clock: delta time, fixed-step accumulator and averaged FPS.
-// See docs/modules/core/main-loop.md
 #pragma once
 
 #include <chrono>

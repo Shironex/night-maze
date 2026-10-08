@@ -1,5 +1,4 @@
 // Vertex array: remembers how vertex attributes are read from buffers.
-// See docs/modules/gfx/buffers-vao.md
 #pragma once
 
 #include <glad/gl.h>

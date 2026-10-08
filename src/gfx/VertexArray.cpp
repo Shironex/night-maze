@@ -1,5 +1,4 @@
 // Vertex array: remembers how vertex attributes are read from buffers.
-// See docs/modules/gfx/buffers-vao.md
 #include "gfx/VertexArray.hpp"
 
 #include "core/GlCheck.hpp"

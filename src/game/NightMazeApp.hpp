@@ -1,5 +1,4 @@
 // The Night Maze application: game state and rendering of a frame.
-// See docs/modules/core/README.md
 #pragma once
 
 #include "assets/AssetCache.hpp"

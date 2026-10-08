@@ -1,6 +1,5 @@
 // Vignette: the settings of the darkening towards the corners of the screen and its
 // formula.
-// See docs/modules/renderer/post-process.md
 #pragma once
 
 #include <glm/glm.hpp>

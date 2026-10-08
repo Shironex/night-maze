@@ -1,5 +1,4 @@
 // Fog: the settings of the ground fog and the formulas it is computed with.
-// See docs/modules/renderer/post-process.md
 #pragma once
 
 #include <glm/glm.hpp>

@@ -1,5 +1,4 @@
 // PuddleRenderer: draws the puddles, thin films of water that lie on the ground.
-// See docs/modules/renderer/env-mapping.md
 #include "game/PuddleRenderer.hpp"
 
 #include "assets/AssetCache.hpp"

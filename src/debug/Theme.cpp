@@ -1,5 +1,4 @@
 // Theme of the debug window: night colours, calm metrics and the panel font.
-// See docs/modules/debug-ui.md
 #include "debug/Theme.hpp"
 
 #include "core/Files.hpp"

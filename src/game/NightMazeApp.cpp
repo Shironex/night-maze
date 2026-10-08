@@ -1,5 +1,4 @@
 // The Night Maze application: game state and rendering of a frame.
-// See docs/modules/core/README.md
 #include "game/NightMazeApp.hpp"
 
 #include "assets/ImageLoader.hpp"

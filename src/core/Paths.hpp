@@ -1,5 +1,4 @@
 // Paths of files that ship with the program, found relative to the executable.
-// See docs/modules/core/paths.md
 #pragma once
 
 #include <filesystem>

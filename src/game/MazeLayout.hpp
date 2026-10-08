@@ -1,5 +1,4 @@
 // MazeLayout: where the cells, walls and pillars of a maze stand in the world.
-// See docs/modules/game/maze-generator.md
 #pragma once
 
 #include "game/Maze.hpp"

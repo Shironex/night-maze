@@ -1,5 +1,4 @@
 // Keyboard and mouse state: keys and buttons held or just pressed, mouse movement.
-// See docs/modules/core/input.md
 #include "core/Input.hpp"
 
 #include <GLFW/glfw3.h>

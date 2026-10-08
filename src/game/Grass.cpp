@@ -1,5 +1,4 @@
 // Grass: where the tufts of grass stand, one point per tuft, chosen from the seed of the maze.
-// See docs/modules/renderer/grass-geometry.md
 #include "game/Grass.hpp"
 
 #include "game/MazeGenerator.hpp"

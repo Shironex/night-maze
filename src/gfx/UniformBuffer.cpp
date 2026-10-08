@@ -1,5 +1,4 @@
 // UniformBuffer: a block of memory on the graphics card that holds a uniform block.
-// See docs/modules/gfx/uniform-buffers.md
 #include "gfx/UniformBuffer.hpp"
 
 #include "core/GlCheck.hpp"

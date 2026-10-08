@@ -1,5 +1,4 @@
 // Interactables: the levers and the notes of a maze, where they hang and what they do.
-// See docs/modules/game/interactables.md
 #include "game/Interactables.hpp"
 
 #include "game/Exit.hpp"

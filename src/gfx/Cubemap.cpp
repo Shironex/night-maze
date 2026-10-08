@@ -1,5 +1,4 @@
 // Cubemap: six square pictures on the graphics card, sampled with a direction.
-// See docs/modules/gfx/cubemap.md
 #include "gfx/Cubemap.hpp"
 
 #include "core/GlCheck.hpp"

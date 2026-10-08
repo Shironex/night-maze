@@ -1,6 +1,5 @@
 // Puddles: which cells of a maze get a puddle, how big it is and the mesh that lays its
 // water on the ground.
-// See docs/modules/renderer/env-mapping.md
 #pragma once
 
 #include "game/Crystals.hpp"
@@ -109,8 +108,9 @@ int puddleCountFor(int freeCells, float share);
 
 /// Chooses the puddles of a maze. The same maze, seed, start, exit, crystals and share
 /// always give the same puddles, on every compiler: the choice uses std::mt19937 and
-/// game::randomBelow only (see docs/decisions/deterministic-random.md). The terrain is
-/// not asked: a new height scale never moves a puddle to another cell.
+/// game::randomBelow only: the standard fixes the output of the generator but not that of
+/// std::uniform_int_distribution or std::shuffle, which differ between compilers. The
+/// terrain is not asked: a new height scale never moves a puddle to another cell.
 ///
 /// The rules:
 ///   - never the start cell, never the exit cell and never a cell with a crystal (the

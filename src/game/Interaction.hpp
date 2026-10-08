@@ -1,6 +1,5 @@
 // Interaction: what the picking ray of a frame points at in a round, what the player can
 // do with it, and where the models of the levers and the notes hang.
-// See docs/modules/scene/picking.md
 #pragma once
 
 #include "game/Interactables.hpp"

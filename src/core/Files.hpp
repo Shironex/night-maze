@@ -1,5 +1,4 @@
 // Reading and writing whole files, and the name of the one font file of the program.
-// See docs/modules/core/paths.md
 #pragma once
 
 #include <filesystem>

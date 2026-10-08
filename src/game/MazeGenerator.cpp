@@ -1,5 +1,4 @@
 // MazeGenerator: builds a random perfect maze from a seed, the same one on every system.
-// See docs/modules/game/maze-generator.md
 #include "game/MazeGenerator.hpp"
 
 #include <array>

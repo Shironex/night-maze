@@ -1,6 +1,5 @@
 // MinimapRenderer: draws the minimap into a framebuffer of its own (offscreen rendering)
 // and puts that picture into the middle of the window.
-// See docs/modules/renderer/minimap.md
 #pragma once
 
 #include "core/Window.hpp"

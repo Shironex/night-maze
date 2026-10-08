@@ -1,6 +1,5 @@
 // ColliderLines: draws collision boxes, spheres and single lines as thin lines, a debug
 // view of the collisions and of the picking ray.
-// See docs/modules/scene/collision.md
 #pragma once
 
 #include "gfx/Mesh.hpp"

@@ -1,5 +1,4 @@
 // ModelDraw: draws a mesh with its textures, shared by the classes that draw models.
-// See docs/modules/game/maze-rendering.md
 #pragma once
 
 #include <glm/glm.hpp>

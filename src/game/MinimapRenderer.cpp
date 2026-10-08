@@ -1,6 +1,5 @@
 // MinimapRenderer: draws the minimap into a framebuffer of its own (offscreen rendering)
 // and puts that picture into the middle of the window.
-// See docs/modules/renderer/minimap.md
 #include "game/MinimapRenderer.hpp"
 
 #include "core/GlCheck.hpp"

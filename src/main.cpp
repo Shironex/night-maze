@@ -1,5 +1,4 @@
 // Program entry point: joins the game with the debug UI and runs it.
-// See docs/modules/debug-ui.md
 #include "core/Log.hpp"
 #include "debug/DebugContext.hpp"
 #include "debug/DebugUI.hpp"

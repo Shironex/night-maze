@@ -1,5 +1,4 @@
 // Icons of the debug window: a handful of small line drawings made with the draw list.
-// See docs/modules/debug-ui.md
 #pragma once
 
 // This header shows ImGui types (ImDrawList, ImVec2), so it includes imgui.h. Only the

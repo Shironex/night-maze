@@ -1,8 +1,6 @@
 // "Diagnostics" category of the debug window: frame statistics and driver info, the
 // shader programs with a reload button and their errors, the collision boxes and the
 // picking ray, and the loaded models and textures.
-// See docs/modules/gfx/shader-hot-reload.md, docs/modules/scene/collision.md and
-// docs/modules/assets/asset-cache.md
 #pragma once
 
 namespace debug {

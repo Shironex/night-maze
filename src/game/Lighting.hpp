@@ -1,5 +1,4 @@
 // Lighting of the game: the settings of the moon, the flashlight and the point lights.
-// See docs/modules/game/flashlight.md
 #pragma once
 
 #include "scene/Light.hpp"

@@ -1,6 +1,5 @@
 // Framebuffer: a render target of our own, so a pass can draw into textures instead of
 // the window.
-// See docs/modules/gfx/framebuffers.md
 #pragma once
 
 #include <glad/gl.h>

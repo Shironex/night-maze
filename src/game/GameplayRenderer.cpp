@@ -1,6 +1,5 @@
 // GameplayRenderer: draws the things of a round, the crystals, the flasks and the gate, with
 // their models.
-// See docs/modules/game/gameplay.md
 #include "game/GameplayRenderer.hpp"
 
 #include "assets/AssetCache.hpp"

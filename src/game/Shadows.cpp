@@ -1,5 +1,4 @@
 // Shadows: the settings of a shadow map, and the math around it that needs no OpenGL.
-// See docs/modules/renderer/shadows.md
 #include "game/Shadows.hpp"
 
 #include "game/MazeLayout.hpp"

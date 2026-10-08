@@ -1,6 +1,5 @@
 // "World" category of the debug window: the maze and its plan, the terrain, the grass,
 // and how the crystals and the puddles show the sky.
-// See docs/modules/game/maze-generator.md
 #include "debug/categories/WorldCategory.hpp"
 
 #include "debug/DebugContext.hpp"

@@ -1,5 +1,4 @@
 // MazeWorld: one generated maze with everything the game needs to draw it and walk in it.
-// See docs/modules/game/maze-rendering.md
 #include "game/MazeWorld.hpp"
 
 #include "game/Exit.hpp"

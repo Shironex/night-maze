@@ -1,5 +1,4 @@
 /* The one translation unit that holds the implementation of stb_image.
-   See docs/libraries/stb_image.md */
 
 /* stb_image.h is a single header. Included normally it only declares its functions.
    With this macro defined first, the same header also emits their definitions. That must

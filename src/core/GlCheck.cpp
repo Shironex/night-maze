@@ -1,5 +1,4 @@
 // GL_CHECK: wraps an OpenGL call and reports OpenGL errors in Debug builds.
-// See docs/modules/core/gl-check.md
 #include "core/GlCheck.hpp"
 
 #include "core/Log.hpp"

@@ -1,5 +1,4 @@
 // MazeWorld: one generated maze with everything the game needs to draw it and walk in it.
-// See docs/modules/game/maze-rendering.md
 #pragma once
 
 #include "game/Crystals.hpp"

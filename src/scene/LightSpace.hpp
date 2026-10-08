@@ -1,5 +1,4 @@
 // LightSpace: the scene as a light sees it, the two matrices a shadow map is drawn and read with.
-// See docs/modules/renderer/shadows.md
 #pragma once
 
 #include <glm/glm.hpp>

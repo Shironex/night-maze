@@ -1,6 +1,5 @@
 // Maze plan of the debug window: the maze seen from above, with the crystals, the
 // levers, the notes, the gate, the exit and the player on it.
-// See docs/modules/game/maze-generator.md
 #pragma once
 
 namespace game {

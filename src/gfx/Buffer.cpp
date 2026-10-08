@@ -1,5 +1,4 @@
 // Buffer: a block of memory on the graphics card, filled with vertices or indices.
-// See docs/modules/gfx/buffers-vao.md
 #include "gfx/Buffer.hpp"
 
 #include "core/GlCheck.hpp"

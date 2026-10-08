@@ -1,5 +1,4 @@
 // ColorSpace: whether colour numbers are sRGB encoded or linear, and the conversion.
-// See docs/modules/gfx/color-space.md
 #include "gfx/ColorSpace.hpp"
 
 #include <algorithm>

@@ -1,6 +1,5 @@
 // GL_CHECK: wraps an OpenGL call and reports OpenGL errors in Debug builds.
 // OpenGL 4.1 has no debug message callback (that is 4.3+), so glGetError is the only option.
-// See docs/modules/core/gl-check.md
 #pragma once
 
 #include <glad/gl.h>

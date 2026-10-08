@@ -1,5 +1,4 @@
 // Terrain: the ground of the game as a grid of heights read from a heightmap.
-// See docs/modules/renderer/terrain.md
 #include "game/Terrain.hpp"
 
 #include "assets/Tangents.hpp"

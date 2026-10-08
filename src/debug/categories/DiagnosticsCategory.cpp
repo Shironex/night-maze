@@ -2,8 +2,6 @@
 // sound device with the last sound cue, the shader programs with a reload button and
 // their errors, the collision boxes and the picking ray, and the loaded models and
 // textures.
-// See docs/modules/gfx/shader-hot-reload.md, docs/modules/scene/collision.md and
-// docs/modules/assets/asset-cache.md
 #include "debug/categories/DiagnosticsCategory.hpp"
 
 #include "assets/AssetCache.hpp"

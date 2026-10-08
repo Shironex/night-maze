@@ -1,5 +1,4 @@
 // Theme of the debug window: night colours, calm metrics and the panel font.
-// See docs/modules/debug-ui.md
 #pragma once
 
 // This header shows ImGui types (ImVec4), so it includes imgui.h. Only the .cpp files of

@@ -1,5 +1,4 @@
 // ShadowMap: the depth texture a light draws the scene into, and how the lit shaders read it.
-// See docs/modules/renderer/shadows.md
 #include "game/ShadowMap.hpp"
 
 #include "core/GlCheck.hpp"

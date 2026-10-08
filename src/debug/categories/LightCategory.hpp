@@ -1,7 +1,6 @@
 // "Light" category of the debug window: ambient light, the moon, the flashlight, the
 // lights of the crystals and the highlight, and the shadows of the moon and of the
 // flashlight with a picture of each shadow map.
-// See docs/modules/scene/lights.md and docs/modules/renderer/shadows.md
 #pragma once
 
 namespace debug {

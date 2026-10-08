@@ -1,5 +1,4 @@
 // Lights: a directional light, point lights and a spot light as plain data, plus their math.
-// See docs/modules/scene/lights.md
 #include "scene/Light.hpp"
 
 #include <algorithm>

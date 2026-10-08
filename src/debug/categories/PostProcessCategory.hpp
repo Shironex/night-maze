@@ -1,7 +1,6 @@
 // "Post process" category of the debug window: exposure and tone mapping of the composite
 // pass, the bloom, the fog, the vignette, and previews of the scene framebuffer and of
 // the bloom targets.
-// See docs/modules/renderer/post-process.md
 #pragma once
 
 namespace debug {

@@ -1,5 +1,4 @@
 // Cubemap: six square pictures on the graphics card, sampled with a direction.
-// See docs/modules/gfx/cubemap.md
 #pragma once
 
 #include "gfx/ColorSpace.hpp"

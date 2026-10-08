@@ -1,5 +1,4 @@
 // Image file loader: decodes a PNG (or another format stb_image knows) into plain pixels.
-// See docs/modules/assets/images.md
 #include "assets/ImageLoader.hpp"
 
 #include "core/Log.hpp"

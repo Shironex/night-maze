@@ -1,6 +1,5 @@
 // Puddles: which cells of a maze get a puddle, how big it is and the mesh that lays its
 // water on the ground.
-// See docs/modules/renderer/env-mapping.md
 #include "game/Puddles.hpp"
 
 #include "game/Crystals.hpp"

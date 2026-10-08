@@ -1,5 +1,4 @@
 // Shader source text: the #include preprocessor and the file names in compile errors.
-// See docs/modules/gfx/shader-includes.md
 #pragma once
 
 #include <functional>

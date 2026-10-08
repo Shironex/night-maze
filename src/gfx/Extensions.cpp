@@ -1,5 +1,4 @@
 // Extensions: asks the graphics driver whether it offers an OpenGL extension.
-// See docs/modules/gfx/textures.md
 #include "gfx/Extensions.hpp"
 
 #include "core/GlCheck.hpp"

@@ -1,5 +1,4 @@
 // Debug window: the one window that holds every debug control, in seven categories.
-// See docs/modules/debug-ui.md
 #pragma once
 
 #include "debug/Categories.hpp"

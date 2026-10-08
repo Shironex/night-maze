@@ -1,5 +1,4 @@
 // Search: the test behind the search box of the debug window.
-// See docs/modules/debug-ui.md
 #pragma once
 
 #include <string_view>

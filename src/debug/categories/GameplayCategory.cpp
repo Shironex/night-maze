@@ -1,7 +1,6 @@
 // "Gameplay" category of the debug window: the state of the round, the battery, the
 // numbers of the rules, the shade, the minimap, the button that plays the intro again
 // and the campaign.
-// See docs/modules/game/gameplay.md
 #include "debug/categories/GameplayCategory.hpp"
 
 #include "debug/DebugContext.hpp"

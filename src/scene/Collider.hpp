@@ -1,6 +1,5 @@
 // Collider: axis-aligned boxes and spheres, overlap tests and movement that slides along
 // obstacles.
-// See docs/modules/scene/collision.md
 #pragma once
 
 #include <glm/glm.hpp>

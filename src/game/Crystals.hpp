@@ -1,5 +1,4 @@
 // Crystals: how many a maze gets, which cells they float in and how they move and glow.
-// See docs/modules/game/gameplay.md
 #pragma once
 
 #include "game/Maze.hpp"
@@ -96,7 +95,8 @@ void shuffleCells(std::vector<MazeCell>& cells, std::mt19937& generator);
 
 /// Chooses the cells of the crystals of a maze. The same maze, seed, start and exit
 /// always give the same crystals, on every compiler: the choice uses std::mt19937 and
-/// game::randomBelow only (see docs/decisions/deterministic-random.md).
+/// game::randomBelow only: the standard fixes the output of the generator but not that of
+/// std::uniform_int_distribution or std::shuffle, which differ between compilers.
 ///
 /// The rules:
 ///   - never the start cell and never the exit cell, and at most one crystal per cell,

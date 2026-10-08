@@ -1,5 +1,4 @@
 // TerrainRenderer: draws the terrain, one large mesh with the ground texture.
-// See docs/modules/renderer/terrain.md
 #pragma once
 
 #include "gfx/Mesh.hpp"

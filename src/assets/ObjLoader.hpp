@@ -1,5 +1,4 @@
 // OBJ loader: reads a Wavefront OBJ model and its MTL materials into plain CPU data.
-// See docs/modules/assets/obj-loader.md
 #pragma once
 
 #include "gfx/Vertex.hpp"

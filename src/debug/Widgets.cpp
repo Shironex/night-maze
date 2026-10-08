@@ -1,5 +1,4 @@
 // Widget kit of the debug window: cards, setting rows and the few widgets drawn by hand.
-// See docs/modules/debug-ui.md
 #include "debug/Widgets.hpp"
 
 #include "debug/Search.hpp"

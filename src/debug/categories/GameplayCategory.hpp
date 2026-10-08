@@ -1,6 +1,5 @@
 // "Gameplay" category of the debug window: the state of the round, the battery, the
 // numbers of the rules and the minimap.
-// See docs/modules/game/gameplay.md
 #pragma once
 
 namespace debug {

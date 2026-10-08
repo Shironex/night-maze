@@ -1,6 +1,5 @@
 // Shader program: a vertex and a fragment shader (and optionally a geometry shader) loaded
 // from files, compiled and linked.
-// See docs/modules/gfx/shader-class.md
 #pragma once
 
 #include <glad/gl.h>

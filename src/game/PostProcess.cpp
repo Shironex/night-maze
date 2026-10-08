@@ -1,7 +1,6 @@
 // PostProcess: the HDR framebuffer the scene is drawn into, the bloom passes that make
 // bright things glow, and the composite pass that brings the picture to the window with
 // fog, exposure, tone mapping, a vignette and gamma correction.
-// See docs/modules/renderer/post-process.md
 #include "game/PostProcess.hpp"
 
 #include "core/GlCheck.hpp"
