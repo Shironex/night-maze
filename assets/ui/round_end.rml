@@ -21,9 +21,15 @@
         <div class="row"><span class="row-name" id="level-name">Difficulty</span><span class="row-value" id="difficulty">Normal</span></div>
         <!-- Free play only: the game sets the class "gone" after a night. -->
         <div class="row" id="seed-row"><span class="row-name">Seed</span><span class="row-value" id="seed">1</span></div>
+        <!-- Free play shows "Play again" and "New maze". After a night of the campaign the
+             game sets the class "gone" on both and takes it off ONE of the two buttons of
+             the campaign: "Next night", or "Back to nights" after a replay of an earlier
+             night (game::nightEndOffer). It also moves the keyboard there, because the
+             attribute autofocus is fixed. -->
         <div class="buttons">
-            <button class="btn primary" data-action="restart" autofocus>Play again</button>
-            <!-- Free play only: the game sets the class "gone" after a night. -->
+            <button class="btn primary" id="play-again" data-action="restart" autofocus>Play again</button>
+            <button class="btn primary gone" id="next-night" data-action="next-night">Next night</button>
+            <button class="btn primary gone" id="back-to-nights" data-action="nights">Back to nights</button>
             <button class="btn" id="new-maze" data-action="new-maze">New maze</button>
             <button class="btn" data-action="menu">Back to menu</button>
         </div>

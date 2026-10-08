@@ -136,6 +136,21 @@ TEST_CASE("the result screen restarts or goes back to the main menu, also with E
     CHECK(game::nextMode(GameMode::RoundEnd, GameEvent::Quit) == GameMode::RoundEnd);
 }
 
+TEST_CASE("the result screen of a night leads to the next title card or to the list of nights") {
+    // "Next night": the title card, and from there into the round.
+    CHECK(game::nextMode(GameMode::RoundEnd, GameEvent::StartNight) == GameMode::NightCard);
+    CHECK(game::nextMode(GameMode::NightCard, GameEvent::CardFinished) == GameMode::Playing);
+    // "Back to nights".
+    CHECK(game::nextMode(GameMode::RoundEnd, GameEvent::OpenNights) == GameMode::Nights);
+    // Neither starts a round on the maze in play, and the intro is not played.
+    CHECK_FALSE(game::startsRound(GameMode::RoundEnd, GameEvent::StartNight));
+    CHECK_FALSE(game::startsNewGame(GameMode::RoundEnd, GameEvent::StartNight));
+    CHECK(game::nextMode(GameMode::RoundEnd, GameEvent::BeginCampaign) == GameMode::RoundEnd);
+    // The pause menu has no such way out.
+    CHECK(game::nextMode(GameMode::Paused, GameEvent::StartNight) == GameMode::Paused);
+    CHECK(game::nextMode(GameMode::Paused, GameEvent::OpenNights) == GameMode::Paused);
+}
+
 TEST_CASE("nothing leaves the quitting state") {
     for (const GameEvent event : ALL_EVENTS) {
         CHECK(game::nextMode(GameMode::Quitting, event) == GameMode::Quitting);
@@ -595,7 +610,8 @@ TEST_CASE("a night begins with its title card, from the menu, the list and the q
     for (const GameMode mode : ALL_MODES) {
         const bool starts = game::nextMode(mode, GameEvent::StartNight) == GameMode::NightCard;
         const bool expected = mode == GameMode::MainMenu || mode == GameMode::Nights ||
-                              mode == GameMode::NewCampaign || mode == GameMode::NightCard;
+                              mode == GameMode::NewCampaign || mode == GameMode::NightCard ||
+                              mode == GameMode::RoundEnd;
         CHECK(starts == expected);
     }
 }

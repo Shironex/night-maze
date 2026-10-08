@@ -550,6 +550,45 @@ TEST_CASE("winning the next night moves the campaign on, a replay never does") {
     CHECK(campaign == game::CAMPAIGN_FINISHED);
 }
 
+TEST_CASE("a first win offers the next night on the result screen") {
+    using game::NightEndOffer;
+    // The campaign after the win waits for the night after the won one.
+    for (int night = 1; night < game::CAMPAIGN_NIGHT_COUNT; ++night) {
+        const int after = game::nightAfterWin(night, night);
+        CHECK(game::nightEndOffer(after, night, true) == NightEndOffer::NextNight);
+    }
+}
+
+TEST_CASE("a replayed night offers the next night only when that is the open one") {
+    using game::NightEndOffer;
+    // The campaign waits for night 4. Night 3 again: night 4 is still the next one.
+    CHECK(game::nightEndOffer(game::nightAfterWin(4, 3), 3, true) == NightEndOffer::NextNight);
+    // Nights 1 and 2 again: the night after them is finished, and night 4 is not next.
+    CHECK(game::nightEndOffer(game::nightAfterWin(4, 1), 1, true) == NightEndOffer::BackToNights);
+    CHECK(game::nightEndOffer(game::nightAfterWin(4, 2), 2, true) == NightEndOffer::BackToNights);
+    // A finished campaign: every replay leads back to the list, also of night 4, whose
+    // next night is finished too.
+    for (int night = 1; night <= game::CAMPAIGN_NIGHT_COUNT; ++night) {
+        CHECK(game::nightEndOffer(game::CAMPAIGN_FINISHED, night, true) ==
+              NightEndOffer::BackToNights);
+    }
+}
+
+TEST_CASE("the last night and a night outside the campaign never offer a next night") {
+    using game::NightEndOffer;
+    // The last night has none: its win shows the ending card.
+    CHECK(game::nightEndOffer(game::nightAfterWin(5, 5), 5, true) == NightEndOffer::BackToNights);
+    // A night of the command line (--night) does not belong to the campaign of the
+    // settings file, whatever that campaign waits for.
+    for (int campaign = 1; campaign <= game::CAMPAIGN_FINISHED; ++campaign) {
+        for (int night = 1; night <= game::CAMPAIGN_NIGHT_COUNT; ++night) {
+            CHECK(game::nightEndOffer(campaign, night, false) == NightEndOffer::BackToNights);
+        }
+    }
+    // A number that is no night.
+    CHECK(game::nightEndOffer(1, 0, true) == NightEndOffer::BackToNights);
+}
+
 TEST_CASE("the best time of a night is its shortest win, in whole seconds") {
     // The first win is the best time. Parts of a second are cut off, like on the screen.
     CHECK(game::bestAfterWin(game::NO_BEST_TIME, 95.9F) == 95);

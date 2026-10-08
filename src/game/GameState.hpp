@@ -73,9 +73,9 @@ enum class GameEvent {
     /// The first entry of the main menu while its campaign is finished ("New campaign"):
     /// the game asks before it throws the finished one away.
     AskNewCampaign,
-    /// A night of the campaign is started: the first entry of the main menu ("Begin",
-    /// "Continue"), a night of the list, or the answer "yes" to a new campaign. The
-    /// application says which night.
+    /// A night of the campaign is started: the first entry of the main menu
+    /// ("Continue"), a night of the list, or the button "Next night" of the result
+    /// screen. The application says which night.
     StartNight,
     CardFinished, ///< a title card or the ending card reached its end, or was skipped
     CampaignWon,  ///< the player walked through the gate of the last night
@@ -131,6 +131,8 @@ struct NewGame {
 ///     Paused             BackToMenu     MainMenu
 ///     RoundEnd           Restart        Playing
 ///     RoundEnd           NewMaze        Playing
+///     RoundEnd           StartNight     NightCard
+///     RoundEnd           OpenNights     Nights
 ///     RoundEnd           BackToMenu     MainMenu
 ///     RoundEnd           Escape         MainMenu
 ///     SettingsFromMenu   CloseSettings  MainMenu
@@ -149,7 +151,10 @@ struct NewGame {
 /// go back to, and leaving the program is a button, not a key.
 ///
 /// A night of the campaign begins with its title card, and the card leads into the
-/// round in one direction only: Escape skips it like any other key. The last night ends
+/// round in one direction only: Escape skips it like any other key. The result screen of
+/// a night leads on to the next night ("Next night", StartNight) or to the list of
+/// nights ("Back to nights", OpenNights): which of the two it offers is a rule of the
+/// campaign (game::nightEndOffer). The last night ends
 /// with the ending card in the place of the result screen, and that card leads to the
 /// main menu. Like the intro, a card runs on a clock of its own and is not touched by
 /// a lost focus.

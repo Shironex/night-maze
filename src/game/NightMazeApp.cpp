@@ -150,10 +150,14 @@ constexpr const char* NIGHT_ID_PREFIX = "night-";
 constexpr const char* NIGHT_TITLE_ID_SUFFIX = "-title";
 constexpr const char* NIGHT_STATE_ID_SUFFIX = "-state";
 // The result screen: the line of the story under its title, the name of its third row
-// ("Difficulty" or "Night 2"), the button "New maze", the row of the seed and the line
-// of keys.
+// ("Difficulty" or "Night 2"), the two buttons of free play ("Play again", "New maze"),
+// the two of the campaign ("Next night", "Back to nights"), the row of the seed and the
+// line of keys.
 constexpr const char* NIGHT_LINE_ID = "night-line";
 constexpr const char* LEVEL_NAME_ID = "level-name";
+constexpr const char* PLAY_AGAIN_ID = "play-again";
+constexpr const char* NEXT_NIGHT_ID = "next-night";
+constexpr const char* BACK_TO_NIGHTS_ID = "back-to-nights";
 constexpr const char* NEW_MAZE_ID = "new-maze";
 constexpr const char* SEED_ROW_ID = "seed-row";
 constexpr const char* KEYS_ID = "keys";
@@ -221,6 +225,8 @@ constexpr const char* PLAY_ACTION = "play";
 // list of nights is named like its id: NIGHT_ID_PREFIX and its number.
 constexpr const char* CAMPAIGN_ACTION = "campaign";
 constexpr const char* NEW_CAMPAIGN_ACTION = "new-campaign";
+// The button "Next night" of the result screen.
+constexpr const char* NEXT_NIGHT_ACTION = "next-night";
 
 // What the first entry of the main menu reads (game::campaignStage).
 constexpr const char* BEGIN_LABEL = "Begin";
@@ -233,11 +239,13 @@ constexpr const char* NIGHT_NEXT_TEXT = "Next";
 constexpr const char* NIGHT_LOCKED_TEXT = "Locked";
 constexpr const char* NIGHT_FINISHED_TEXT = "Finished";
 constexpr const char* BEST_TIME_PREFIX = "Best ";
-// The result screen: the name of its third row in free play, and the two lines of keys.
+// The result screen: the name of its third row in free play, and its line of keys in
+// free play and after a night, for each of the two offers (game::nightEndOffer).
 constexpr const char* DIFFICULTY_ROW_NAME = "Difficulty";
 constexpr const char* ROUND_END_KEYS_TEXT =
     "Play again: the same maze | New maze: another seed | Esc: back to menu";
-constexpr const char* NIGHT_END_KEYS_TEXT = "Play again: the same night | Esc: back to menu";
+constexpr const char* NEXT_NIGHT_KEYS_TEXT = "Enter: the next night | Esc: back to menu";
+constexpr const char* BACK_TO_NIGHTS_KEYS_TEXT = "Enter: the list of nights | Esc: back to menu";
 
 // While the volume slider of the settings screen is moved, a short click lets the
 // player hear the new loudness: at most one in this many seconds. A dragged slider
@@ -754,6 +762,15 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
         }
         return true;
     }
+    // "Next night" on the result screen of a night: the title card of the night after
+    // the one that was just won. The button is only shown when that night is the next
+    // one of the campaign (fillRoundEndDocument), and the same rule is asked again here.
+    if (action == NEXT_NIGHT_ACTION) {
+        if (m_mode == GameMode::RoundEnd && nightEndOffer() == NightEndOffer::NextNight) {
+            beginCampaignNight(m_playedNight + 1);
+        }
+        return true;
+    }
     // A row of the list of nights: "night-" and the number of the night, one digit. A
     // night that is still locked does nothing.
     const std::string nightPrefix = NIGHT_ID_PREFIX;
@@ -1010,6 +1027,12 @@ void NightMazeApp::showScreen() {
     if (m_mode == GameMode::Nights) {
         m_ui.focus(m_nightsDocument, std::string(NIGHT_ID_PREFIX) +
                                          std::to_string(nightToOffer(m_settings.campaignNight)));
+    }
+    // The result screen of a night opens with the keyboard on its first button, so Enter
+    // carries on. The document names "Play again" (autofocus), which is gone there.
+    if (m_mode == GameMode::RoundEnd && m_playedNight != 0) {
+        m_ui.focus(m_roundEndDocument,
+                   nightEndOffer() == NightEndOffer::NextNight ? NEXT_NIGHT_ID : BACK_TO_NIGHTS_ID);
     }
 
     // The cursor follows the screen: captured for mouse look while a round is played,
@@ -1405,13 +1428,25 @@ void NightMazeApp::fillRoundEndDocument() {
     m_ui.setText(m_roundEndDocument, DIFFICULTY_ID,
                  night ? std::string(campaignNight(m_playedNight).title) : m_playedDifficultyName);
     m_ui.setText(m_roundEndDocument, SEED_ID, std::to_string(m_mazeWorld.seed));
-    // "New maze" belongs to free play: the maze of a night is fixed. After a night the
-    // player plays it again or goes back to the menu, where the next night waits.
+    // "Play again" and "New maze" belong to free play. A night is not played again from
+    // here (a finished night is replayed from the list of nights), and its maze is
+    // fixed. In their place a night has one button: "Next night", or "Back to nights"
+    // after a replay of an earlier night.
+    const bool nextNight = night && nightEndOffer() == NightEndOffer::NextNight;
+    m_ui.setClass(m_roundEndDocument, PLAY_AGAIN_ID, GONE_CLASS, night);
     m_ui.setClass(m_roundEndDocument, NEW_MAZE_ID, GONE_CLASS, night);
+    m_ui.setClass(m_roundEndDocument, NEXT_NIGHT_ID, GONE_CLASS, !nextNight);
+    m_ui.setClass(m_roundEndDocument, BACK_TO_NIGHTS_ID, GONE_CLASS, !night || nextNight);
     // The seed names a maze of free play for a friend. The maze of a night cannot be
     // entered anywhere, so its row is left out.
     m_ui.setClass(m_roundEndDocument, SEED_ROW_ID, GONE_CLASS, night);
-    m_ui.setText(m_roundEndDocument, KEYS_ID, night ? NIGHT_END_KEYS_TEXT : ROUND_END_KEYS_TEXT);
+    const char* nightKeys = nextNight ? NEXT_NIGHT_KEYS_TEXT : BACK_TO_NIGHTS_KEYS_TEXT;
+    m_ui.setText(m_roundEndDocument, KEYS_ID, night ? nightKeys : ROUND_END_KEYS_TEXT);
+}
+
+NightEndOffer NightMazeApp::nightEndOffer() const {
+    // The campaign of the settings is already the one after the win (finishRound).
+    return game::nightEndOffer(m_settings.campaignNight, m_playedNight, m_nightCounts);
 }
 
 void NightMazeApp::fillSettingsDocument() {
@@ -1991,8 +2026,8 @@ void NightMazeApp::onRender(double alpha) {
     if (m_gameplay.restart || (roundInput && actionPressed(KeyAction::Restart))) {
         m_gameplay.restart = false;
         if (m_mode == GameMode::RoundEnd) {
-            // The debug UI asked on the result screen: the button "Play again" of that
-            // screen does the same, a new round and the screen left.
+            // The debug UI asked on the result screen: the button "Play again" of free
+            // play does the same, a new round and the screen left.
             handleGameEvent(GameEvent::Restart);
         } else {
             beginRound();

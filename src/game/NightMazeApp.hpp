@@ -638,6 +638,10 @@ private:
     /// the last night.
     void finishRound();
 
+    /// What the first button of the result screen offers after the night in play was
+    /// won: game::nightEndOffer for the campaign of the settings as it is after the win.
+    NightEndOffer nightEndOffer() const;
+
     /// Forgets the campaign of the settings: no night is won, no seed, no best time. For
     /// a new campaign and for the debug UI. The file is not written here.
     void forgetCampaign();

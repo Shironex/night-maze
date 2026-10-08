@@ -80,6 +80,13 @@ GameMode nextMode(GameMode mode, GameEvent event) {
         if (event == GameEvent::BackToMenu || event == GameEvent::Escape) {
             return GameMode::MainMenu;
         }
+        // After a night of the campaign: on to the next one, or to the list of nights.
+        if (event == GameEvent::StartNight) {
+            return GameMode::NightCard;
+        }
+        if (event == GameEvent::OpenNights) {
+            return GameMode::Nights;
+        }
         break;
     case GameMode::SettingsFromMenu:
         if (event == GameEvent::CloseSettings || event == GameEvent::Escape) {

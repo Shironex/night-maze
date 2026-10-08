@@ -169,6 +169,12 @@ int nightAfterWin(int campaignNight, int wonNight) {
     return wonNight == campaignNight ? campaignNight + 1 : campaignNight;
 }
 
+NightEndOffer nightEndOffer(int campaignNight, int wonNight, bool counts) {
+    const bool hasNext = wonNight >= 1 && wonNight < CAMPAIGN_NIGHT_COUNT;
+    return counts && hasNext && wonNight + 1 == campaignNight ? NightEndOffer::NextNight
+                                                              : NightEndOffer::BackToNights;
+}
+
 int bestAfterWin(int bestSeconds, float elapsedSeconds) {
     // The float is brought into the limits first: a huge one would not fit a whole number.
     const int seconds =

@@ -151,6 +151,27 @@ int nightToOffer(int campaignNight);
 /// the campaign on by one. Winning a finished night again changes nothing.
 int nightAfterWin(int campaignNight, int wonNight);
 
+/// What the first button of the result screen offers after a night of the campaign was
+/// won. The night is not played again from there: a finished night is replayed from the
+/// list of nights.
+enum class NightEndOffer {
+    NextNight = 0, ///< "Next night": on to the title card of the night after this one
+    BackToNights,  ///< "Back to nights": the list of nights
+};
+
+/// The offer after wonNight was won. campaignNight is the next night of the campaign
+/// AFTER that win (nightAfterWin), and counts tells whether the night belongs to the
+/// campaign of the settings file at all (a night of the command line does not).
+///
+/// "Next night" when the night after the won one is the night the campaign waits for:
+/// wonNight + 1 == campaignNight. That is the case after every first win, and also
+/// after a replay of the last finished night, where "next" still means the same night.
+/// After a replay of an earlier night the night after it is finished already and the
+/// night the campaign waits for is not the next one, so the button would be confusing:
+/// the offer is the list. The last night has no next one (its win shows the ending
+/// card and no result screen).
+NightEndOffer nightEndOffer(int campaignNight, int wonNight, bool counts);
+
 /// "No best time yet" in GameSettings::campaignBestSeconds.
 constexpr int NO_BEST_TIME = 0;
 
