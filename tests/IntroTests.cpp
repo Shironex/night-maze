@@ -409,10 +409,11 @@ TEST_CASE("the shade of the fourth card stands ahead in the corridor, inside the
         level.mazeWidth, level.mazeHeight, game::INTRO_MAZE_SEED, {}, level.crystalCount);
     const game::MenuCameraPath path = game::buildMenuCameraPath(world);
     const std::size_t card = 3;
-    const std::optional<game::MazeCell> cell = game::introShadeCell(card, true);
-    REQUIRE(cell.has_value());
-    REQUIRE(world.maze.contains(cell->x, cell->z));
-    const glm::vec3 shade = game::cellCenter(cell->x, cell->z);
+    // A card without the shade would give a cell that is not in the maze.
+    const game::MazeCell cell =
+        game::introShadeCell(card, true).value_or(game::MazeCell{.x = -1, .z = -1});
+    REQUIRE(world.maze.contains(cell.x, cell.z));
+    const glm::vec3 shade = game::cellCenter(cell.x, cell.z);
     const float range = game::LightingSettings{}.flashlightRange;
 
     // Every tenth of a second of the card, from the cut to the next cut.
@@ -427,9 +428,9 @@ TEST_CASE("the shade of the fourth card stands ahead in the corridor, inside the
         // The camera is in the row of the shade and west of it, with no wall on the way
         // east: it looks down one straight corridor at it.
         const game::MazeCell own = game::cellAt(pose.eye);
-        REQUIRE(own.z == cell->z);
-        REQUIRE(own.x < cell->x);
-        for (int x = own.x; x < cell->x; ++x) {
+        REQUIRE(own.z == cell.z);
+        REQUIRE(own.x < cell.x);
+        for (int x = own.x; x < cell.x; ++x) {
             CHECK_FALSE(world.maze.hasWall(x, own.z, game::Direction::East));
         }
         // It looks east, at most a few degrees past the shade (yaw 90 is east).
