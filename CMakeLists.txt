@@ -164,6 +164,8 @@ add_library(game_logic STATIC
     src/game/Interactables.hpp
     src/game/Interaction.cpp
     src/game/Interaction.hpp
+    src/game/Intro.cpp
+    src/game/Intro.hpp
     src/game/Lighting.cpp
     src/game/Lighting.hpp
     src/game/Maze.cpp
@@ -422,6 +424,7 @@ add_executable(night_maze_tests
     tests/ImageLoaderTests.cpp
     tests/InteractablesTests.cpp
     tests/InteractionTests.cpp
+    tests/IntroTests.cpp
     tests/LightTests.cpp
     tests/LightingTests.cpp
     tests/MazeGeneratorTests.cpp
