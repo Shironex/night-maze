@@ -1,7 +1,6 @@
 #version 410 core
 // Fragment shader that puts the picture of the minimap on the screen, in the middle of
 // the window. Used with post/composite.vert.
-// See docs/modules/renderer/minimap.md
 
 // Input from composite.vert: the texture coordinate of this pixel, (0, 0) in the bottom
 // left corner of the area drawn into and (1, 1) in the top right one. The area is not

@@ -3,7 +3,6 @@
 // of a shadow map has no colour texture, and the depth of a fragment is stored by the
 // graphics card on its own (gl_FragCoord.z, after the depth test). A program still has
 // to have a fragment shader, so this one is empty.
-// See docs/modules/renderer/shadows.md
 
 void main() {
 }

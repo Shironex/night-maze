@@ -3,7 +3,6 @@
 // texture coordinate, multiplied by a tint. Two debug views show the normal or the
 // texture coordinate as a colour instead. There is no lighting here, only the glow of
 // surfaces that give off light themselves.
-// See docs/modules/gfx/textures.md
 
 // The normal map and the function surfaceNormal, for the view of the normals. The same
 // file is included by lit.frag, so the view shows the very normal the lighting uses.

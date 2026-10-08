@@ -1,7 +1,6 @@
 #version 410 core
 // Vertex shader of textured models: places the vertex on the screen and passes its
 // texture coordinate, its normal and its tangent on to the fragment shader.
-// See docs/modules/gfx/textures.md
 
 // Inputs: the four attributes of gfx::Vertex. The location numbers are the constants
 // POSITION_ATTRIBUTE, NORMAL_ATTRIBUTE, UV_ATTRIBUTE and TANGENT_ATTRIBUTE of

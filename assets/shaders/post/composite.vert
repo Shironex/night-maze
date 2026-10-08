@@ -1,7 +1,6 @@
 #version 410 core
 // Vertex shader of the post-processing passes: one triangle that covers the whole
 // screen, made without any vertex data.
-// See docs/modules/renderer/post-process.md
 
 // There is no input. The draw call is glDrawArrays(GL_TRIANGLES, 0, 3) with a vertex
 // array object that has no attributes (a Core profile still needs one bound), and the

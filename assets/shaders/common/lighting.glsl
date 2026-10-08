@@ -3,7 +3,6 @@
 // one surface point.
 // This file is not a shader of its own. It has no #version line: the shader loader puts
 // its text in place of the line  #include "common/lighting.glsl"  (gfx/ShaderSource.hpp).
-// See docs/modules/scene/lights.md
 
 // Length of the array of point lights. The same number as scene::MAX_POINT_LIGHTS in
 // src/scene/Light.hpp.

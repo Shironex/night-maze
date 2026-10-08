@@ -1,7 +1,6 @@
 #version 410 core
 // Vertex shader for shapes drawn in one flat colour: the lines of the collision boxes
 // and spheres.
-// See docs/modules/scene/collision.md
 
 // Input: only the position. The mesh also carries a normal (location 1), a texture
 // coordinate (location 2) and a tangent (location 3), but a shader may leave attributes

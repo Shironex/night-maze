@@ -1,7 +1,6 @@
 #version 410 core
 // Vertex shader of the minimap: places the flat shapes of the map (floors, walls, gate,
 // crystals, player) in the picture of the map.
-// See docs/modules/renderer/minimap.md
 
 // Input: one corner of a triangle (game::MinimapVertex in C++). The numbers after
 // "location" are the attribute numbers game::MinimapRenderer describes the buffer with.

@@ -2,7 +2,6 @@
 // Fragment shader of the composite pass, the last pass of a frame: reads the picture of
 // the scene from the HDR texture and writes it to the window as colours a screen can
 // show.
-// See docs/modules/renderer/post-process.md
 
 // linearToSrgb. The path is relative to this file.
 #include "../common/color.glsl"

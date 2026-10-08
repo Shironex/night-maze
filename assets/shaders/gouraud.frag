@@ -1,7 +1,6 @@
 #version 410 core
 // Fragment shader of lit models, lighting per vertex (Gouraud shading): the light was
 // computed in gouraud.vert, here it meets the texture and the two shadows.
-// See docs/modules/renderer/lighting-gouraud-phong.md
 
 // The shadow maps of the moon and of the flashlight and the functions moonShadow and
 // flashlightShadow: the same file lit.frag includes.

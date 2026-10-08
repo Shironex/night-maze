@@ -2,7 +2,6 @@
 // Vertex shader of the surfaces that show the sky (crystals and puddles): places the
 // vertex on the screen and passes what the fragment shader needs to compute the light
 // and the direction of the reflected ray.
-// See docs/modules/renderer/env-mapping.md
 
 // It does the same work as lit.vert: the environment mapping happens in the fragment
 // shader, and what it needs from here (the position and the normal in world space) is

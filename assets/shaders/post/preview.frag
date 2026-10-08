@@ -2,7 +2,6 @@
 // Fragment shader of the attachment previews: turns the colour or the depth texture of
 // a framebuffer (the scene, a shadow map) into a small picture the debug UI can show.
 // Used with post/composite.vert.
-// See docs/modules/renderer/post-process.md
 
 // linearToSrgb and linearDepth. The paths are relative to this file.
 #include "../common/color.glsl"

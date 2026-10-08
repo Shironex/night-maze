@@ -1,7 +1,6 @@
 #version 410 core
 // Fragment shader of the grass: a colour that runs from dark at the root to light at the
 // tip, lit by the lights of the scene.
-// See docs/modules/renderer/grass-geometry.md
 
 // The light block and the function computeLighting: the same file lit.frag includes, so
 // the grass is lit by the very lights that light the walls.

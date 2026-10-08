@@ -1,7 +1,6 @@
 // Depth shared by the post-processing shaders: from the number stored in a depth
 // texture back to a distance in metres. This file is not a shader of its own. It has no
 // #version line: the shader loader puts its text in place of the #include line.
-// See docs/modules/renderer/post-process.md
 
 // The distance from the camera plane to a surface, in metres, from the value a depth
 // texture stores for it. near and far are the clipping planes of the projection the

@@ -3,7 +3,6 @@
 // a point loses.
 // This file is not a shader of its own. It has no #version line: the shader loader puts
 // its text in place of the line  #include "common/shadows.glsl"  (gfx/ShaderSource.hpp).
-// See docs/modules/renderer/shadows.md
 //
 // The idea in two steps. Before the scene is drawn, everything that casts a shadow is
 // drawn from the light into a depth texture, the shadow map (shadow_depth.vert): every

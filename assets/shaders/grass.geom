@@ -1,6 +1,5 @@
 #version 410 core
 // Geometry shader of the grass: turns every point into a tuft of a few thin blades.
-// See docs/modules/renderer/grass-geometry.md
 //
 // A geometry shader runs once for every primitive that leaves the vertex shader and
 // writes new primitives in its place. Here one point comes in and BLADE_COUNT triangle

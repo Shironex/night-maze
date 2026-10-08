@@ -1,7 +1,6 @@
 #version 410 core
 // Vertex shader of the sky: places a cube around the camera so that it turns with the
 // camera, never moves with it and lies at the largest possible depth.
-// See docs/modules/renderer/skybox.md
 
 // Input: only the position. The mesh also carries a normal (location 1), a texture
 // coordinate (location 2) and a tangent (location 3), but a shader may leave attributes

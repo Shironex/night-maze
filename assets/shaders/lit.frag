@@ -2,7 +2,6 @@
 // Fragment shader of lit models, lighting per fragment (Phong shading): the light is
 // computed for every fragment from its own position and normal. The highlight formula
 // (Phong or Blinn-Phong) is chosen by the uniform uSpecularModel.
-// See docs/modules/renderer/lighting-gouraud-phong.md
 
 // The light block and the function computeLighting. The same file is included by
 // gouraud.vert and grass.frag.

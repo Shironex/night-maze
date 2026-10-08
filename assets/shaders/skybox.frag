@@ -1,7 +1,6 @@
 #version 410 core
 // Fragment shader of the sky: the colour of a fragment is the cube map read in the
 // direction the fragment is seen in.
-// See docs/modules/renderer/skybox.md
 
 // Input from the vertex shader: the direction of this fragment in world space, already
 // interpolated. Its length is not 1, and for reading a cube map it does not have to be.

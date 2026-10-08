@@ -1,7 +1,6 @@
 #version 410 core
 // Vertex shader of the grass: it does almost nothing. One vertex is one tuft, a point on
 // the ground, and the blades are made of it in the next stage, grass.geom.
-// See docs/modules/renderer/grass-geometry.md
 
 // Inputs: two of the attributes of gfx::Vertex. The grass is drawn as GL_POINTS from
 // a mesh that holds one vertex per tuft. Normal and tangent are not read.

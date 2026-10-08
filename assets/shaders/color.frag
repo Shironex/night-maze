@@ -1,7 +1,6 @@
 #version 410 core
 // Fragment shader for shapes drawn in one flat colour: the lines of the collision boxes
 // and spheres.
-// See docs/modules/scene/collision.md
 
 // The colour of the whole shape (red, green, blue), set from C++ (gfx::Shader::setVec3)
 // as a LINEAR colour: game::ColliderLines converts the colours it is given.

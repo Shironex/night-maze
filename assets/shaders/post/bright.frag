@@ -2,7 +2,6 @@
 // Fragment shader of the bright pass, the first pass of the bloom: keeps the light of
 // the scene that is brighter than a threshold and writes black everywhere else.
 // Used with post/composite.vert.
-// See docs/modules/renderer/post-process.md
 
 // luminance. The path is relative to this file.
 #include "../common/color.glsl"

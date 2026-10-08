@@ -1,7 +1,6 @@
 #version 410 core
 // Fragment shader of the blur passes of the bloom: one direction of a Gaussian blur.
 // Used with post/composite.vert.
-// See docs/modules/renderer/post-process.md
 
 // Input from composite.vert: the texture coordinate of this pixel.
 in vec2 vUv;

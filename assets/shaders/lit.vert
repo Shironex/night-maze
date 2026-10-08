@@ -1,7 +1,6 @@
 #version 410 core
 // Vertex shader of lit models, lighting per fragment (Phong shading): places the vertex
 // on the screen and passes what the fragment shader needs to compute the light.
-// See docs/modules/renderer/lighting-gouraud-phong.md
 
 // Inputs: the four attributes of gfx::Vertex, as in textured.vert.
 layout(location = 0) in vec3 aPosition; // x, y, z in the local space of the model

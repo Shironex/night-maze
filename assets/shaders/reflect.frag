@@ -2,7 +2,6 @@
 // Fragment shader of the surfaces that show the sky (crystals and puddles): the lit
 // colour of the surface, blended with the sky read from the cube map in the direction
 // of the mirrored ray and of the refracted ray (environment mapping).
-// See docs/modules/renderer/env-mapping.md
 
 // The light block and the function computeLighting: the same file lit.frag includes, so
 // a crystal is lit here exactly as lit.frag lit it.

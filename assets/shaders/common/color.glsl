@@ -2,7 +2,6 @@
 // a picture file, a colour picker and the screen use) and linear colours (what lighting
 // math needs). This file is not a shader of its own. It has no #version line: the shader
 // loader puts its text in place of the #include line (gfx/ShaderSource.hpp).
-// See docs/modules/gfx/color-space.md
 
 // The scene is drawn into a floating point buffer that holds LINEAR colours, and the
 // last pass of the frame (post/composite.frag) encodes them to sRGB for the screen.

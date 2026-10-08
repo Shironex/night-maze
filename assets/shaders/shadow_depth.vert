@@ -2,7 +2,6 @@
 // Vertex shader of the depth pass of a shadow map: places the vertex as the LIGHT sees it.
 // Nothing else is needed, because the pass draws no colours. The depth buffer of the
 // shadow map is filled by the depth test, as in every other pass.
-// See docs/modules/renderer/shadows.md
 
 // Input: one of the four attributes of gfx::Vertex. The normal, the texture coordinate
 // and the tangent are not read: a depth has no colour and no lighting.

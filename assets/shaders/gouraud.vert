@@ -1,7 +1,6 @@
 #version 410 core
 // Vertex shader of lit models, lighting per vertex (Gouraud shading): the light is
 // computed here, once for every vertex, and the fragment shader only blends the result.
-// See docs/modules/renderer/lighting-gouraud-phong.md
 
 // The light block and the function computeLighting: the very same file lit.frag
 // includes. Only the place where the function is called differs.

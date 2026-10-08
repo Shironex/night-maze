@@ -2,7 +2,6 @@
 // switch and the function that turns the normal of a model into the normal of the relief.
 // This file is not a shader of its own. It has no #version line: the shader loader puts
 // its text in place of the line  #include "common/normal_map.glsl"  (gfx/ShaderSource.hpp).
-// See docs/modules/gfx/normal-mapping.md
 
 // The normal map of the part being drawn. Like uTexture it holds the number of a texture
 // unit, a different one: the colour picture is on unit 0, the normal map on unit 1. A part

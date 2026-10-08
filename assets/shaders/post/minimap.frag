@@ -1,7 +1,6 @@
 #version 410 core
 // Fragment shader of the minimap: writes the colour of a shape of the map into the
 // picture of the map.
-// See docs/modules/renderer/minimap.md
 
 // Input from minimap.vert: the colour of the shape this pixel belongs to.
 in vec3 vColor;
