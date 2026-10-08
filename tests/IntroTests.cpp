@@ -2,11 +2,20 @@
 // camera is and when its sounds are played.
 #include "game/Intro.hpp"
 
+#include "game/Difficulty.hpp"
+#include "game/Lighting.hpp"
+#include "game/Maze.hpp"
+#include "game/MazeLayout.hpp"
+#include "game/MazeWorld.hpp"
+#include "game/MenuCamera.hpp"
+
 #include <doctest/doctest.h>
+#include <glm/glm.hpp>
 
 #include <cmath>
 #include <cstddef>
 #include <cstring>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -376,4 +385,60 @@ TEST_CASE("a stretch of time holds the sounds from its start up to, not with, it
 TEST_CASE("the intro uses the easy maze of seed 1, whatever the player chose") {
     CHECK(game::INTRO_MAZE_SEED == 1U);
     CHECK(game::INTRO_DIFFICULTY == game::Difficulty::Easy);
+}
+
+TEST_CASE("only the fourth card shows the shade, and not in a calm night") {
+    for (std::size_t card = 0; card < game::INTRO_CARD_COUNT; ++card) {
+        // A calm night: no card has it.
+        CHECK_FALSE(game::introShadeCell(card, false).has_value());
+        // Otherwise the one card that warns of it, and the cell is the one of the script.
+        const std::optional<game::MazeCell> cell = game::introShadeCell(card, true);
+        CHECK(cell.has_value() == (card == 3));
+        CHECK(game::introCards().at(card).showsShade == (card == 3));
+        if (cell.has_value()) {
+            CHECK(*cell == game::introCards().at(card).shadeCell);
+        }
+    }
+    CHECK_THROWS_AS(game::introShadeCell(game::INTRO_CARD_COUNT, true), std::out_of_range);
+}
+
+TEST_CASE("the shade of the fourth card stands ahead in the corridor, inside the flashlight") {
+    // The maze of the intro, as the game builds it (flat ground is enough here).
+    const game::DifficultyLevel& level = game::difficultyLevel(game::INTRO_DIFFICULTY);
+    const game::MazeWorld world = game::buildMazeWorld(
+        level.mazeWidth, level.mazeHeight, game::INTRO_MAZE_SEED, {}, level.crystalCount);
+    const game::MenuCameraPath path = game::buildMenuCameraPath(world);
+    const std::size_t card = 3;
+    const std::optional<game::MazeCell> cell = game::introShadeCell(card, true);
+    REQUIRE(cell.has_value());
+    REQUIRE(world.maze.contains(cell->x, cell->z));
+    const glm::vec3 shade = game::cellCenter(cell->x, cell->z);
+    const float range = game::LightingSettings{}.flashlightRange;
+
+    // Every tenth of a second of the card, from the cut to the next cut.
+    const float seconds = game::introCards().at(card).seconds;
+    for (float cardSeconds = 0.0F; cardSeconds < seconds; cardSeconds += 0.1F) {
+        const game::IntroCamera camera =
+            game::introCamera(game::introFrame(cardStart(card) + cardSeconds));
+        REQUIRE(camera.flashlightOn);
+        const game::MenuCameraPose pose =
+            game::menuCameraPose(path, world, camera.settings, camera.menuSeconds);
+
+        // The camera is in the row of the shade and west of it, with no wall on the way
+        // east: it looks down one straight corridor at it.
+        const game::MazeCell own = game::cellAt(pose.eye);
+        REQUIRE(own.z == cell->z);
+        REQUIRE(own.x < cell->x);
+        for (int x = own.x; x < cell->x; ++x) {
+            CHECK_FALSE(world.maze.hasWall(x, own.z, game::Direction::East));
+        }
+        // It looks east, at most a few degrees past the shade (yaw 90 is east).
+        CHECK(std::fabs(pose.yawDegrees - 90.0F) < 10.0F);
+
+        // Near enough for the light, far enough to be a figure at the end of a corridor
+        // and not a close up.
+        const float distance = glm::length(glm::vec2{shade.x - pose.eye.x, shade.z - pose.eye.z});
+        CHECK(distance < range);
+        CHECK(distance > 4.5F);
+    }
 }

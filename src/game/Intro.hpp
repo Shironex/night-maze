@@ -2,12 +2,14 @@
 #pragma once
 
 #include "game/Difficulty.hpp"
+#include "game/Maze.hpp"
 #include "game/MenuCamera.hpp"
 #include "game/SoundCues.hpp"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace game {
@@ -64,6 +66,13 @@ struct IntroCard {
     /// comes on.
     bool flashlightOn = false;
 
+    /// True: the picture of the card shows the shade, standing still in the middle of
+    /// shadeCell. It is a prop of the picture and not the shade of a round: it does not
+    /// walk, it makes no sound and it catches nobody. Ask introShadeCell, which leaves
+    /// it out in a game without the shadow.
+    bool showsShade = false;
+    MazeCell shadeCell;
+
     /// The sounds of the card, in the order of their moments. Only the first cueCount
     /// entries are used.
     std::array<IntroCue, MAX_INTRO_CARD_CUES> cues{};
@@ -94,6 +103,13 @@ struct IntroLines {
 /// really costs ("It forgets quickly."). Throws std::out_of_range for a number that is
 /// no card.
 IntroLines introLines(std::size_t card, bool shadeInGame);
+
+/// The cell in which the picture of card number card shows the shade: at the far end of
+/// the corridor the camera of the fourth card walks down, where the flashlight of the
+/// camera reaches it. Empty for a card without the shade, and for every card when
+/// shadeInGame is false: in a calm night the corridor stays empty, like the mazes of the
+/// game. Throws std::out_of_range for a number that is no card.
+std::optional<MazeCell> introShadeCell(std::size_t card, bool shadeInGame);
 
 /// How a card comes and goes, in seconds. After the cut to its picture the text waits
 /// for INTRO_TEXT_DELAY_SECONDS, fades in over INTRO_TEXT_FADE_SECONDS, stands, fades

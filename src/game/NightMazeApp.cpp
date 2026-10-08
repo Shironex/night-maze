@@ -22,6 +22,7 @@
 #include <array>
 #include <cmath>
 #include <filesystem>
+#include <optional>
 #include <random>
 #include <span>
 #include <stdexcept>
@@ -1344,7 +1345,8 @@ void NightMazeApp::onRender(double alpha) {
     if (!m_menuCamera.enabled) {
         menuCameraSettings.shot = MenuShot::HighGlide;
     }
-    const IntroCamera introShot = introCamera(introFrame(static_cast<float>(m_introSeconds)));
+    const IntroFrame introMoment = introFrame(static_cast<float>(m_introSeconds));
+    const IntroCamera introShot = introCamera(introMoment);
     if (intro) {
         menuCameraSettings = introShot.settings;
     }
@@ -1561,6 +1563,21 @@ void NightMazeApp::onRender(double alpha) {
                                   static_cast<float>(alpha));
         shade.rotationDegrees = {0.0F, shadeYawDegrees(shade.position, feet), 0.0F};
         m_shadeMatrix = shade.matrix();
+    }
+    // The one picture outside a round that has a shade in it: the card of the intro that
+    // warns of it. It stands still in the cell the script names, on the ground, turned
+    // towards the camera, and the flashlight of the camera is on it. It is a prop: the
+    // shade of the round is not moved or asked, so nothing hums and nobody is caught.
+    // A calm night has none (game::introShadeCell).
+    if (intro) {
+        if (const std::optional<MazeCell> cell = introShadeCell(introMoment.card, shadeInGame())) {
+            scene::Transform shade;
+            shade.position = cellCenter(cell->x, cell->z);
+            shade.position.y = m_mazeWorld.terrain.heightAt(shade.position.x, shade.position.z);
+            shade.rotationDegrees = {0.0F, shadeYawDegrees(shade.position, eye), 0.0F};
+            m_shadeMatrix = shade.matrix();
+            m_shadeDrawn = true;
+        }
     }
 
     // The lighting of this frame. The round changes two things for this frame only:

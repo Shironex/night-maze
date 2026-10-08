@@ -22,7 +22,8 @@ constexpr const char* CALM_SECOND_LINE = "It forgets quickly.";
 // The moments of the shots (shotSeconds) were picked by eye in the maze of
 // INTRO_MAZE_SEED on INTRO_DIFFICULTY, with the switches --menu-camera, --menu-shot and
 // --menu-time. They go out of date when the generator of the maze or the route of the
-// menu camera changes: then look for new ones.
+// menu camera changes: then look for new ones. The same goes for the cell of the shade
+// on the fourth card.
 constexpr std::array<IntroCard, INTRO_CARD_COUNT> INTRO_CARDS = {{
     // 1: the wind is there from the first moment, then one far bell.
     {.firstLine = "Every winter the moon drops pieces of itself.",
@@ -58,7 +59,10 @@ constexpr std::array<IntroCard, INTRO_CARD_COUNT> INTRO_CARDS = {{
                {.atSeconds = 1.2F, .cue = SoundCue::CrystalPickup}}},
      .cueCount = 2},
     // 4: a long corridor with the shadows of the pillars, and two beats of the pulse
-    // of a low battery.
+    // of a low battery. The walk goes east along the first row of the maze, from the
+    // fourth cell on, and the shade stands in the last cell of that corridor: 8.9 m
+    // ahead of the camera at the cut and 4.7 m at the end of the card, so inside the
+    // 10 m the flashlight reaches for the whole card.
     {.firstLine = "Keep the lamp lit.",
      .secondLine = "Something walks where it is not.",
      .seconds = 6.0F,
@@ -66,6 +70,8 @@ constexpr std::array<IntroCard, INTRO_CARD_COUNT> INTRO_CARDS = {{
      .shot = MenuShot::CorridorWalk,
      .shotSeconds = 149.0F,
      .flashlightOn = true,
+     .showsShade = true,
+     .shadeCell = {.x = 7, .z = 0},
      .cues = {{{.atSeconds = 1.5F, .cue = SoundCue::LowBatteryPulse},
                {.atSeconds = 3.5F, .cue = SoundCue::LowBatteryPulse}}},
      .cueCount = 2},
@@ -119,6 +125,14 @@ IntroLines introLines(std::size_t card, bool shadeInGame) {
         return {.first = entry.firstLine, .second = CALM_SECOND_LINE};
     }
     return {.first = entry.firstLine, .second = entry.secondLine};
+}
+
+std::optional<MazeCell> introShadeCell(std::size_t card, bool shadeInGame) {
+    const IntroCard& entry = INTRO_CARDS.at(card);
+    if (!entry.showsShade || !shadeInGame) {
+        return std::nullopt;
+    }
+    return entry.shadeCell;
 }
 
 IntroFrame introFrame(float seconds) {

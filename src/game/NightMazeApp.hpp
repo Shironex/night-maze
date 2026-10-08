@@ -712,7 +712,8 @@ private:
     // where it stands between two fixed steps, turned towards the player. Set once per
     // frame in onRender, like m_wallMatrices, and used by the shadow passes and by the
     // scene pass. The shade is drawn only while a round is played: never under a menu,
-    // behind the main menu or in the picture of the menu camera.
+    // behind the main menu or in the picture of the menu camera. The one exception is
+    // the card of the intro that shows it standing in a corridor (game::introShadeCell).
     bool m_shadeDrawn = false;
     glm::mat4 m_shadeMatrix{1.0F};
 
