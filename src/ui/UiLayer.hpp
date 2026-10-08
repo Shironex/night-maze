@@ -29,6 +29,10 @@ using DocumentId = int;
 /// every document.
 constexpr DocumentId NO_DOCUMENT = -1;
 
+/// No key: what UiLayer::takeCapturedKey returns while no key was pressed. It is the
+/// number GLFW gives a key it does not know (GLFW_KEY_UNKNOWN).
+constexpr int NO_CAPTURED_KEY = -1;
+
 /// A control of a document that was moved by the player: a slider, for example. name is
 /// what the attribute data-setting of the control says, value its new value as text.
 struct ControlChange {
@@ -124,7 +128,21 @@ public:
     /// True while a text field of the shown document has the keyboard focus: typing
     /// then belongs to the field, and the caller blocks the keyboard for the game. A
     /// slider or a button with the focus does not count: it takes single keys only.
+    /// Also true while a key is being captured (setKeyCapture): that key press belongs
+    /// to whoever asked for it and to nothing else.
     bool wantsKeyboard() const;
+
+    /// Starts (true) or ends (false) the capture of a key: the screen that lets the
+    /// player choose a key waits for the next key press. While it is on, no key reaches
+    /// the documents (Enter clicks nothing, the arrows move no focus), and the first
+    /// key that is pressed is kept for takeCapturedKey. The mouse works as always.
+    /// Showing another document ends the capture.
+    void setKeyCapture(bool on);
+
+    /// The key that was pressed since the capture started or since the last call, as
+    /// its GLFW key code, or NO_CAPTURED_KEY. It is handed out once. The capture stays
+    /// on: the caller ends it when the key is one it can use.
+    int takeCapturedKey();
 
     /// Lets the documents use the mouse (true) or makes them ignore it (false).
     /// Switched off while a debug panel is under the cursor: the panels are drawn on
@@ -160,6 +178,15 @@ private:
     // True once Rml::Initialise has succeeded: the destructor then has to shut RmlUi down.
     bool m_started = false;
     bool m_mouseEnabled = true;
+
+    // The capture of a key (setKeyCapture): whether it is on and the key that was
+    // pressed and not taken yet. m_swallowedKey is the last captured key: what follows
+    // its press (repeats while it is held, its release) is kept from the documents also
+    // after the capture ended. Without that the release of a captured Space would click
+    // the focused button, and the capture would start again.
+    bool m_keyCapture = false;
+    int m_capturedKey = NO_CAPTURED_KEY;
+    int m_swallowedKey = NO_CAPTURED_KEY;
 
     // The three interfaces RmlUi talks to the outside world through: files (from the
     // assets directory), the system (time, clipboard, cursor shape, log messages) and

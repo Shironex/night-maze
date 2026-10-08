@@ -263,6 +263,8 @@ void UiLayer::show(DocumentId document) {
     if (document == m_shown) {
         return;
     }
+    // A capture belongs to the screen that started it.
+    setKeyCapture(false);
 
     if (Rml::ElementDocument* previous = documentOf(m_shown)) {
         // Without the class the document is back in the state its next entrance
@@ -349,7 +351,17 @@ bool UiLayer::wantsKeyboard() const {
     if (!isValid() || m_shown == NO_DOCUMENT) {
         return false;
     }
-    return isTextField(m_context->GetFocusElement());
+    return m_keyCapture || isTextField(m_context->GetFocusElement());
+}
+
+void UiLayer::setKeyCapture(bool on) {
+    m_keyCapture = on;
+    // A new capture starts without a key, and a key nobody took is forgotten.
+    m_capturedKey = NO_CAPTURED_KEY;
+}
+
+int UiLayer::takeCapturedKey() {
+    return std::exchange(m_capturedKey, NO_CAPTURED_KEY);
 }
 
 void UiLayer::setMouseEnabled(bool enabled) {
@@ -398,6 +410,25 @@ void UiLayer::onKey(GLFWwindow* window, int key, int /*scancode*/, int action, i
     if (!layer->takesKeyboard()) {
         return;
     }
+    // A key is being captured: no key reaches the document. Only a press counts, and
+    // only the first one until it was taken. GLFW_REPEAT is not a press: the Enter that
+    // started the capture may still be held and repeating.
+    if (layer->m_keyCapture) {
+        if (action == GLFW_PRESS && key != GLFW_KEY_UNKNOWN &&
+            layer->m_capturedKey == NO_CAPTURED_KEY) {
+            layer->m_capturedKey = key;
+            layer->m_swallowedKey = key;
+        }
+        return;
+    }
+    // The rest of a captured key press, after the capture ended: its repeats and its
+    // release are not for the document either.
+    if (key == layer->m_swallowedKey) {
+        if (action == GLFW_RELEASE) {
+            layer->m_swallowedKey = NO_CAPTURED_KEY;
+        }
+        return;
+    }
     // Escape in a text field ends the typing: the focus leaves the field and goes to
     // the document. The game does not see this press (its keyboard is blocked while
     // a field has the focus), so the first Escape leaves the field and only the next
@@ -412,7 +443,8 @@ void UiLayer::onKey(GLFWwindow* window, int key, int /*scancode*/, int action, i
 
 void UiLayer::onChar(GLFWwindow* window, unsigned int codepoint) {
     UiLayer* layer = layerOf(window);
-    if (layer->takesKeyboard()) {
+    // The character of a captured key is no typing.
+    if (layer->takesKeyboard() && !layer->m_keyCapture) {
         RmlGLFW::ProcessCharCallback(layer->m_context, codepoint);
     }
 }
