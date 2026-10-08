@@ -1,6 +1,5 @@
 # Shortcuts for the commands used every day. This file does not build anything itself:
 # every target calls CMake (through the presets in CMakePresets.json) or a tool.
-# See docs/guides/project-structure.md
 #
 # Usage: make <target>, for example "make run". Plain "make" prints the list of targets.
 

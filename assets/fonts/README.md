@@ -31,4 +31,4 @@ licence allows shipping it with the program.
 
 Replace the two files with the ones from the source directory, update the version, the date
 and the checksum above, and check the panels on a screenshot. The file name is written in
-`src/debug/Theme.cpp` (`FONT_FILE`). Documentation: `docs/modules/debug-ui.md`, section 5.8.
+`src/debug/Theme.cpp` (`FONT_FILE`).
