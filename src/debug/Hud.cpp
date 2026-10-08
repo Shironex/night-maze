@@ -351,10 +351,12 @@ void drawText(const Canvas& canvas, const ImVec2& position, float size, const Im
     // Whole pixels again: a text that starts between two pixels is blurred.
     const ImVec2 corner{std::floor(position.x), std::floor(position.y)};
     const float shadow = std::max(std::round(TEXT_SHADOW_OFFSET * canvas.scale), 1.0F);
-    const char* end = text.data() + text.size();
+    // A string_view has no closing zero, so the end of the text is given too.
     canvas.list->AddText(canvas.font, pixels, {corner.x, corner.y + shadow},
-                         ink(canvas, HUD_SHADOW_COLOR, TEXT_SHADOW_OPACITY), text.data(), end);
-    canvas.list->AddText(canvas.font, pixels, corner, ink(canvas, color), text.data(), end);
+                         ink(canvas, HUD_SHADOW_COLOR, TEXT_SHADOW_OPACITY), text.data(),
+                         text.data() + text.size());
+    canvas.list->AddText(canvas.font, pixels, corner, ink(canvas, color), text.data(),
+                         text.data() + text.size());
 }
 
 // A small label in capital letters is written with extra room between its letters, like
@@ -433,7 +435,9 @@ void drawLampGauge(Canvas canvas, const game::Round& round,
     const float top = center.y - blockHeight / 2.0F;
 
     std::array<char, NUMBER_TEXT_SIZE> number{};
-    std::snprintf(number.data(), number.size(), "%.0f", round.battery * PERCENT);
+    // floor rounds down: a lamp just under the low mark reads 19 and not 20, so the
+    // number never disagrees with the label LOW next to it.
+    std::snprintf(number.data(), number.size(), "%.0f", std::floor(round.battery * PERCENT));
     const ImVec2 numberPlace{left, top + lineInset(canvas, NUMBER_FONT_SIZE)};
     drawText(canvas, numberPlace, NUMBER_FONT_SIZE, low ? color : TEXT_COLOR, number.data());
     // The percent sign is smaller and stands on the same base line as the number.
@@ -702,8 +706,9 @@ void drawNightName(Canvas canvas, const game::Round& round, int playedNight) {
     // "Night 2" in capital letters, like the other small labels. toupper wants its
     // letter as an unsigned char.
     std::string label = game::campaignNightLabel(playedNight);
-    std::transform(label.begin(), label.end(), label.begin(),
-                   [](unsigned char letter) { return static_cast<char>(std::toupper(letter)); });
+    for (char& letter : label) {
+        letter = static_cast<char>(std::toupper(static_cast<unsigned char>(letter)));
+    }
 
     const ImVec2 corner = windowPoint(NIGHT_NAME_PLACE);
     drawSpacedText(canvas, {corner.x, corner.y + lineInset(canvas, LABEL_FONT_SIZE)},
