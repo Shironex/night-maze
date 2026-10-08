@@ -497,10 +497,11 @@ private:
     /// UI).
     void beginRound();
 
-    /// The shade has reached the player: the round starts again in the same maze, the
-    /// way the restart key does it (beginRound), the next caught line is shown and the
-    /// sound of the catch plays. The story line counter does not move and nothing is
-    /// written to the settings file.
+    /// The shade has reached the player: the picture fades to black first
+    /// (m_catchSeconds, game::catchFadeBrightness), then the round starts again in the
+    /// same maze, the way the restart key does it (beginRound), and the next caught line
+    /// is shown. The sound of the catch plays when the fade starts. The story line counter does not
+    /// move and nothing is written to the settings file.
     void carryPlayerBack();
 
     /// The picking ray of this frame and what it hits (game::pickInRound). The ray goes
@@ -716,6 +717,14 @@ private:
     // the card of the intro that shows it standing in a corridor (game::introShadeCell).
     bool m_shadeDrawn = false;
     glm::mat4 m_shadeMatrix{1.0F};
+    // How much the drawn shade walks, from 0 (stands) to 1 (walks). It follows the state
+    // of the shade over a third of a second, so the pose never jumps (game::shadeSwayPose).
+    float m_shadeWalkAmount = 0.0F;
+    // Seconds since the shade reached the player, or -1 when no catch is going on. While
+    // it counts, the round stands still and the player cannot act: the picture fades to
+    // black, and at black the round starts again (carryPlayerBack). It counts in fixed
+    // steps of a played round, so it stands still in the pause.
+    float m_catchSeconds = -1.0F;
 
     // The picking of this frame: the ray, what it hits and what the interaction key
     // does. Built in onRender, read by the drawing (the highlight), the HUD and the

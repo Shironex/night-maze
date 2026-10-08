@@ -112,6 +112,18 @@ constexpr int FLASHLIGHT_KEY = GLFW_KEY_F;
 // Key that starts the round again on the same maze.
 constexpr int RESTART_KEY = GLFW_KEY_R;
 
+// How long the drawn shade takes to change between the standing and the walking pose.
+constexpr float SHADE_SWAY_BLEND_SECONDS = 0.3F;
+
+// Puts the pose of the shade (game::shadeSwayPose) on its transform: a rise, and two
+// turns around the feet, the forward lean after the turn to the player (Transform turns
+// y, then x, then z).
+void applyShadeSway(scene::Transform& transform, const ShadePose& pose) {
+    transform.position.y += pose.riseMetres;
+    transform.rotationDegrees.x = pose.forwardLeanDegrees;
+    transform.rotationDegrees.z = pose.sideLeanDegrees;
+}
+
 // Key that shows the map for as long as it is held.
 constexpr int MINIMAP_KEY = GLFW_KEY_M;
 
@@ -1116,6 +1128,8 @@ void NightMazeApp::beginRound() {
     // The hum of the shade starts anew as well. The shade itself is part of the round:
     // startRound has put it back in its start cell, with its grace time ahead of it.
     m_shadeHum = {};
+    // A restart in the middle of a fade to black ends the fade.
+    m_catchSeconds = -1.0F;
 
     // The player goes to the start, feet on the ground there. After a regeneration the
     // old position may be inside a wall of the new maze, or outside of it.
@@ -1136,7 +1150,6 @@ void NightMazeApp::carryPlayerBack() {
     // The next line of the five, so the same one never shows twice in a row.
     m_lastCaughtLine = nextCaughtLine(m_lastCaughtLine);
     showCaughtLine(m_round, m_lastCaughtLine);
-    playCue(SoundCue::Caught);
 }
 
 void NightMazeApp::onUpdate(double fixedDt) {
@@ -1152,6 +1165,19 @@ void NightMazeApp::onUpdate(double fixedDt) {
     if (!updatesRound(m_mode) || m_menuCamera.enabled) {
         if (animatesScene(m_mode)) {
             m_round.animationSeconds += static_cast<float>(fixedDt);
+        }
+        return;
+    }
+
+    // A catch in progress: the picture fades to black and nothing else happens. The
+    // player does not move, nothing is collected, the shade does not step and cannot catch
+    // again, the battery does not drain. Only the animation clock goes on. At black the
+    // round starts again. The pause stops this clock like the rest of the round.
+    if (m_catchSeconds >= 0.0F) {
+        m_round.animationSeconds += static_cast<float>(fixedDt);
+        m_catchSeconds += static_cast<float>(fixedDt);
+        if (catchPhase(m_catchSeconds) == CatchPhase::Black) {
+            carryPlayerBack();
         }
         return;
     }
@@ -1256,7 +1282,8 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // looking around) is left alone. The steps that may follow in the same frame play
     // the new round.
     if (caught && !m_player.noclip) {
-        carryPlayerBack();
+        m_catchSeconds = 0.0F;
+        playCue(SoundCue::Caught);
         return;
     }
 
@@ -1330,7 +1357,7 @@ void NightMazeApp::onRender(double alpha) {
     // by the menu camera? While it is switched on, and in the main menu when the live
     // scene is its background (--menu-background scene, or neither the video nor the
     // still could be loaded).
-    const bool roundInput = updatesRound(m_mode) && !m_menuCamera.enabled;
+    const bool roundInput = updatesRound(m_mode) && !m_menuCamera.enabled && m_catchSeconds < 0.0F;
     // The intro takes its pictures with the menu camera too, but it says itself which
     // shot, at which moment and with which light (game::introCamera).
     const bool intro = m_mode == GameMode::Intro;
@@ -1415,7 +1442,7 @@ void NightMazeApp::onRender(double alpha) {
     // The map: on the screen while its key is held (mapShown). Asked once here for the
     // whole frame. While it is shown the mouse does not turn the camera and nothing can
     // be used: looking at the map is a stop, and the round goes on behind it.
-    const bool map = mapShown();
+    const bool map = mapShown() && m_catchSeconds < 0.0F;
     m_mapOnScreen = map;
 
     // Mouse look. It runs here, once per frame, and not in onUpdate: a mouse delta
@@ -1558,6 +1585,15 @@ void NightMazeApp::onRender(double alpha) {
         shade.position = glm::mix(m_round.shade.previousPosition, m_round.shade.position,
                                   static_cast<float>(alpha));
         shade.rotationDegrees = {0.0F, shadeYawDegrees(shade.position, feet), 0.0F};
+        // The sway is drawing only: it moves the picture of the figure, not the shade of
+        // the round. It walks more or less as the state says, blended over a third of a
+        // second (the frame time, as the pose is a picture and not a rule).
+        const float blendStep =
+            static_cast<float>(time().deltaSeconds()) / SHADE_SWAY_BLEND_SECONDS;
+        const float target = shadeWalking(m_round.shade) ? 1.0F : 0.0F;
+        m_shadeWalkAmount += std::clamp(target - m_shadeWalkAmount, -blendStep, blendStep);
+        applyShadeSway(shade, shadeSwayPose(m_shadeWalkAmount, m_gameplay.shade.speed,
+                                            m_round.animationSeconds, m_gameplay.shade.sway));
         m_shadeMatrix = shade.matrix();
     }
     // The one picture outside a round that has a shade in it: the card of the intro that
@@ -1571,6 +1607,8 @@ void NightMazeApp::onRender(double alpha) {
             shade.position = cellCenter(cell->x, cell->z);
             shade.position.y = m_mazeWorld.terrain.heightAt(shade.position.x, shade.position.z);
             shade.rotationDegrees = {0.0F, shadeYawDegrees(shade.position, eye), 0.0F};
+            applyShadeSway(shade, shadeSwayPose(0.0F, 0.0F, static_cast<float>(m_introSeconds),
+                                                m_gameplay.shade.sway));
             m_shadeMatrix = shade.matrix();
             m_shadeDrawn = true;
         }
@@ -1710,7 +1748,8 @@ void NightMazeApp::onRender(double alpha) {
     }
     // Right after the shade carried the player back the picture comes up from black: the
     // exposure multiplies every colour, so a factor of 0 is a black picture.
-    compositeSettings.exposure *= roundBrightness(m_round);
+    compositeSettings.exposure *=
+        m_catchSeconds >= 0.0F ? catchFadeBrightness(m_catchSeconds) : roundBrightness(m_round);
 
     // The bloom: the bright parts of the finished scene, blurred in targets of half the
     // size. It is called in every frame, also with the bloom switched off: it then

@@ -67,6 +67,13 @@ constexpr float MAX_SHADE_CATCH_DISTANCE = 2.0F;
 constexpr float MIN_SHADE_THAW = 0.0F;
 constexpr float MAX_SHADE_THAW = 10.0F;
 
+// The sway of the drawn shade (game::ShadeSwaySettings): the largest lean in degrees, the
+// largest rise or bob in metres, and the longest swing in seconds.
+constexpr float MAX_SHADE_LEAN_DEGREES = 10.0F;
+constexpr float MAX_SHADE_RISE_METRES = 0.15F;
+constexpr float MIN_SHADE_SWAY_PERIOD = 1.0F;
+constexpr float MAX_SHADE_SWAY_PERIOD = 10.0F;
+
 // The picture of the minimap in its card is at most this wide, in pixels at 100 %
 // display scaling.
 constexpr float MAX_MINIMAP_PICTURE_WIDTH = 200.0F;
@@ -221,6 +228,18 @@ void drawShade(Page& page, const DebugContext& context) {
     page.toggle("Show shade on the map", &settings.showOnMap,
                 "Debug switch: mark the shade on the map (key M). The map of the game "
                 "never shows it.");
+    // The sway only moves the drawn figure: no rule and no distance sees it.
+    game::ShadeSwaySettings& sway = settings.sway;
+    page.slider("Standing lean", &sway.standLeanDegrees, 0.0F, MAX_SHADE_LEAN_DEGREES, "%.1f deg",
+                "How far the standing shade leans to one side and the other.");
+    page.slider("Standing rise", &sway.standRiseMetres, 0.0F, MAX_SHADE_RISE_METRES, "%.3f m",
+                "How far the standing shade rises and sinks, like a breath.");
+    page.slider("Sway period", &sway.periodSeconds, MIN_SHADE_SWAY_PERIOD, MAX_SHADE_SWAY_PERIOD,
+                "%.1f s", "How long one slow swing of the standing shade takes.");
+    page.slider("Walking lean", &sway.walkLeanDegrees, 0.0F, MAX_SHADE_LEAN_DEGREES, "%.1f deg",
+                "How far the walking shade leans forward.");
+    page.slider("Walking bob", &sway.walkBobMetres, 0.0F, MAX_SHADE_RISE_METRES, "%.3f m",
+                "How far the walking shade bobs up and down, once per step.");
 
     page.endCard();
 }
