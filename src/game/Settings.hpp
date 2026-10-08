@@ -93,6 +93,10 @@ struct GameSettings {
     /// file, so it is kept between two starts of the game.
     int nextStoryLine = 0;
 
+    /// True: a calm night. The maze has no shade, on every difficulty. The switch is in
+    /// the main menu, next to the difficulty.
+    bool calmNight = false;
+
     bool operator==(const GameSettings& other) const = default;
 };
 
@@ -104,7 +108,11 @@ constexpr std::string_view FULLSCREEN_SETTING = "fullscreen";
 constexpr std::string_view WINDOW_SIZE_SETTING = "window_size";
 constexpr std::string_view DIFFICULTY_SETTING = "difficulty";
 constexpr std::string_view MASTER_VOLUME_SETTING = "master_volume";
-constexpr std::string_view NEXT_STORY_LINE_SETTING = "next_story_line";
+constexpr std::string_view STORY_LINE_SETTING = "story_line";
+constexpr std::string_view CALM_NIGHT_SETTING = "calm_night";
+/// The name the story line counter had while the story had no lines about the shadow.
+/// It is still read, from a file that has no STORY_LINE_SETTING, and never written.
+constexpr std::string_view OLD_STORY_LINE_SETTING = "next_story_line";
 
 /// Sets one setting from text, the way the file and the controls of the settings screen
 /// write it:
@@ -115,11 +123,17 @@ constexpr std::string_view NEXT_STORY_LINE_SETTING = "next_story_line";
 ///     window_size         width and height with an x between them, "1280x720"
 ///     difficulty          "easy", "normal" or "hard"
 ///     master_volume       a number from 0 to 100, "80" (rounded to a whole number)
-///     next_story_line     a whole number, "5" (rounded; a number past the last story
+///     story_line          a whole number, "5" (rounded; a number past the last story
 ///                         line is wrapped round to the start of the table)
+///     calm_night          "on" or "off"
+///     next_story_line     the story line counter of a file written before the story had
+///                         its lines about the shadow: a place in the shorter table of
+///                         that time, moved to the same line in the table of today
+///                         (game::storyLineFromOldTable)
 ///
-/// A number outside its limits is brought to the nearest limit (next_story_line: wrapped). Returns
-/// false, and changes nothing, when the name is not a setting or the value cannot be read.
+/// A number outside its limits is brought to the nearest limit (the two story line
+/// counters: wrapped). Returns false, and changes nothing, when the name is not a setting
+/// or the value cannot be read.
 bool applySetting(GameSettings& settings, std::string_view name, std::string_view value);
 
 /// Reads the text of a settings file: one "name = value" per line, with any spaces
@@ -127,6 +141,10 @@ bool applySetting(GameSettings& settings, std::string_view name, std::string_vie
 /// line that cannot be read (an unknown name, a broken value, no = sign): the setting
 /// keeps its default, and a file written by a newer version of the game still loads.
 /// When a name appears twice the last line wins. An empty text gives the defaults.
+///
+/// The old story line counter (next_story_line) is used only when the file has no
+/// story_line at all, wherever the two lines stand: a file of the version before is
+/// carried over once, and after that the new name is the only one that counts.
 ///
 /// The text may come from any editor: a byte order mark at its start and the \r of
 /// Windows line ends are ignored.

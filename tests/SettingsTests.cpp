@@ -80,23 +80,89 @@ TEST_CASE("a file of game 0.10, without the story line, starts the story at line
 
 TEST_CASE("the story line counter is a number that goes round the table") {
     const int lines = game::flavourLineCount();
-    CHECK(game::parseSettings("next_story_line = 7\n").nextStoryLine == 7);
-    CHECK(game::parseSettings("next_story_line = " + std::to_string(lines - 1)).nextStoryLine ==
+    REQUIRE(lines == 24);
+    CHECK(game::parseSettings("story_line = 7\n").nextStoryLine == 7);
+    CHECK(game::parseSettings("story_line = 12\n").nextStoryLine == 12);
+    CHECK(game::parseSettings("story_line = " + std::to_string(lines - 1)).nextStoryLine ==
           lines - 1);
     // Past the end: wrapped, not clamped.
-    CHECK(game::parseSettings("next_story_line = " + std::to_string(lines)).nextStoryLine == 0);
-    CHECK(game::parseSettings("next_story_line = " + std::to_string(lines + 3)).nextStoryLine == 3);
-    CHECK(game::parseSettings("next_story_line = 99999999999\n").nextStoryLine < lines);
+    CHECK(game::parseSettings("story_line = " + std::to_string(lines)).nextStoryLine == 0);
+    CHECK(game::parseSettings("story_line = " + std::to_string(lines + 3)).nextStoryLine == 3);
+    CHECK(game::parseSettings("story_line = 99999999999\n").nextStoryLine < lines);
     // Not a number (a minus sign included): the counter stays at 0 and the rest still loads.
-    const GameSettings broken = game::parseSettings("next_story_line = soon\n"
-                                                    "next_story_line = -4\n"
+    const GameSettings broken = game::parseSettings("story_line = soon\n"
+                                                    "story_line = -4\n"
                                                     "fullscreen = on\n");
     CHECK(broken.nextStoryLine == 0);
     CHECK(broken.fullscreen);
 
     GameSettings settings;
+    CHECK_FALSE(game::applySetting(settings, "story_line", "x"));
+    CHECK(settings.nextStoryLine == 0);
+}
+
+TEST_CASE("a file of game 0.11 keeps its place in the story: the old counter is carried over") {
+    // The old table had 16 lines: the 24 of today without the eight about the shadow,
+    // which stand at the places 9 to 16. So the old places 0 to 8 stay, and 9 to 15
+    // become 17 to 23.
+    for (int old = 0; old <= 8; ++old) {
+        CAPTURE(old);
+        CHECK(game::parseSettings("next_story_line = " + std::to_string(old)).nextStoryLine == old);
+    }
+    for (int old = 9; old <= 15; ++old) {
+        CAPTURE(old);
+        CHECK(game::parseSettings("next_story_line = " + std::to_string(old)).nextStoryLine ==
+              old + 8);
+    }
+    // The line itself is the same one before and after.
+    CHECK(game::flavourLine(game::parseSettings("next_story_line = 9\n").nextStoryLine) ==
+          "Puddles hold stars. Stars are no use. Walk on.");
+    CHECK(game::flavourLine(game::parseSettings("next_story_line = 15\n").nextStoryLine) ==
+          "One lamp is enough, if it is the one still lit.");
+
+    // A hand written number past the old table goes round the OLD table first.
+    CHECK(game::parseSettings("next_story_line = 16\n").nextStoryLine == 0);
+    CHECK(game::parseSettings("next_story_line = 25\n").nextStoryLine == 17);
+    // Broken: nothing changes.
+    CHECK(game::parseSettings("next_story_line = soon\n").nextStoryLine == 0);
+    GameSettings settings;
     CHECK_FALSE(game::applySetting(settings, "next_story_line", "x"));
     CHECK(settings.nextStoryLine == 0);
+}
+
+TEST_CASE("the new story counter wins over the old one, wherever the two lines stand") {
+    CHECK(game::parseSettings("next_story_line = 12\nstory_line = 5\n").nextStoryLine == 5);
+    CHECK(game::parseSettings("story_line = 5\nnext_story_line = 12\n").nextStoryLine == 5);
+    // A new counter of 0 is a counter too.
+    CHECK(game::parseSettings("story_line = 0\nnext_story_line = 12\n").nextStoryLine == 0);
+    // A new counter that cannot be read is no counter: the old one is carried over.
+    CHECK(game::parseSettings("story_line = soon\nnext_story_line = 12\n").nextStoryLine == 20);
+}
+
+TEST_CASE("only the new story counter is written, so the old one is carried over once") {
+    const GameSettings old = game::parseSettings("next_story_line = 12\n");
+    REQUIRE(old.nextStoryLine == 20);
+    const std::string written = game::formatSettings(old);
+    CHECK(written.find("story_line = 20\n") != std::string::npos);
+    CHECK(written.find("next_story_line") == std::string::npos);
+    // Read again, the number is taken as it is and not moved a second time.
+    CHECK(game::parseSettings(written).nextStoryLine == 20);
+}
+
+TEST_CASE("calm night is a switch that is off unless the file says on") {
+    CHECK_FALSE(GameSettings{}.calmNight);
+    CHECK(game::parseSettings("calm_night = on\n").calmNight);
+    CHECK_FALSE(game::parseSettings("calm_night = off\n").calmNight);
+    CHECK_FALSE(game::parseSettings("calm_night = yes\n").calmNight);
+    // It is its own setting: the difficulty stays whatever it is.
+    const GameSettings settings = game::parseSettings("difficulty = hard\ncalm_night = on\n");
+    CHECK(settings.calmNight);
+    CHECK(settings.difficulty == game::Difficulty::Hard);
+
+    GameSettings written;
+    written.calmNight = true;
+    CHECK(game::formatSettings(written).find("calm_night = on\n") != std::string::npos);
+    CHECK(game::parseSettings(game::formatSettings(written)).calmNight);
 }
 
 TEST_CASE("what is written is read back the same") {
@@ -107,7 +173,8 @@ TEST_CASE("what is written is read back the same") {
     settings.windowSize = {.width = 2560, .height = 1440};
     settings.difficulty = game::Difficulty::Easy;
     settings.masterVolume = 42.0F;
-    settings.nextStoryLine = 11;
+    settings.nextStoryLine = 21;
+    settings.calmNight = true;
 
     const GameSettings readBack = game::parseSettings(game::formatSettings(settings));
     CHECK(readBack.mouseSensitivity == doctest::Approx(7.3F));
@@ -116,7 +183,8 @@ TEST_CASE("what is written is read back the same") {
     CHECK(readBack.windowSize == settings.windowSize);
     CHECK(readBack.difficulty == game::Difficulty::Easy);
     CHECK(readBack.masterVolume == 42.0F);
-    CHECK(readBack.nextStoryLine == 11);
+    CHECK(readBack.nextStoryLine == 21);
+    CHECK(readBack.calmNight);
 
     // The defaults too, and exactly: writing them twice gives the same text.
     const std::string defaults = game::formatSettings(GameSettings{});
@@ -134,7 +202,8 @@ TEST_CASE("the file is plain text a person can read and edit") {
           "window_size = 1280x720\n"
           "difficulty = normal\n"
           "master_volume = 100\n"
-          "next_story_line = 0\n");
+          "story_line = 0\n"
+          "calm_night = off\n");
 }
 
 TEST_CASE("spaces, Windows line ends and a byte order mark do not matter") {

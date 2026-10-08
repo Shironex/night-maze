@@ -163,7 +163,7 @@ bool applySetting(GameSettings& settings, std::string_view name, std::string_vie
             std::clamp(std::round(number), MIN_MASTER_VOLUME, MAX_MASTER_VOLUME);
         return true;
     }
-    if (name == NEXT_STORY_LINE_SETTING) {
+    if (name == STORY_LINE_SETTING) {
         float number = 0.0F;
         if (!parseNumber(value, number)) {
             return false;
@@ -175,6 +175,25 @@ bool applySetting(GameSettings& settings, std::string_view name, std::string_vie
             static_cast<int>(std::fmod(std::round(number), static_cast<float>(flavourLineCount())));
         return true;
     }
+    if (name == OLD_STORY_LINE_SETTING) {
+        float number = 0.0F;
+        if (!parseNumber(value, number)) {
+            return false;
+        }
+        // The same, in the shorter table the number was counted in, and then to the
+        // place that line has today.
+        const auto oldLine = static_cast<int>(
+            std::fmod(std::round(number), static_cast<float>(oldStoryLineCount())));
+        settings.nextStoryLine = storyLineFromOldTable(oldLine);
+        return true;
+    }
+    if (name == CALM_NIGHT_SETTING) {
+        if (value != ON_VALUE && value != OFF_VALUE) {
+            return false;
+        }
+        settings.calmNight = value == ON_VALUE;
+        return true;
+    }
     return false;
 }
 
@@ -183,6 +202,12 @@ GameSettings parseSettings(std::string_view text) {
     if (text.starts_with(BYTE_ORDER_MARK)) {
         text.remove_prefix(BYTE_ORDER_MARK.size());
     }
+
+    // The old story line counter is not applied where it stands: it counts only when the
+    // file has no new one, so it is kept until every line was read.
+    std::string_view oldStoryLine;
+    bool hasOldStoryLine = false;
+    bool hasStoryLine = false;
 
     // Line after line: the text up to the next line end, then the rest.
     while (!text.empty()) {
@@ -198,8 +223,19 @@ GameSettings parseSettings(std::string_view text) {
         if (sign == std::string_view::npos) {
             continue;
         }
+        const std::string_view name = trimmed(line.substr(0, sign));
+        const std::string_view value = trimmed(line.substr(sign + 1));
+        if (name == OLD_STORY_LINE_SETTING) {
+            oldStoryLine = value;
+            hasOldStoryLine = true;
+            continue;
+        }
         // A line that cannot be read changes nothing: applySetting returns false.
-        applySetting(settings, trimmed(line.substr(0, sign)), trimmed(line.substr(sign + 1)));
+        const bool applied = applySetting(settings, name, value);
+        hasStoryLine = hasStoryLine || (applied && name == STORY_LINE_SETTING);
+    }
+    if (hasOldStoryLine && !hasStoryLine) {
+        applySetting(settings, OLD_STORY_LINE_SETTING, oldStoryLine);
     }
     return settings;
 }
@@ -216,7 +252,8 @@ std::string formatSettings(const GameSettings& settings) {
     text += settingLine(WINDOW_SIZE_SETTING, windowSizeValue(settings.windowSize));
     text += settingLine(DIFFICULTY_SETTING, difficultyLevel(settings.difficulty).key);
     text += settingLine(MASTER_VOLUME_SETTING, masterVolumeLabel(settings.masterVolume));
-    text += settingLine(NEXT_STORY_LINE_SETTING, std::to_string(settings.nextStoryLine));
+    text += settingLine(STORY_LINE_SETTING, std::to_string(settings.nextStoryLine));
+    text += settingLine(CALM_NIGHT_SETTING, std::string(settings.calmNight ? ON_VALUE : OFF_VALUE));
     return text;
 }
 
