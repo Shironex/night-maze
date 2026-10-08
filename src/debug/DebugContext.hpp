@@ -215,6 +215,14 @@ struct DebugContext {
     /// The master volume of the settings, 0 to 100. A plain value, copied when the
     /// context is built: the Diagnostics category only shows it.
     float masterVolume;
+    /// The effects volume and the ambient volume of the settings, 0 to 100, and how
+    /// loud the last cue was played, 0 to 1. Plain values, like the ones above.
+    float effectsVolume;
+    float ambientVolume;
+    float lastCueVolume;
+    /// The request to hear the wind of the maze for a few seconds, editable: the
+    /// Diagnostics category sets it to true (NightMazeApp::windSampleRequest).
+    bool& sampleWind;
     /// The request to play the intro again, editable: the Gameplay category sets it to
     /// true and the game starts the intro at the start of its next frame
     /// (NightMazeApp::introRequest).

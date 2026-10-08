@@ -62,19 +62,33 @@ void drawFrame(Page& page, const DebugContext& context) {
     page.endCard();
 }
 
-// The sound device, the last sound cue and the master volume, all read only.
+// The sound device, the last sound cue, the loops and the three volumes, all read only,
+// and a button that lets the wind of the maze be heard.
 void drawAudio(Page& page, const DebugContext& context) {
     page.beginCard("Audio");
     // The device with its format and the number of loaded sounds, or why there is no
     // sound (audio::AudioEngine::status).
     page.stat("Device", "%s", context.audio.status().c_str());
-    page.stat("Last cue", "%s", context.lastCueName);
+    // The last cue with the volume of that play: 1 is the file as it is.
+    page.stat("Last cue", "%s (volume %.2f)", context.lastCueName, context.lastCueVolume);
     page.stat("Cues played", "%d", context.cuesPlayed);
-    // The volume is a setting of the player (game/Settings.hpp): it is changed on the
-    // settings screen, which also saves it, and only shown here. The second number is
-    // what the engine was given for it (game::masterVolumeGain).
+    // The loops that are switched on. The game has one, the wind of the maze. A loop
+    // that was just switched off still fades out and is not counted any more.
+    page.stat("Loops on", "%d", static_cast<int>(context.audio.loopCount()));
+    // The volumes are settings of the player (game/Settings.hpp): they are changed on
+    // the settings screen, which also saves them, and only shown here. The second
+    // number is what the engine was given for each (game::masterVolumeGain).
     page.stat("Master volume", "%.0f of 100 (gain %.2f), set on the settings screen",
               context.masterVolume, context.audio.masterVolume());
+    page.stat("Effects volume", "%.0f of 100 (gain %.2f)", context.effectsVolume,
+              context.audio.groupVolume(audio::SoundGroup::Effects));
+    page.stat("Ambient volume", "%.0f of 100 (gain %.2f)", context.ambientVolume,
+              context.audio.groupVolume(audio::SoundGroup::Ambient));
+    if (page.buttons("Wind", "Play the wind", nullptr,
+                     "Lets the wind of the maze be heard for five seconds, on any screen "
+                     "but the intro. In a round it is heard anyway.") == 1) {
+        context.sampleWind = true;
+    }
     page.endCard();
 }
 

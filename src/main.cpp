@@ -125,6 +125,10 @@ protected:
             .lastCueName = lastCueName(),
             .cuesPlayed = cuesPlayed(),
             .masterVolume = masterVolumeSetting(),
+            .effectsVolume = effectsVolumeSetting(),
+            .ambientVolume = ambientVolumeSetting(),
+            .lastCueVolume = lastCueVolume(),
+            .sampleWind = windSampleRequest(),
             .playIntro = introRequest(),
         });
 
