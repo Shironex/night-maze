@@ -403,6 +403,36 @@ Noise playerNoise(const NoiseSources& sources, const ShadeSettings& settings);
 /// (Shade::wayMetres): the noise carries at least that far.
 bool shadeHears(float wayMetres, Noise noise, const ShadeSettings& settings);
 
+/// How many ticks the loudness mark of the HUD has.
+constexpr int NOISE_TICK_COUNT = 3;
+
+/// How loud a noise is on the HUD, in ticks from 0 to NOISE_TICK_COUNT, for a noise that
+/// carries reachMetres (noiseReach). It is a part of how far the loudest noise carries
+/// (ShadeSettings::hearSprintMetres), rounded: with the numbers of the settings a walk is
+/// one tick, a pickup and a lever are two and a sprint is three. No noise is no tick, and
+/// a noise the shade can hear at all is at least one. The HUD draws nothing else than
+/// this, so what the player reads is what the shade hears.
+int noiseTicks(float reachMetres, const ShadeSettings& settings);
+
+/// How long the HUD keeps showing a pickup or a lever, in seconds. Such a noise lasts one
+/// fixed step, a 120th of a second: without this time nobody would see it.
+constexpr float NOISE_FLASH_SECONDS = 0.5F;
+
+/// The noise the HUD shows: the one of the last step, or a pickup or a lever of a moment
+/// ago that is still held (NOISE_FLASH_SECONDS).
+struct NoiseMeter {
+    Noise noise = Noise::None;
+    /// Seconds the noise above is still held. 0 for a noise that is not held.
+    float holdLeft = 0.0F;
+};
+
+/// Advances the meter by one fixed step in which the player made noise, the very value
+/// the shade is given for that step. A noise that carries at least as far as the one
+/// shown takes its place at once. A quieter one waits until the time of a held pickup or
+/// lever is over. A walk and a sprint are never held: they show for as long as they last.
+void advanceNoiseMeter(NoiseMeter& meter, Noise noise, const ShadeSettings& settings,
+                       float stepSeconds);
+
 /// True when somebody at shadeFeet sees somebody at playerFeet: the two are in the same
 /// cell, or in the same row or column of the maze with no wall on the straight line of
 /// cells between them, and not farther apart than rangeMetres on the ground. It is the

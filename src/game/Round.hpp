@@ -149,8 +149,16 @@ struct Round {
     /// GATE_OPEN_SECONDS after the gate opens.
     float gateProgress = 0.0F;
 
+    /// Seconds of play since the gate opened: the HUD shows its sentence about the gate
+    /// for the first few of them. 0 while the gate is closed.
+    float gateOpenSeconds = 0.0F;
+
     /// Charge of the flashlight battery: 1 is full, 0 is empty.
     float battery = 1.0F;
+
+    /// Seconds of play since the battery ran empty, for the sentence of the HUD about
+    /// it. 0 while there is charge: a crystal that charges the battery starts it anew.
+    float batteryEmptySeconds = 0.0F;
 
     /// The time of the round in seconds: it counts while the round is played and stops
     /// when it is won. This is the time shown on the screen.
@@ -196,6 +204,10 @@ struct Round {
     /// line is taken away after CAUGHT_LINE_SECONDS.
     int caughtLine = NO_CAUGHT_LINE;
     float caughtSeconds = 0.0F;
+
+    /// How loud the player is, for the HUD (game::noiseTicks). updateRoundShade feeds it
+    /// the noise it hands to the shade, so the two cannot disagree.
+    NoiseMeter noiseMeter;
 };
 
 /// How many of total crystals open the gate: fraction of them, rounded up, at least 1
@@ -246,7 +258,9 @@ scene::Sphere playerReach(const glm::vec3& feetPosition);
 ///   - the gate opens when enough crystals are collected,
 ///   - the round is won when the player is inside the exit zone with the gate open,
 ///   - the seconds of a caught line count, and the line is taken away when its time is
-///     over (showCaughtLine).
+///     over (showCaughtLine),
+///   - the seconds since the gate opened and since the battery ran empty count
+///     (Round::gateOpenSeconds, Round::batteryEmptySeconds).
 ///
 /// The shade is not moved here: it needs the flashlight of the step, so it has a call of
 /// its own that follows this one (updateRoundShade).
@@ -271,7 +285,9 @@ ShadeLamp roundShadeLamp(const LightingSettings& settings, const Round& round,
 /// what happened in it: a catch, the moment it noticed the player, a banish. Call it
 /// after updateRound, with the same position of the feet. lamp is the flashlight of the
 /// step (roundShadeLamp), obstacles what blocks its light (roundObstacles) and noise
-/// what the player did in the step that can be heard (game::playerNoise).
+/// what the player did in the step that can be heard (game::playerNoise). The same noise
+/// goes to the loudness mark of the HUD (Round::noiseMeter), in a round with a shade and
+/// in one without.
 ///
 /// The shade walks through the maze of the ROUND (roundMaze), so a wall that a lever
 /// has opened is a way for it too. It only moves while the round is being played: after

@@ -1878,3 +1878,117 @@ TEST_CASE("a player who starts on the very spot of the shade has the grace time 
     }
     CHECK(caught);
 }
+
+TEST_CASE("the loudness mark shows what the shade hears: one tick for a walk, three for a sprint") {
+    const game::ShadeSettings settings;
+    const auto ticksOf = [&settings](game::Noise noise) {
+        return game::noiseTicks(game::noiseReach(noise, settings), settings);
+    };
+    CHECK(ticksOf(game::Noise::None) == 0);
+    CHECK(ticksOf(game::Noise::Walk) == 1);
+    CHECK(ticksOf(game::Noise::Pickup) == 2);
+    CHECK(ticksOf(game::Noise::Lever) == 2);
+    CHECK(ticksOf(game::Noise::Sprint) == game::NOISE_TICK_COUNT);
+}
+
+TEST_CASE("the ticks follow the hearing distances of the settings") {
+    // A shade that hears a walk as far as a sprint: both are as loud as it gets.
+    game::ShadeSettings keen;
+    keen.hearWalkMetres = keen.hearSprintMetres;
+    CHECK(game::noiseTicks(game::noiseReach(game::Noise::Walk, keen), keen) ==
+          game::NOISE_TICK_COUNT);
+
+    // A noise that carries a hand's breadth is still a noise: never 0 ticks.
+    CHECK(game::noiseTicks(0.1F, game::ShadeSettings{}) == 1);
+    // Farther than a sprint carries is not louder than the loudest.
+    CHECK(game::noiseTicks(1000.0F, game::ShadeSettings{}) == game::NOISE_TICK_COUNT);
+    CHECK(game::noiseTicks(-1.0F, game::ShadeSettings{}) == 0);
+
+    // A deaf shade hears nothing, so nothing is shown.
+    game::ShadeSettings deaf;
+    deaf.hearWalkMetres = 0.0F;
+    deaf.hearPickupMetres = 0.0F;
+    deaf.hearLeverMetres = 0.0F;
+    deaf.hearSprintMetres = 0.0F;
+    for (const game::Noise noise : {game::Noise::None, game::Noise::Walk, game::Noise::Pickup,
+                                    game::Noise::Lever, game::Noise::Sprint}) {
+        CHECK(game::noiseTicks(game::noiseReach(noise, deaf), deaf) == 0);
+    }
+    // Only the sprint switched off: what is still heard has no scale, and counts as loud.
+    game::ShadeSettings noSprint;
+    noSprint.hearSprintMetres = 0.0F;
+    CHECK(game::noiseTicks(game::noiseReach(game::Noise::Walk, noSprint), noSprint) ==
+          game::NOISE_TICK_COUNT);
+}
+
+TEST_CASE("the noise meter shows a walk and a sprint only for as long as they last") {
+    const game::ShadeSettings settings;
+    game::NoiseMeter meter;
+    CHECK(meter.noise == game::Noise::None);
+
+    game::advanceNoiseMeter(meter, game::Noise::Walk, settings, STEP);
+    CHECK(meter.noise == game::Noise::Walk);
+    game::advanceNoiseMeter(meter, game::Noise::Sprint, settings, STEP);
+    CHECK(meter.noise == game::Noise::Sprint);
+    // The player stops: silent in the very next step.
+    game::advanceNoiseMeter(meter, game::Noise::None, settings, STEP);
+    CHECK(meter.noise == game::Noise::None);
+    CHECK(meter.holdLeft == 0.0F);
+}
+
+TEST_CASE("the noise meter holds a pickup and a lever for a moment") {
+    const game::ShadeSettings settings;
+    for (const game::Noise flash : {game::Noise::Pickup, game::Noise::Lever}) {
+        game::NoiseMeter meter;
+        // One step of the noise, then the player walks on.
+        game::advanceNoiseMeter(meter, flash, settings, STEP);
+        CHECK(meter.noise == flash);
+        const int held = static_cast<int>(game::NOISE_FLASH_SECONDS * STEPS_PER_SECOND);
+        for (int i = 0; i < held - 1; ++i) {
+            game::advanceNoiseMeter(meter, game::Noise::Walk, settings, STEP);
+            CHECK(meter.noise == flash);
+        }
+        // The time is over: back to what the player does now.
+        for (int i = 0; i < 2; ++i) {
+            game::advanceNoiseMeter(meter, game::Noise::Walk, settings, STEP);
+        }
+        CHECK(meter.noise == game::Noise::Walk);
+    }
+}
+
+TEST_CASE("a louder noise takes the place of a held one at once") {
+    const game::ShadeSettings settings;
+    game::NoiseMeter meter;
+    game::advanceNoiseMeter(meter, game::Noise::Pickup, settings, STEP);
+    game::advanceNoiseMeter(meter, game::Noise::Sprint, settings, STEP);
+    CHECK(meter.noise == game::Noise::Sprint);
+    // And a sprint is not held: the player stops, the meter is silent.
+    game::advanceNoiseMeter(meter, game::Noise::None, settings, STEP);
+    CHECK(meter.noise == game::Noise::None);
+}
+
+TEST_CASE("the round shows on its meter the noise it hands to the shade") {
+    const game::MazeWorld world = worldOf(game::Difficulty::Normal, 3U);
+    const game::GameplaySettings gameplay;
+    game::Round round = game::startRound(world, gameplay);
+    REQUIRE(round.shade.present);
+    const std::vector<scene::Aabb> obstacles = game::roundObstacles(world, round);
+    CHECK(round.noiseMeter.noise == game::Noise::None);
+
+    game::updateRoundShade(round, world, gameplay, world.startPosition, {}, obstacles, STEP,
+                           game::Noise::Sprint);
+    CHECK(round.noiseMeter.noise == game::Noise::Sprint);
+    game::updateRoundShade(round, world, gameplay, world.startPosition, {}, obstacles, STEP,
+                           game::Noise::Walk);
+    CHECK(round.noiseMeter.noise == game::Noise::Walk);
+    game::updateRoundShade(round, world, gameplay, world.startPosition, {}, obstacles, STEP);
+    CHECK(round.noiseMeter.noise == game::Noise::None);
+
+    // A round that is won is silent, whatever the player still does.
+    game::updateRoundShade(round, world, gameplay, world.startPosition, {}, obstacles, STEP,
+                           game::Noise::Sprint);
+    round.state = game::RoundState::Won;
+    game::updateRoundShade(round, world, gameplay, world.startPosition, {}, obstacles, STEP,
+                           game::Noise::Sprint);
+    CHECK(round.noiseMeter.noise == game::Noise::None);
+}

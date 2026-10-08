@@ -203,6 +203,13 @@ void updateRound(Round& round, const MazeWorld& world, const GameplaySettings& s
     // the moment of the win.
     if (round.state == RoundState::Playing) {
         round.elapsedSeconds += stepSeconds;
+        // The clocks of two sentences of the HUD. They run before the rules below, so
+        // the step that opens the gate or empties the battery leaves them at 0.
+        if (round.gateOpen) {
+            round.gateOpenSeconds += stepSeconds;
+        }
+        round.batteryEmptySeconds =
+            round.battery <= 0.0F ? round.batteryEmptySeconds + stepSeconds : 0.0F;
         drainBattery(round, settings, flashlightOn, stepSeconds);
 
         // The caught line stays for a few seconds of play, then it is gone.
@@ -258,8 +265,11 @@ ShadeEvents updateRoundShade(Round& round, const MazeWorld& world, const Gamepla
                              std::span<const scene::Aabb> obstacles, float stepSeconds,
                              Noise noise) {
     if (round.state != RoundState::Playing) {
+        // A round that is over has no noise that matters.
+        round.noiseMeter = {};
         return {};
     }
+    advanceNoiseMeter(round.noiseMeter, noise, settings.shade, stepSeconds);
     const ShadeStep step{.playerFeet = feetPosition,
                          .lamp = lamp,
                          .obstacles = obstacles,

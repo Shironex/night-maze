@@ -439,6 +439,33 @@ bool shadeHears(float wayMetres, Noise noise, const ShadeSettings& settings) {
     return noise != Noise::None && wayMetres <= noiseReach(noise, settings);
 }
 
+int noiseTicks(float reachMetres, const ShadeSettings& settings) {
+    if (reachMetres <= 0.0F) {
+        return 0;
+    }
+    // Settings in which a sprint carries nowhere have no scale to measure against:
+    // whatever is heard then counts as the loudest.
+    if (settings.hearSprintMetres <= 0.0F) {
+        return NOISE_TICK_COUNT;
+    }
+    const float part = reachMetres / settings.hearSprintMetres;
+    // lround rounds to the nearest whole number: 1.3 becomes 1 and 1.7 becomes 2.
+    const int ticks = static_cast<int>(std::lround(part * static_cast<float>(NOISE_TICK_COUNT)));
+    return std::clamp(ticks, 1, NOISE_TICK_COUNT);
+}
+
+void advanceNoiseMeter(NoiseMeter& meter, Noise noise, const ShadeSettings& settings,
+                       float stepSeconds) {
+    meter.holdLeft = std::max(meter.holdLeft - stepSeconds, 0.0F);
+    const bool louder = noiseReach(noise, settings) >= noiseReach(meter.noise, settings);
+    if (!louder && meter.holdLeft > 0.0F) {
+        return;
+    }
+    meter.noise = noise;
+    const bool oneStep = noise == Noise::Pickup || noise == Noise::Lever;
+    meter.holdLeft = oneStep ? NOISE_FLASH_SECONDS : 0.0F;
+}
+
 bool shadeSees(const Maze& maze, const glm::vec3& shadeFeet, const glm::vec3& playerFeet,
                float rangeMetres) {
     const MazeCell from = cellAt(shadeFeet);

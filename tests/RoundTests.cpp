@@ -614,3 +614,50 @@ TEST_CASE("a large maze has more crystals than lights, and a frame takes the nea
         game::buildLightSet(game::LightingSettings{}, game::FlashlightPose{}, chosen);
     CHECK(lights.pointCount == scene::MAX_POINT_LIGHTS);
 }
+
+TEST_CASE("the round counts the seconds since the gate opened") {
+    const game::MazeWorld world = goldenWorld();
+    game::GameplaySettings settings;
+    // Every crystal is needed, so the gate opens with the last one.
+    settings.requiredFraction = 1.0F;
+    game::Round round = game::startRound(world, settings);
+    bool flashlightOn = false;
+
+    // A closed gate: the clock stands at 0, however long the round is played.
+    runSteps(round, world, settings, NOWHERE, flashlightOn, 240);
+    CHECK_FALSE(round.gateOpen);
+    CHECK(round.gateOpenSeconds == 0.0F);
+
+    // The step that opens it leaves the clock at 0: the sentence starts from there.
+    collectAll(round, world, settings, flashlightOn);
+    REQUIRE(round.gateOpen);
+    CHECK(round.gateOpenSeconds == 0.0F);
+
+    // Two seconds later.
+    runSteps(round, world, settings, NOWHERE, flashlightOn, 240);
+    CHECK(round.gateOpenSeconds == doctest::Approx(2.0F).epsilon(0.001));
+}
+
+TEST_CASE("the round counts the seconds since the battery ran empty, until it is charged") {
+    const game::MazeWorld world = goldenWorld();
+    game::GameplaySettings settings;
+    settings.batteryLifetimeSeconds = 2.0F;
+    game::Round round = game::startRound(world, settings);
+    bool flashlightOn = true;
+
+    // One second: half a battery left, nothing to count.
+    runSteps(round, world, settings, NOWHERE, flashlightOn, 120);
+    CHECK(round.battery > 0.0F);
+    CHECK(round.batteryEmptySeconds == 0.0F);
+
+    // Three more seconds: it ran empty after one of them.
+    runSteps(round, world, settings, NOWHERE, flashlightOn, 360);
+    REQUIRE(round.battery == 0.0F);
+    CHECK(round.batteryEmptySeconds == doctest::Approx(2.0F).epsilon(0.02));
+
+    // A crystal charges the battery: the clock goes back to 0 and stays there.
+    game::updateRound(round, world, settings, feetUnder(round.crystals[0]), flashlightOn, STEP);
+    REQUIRE(round.battery > 0.0F);
+    runSteps(round, world, settings, NOWHERE, flashlightOn, 10);
+    CHECK(round.batteryEmptySeconds == 0.0F);
+}
