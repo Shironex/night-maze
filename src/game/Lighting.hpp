@@ -198,8 +198,20 @@ FlashlightPose flashlightPose(const LightingSettings& settings, const glm::vec3&
 /// One point light of a frame: where it hangs and how much of its brightness it has.
 struct PointLightSpot {
     glm::vec3 position{0.0F};
-    /// From 0 (dark) to 1 (the full intensity of the settings).
+    /// From 0 (dark) to 1 (its full intensity).
     float strength = 1.0F;
+
+    /// False for the light of a crystal: its colour, its radius and its intensity are
+    /// the ones of the settings (pointColor, pointRadius, pointIntensity), shared by all
+    /// crystals. True for a light with a look of its own, the lamp of the gate
+    /// (game::gateLampLight): it has the three fields below.
+    bool ownLook = false;
+    /// The colour as an sRGB value, like the colours of the settings.
+    glm::vec3 color{1.0F};
+    /// How far the light reaches, in metres (scene::attenuationForRadius).
+    float radius = 0.0F;
+    /// The intensity at strength 1.
+    float intensity = 1.0F;
 };
 
 /// Over this many metres a point light fades out before it leaves the set of lights of
@@ -228,6 +240,17 @@ std::vector<PointLightSpot> nearestPointLights(std::span<const glm::vec3> positi
                                                const glm::vec3& eye,
                                                int maxCount = scene::MAX_POINT_LIGHTS);
 
+/// The same choice among lights that are already spots: crystal lights and lights with
+/// a look of their own in one list, so the lamp of the gate takes one of the places only
+/// while it is among the nearest. Every chosen spot comes back as it went in, with its
+/// strength multiplied by the fade at the edge of the set.
+///
+/// It has a name of its own and is not a second nearestPointLights: called with an empty
+/// list written as {}, the compiler could not tell the two apart.
+std::vector<PointLightSpot> nearestPointLightSpots(std::span<const PointLightSpot> lights,
+                                                   const glm::vec3& eye,
+                                                   int maxCount = scene::MAX_POINT_LIGHTS);
+
 /// The lights of one frame, with their colours converted from sRGB to linear.
 ///
 /// flashlight is where the spot light stands and where it points in this frame
@@ -236,7 +259,9 @@ std::vector<PointLightSpot> nearestPointLights(std::span<const glm::vec3> positi
 /// pointLights are the point lights: the ones above the crystals nearest to the eye
 /// (game::crystalLightPositions, then nearestPointLights). The function does not know
 /// where they come from. Each one gets the intensity of the settings times its
-/// strength. Lights past scene::MAX_POINT_LIGHTS are ignored.
+/// strength, with the colour and the radius of the settings. A spot with a look of its
+/// own (PointLightSpot::ownLook) keeps its colour, its radius and its intensity. Lights
+/// past scene::MAX_POINT_LIGHTS are ignored.
 scene::LightSet buildLightSet(const LightingSettings& settings, const FlashlightPose& flashlight,
                               std::span<const PointLightSpot> pointLights);
 

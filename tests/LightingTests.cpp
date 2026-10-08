@@ -397,3 +397,129 @@ TEST_CASE("buildLightSet converts the colours from sRGB to linear and leaves the
     REQUIRE(lights.pointCount == 1);
     checkVector(lights.points[0].color, glm::vec3{0.0F});
 }
+
+TEST_CASE("a spot with a look of its own keeps its colour, radius and intensity") {
+    game::LightingSettings settings;
+    settings.pointColor = {0.1F, 0.8F, 0.9F};
+    settings.pointIntensity = 1.5F;
+    settings.pointRadius = 4.0F;
+    // A crystal light, and the lamp of the gate at half of its strength.
+    const glm::vec3 amber{1.0F, 0.72F, 0.33F};
+    const std::vector<game::PointLightSpot> spots = {{.position = {1.0F, 1.4F, 7.0F}},
+                                                     {.position = {7.0F, 2.5F, 3.0F},
+                                                      .strength = 0.5F,
+                                                      .ownLook = true,
+                                                      .color = amber,
+                                                      .radius = 6.0F,
+                                                      .intensity = 2.0F}};
+
+    const scene::LightSet lights = game::buildLightSet(settings, ANY_POSE, spots);
+
+    REQUIRE(lights.pointCount == 2);
+    // The crystal light is exactly what it was before spots could have a look.
+    checkVector(lights.points[0].color, gfx::srgbToLinear(settings.pointColor));
+    CHECK(lights.points[0].intensity == 1.5F);
+    CHECK(scene::attenuationFactor(lights.points[0].attenuation, 4.0F) ==
+          doctest::Approx(scene::BRIGHTNESS_AT_RADIUS));
+    // The lamp: its own colour (converted like every colour), radius and intensity.
+    checkVector(lights.points[1].position, spots[1].position);
+    checkVector(lights.points[1].color, gfx::srgbToLinear(amber));
+    CHECK(lights.points[1].intensity == doctest::Approx(1.0F));
+    CHECK(scene::attenuationFactor(lights.points[1].attenuation, 6.0F) ==
+          doctest::Approx(scene::BRIGHTNESS_AT_RADIUS));
+}
+
+TEST_CASE("the pulse of the crystal lights does not reach a spot with its own look") {
+    // lightingForFrame dims pointIntensity with the pulse of the crystals. A lamp is not
+    // a crystal: whatever that number is, its light stays.
+    game::LightingSettings settings;
+    const std::vector<game::PointLightSpot> spots = {
+        {.position = {1.0F, 2.5F, 1.0F}, .ownLook = true, .radius = 6.0F, .intensity = 1.6F}};
+
+    settings.pointIntensity = 0.9F;
+    const float bright = game::buildLightSet(settings, ANY_POSE, spots).points[0].intensity;
+    settings.pointIntensity = 0.1F;
+    const float dim = game::buildLightSet(settings, ANY_POSE, spots).points[0].intensity;
+
+    CHECK(bright == 1.6F);
+    CHECK(dim == 1.6F);
+}
+
+TEST_CASE("a spot keeps its look and its own strength when the nearest ones are chosen") {
+    const glm::vec3 eye{0.0F, 1.7F, 0.0F};
+    // Three crystal lights and the lamp of the gate as the second nearest, burning at
+    // 0.3 of its strength.
+    const std::vector<game::PointLightSpot> lights = {
+        {.position = {2.0F, 1.7F, 0.0F}},
+        {.position = {20.0F, 1.7F, 0.0F}},
+        {.position = {4.0F, 1.7F, 0.0F},
+         .strength = 0.3F,
+         .ownLook = true,
+         .color = {1.0F, 0.72F, 0.33F},
+         .radius = 6.0F,
+         .intensity = 1.6F},
+        {.position = {30.0F, 1.7F, 0.0F}},
+    };
+
+    // Room for all: every spot comes back as it went in, nearest first.
+    std::vector<game::PointLightSpot> chosen = game::nearestPointLightSpots(lights, eye, 8);
+    REQUIRE(chosen.size() == 4);
+    CHECK(chosen[1].ownLook);
+    CHECK(chosen[1].strength == 0.3F);
+    CHECK(chosen[1].radius == 6.0F);
+    CHECK(chosen[1].intensity == 1.6F);
+    CHECK(chosen[1].color == glm::vec3{1.0F, 0.72F, 0.33F});
+    CHECK_FALSE(chosen[0].ownLook);
+    CHECK(chosen[0].strength == 1.0F);
+
+    // Room for two: the lamp is 16 m inside the edge (the light at 20 m is left out),
+    // so the fade is 1 and its own 0.3 is what is left.
+    chosen = game::nearestPointLightSpots(lights, eye, 2);
+    REQUIRE(chosen.size() == 2);
+    CHECK(chosen[1].ownLook);
+    CHECK(chosen[1].strength == doctest::Approx(0.3F));
+
+    // Room for one: the lamp is the first one left out. It takes no place at all.
+    chosen = game::nearestPointLightSpots(lights, eye, 1);
+    REQUIRE(chosen.size() == 1);
+    CHECK_FALSE(chosen[0].ownLook);
+}
+
+TEST_CASE("the lamp of the gate fades out of the set like a crystal light, from its own strength") {
+    const glm::vec3 eye{0.0F, 1.7F, 0.0F};
+    // The lamp 8 m away at strength 0.5, and one crystal light just behind it at 10 m:
+    // with room for one, the edge is at 10 m and the lamp is half way through the fade.
+    const std::vector<game::PointLightSpot> lights = {
+        {.position = {8.0F, 1.7F, 0.0F}, .strength = 0.5F, .ownLook = true, .radius = 6.0F},
+        {.position = {10.0F, 1.7F, 0.0F}},
+    };
+
+    const std::vector<game::PointLightSpot> chosen = game::nearestPointLightSpots(lights, eye, 1);
+
+    REQUIRE(chosen.size() == 1);
+    CHECK(chosen[0].ownLook);
+    CHECK(chosen[0].strength == doctest::Approx(0.5F * 2.0F / game::POINT_LIGHT_FADE_DISTANCE));
+}
+
+TEST_CASE("choosing among positions and among plain spots gives the same lights") {
+    const glm::vec3 eye{1.0F, 1.7F, 2.0F};
+    std::vector<glm::vec3> positions;
+    std::vector<game::PointLightSpot> spots;
+    for (int i = 0; i < 24; ++i) {
+        const glm::vec3 position{static_cast<float>(i * 7 % 23), 1.4F,
+                                 static_cast<float>(i * 5 % 19)};
+        positions.push_back(position);
+        spots.push_back({.position = position});
+    }
+
+    const std::vector<game::PointLightSpot> fromPositions =
+        game::nearestPointLights(positions, eye);
+    const std::vector<game::PointLightSpot> fromSpots = game::nearestPointLightSpots(spots, eye);
+
+    REQUIRE(fromPositions.size() == fromSpots.size());
+    for (std::size_t i = 0; i < fromPositions.size(); ++i) {
+        CHECK(fromPositions[i].position == fromSpots[i].position);
+        CHECK(fromPositions[i].strength == fromSpots[i].strength);
+        CHECK_FALSE(fromPositions[i].ownLook);
+    }
+}

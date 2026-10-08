@@ -56,6 +56,18 @@ FlashlightPose flashlightPose(const LightingSettings& settings, const glm::vec3&
 
 std::vector<PointLightSpot> nearestPointLights(std::span<const glm::vec3> positions,
                                                const glm::vec3& eye, int maxCount) {
+    // Every position becomes a spot of full strength with the look of the settings: the
+    // light of a crystal. The choice itself is the one for spots.
+    std::vector<PointLightSpot> lights;
+    lights.reserve(positions.size());
+    for (const glm::vec3& position : positions) {
+        lights.push_back({.position = position});
+    }
+    return nearestPointLightSpots(lights, eye, maxCount);
+}
+
+std::vector<PointLightSpot> nearestPointLightSpots(std::span<const PointLightSpot> lights,
+                                                   const glm::vec3& eye, int maxCount) {
     if (maxCount < 1) {
         return {};
     }
@@ -64,13 +76,13 @@ std::vector<PointLightSpot> nearestPointLights(std::span<const glm::vec3> positi
     // farthest. stable_sort keeps two lights at the same distance in the order they came
     // in, so the same input always gives the same result.
     struct Candidate {
-        glm::vec3 position;
+        PointLightSpot light;
         float distance;
     };
     std::vector<Candidate> candidates;
-    candidates.reserve(positions.size());
-    for (const glm::vec3& position : positions) {
-        candidates.push_back({.position = position, .distance = glm::distance(position, eye)});
+    candidates.reserve(lights.size());
+    for (const PointLightSpot& light : lights) {
+        candidates.push_back({.light = light, .distance = glm::distance(light.position, eye)});
     }
     std::ranges::stable_sort(
         candidates, [](const Candidate& a, const Candidate& b) { return a.distance < b.distance; });
@@ -84,13 +96,17 @@ std::vector<PointLightSpot> nearestPointLights(std::span<const glm::vec3> positi
     std::vector<PointLightSpot> chosen;
     chosen.reserve(std::min(candidates.size(), count));
     for (std::size_t i = 0; i < candidates.size() && i < count; ++i) {
-        float strength = 1.0F;
+        float fade = 1.0F;
         if (someLeftOut) {
             // 0 at the edge, 1 from POINT_LIGHT_FADE_DISTANCE inside of it.
-            strength =
+            fade =
                 std::clamp((edge - candidates[i].distance) / POINT_LIGHT_FADE_DISTANCE, 0.0F, 1.0F);
         }
-        chosen.push_back({.position = candidates[i].position, .strength = strength});
+        // The spot as it came in. Only its strength changes: a light that was already
+        // dim (the ember of the gate) fades from there.
+        PointLightSpot light = candidates[i].light;
+        light.strength *= fade;
+        chosen.push_back(light);
     }
     return chosen;
 }
@@ -126,17 +142,28 @@ scene::LightSet buildLightSet(const LightingSettings& settings, const Flashlight
     };
     lights.spotEnabled = settings.flashlightOn;
 
-    // All point lights share one colour and one radius. The place differs, and the
-    // intensity where a light is fading out of the set (nearestPointLights).
+    // The lights of the crystals share one colour and one radius. The place differs, and
+    // the intensity where a light is fading out of the set (nearestPointLights). A spot
+    // with a look of its own (the lamp of the gate) brings its three numbers with it.
     const scene::Attenuation pointAttenuation = scene::attenuationForRadius(settings.pointRadius);
     const glm::vec3 pointColor = gfx::srgbToLinear(settings.pointColor);
     const std::size_t pointCount =
         std::min(pointLights.size(), static_cast<std::size_t>(scene::MAX_POINT_LIGHTS));
     for (std::size_t i = 0; i < pointCount; ++i) {
+        const PointLightSpot& spot = pointLights[i];
+        if (spot.ownLook) {
+            lights.points[i] = {
+                .position = spot.position,
+                .color = gfx::srgbToLinear(spot.color),
+                .intensity = spot.intensity * spot.strength,
+                .attenuation = scene::attenuationForRadius(spot.radius),
+            };
+            continue;
+        }
         lights.points[i] = {
-            .position = pointLights[i].position,
+            .position = spot.position,
             .color = pointColor,
-            .intensity = settings.pointIntensity * pointLights[i].strength,
+            .intensity = settings.pointIntensity * spot.strength,
             .attenuation = pointAttenuation,
         };
     }
