@@ -27,24 +27,25 @@
                 <button class="item" id="campaign" data-action="campaign" autofocus><div class="bar"></div><span id="campaign-label">Begin</span></button>
                 <span class="beside" id="campaign-night"></span>
             </div>
-            <!-- The list of the five nights. -->
-            <div class="choices">
-                <button class="chip" id="open-nights" data-action="nights">Nights</button>
-            </div>
         </div>
+        <!-- The list of the five nights. It is always there: before a night is won it
+             shows the first night as the next one. -->
         <div class="rise d2">
-            <button class="item" id="open-free-play" data-action="free-play"><div class="bar"></div>Free play</button>
+            <button class="item" id="open-nights" data-action="nights"><div class="bar"></div>Nights</button>
         </div>
         <div class="rise d3">
-            <button class="item" id="open-settings" data-action="settings"><div class="bar"></div>Settings</button>
+            <button class="item" id="open-free-play" data-action="free-play"><div class="bar"></div>Free play</button>
         </div>
         <div class="rise d4">
+            <button class="item" id="open-settings" data-action="settings"><div class="bar"></div>Settings</button>
+        </div>
+        <div class="rise d5">
             <button class="item" id="quit" data-action="quit"><div class="bar"></div>Quit</button>
         </div>
     </div>
 </div>
 <!-- The numbers of the night the first entry starts. -->
-<div class="info rise d5">
+<div class="info rise d6">
     <div class="fact">
         <p class="fact-name">Maze</p>
         <p class="fact-value" id="info-maze">10 x 10</p>

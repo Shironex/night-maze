@@ -151,10 +151,12 @@ constexpr const char* NIGHT_ID_PREFIX = "night-";
 constexpr const char* NIGHT_TITLE_ID_SUFFIX = "-title";
 constexpr const char* NIGHT_STATE_ID_SUFFIX = "-state";
 // The result screen: the line of the story under its title, the name of its third row
-// ("Difficulty" or "Night 2"), the button "New maze" and the line of keys.
+// ("Difficulty" or "Night 2"), the button "New maze", the row of the seed and the line
+// of keys.
 constexpr const char* NIGHT_LINE_ID = "night-line";
 constexpr const char* LEVEL_NAME_ID = "level-name";
 constexpr const char* NEW_MAZE_ID = "new-maze";
+constexpr const char* SEED_ROW_ID = "seed-row";
 constexpr const char* KEYS_ID = "keys";
 // Free play: the hint next to the seed field, the three numbers of the info block
 // and the three difficulty buttons, whose ids are this prefix and the key of a level.
@@ -1378,6 +1380,9 @@ void NightMazeApp::fillRoundEndDocument() {
     // "New maze" belongs to free play: the maze of a night is fixed. After a night the
     // player plays it again or goes back to the menu, where the next night waits.
     m_ui.setClass(m_roundEndDocument, NEW_MAZE_ID, GONE_CLASS, night);
+    // The seed names a maze of free play for a friend. The maze of a night cannot be
+    // entered anywhere, so its row is left out.
+    m_ui.setClass(m_roundEndDocument, SEED_ROW_ID, GONE_CLASS, night);
     m_ui.setText(m_roundEndDocument, KEYS_ID, night ? NIGHT_END_KEYS_TEXT : ROUND_END_KEYS_TEXT);
 }
 

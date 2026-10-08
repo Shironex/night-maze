@@ -14,11 +14,13 @@
         <!-- The four values are written by the game when the screen comes up
              (NightMazeApp::fillRoundEndDocument). The seed and the difficulty together
              name the maze: a friend who enters both plays the same one. After a night
-             of the campaign the third row names the night. -->
+             of the campaign the third row names the night, and the seed is left out:
+             the maze of a night cannot be entered anywhere. -->
         <div class="row"><span class="row-name">Time</span><span class="row-value" id="time">0:00</span></div>
         <div class="row"><span class="row-name">Crystals</span><span class="row-value" id="crystals">0 of 0</span></div>
         <div class="row"><span class="row-name" id="level-name">Difficulty</span><span class="row-value" id="difficulty">Normal</span></div>
-        <div class="row"><span class="row-name">Seed</span><span class="row-value" id="seed">1</span></div>
+        <!-- Free play only: the game sets the class "gone" after a night. -->
+        <div class="row" id="seed-row"><span class="row-name">Seed</span><span class="row-value" id="seed">1</span></div>
         <div class="buttons">
             <button class="btn primary" data-action="restart" autofocus>Play again</button>
             <!-- Free play only: the game sets the class "gone" after a night. -->
