@@ -9,8 +9,10 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <initializer_list>
+#include <optional>
 #include <vector>
 
 namespace {
@@ -68,6 +70,14 @@ game::Round emptyRound(const game::MazeWorld& world) {
     game::Round round;
     round.discovery = game::Discovery(world.maze.width(), world.maze.height());
     return round;
+}
+
+// The tick towards the exit, for a test that expects one. REQUIRE stops the test when
+// there is none, and value_or hands out the point without a second question.
+glm::vec2 tickFor(const game::Maze& maze, const glm::vec2& player, const glm::vec2& exit) {
+    const std::optional<glm::vec2> tick = game::minimapExitTick(maze, player, exit);
+    REQUIRE(tick.has_value());
+    return tick.value_or(glm::vec2{0.0F});
 }
 
 // A player in the first cell, looking north.
@@ -467,4 +477,149 @@ TEST_CASE("the map never shows the shade, except with the debug switch") {
     const game::Round calmRound = game::startRound(world, calm);
     CHECK(countColor(game::buildMinimapVertices(world, calmRound, true, PLAYER, FINE, true),
                      game::MINIMAP_SHADE_COLOR) == 0);
+}
+
+TEST_CASE("the tick towards the exit lies on the edge of the map, on the line to the exit") {
+    const game::Maze maze(10, 6);
+    const float halfExtent = game::minimapHalfExtent(maze);
+    const glm::vec2 center{10.0F, 6.0F};
+
+    // The player in the west, the exit straight to the east: the tick is on the east
+    // edge, at the height of both.
+    const glm::vec2 east = tickFor(maze, {3.0F, 5.0F}, {15.0F, 5.0F});
+    CHECK(east.x == doctest::Approx(center.x + halfExtent));
+    CHECK(east.y == doctest::Approx(5.0F));
+
+    // Straight to the north: on the north edge, which is the smaller second coordinate.
+    const glm::vec2 north = tickFor(maze, {7.0F, 9.0F}, {7.0F, 1.0F});
+    CHECK(north.x == doctest::Approx(7.0F));
+    CHECK(north.y == doctest::Approx(center.y - halfExtent));
+
+    // Any direction: the tick is on the edge of the square, and the player, the exit and
+    // the tick lie on one line, with the exit between the other two.
+    const glm::vec2 player{4.0F, 9.0F};
+    for (const glm::vec2& exit : {glm::vec2{17.0F, 3.0F}, glm::vec2{1.0F, 1.0F},
+                                  glm::vec2{9.0F, 11.0F}, glm::vec2{19.0F, 10.0F}}) {
+        const glm::vec2 tick = tickFor(maze, player, exit);
+        const glm::vec2 fromCenter = glm::abs(tick - center);
+        CHECK(std::max(fromCenter.x, fromCenter.y) == doctest::Approx(halfExtent));
+        const glm::vec2 toExit = exit - player;
+        const glm::vec2 toTick = tick - player;
+        // The cross product of two vectors on one line is 0.
+        CHECK(toExit.x * toTick.y - toExit.y * toTick.x == doctest::Approx(0.0F).epsilon(0.001));
+        CHECK(glm::dot(toExit, toTick) > 0.0F);
+        CHECK(glm::length(toTick) >= glm::length(toExit));
+    }
+}
+
+TEST_CASE("there is no tick for a player who stands on the exit or outside the map") {
+    const game::Maze maze(10, 6);
+    CHECK_FALSE(game::minimapExitTick(maze, {5.0F, 5.0F}, {5.0F, 5.0F}).has_value());
+    CHECK_FALSE(game::minimapExitTick(maze, {-40.0F, 5.0F}, {5.0F, 5.0F}).has_value());
+    CHECK_FALSE(game::minimapExitTick(maze, {5.0F, 90.0F}, {5.0F, 5.0F}).has_value());
+}
+
+TEST_CASE("the tick is drawn once the gate is open, and never before") {
+    game::MazeWorld world = corridorWorld();
+    world.hasGate = true;
+    world.gate = game::wallSegmentOn(2, 0, game::Direction::West);
+    game::Round round = emptyRound(world);
+
+    // Closed: nothing points at a cell the player has not seen.
+    std::vector<game::MinimapVertex> vertices =
+        game::buildMinimapVertices(world, round, false, PLAYER, FINE);
+    CHECK(countColor(vertices, game::MINIMAP_EXIT_TICK_COLOR) == 0);
+
+    // Open: one triangle, although the exit cell is still not discovered.
+    round.gateOpen = true;
+    vertices = game::buildMinimapVertices(world, round, false, PLAYER, FINE);
+    CHECK(countColor(vertices, game::MINIMAP_EXIT_TICK_COLOR) == TRIANGLE);
+    CHECK(countColor(vertices, game::MINIMAP_EXIT_COLOR) == 0);
+    // It is not the arrow of the player: that one is still there, in its own colour.
+    CHECK(countColor(vertices, game::MINIMAP_PLAYER_COLOR) == TRIANGLE);
+    CHECK(game::MINIMAP_EXIT_TICK_COLOR != game::MINIMAP_PLAYER_COLOR);
+
+    // The exit is east of the player, so the tick touches the east edge of the map and
+    // points to it: its other corners lie west of its tip.
+    const float eastEdge = 3.0F + game::minimapHalfExtent(world.maze);
+    float tip = -1.0e9F;
+    for (const game::MinimapVertex& vertex : vertices) {
+        if (vertex.color == game::MINIMAP_EXIT_TICK_COLOR) {
+            tip = std::max(tip, vertex.position.x);
+            CHECK(vertex.position.x <= eastEdge + 0.001F);
+        }
+    }
+    CHECK(tip == doctest::Approx(eastEdge));
+
+    // A maze without a gate has no tick, also with its way out open from the start.
+    world.hasGate = false;
+    vertices = game::buildMinimapVertices(world, round, false, PLAYER, FINE);
+    CHECK(countColor(vertices, game::MINIMAP_EXIT_TICK_COLOR) == 0);
+}
+
+TEST_CASE("the discovered exit cell shows a lantern: cold while closed, amber once open") {
+    game::MazeWorld world = corridorWorld();
+    world.hasGate = true;
+    world.gate = game::wallSegmentOn(2, 0, game::Direction::West);
+    game::Round round = emptyRound(world);
+    round.discovery.discover(1, 0);
+
+    // The exit cell is unknown: no lantern.
+    std::vector<game::MinimapVertex> vertices =
+        game::buildMinimapVertices(world, round, false, PLAYER, FINE);
+    CHECK(countColor(vertices, game::MINIMAP_LANTERN_COLD_COLOR) == 0);
+    CHECK(countColor(vertices, game::MINIMAP_LANTERN_LIT_COLOR) == 0);
+    CHECK(countColor(vertices, game::MINIMAP_LANTERN_FRAME_COLOR) == 0);
+
+    // Discovered, closed: a cold glass, with a cap (a triangle) and a foot (a rectangle).
+    round.discovery.discover(2, 0);
+    vertices = game::buildMinimapVertices(world, round, false, PLAYER, FINE);
+    CHECK(countColor(vertices, game::MINIMAP_LANTERN_COLD_COLOR) == QUAD);
+    CHECK(countColor(vertices, game::MINIMAP_LANTERN_LIT_COLOR) == 0);
+    CHECK(countColor(vertices, game::MINIMAP_LANTERN_FRAME_COLOR) == QUAD + TRIANGLE);
+    // The floor under it keeps the colour of the exit.
+    CHECK(countColor(vertices, game::MINIMAP_EXIT_COLOR) == QUAD);
+
+    // The whole mark is inside the exit cell, around its middle, and its cap points
+    // north (up on the map).
+    const glm::vec3 middle = game::cellCenter(2, 0);
+    float glassTop = 1.0e9F;
+    for (const game::MinimapVertex& vertex : vertices) {
+        if (vertex.color == game::MINIMAP_LANTERN_COLD_COLOR ||
+            vertex.color == game::MINIMAP_LANTERN_FRAME_COLOR) {
+            CHECK(std::abs(vertex.position.x - middle.x) < game::CELL_SIZE / 2.0F);
+            CHECK(std::abs(vertex.position.y - middle.z) < game::CELL_SIZE / 2.0F);
+        }
+        if (vertex.color == game::MINIMAP_LANTERN_COLD_COLOR) {
+            glassTop = std::min(glassTop, vertex.position.y);
+        }
+    }
+    CHECK(northernmost(vertices, game::MINIMAP_LANTERN_FRAME_COLOR) < glassTop);
+
+    // Open: the glass turns amber.
+    round.gateOpen = true;
+    vertices = game::buildMinimapVertices(world, round, false, PLAYER, FINE);
+    CHECK(countColor(vertices, game::MINIMAP_LANTERN_COLD_COLOR) == 0);
+    CHECK(countColor(vertices, game::MINIMAP_LANTERN_LIT_COLOR) == QUAD);
+    CHECK(countColor(vertices, game::MINIMAP_LANTERN_FRAME_COLOR) == QUAD + TRIANGLE);
+}
+
+TEST_CASE("the lantern keeps a visible size and its shape on the map of a large maze") {
+    const game::MazeWorld world = game::buildMazeWorld(40, 40, 1U);
+    const game::Round round = game::startRound(world, game::GameplaySettings{});
+    const float metresPerPixel = game::minimapMetresPerPixel(world.maze, 202);
+
+    const std::vector<game::MinimapVertex> vertices =
+        game::buildMinimapVertices(world, round, true, PLAYER, metresPerPixel);
+
+    float west = 1.0e9F;
+    float east = -1.0e9F;
+    for (const game::MinimapVertex& vertex : vertices) {
+        if (vertex.color == game::MINIMAP_LANTERN_COLD_COLOR) {
+            west = std::min(west, vertex.position.x);
+            east = std::max(east, vertex.position.x);
+        }
+    }
+    // The glass is at least four pixels wide.
+    CHECK(east - west >= 4.0F * metresPerPixel - 0.001F);
 }

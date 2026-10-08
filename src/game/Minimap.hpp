@@ -1,6 +1,6 @@
 // Minimap: the settings of the map in the middle of the screen, where it stands, and the
-// flat shapes it is drawn from (floors, walls, gate, crystals, flasks, levers, notes,
-// player).
+// flat shapes it is drawn from (floors, walls, gate, lantern, crystals, flasks, levers,
+// notes, the tick towards the open gate, player).
 #pragma once
 
 #include "game/Maze.hpp"
@@ -9,6 +9,7 @@
 
 #include <glm/glm.hpp>
 
+#include <optional>
 #include <vector>
 
 namespace game {
@@ -126,6 +127,16 @@ constexpr glm::vec3 MINIMAP_WALL_COLOR{0.69F, 0.75F, 0.85F};
 constexpr glm::vec3 MINIMAP_GATE_COLOR{0.84F, 0.56F, 0.32F};
 /// The gate once it has opened: a dim blue green, close to the floor.
 constexpr glm::vec3 MINIMAP_GATE_OPEN_COLOR{0.17F, 0.41F, 0.44F};
+/// The lantern mark in the exit cell: its glass while the gate is closed (the cold blue
+/// white of the ember) and once the gate has opened (amber), and its cap and foot, in
+/// the pale grey of old iron. The amber is a deeper orange than the arrow of the player,
+/// so the two can be told apart.
+constexpr glm::vec3 MINIMAP_LANTERN_COLD_COLOR{0.62F, 0.72F, 0.98F};
+constexpr glm::vec3 MINIMAP_LANTERN_LIT_COLOR{1.0F, 0.62F, 0.18F};
+constexpr glm::vec3 MINIMAP_LANTERN_FRAME_COLOR{0.80F, 0.82F, 0.86F};
+/// The tick on the edge of the map that points towards the open gate: the amber of the
+/// lit lantern, a shade lighter.
+constexpr glm::vec3 MINIMAP_EXIT_TICK_COLOR{1.0F, 0.66F, 0.24F};
 /// A crystal that is still there: turquoise.
 constexpr glm::vec3 MINIMAP_CRYSTAL_COLOR{0.34F, 0.84F, 0.79F};
 /// A flask of tea that is still there: a light rose, the one colour of the map that is
@@ -162,6 +173,16 @@ glm::mat4 minimapProjection(const Maze& maze);
 /// 1 is taken as 1.
 float minimapMetresPerPixel(const Maze& maze, int pixels);
 
+/// Where the tick towards the exit sits: the point where the straight line from the
+/// player through the exit leaves the square the map shows (minimapHalfExtent around the
+/// middle of the maze). player and exit are places on the map, in metres: the world
+/// x and z. The line takes no notice of walls, like the chalk of the notes.
+///
+/// Empty when there is no direction to show: the player stands exactly on the exit, or
+/// is outside the square of the map.
+std::optional<glm::vec2> minimapExitTick(const Maze& maze, const glm::vec2& player,
+                                         const glm::vec2& exit);
+
 /// Where the player is drawn on the map and which way the arrow points.
 struct MinimapPlayer {
     /// The feet of the player in the world. Only x and z are used.
@@ -180,13 +201,20 @@ struct MinimapPlayer {
 ///      are asked from the maze of the round (game::roundMaze, Maze::hasWall) in every
 ///      call, so a wall that a lever has opened is not drawn any more,
 ///   3. the gate, when the exit cell is shown: across the open side of that cell, in
-///      one colour while it blocks the way and in another once it has opened,
+///      one colour while it blocks the way and in another once it has opened. And in
+///      the middle of that cell a small lantern, which is what tells it from a cell with
+///      a coloured floor: its glass is cold while the gate is closed and amber after,
 ///   4. a small diamond for every crystal that is not collected and whose cell is shown,
 ///   5. a small plus sign for every flask that is not picked up and whose cell is
 ///      shown: the same rule as for the crystals,
 ///   6. a small square for every lever and every note whose cell is shown, at the wall
 ///      it hangs on: a lever in one colour until it is pulled and in a dim one after,
-///   7. the player: a triangle that points where the camera looks. It is always drawn,
+///   7. once the gate is open (Round::gateOpen) and the maze has one: a small amber
+///      tick on the edge of the map, on the straight line from the player to the exit
+///      (minimapExitTick). It is there whether or not the exit cell is discovered, and
+///      never before the gate opens: until then the map says nothing about a cell the
+///      player has not seen,
+///   8. the player: a triangle that points where the camera looks. It is always drawn,
 ///      also outside the maze (where the picture may cut it off).
 ///
 /// The shade is NOT on the map: the player has to find it with the flashlight. Only with

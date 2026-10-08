@@ -1,6 +1,6 @@
 // Minimap: the settings of the map in the middle of the screen, where it stands, and the
-// flat shapes it is drawn from (floors, walls, gate, crystals, flasks, levers, notes,
-// player).
+// flat shapes it is drawn from (floors, walls, gate, lantern, crystals, flasks, levers,
+// notes, the tick towards the open gate, player).
 #include "game/Minimap.hpp"
 
 #include "game/MazeLayout.hpp"
@@ -57,6 +57,24 @@ constexpr float MIN_PLAYER_ARROW_PIXELS = 5.0F;
 constexpr float PLAYER_ARROW_BACK = 0.6F;
 constexpr float PLAYER_ARROW_HALF_WIDTH = 0.65F;
 
+// The lantern mark in the middle of the exit cell, in metres: half of the width and of
+// the height of its glass, how much wider its cap and its foot are on each side, how
+// high the cap is and how thick the foot. And the least half width of the glass in
+// pixels: the other sizes grow with it, so the mark keeps its shape in a large maze.
+constexpr float LANTERN_GLASS_HALF_WIDTH = 0.26F;
+constexpr float LANTERN_GLASS_HALF_HEIGHT = 0.3F;
+constexpr float LANTERN_OVERHANG = 0.12F;
+constexpr float LANTERN_CAP_HEIGHT = 0.3F;
+constexpr float LANTERN_FOOT_HEIGHT = 0.1F;
+constexpr float MIN_LANTERN_PIXELS = 2.0F;
+
+// The tick towards the open gate: a triangle with its tip on the edge of the map. Its
+// length in metres and at least in pixels, and half of its width as a part of the
+// length.
+constexpr float EXIT_TICK_LENGTH = 1.0F;
+constexpr float MIN_EXIT_TICK_PIXELS = 10.0F;
+constexpr float EXIT_TICK_HALF_WIDTH = 0.45F;
+
 // A rectangle is two triangles of three vertices, a diamond too.
 constexpr std::size_t VERTICES_PER_QUAD = 6;
 
@@ -105,7 +123,60 @@ void addWall(std::vector<MinimapVertex>& vertices, const WallSegment& segment, f
     addRectangle(vertices, mapPoint(segment.position), halfSize, color);
 }
 
+// Adds the lantern mark around center: a glass in the given colour, a pointed cap above
+// it and a flat foot below. Above is north on the map, which is the smaller second
+// coordinate. scale makes the whole mark larger and keeps its proportions.
+void addLantern(std::vector<MinimapVertex>& vertices, const glm::vec2& center, float scale,
+                const glm::vec3& glassColor) {
+    const float halfWidth = LANTERN_GLASS_HALF_WIDTH * scale;
+    const float halfHeight = LANTERN_GLASS_HALF_HEIGHT * scale;
+    const float overhang = LANTERN_OVERHANG * scale;
+    const float top = center.y - halfHeight;
+    const float bottom = center.y + halfHeight;
+
+    addRectangle(vertices, center, {halfWidth, halfHeight}, glassColor);
+    addTriangle(vertices, {center.x, top - LANTERN_CAP_HEIGHT * scale},
+                {center.x + halfWidth + overhang, top}, {center.x - halfWidth - overhang, top},
+                MINIMAP_LANTERN_FRAME_COLOR);
+    const float footHalfHeight = LANTERN_FOOT_HEIGHT * scale / 2.0F;
+    addRectangle(vertices, {center.x, bottom + footHalfHeight},
+                 {halfWidth + overhang, footHalfHeight}, MINIMAP_LANTERN_FRAME_COLOR);
+}
+
 } // namespace
+
+std::optional<glm::vec2> minimapExitTick(const Maze& maze, const glm::vec2& player,
+                                         const glm::vec2& exit) {
+    const glm::vec2 direction = exit - player;
+    if (direction.x == 0.0F && direction.y == 0.0F) {
+        return std::nullopt;
+    }
+
+    // The square of the map: half an extent to every side of the middle of the maze.
+    const glm::vec2 center{static_cast<float>(maze.width()) * CELL_SIZE / 2.0F,
+                           static_cast<float>(maze.height()) * CELL_SIZE / 2.0F};
+    const float halfExtent = minimapHalfExtent(maze);
+    if (std::abs(player.x - center.x) > halfExtent || std::abs(player.y - center.y) > halfExtent) {
+        return std::nullopt;
+    }
+
+    // A point of the line is player + t * direction. Along each of the two axes the
+    // line moves towards one edge of the square, and t tells when it gets there. The
+    // smaller of the two answers is the edge it reaches first: that is where it leaves
+    // the square. An axis the line does not move along never reaches its edge.
+    float leaves = -1.0F;
+    for (int axis = 0; axis < 2; ++axis) {
+        if (direction[axis] == 0.0F) {
+            continue;
+        }
+        const float edge = center[axis] + (direction[axis] > 0.0F ? halfExtent : -halfExtent);
+        const float t = (edge - player[axis]) / direction[axis];
+        if (leaves < 0.0F || t < leaves) {
+            leaves = t;
+        }
+    }
+    return player + direction * leaves;
+}
 
 MinimapRect minimapRect(int framebufferWidth, int framebufferHeight,
                         const MinimapSettings& settings) {
@@ -232,6 +303,17 @@ std::vector<MinimapVertex> buildMinimapVertices(const MazeWorld& world, const Ro
                 gateBlocks(world, round) ? MINIMAP_GATE_COLOR : MINIMAP_GATE_OPEN_COLOR);
     }
 
+    // The lantern in the middle of the exit cell, drawn with the gate: cold while the
+    // gate blocks the way, amber once it has opened.
+    if (world.hasGate && shown(world.exitCell.x, world.exitCell.z)) {
+        const float scale =
+            atLeastPixels(LANTERN_GLASS_HALF_WIDTH, MIN_LANTERN_PIXELS, metresPerPixel) /
+            LANTERN_GLASS_HALF_WIDTH;
+        addLantern(vertices, mapPoint(cellCenter(world.exitCell.x, world.exitCell.z)), scale,
+                   gateBlocks(world, round) ? MINIMAP_LANTERN_COLD_COLOR
+                                            : MINIMAP_LANTERN_LIT_COLOR);
+    }
+
     // 4. The crystals that are still there. The crystals of a round are in the order
     // of MazeWorld::crystals, which knows their cells. The smaller of the two sizes
     // guards against a round that belongs to another world.
@@ -299,7 +381,24 @@ std::vector<MinimapVertex> buildMinimapVertices(const MazeWorld& world, const Ro
                      MINIMAP_SHADE_COLOR);
     }
 
-    // 7. The player, last, so nothing covers it. Yaw 0 looks north, which is towards
+    // 7. The tick towards the open gate, on the edge of the map: a triangle whose tip
+    // touches the edge and points along the line from the player to the exit.
+    const glm::vec2 place = mapPoint(player.position);
+    if (world.hasGate && round.gateOpen) {
+        const glm::vec2 exit = mapPoint(cellCenter(world.exitCell.x, world.exitCell.z));
+        if (const std::optional<glm::vec2> edgePoint = minimapExitTick(maze, place, exit)) {
+            const glm::vec2 towards = glm::normalize(exit - place);
+            const glm::vec2 across{-towards.y, towards.x};
+            const float tickLength =
+                atLeastPixels(EXIT_TICK_LENGTH, MIN_EXIT_TICK_PIXELS, metresPerPixel);
+            const glm::vec2 tickBack = *edgePoint - towards * tickLength;
+            const glm::vec2 tickSide = across * (tickLength * EXIT_TICK_HALF_WIDTH);
+            addTriangle(vertices, *edgePoint, tickBack + tickSide, tickBack - tickSide,
+                        MINIMAP_EXIT_TICK_COLOR);
+        }
+    }
+
+    // 8. The player, last, so nothing covers it. Yaw 0 looks north, which is towards
     // smaller z, and the yaw grows clockwise seen from above. So "forward" on the map
     // is (sin yaw, -cos yaw), the x and z of scene::Camera::forward for a level look,
     // and "to the right" is that direction turned by a quarter: (cos yaw, sin yaw).
@@ -308,7 +407,6 @@ std::vector<MinimapVertex> buildMinimapVertices(const MazeWorld& world, const Ro
     const glm::vec2 right{std::cos(yaw), std::sin(yaw)};
     const float length =
         atLeastPixels(PLAYER_ARROW_LENGTH, MIN_PLAYER_ARROW_PIXELS, metresPerPixel);
-    const glm::vec2 place = mapPoint(player.position);
     const glm::vec2 tip = place + forward * length;
     const glm::vec2 back = place - forward * (length * PLAYER_ARROW_BACK);
     const glm::vec2 sideways = right * (length * PLAYER_ARROW_HALF_WIDTH);
