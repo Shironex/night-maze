@@ -80,7 +80,7 @@ inline constexpr std::array<CategoryInfo, CATEGORY_COUNT> CATEGORIES = {{
      .description = "The state of the round, the battery, the rules of a round, the shade, "
                     "the minimap, the intro and the campaign.",
      .icon = Icon::Gameplay,
-     .controlCount = 30,
+     .controlCount = 42,
      .tabCount = 0,
      .tabs = {}},
     {.name = "Diagnostics",
@@ -110,9 +110,11 @@ constexpr int totalControlCount() {
 // moved into a category. The switch of the wall variants was added later, which makes
 // 115, the six controls of the shade make 121, and the button that plays the intro again
 // 122, the five sliders of the sway of the shade 127, the button that plays the wind of
-// the maze 128, and the three controls of the campaign (the next night, clear, win the
-// round) 131. A control that is added or removed changes this number and the count of its
-// category above.
-static_assert(totalControlCount() == 131);
+// the maze 128, the three controls of the campaign (the next night, clear, win the
+// round) 131, and the twelve sliders of the hunting shade (two speeds, four hearing
+// distances, the sight, the search time, three of the burn and the quiet time) 143.
+// A control that is added or removed changes this number and the count of its category
+// above.
+static_assert(totalControlCount() == 143);
 
 } // namespace debug

@@ -69,6 +69,23 @@ constexpr float MAX_SHADE_CATCH_DISTANCE = 2.0F;
 constexpr float MIN_SHADE_THAW = 0.0F;
 constexpr float MAX_SHADE_THAW = 10.0F;
 
+// How far a noise carries and how far the shade sees, in metres: from deaf and blind to
+// across a whole maze of the easy level.
+constexpr float MAX_SHADE_SENSE_METRES = 40.0F;
+
+// How long the shade waits where it lost the player, how long the beam has to burn it
+// and how long it is quiet after a banish, in seconds.
+constexpr float MAX_SHADE_SEARCH = 30.0F;
+constexpr float MIN_SHADE_BURN = 0.2F;
+constexpr float MAX_SHADE_BURN = 10.0F;
+constexpr float MAX_SHADE_QUIET = 120.0F;
+
+// How fast the burn clock falls back in the dark, and how many times faster the battery
+// drains while the beam is on the shade.
+constexpr float MAX_SHADE_BURN_RECOVER = 2.0F;
+constexpr float MIN_SHADE_BATTERY_FACTOR = 1.0F;
+constexpr float MAX_SHADE_BATTERY_FACTOR = 10.0F;
+
 // The sway of the drawn shade (game::ShadeSwaySettings): the largest lean in degrees, the
 // largest rise or bob in metres, and the longest swing in seconds.
 constexpr float MAX_SHADE_LEAN_DEGREES = 10.0F;
@@ -231,23 +248,25 @@ void drawRules(Page& page, const DebugContext& context) {
     page.endCard();
 }
 
-// The shade: where it is, whether the flashlight is on it, and its numbers
-// (game::ShadeSettings).
+// The shade: what it is doing, where it is, what it heard last, its burn clock and its
+// numbers (game::ShadeSettings).
 void drawShade(Page& page, const DebugContext& context) {
     const game::Shade& shade = context.round.shade;
     game::ShadeSettings& settings = context.gameplay.shade;
     page.beginCard("Shade");
 
+    // What it is doing, with the clock that belongs to it.
+    const game::ShadeState state = game::shadeState(shade);
     if (!shade.present) {
         page.stat("Shade", "none in this round");
-    } else if (shade.graceLeft > 0.0F) {
-        page.stat("Shade", "waiting, %.1f s of grace left", shade.graceLeft);
-    } else if (shade.lit) {
-        page.stat("Shade", "lit: standing still");
-    } else if (shade.thawLeft > 0.0F) {
-        page.stat("Shade", "unlit: still standing for %.1f s", shade.thawLeft);
+    } else if (state == game::ShadeState::Banished) {
+        page.stat("Shade", "%s, %.1f s left", game::shadeStateName(state), shade.quietLeft);
+    } else if (state == game::ShadeState::Grace) {
+        page.stat("Shade", "%s, %.1f s left", game::shadeStateName(state), shade.graceLeft);
+    } else if (state == game::ShadeState::Thawing) {
+        page.stat("Shade", "%s, %.1f s left", game::shadeStateName(state), shade.thawLeft);
     } else {
-        page.stat("Shade", "unlit: walking");
+        page.stat("Shade", "%s", game::shadeStateName(state));
     }
     if (shade.present) {
         // Straight through the walls, and along the passages it has to walk.
@@ -257,15 +276,29 @@ void drawShade(Page& page, const DebugContext& context) {
         } else {
             page.stat("Way to the player", "none");
         }
+        // Where it is going, the last noise it heard and where that came from.
+        page.stat("Goal", "cell %d, %d (waits %.1f s there)", shade.goal.x, shade.goal.z,
+                  std::max(shade.searchLeft, 0.0F));
+        if (shade.lastHeard == game::Noise::None) {
+            page.stat("Last heard", "nothing yet");
+        } else {
+            page.stat("Last heard", "%s in cell %d, %d", game::noiseName(shade.lastHeard),
+                      shade.lastHeardCell.x, shade.lastHeardCell.z);
+        }
+        page.stat("Burn clock", "%.2f of %.2f s", shade.burnSeconds, settings.burnSeconds);
     }
 
     page.toggle("Shade in the round", &settings.enabled,
                 "Off: the shade is gone at once, like on a calm night. On: it comes with the "
                 "next round (key R). A new game sets the switch from the menu: off for "
                 "a calm night.");
-    page.slider("Speed", &settings.speed, MIN_SHADE_SPEED, MAX_SHADE_SPEED, "%.1f m/s",
-                "How fast the shade walks while it is not lit. The player walks 3.0 and "
+    page.slider("Chase speed", &settings.speed, MIN_SHADE_SPEED, MAX_SHADE_SPEED, "%.1f m/s",
+                "How fast the shade walks after a player it sees. The player walks 3.0 and "
                 "sprints 5.5 m/s.");
+    page.slider("Wander speed", &settings.wanderSpeed, MIN_SHADE_SPEED, MAX_SHADE_SPEED, "%.1f m/s",
+                "How fast the shade walks while it has not noticed the player.");
+    page.slider("Investigate speed", &settings.investigateSpeed, MIN_SHADE_SPEED, MAX_SHADE_SPEED,
+                "%.1f m/s", "How fast the shade walks to the place a noise came from.");
     page.slider("Grace time", &settings.graceSeconds, MIN_SHADE_GRACE, MAX_SHADE_GRACE, "%.0f s",
                 "How long the shade stands still after a round starts or starts again. "
                 "A new number counts from the next round.");
@@ -276,6 +309,31 @@ void drawShade(Page& page, const DebugContext& context) {
     page.slider("Wait after light", &settings.thawSeconds, MIN_SHADE_THAW, MAX_SHADE_THAW, "%.1f s",
                 "How long the shade goes on standing still after the flashlight has left "
                 "it. 0: it walks at once, and nobody gets past it in a corridor.");
+    page.slider("Hears a sprint", &settings.hearSprintMetres, 0.0F, MAX_SHADE_SENSE_METRES,
+                "%.0f m", "How far a sprint carries, measured along the passages.");
+    page.slider("Hears a lever", &settings.hearLeverMetres, 0.0F, MAX_SHADE_SENSE_METRES, "%.0f m",
+                "How far the pull of a lever carries, measured along the passages.");
+    page.slider("Hears a pickup", &settings.hearPickupMetres, 0.0F, MAX_SHADE_SENSE_METRES,
+                "%.0f m", "How far picking up a crystal or a flask carries.");
+    page.slider("Hears walking", &settings.hearWalkMetres, 0.0F, MAX_SHADE_SENSE_METRES, "%.0f m",
+                "How far walking carries. Standing still and reading the map are silent.");
+    page.slider("Sight", &settings.sightMetres, 0.0F, MAX_SHADE_SENSE_METRES, "%.0f m",
+                "How far the shade sees down a straight corridor. The flashlight reaches "
+                "10 m.");
+    page.slider("Search time", &settings.searchSeconds, 0.0F, MAX_SHADE_SEARCH, "%.0f s",
+                "How long the shade waits where it last heard or saw the player before it "
+                "wanders again.");
+    page.slider("Burn time", &settings.burnSeconds, MIN_SHADE_BURN, MAX_SHADE_BURN, "%.1f s",
+                "How long the beam has to be on the shade, in all, to banish it.");
+    page.slider("Burn recovery", &settings.burnRecoverRate, 0.0F, MAX_SHADE_BURN_RECOVER, "%.2f",
+                "How fast the burn clock falls back while the shade is not lit, in seconds "
+                "of the clock per second. 0: it never forgets.");
+    page.slider("Quiet time", &settings.quietSeconds, 0.0F, MAX_SHADE_QUIET, "%.0f s",
+                "How long a banished shade stands in its new cell without hearing, seeing "
+                "or making a sound.");
+    page.slider("Burn battery cost", &settings.burnBatteryFactor, MIN_SHADE_BATTERY_FACTOR,
+                MAX_SHADE_BATTERY_FACTOR, "%.1f x",
+                "How many times faster the battery drains while the beam is on the shade.");
     page.toggle("Show shade on the map", &settings.showOnMap,
                 "Debug switch: mark the shade on the map (key M). The map of the game "
                 "never shows it.");
