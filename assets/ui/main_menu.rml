@@ -25,6 +25,13 @@
                 <button class="chip" id="difficulty-normal" data-action="difficulty-normal">Normal</button>
                 <button class="chip" id="difficulty-hard" data-action="difficulty-hard">Hard</button>
             </div>
+            <!-- A calm night has no shadow in the maze, on every difficulty. The game sets
+                 the class "on" of the switch. -->
+            <div class="choices">
+                <span class="label">Calm night</span>
+                <button class="toggle" id="calm-night" data-action="toggle-calm-night"><div class="knob"></div></button>
+                <span class="aside">Nothing follows you.</span>
+            </div>
             <!-- Enter in the seed field starts the game, like the button Play. -->
             <div class="choices">
                 <span class="label">Seed</span>

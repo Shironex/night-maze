@@ -194,6 +194,13 @@ button.item:active {
     display: block;
     width: 16vh;
 }
+/* A few quiet words beside a control of such a row: what the switch "Calm night" means. */
+.choices .aside {
+    display: block;
+    margin-left: 1.6vh;
+    font-size: 2.3vh;
+    color: #5f6d8a;
+}
 /* The line under the seed row that says what is wrong with the seed. While it is empty
    it has no height. */
 .hint {
@@ -206,8 +213,9 @@ button.item:active {
    would look for the nearest element straight below, and the small controls of the two
    rows do not stand below the word "Play": the arrows would skip them. */
 #play { nav-down: #difficulty-normal; }
-#difficulty-easy, #difficulty-normal, #difficulty-hard { nav-up: #play; nav-down: #seed; }
-#seed { nav-up: #difficulty-normal; nav-down: #open-settings; }
+#difficulty-easy, #difficulty-normal, #difficulty-hard { nav-up: #play; nav-down: #calm-night; }
+#calm-night { nav-up: #difficulty-normal; nav-down: #seed; nav-left: none; nav-right: none; }
+#seed { nav-up: #calm-night; nav-down: #open-settings; }
 #new-seed { nav-up: #difficulty-hard; nav-down: #open-settings; }
 #open-settings { nav-up: #seed; nav-down: #quit; }
 #quit { nav-up: #open-settings; }
