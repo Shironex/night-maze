@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="docs/showcase/hero.webp" alt="Night Maze: the main menu, a corridor at night and a crystal in front of a cracked wall" width="100%" />
+<img src="docs/showcase/hero.webp" alt="Night Maze: the main menu, a corridor with a crystal, and the shadow standing at the end of a corridor" width="100%" />
 
 <h1>Night Maze</h1>
 
-**A first person maze game in C++20 and OpenGL 4.1: a stone maze at night, one flashlight, crystals to find.**
+**A first person maze game in C++20 and OpenGL 4.1: a stone maze at night, one flashlight, crystals to find, and a shadow that walks when the light is off it.**
 
 [![Latest release](https://img.shields.io/github/v/release/Shironex/night-maze?style=flat&color=ffb854)](https://github.com/Shironex/night-maze/releases/latest)
 [![CI](https://img.shields.io/github/actions/workflow/status/Shironex/night-maze/ci.yml?branch=main&style=flat&label=ci)](https://github.com/Shironex/night-maze/actions/workflows/ci.yml)
@@ -25,7 +25,11 @@
 
 You stand in a stone maze at night with a flashlight. Crystals are scattered through the corridors. Collect enough of them and the gate at the far end sinks into the ground. Walk through it and the round is over.
 
-The battery of the flashlight runs down while the light is on, and every crystal charges it a little. Nothing hunts you and no clock runs against you: an empty battery only leaves you in the moonlight until you find the next crystal.
+The battery of the flashlight runs down while the light is on, and every crystal charges it a little. You are not alone in the maze: a shadow walks towards you whenever your light is not on it. Shine at it and it stands still. If it reaches you it does not hurt you: it carries you back to the start, and the round begins again. So the lamp is worth saving, and switching it off has a price.
+
+No clock runs against you. If you only want to walk the maze, the switch "Calm night" in the main menu takes the shadow out of it.
+
+The first time you start the game, a short intro tells where the crystals come from: five cards of text over pictures of the maze. Any key skips it.
 
 I write the game to learn how real time graphics work, so most of what is on the screen is written by hand on top of OpenGL: the lighting, the shadows, the fog, the glow. There is no game engine underneath.
 
@@ -44,39 +48,47 @@ Windows is what ships. I last ran the game on a Mac around version 0.9.0. Since 
 <table>
   <tr>
     <td width="50%"><img src="docs/showcase/menu.webp" alt="Night Maze: Main menu" /></td>
-    <td width="50%"><img src="docs/showcase/corridor.webp" alt="Night Maze: A corridor" /></td>
+    <td width="50%"><img src="docs/showcase/shade.webp" alt="Night Maze: The shadow" /></td>
   </tr>
   <tr>
     <td align="center"><sub>The main menu, over a video loop recorded from the game.</sub></td>
-    <td align="center"><sub>A crystal glows at the end of a corridor, and a flask of tea lies on the way.</sub></td>
+    <td align="center"><sub>The shadow at the end of a corridor. It stands still while the light is on it.</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/showcase/cracked-wall.webp" alt="Night Maze: A cracked wall" /></td>
+    <td width="50%"><img src="docs/showcase/intro.webp" alt="Night Maze: The intro" /></td>
+    <td width="50%"><img src="docs/showcase/corridor.webp" alt="Night Maze: A corridor" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>The third of the five cards of the intro, over a walk through the maze.</sub></td>
+    <td align="center"><sub>A crystal glows in front of the wall at the end of a corridor.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/showcase/gate-closed.webp" alt="Night Maze: The gate" /></td>
+    <td width="50%"><img src="docs/showcase/worn-walls.webp" alt="Night Maze: Worn walls" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>The gate, still closed, with a crystal in front of it.</sub></td>
+    <td align="center"><sub>Stones missing, moss and cracks. The seed decides which walls are worn.</sub></td>
+  </tr>
+  <tr>
     <td width="50%"><img src="docs/showcase/note.webp" alt="Night Maze: A note" /></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>A cracked wall behind a crystal. The seed decides which walls are worn.</sub></td>
-    <td align="center"><sub>A note on the wall, read with E. This one is a line of the story.</sub></td>
-  </tr>
-  <tr>
     <td width="50%"><img src="docs/showcase/lever.webp" alt="Night Maze: A lever" /></td>
-    <td width="50%"><img src="docs/showcase/map.webp" alt="Night Maze: The map" /></td>
   </tr>
   <tr>
+    <td align="center"><sub>A note on the wall, read with E. This one is a line of the story.</sub></td>
     <td align="center"><sub>A lever, just pulled: the mossy wall beside it sinks and opens a shortcut.</sub></td>
-    <td align="center"><sub>The map while M is held: the corridors seen so far, two levers and a note.</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/showcase/glide.webp" alt="Night Maze: From above" /></td>
-    <td width="50%"><img src="docs/showcase/settings.webp" alt="Night Maze: Settings" /></td>
+    <td width="50%"><img src="docs/showcase/map.webp" alt="Night Maze: The map" /></td>
+    <td width="50%"><img src="docs/showcase/round-end.webp" alt="Night Maze: Through the gate" /></td>
   </tr>
   <tr>
-    <td align="center"><sub>The maze from above, the way the camera behind the menu sees it.</sub></td>
-    <td align="center"><sub>Settings: mouse sensitivity, field of view, volume, fullscreen and window size.</sub></td>
+    <td align="center"><sub>The map while M is held: the corridors seen so far, a lever and a note.</sub></td>
+    <td align="center"><sub>The end of a round: the time, the crystals, the difficulty and the seed.</sub></td>
   </tr>
 </table>
 
-Every picture is the game window as it is, at 1280 x 720. The corridor, the cracked wall and the view from above are taken by the menu camera, which shows the game without the HUD; the others are from a round and from the menus.
+Every picture is the game window as it is, at 1280 x 720. The corridor and the worn walls are taken by the menu camera, which shows the game without the HUD. The intro card is the intro itself. The others are from a round and from the menus.
 
 ## What is in the game
 
@@ -86,13 +98,16 @@ Every picture is the game window as it is, at 1280 x 720. The corridor, the crac
 | Three difficulty levels | Easy, Normal and Hard change the size of the maze, the number of crystals and flasks, how many crystals the gate asks for and how long the battery lasts (table below). |
 | Flashlight and battery | F switches the flashlight on and off. The battery only drains while the light is on, and each crystal gives back a quarter of it. Under 20 % the light flickers, the bar turns red and a slow pulse starts. At zero the light goes out until you find a crystal. |
 | Crystals and the gate | The gate opens by itself once you carry enough crystals: you never need all of them. The exit is the cell farthest from the start, counted in steps. Walking through the open gate ends the round with "Through the gate": your time, your crystals, the difficulty and the seed. |
+| The shadow | A dark hooded figure starts far from you in every maze and walks to you through the corridors at 4 m per second: faster than you walk (3), slower than you sprint (5.5). It stands still for the first 8 seconds of a round, for as long as the beam of your flashlight is on it (the light reaches 10 m and no wall may stand between), and for 2 more seconds after the light has left it. Looking at it with the lamp off does not stop it. A low hum warns you from 14 m of walking distance and comes faster the nearer it is. If it reaches you, it carries you back to the start and the round begins again: crystals back, battery full, and one line on the screen that says what happened. The map never shows it. |
+| Calm night | A switch in the main menu, kept with your settings. A calm night has no shadow, on every difficulty. The notes then leave out the lines about it, and the intro changes one line and leaves its corridor empty. |
+| Intro | On the first start the game opens with five cards of text, six seconds each, over pictures it takes live in one fixed maze, with wind and a far bell. Any key or mouse button skips it. It is shown once: the settings file remembers that you saw it. |
 | Levers | A maze has up to two levers. Pull one with E and a wall somewhere else sinks into the ground, which opens a shortcut. |
-| Notes and a story | Six notes are chalked on the walls of every maze. Two point towards the gate, two towards the nearest crystal, and two carry a line of story. The story has sixteen lines, read in order: when you finish a maze, the next one carries on where you stopped, also after you close the game. |
-| Stamina and tea | Sprinting empties a thin bar in about six seconds. Run it empty and you are winded: no sprint until the bar is half full again. A flask of tea (one, two or three per maze) fills the bar and makes sprinting free for 20 seconds. |
+| Notes and a story | Six notes are chalked on the walls of every maze. Two point towards the gate, two towards the nearest crystal, and two carry a line of story. The story has 24 lines, read in order: when you finish a maze, the next one carries on where you stopped, also after you close the game. Eight of the lines are about the shadow. A calm night skips them, which leaves 16. |
+| Stamina and tea | Sprinting empties a thin bar in about six seconds. Run it empty and you are winded: no sprint until the bar is half full again. A flask of tea fills the bar and makes sprinting free for 20 seconds. A maze has one, two or three flasks, and each lies in a dead end, the dead ends far from the start first. |
 | The map | Hold M and the map opens in the middle of the screen. It shows only the corridors you have already seen. While you hold it you stand still and cannot look around, and the battery keeps draining. |
 | Worn walls | Some walls are cracked, mossy or have stones missing. Which ones is decided by the seed. The walls near the start are whole. |
-| Sound | Nine short sounds: the flashlight switch (on, off, empty), the low battery pulse, a crystal, a flask, a lever, the gate and the breathing of a winded player. One volume slider. There is no music yet. |
-| Menus and settings | A main menu over a video loop recorded from the game, a pause menu, the round end screen and a settings screen: mouse sensitivity, field of view, volume, fullscreen and window size. The settings are kept in a text file. |
+| Sound | Thirteen sounds: the flashlight switch (on, off, empty), the low battery pulse, a crystal, a flask, a lever, the gate, the breathing of a winded player, the hum of the shadow, two soft notes when it has caught you, and the wind and the bell of the intro. One volume slider. There is no music yet. |
+| Menus and settings | A main menu over a video loop recorded from the game, with the difficulty, the calm night switch and the seed, a pause menu, the round end screen and a settings screen: mouse sensitivity, field of view, volume, fullscreen and window size. The settings are kept in a text file. |
 
 | Level | Maze | Crystals | Gate opens at | Flasks of tea | Battery |
 | --- | --- | --- | --- | --- | --- |
@@ -114,6 +129,7 @@ Every picture is the game window as it is, at 1280 x 720. The corridor, the crac
 | Hold M | Show the map; you stand still while you read it |
 | R | Start the round again on the same maze |
 | Esc | Pause and resume; on the settings screen, go back |
+| Any key or mouse button | Skip the intro |
 
 In the menus: arrow keys or Tab to move, Enter to choose.
 
@@ -152,7 +168,7 @@ C++20 and OpenGL 4.1 (core profile), built with CMake 3.24 or newer. CMake downl
 | Images | [stb_image](https://github.com/nothings/stb) 2.30 |
 | Sound | [miniaudio](https://miniaud.io/) 0.11.25 |
 | Menu video | The decoders of the operating system: Media Foundation on Windows |
-| Tests | [doctest](https://github.com/doctest/doctest) 2.5.3, more than 600 test cases for the code that needs no window |
+| Tests | [doctest](https://github.com/doctest/doctest) 2.5.3, more than 700 test cases for the code that needs no window |
 | Checks | clang-format and clang-tidy, and a CI run on every push to `main` |
 
 ## Build from source
@@ -196,9 +212,9 @@ The launcher that installs and updates the game has its own repository: [night-m
 
 Most of `docs/` is in Polish, because these are my study notes: [guides](docs/guides), a note per module in [docs/modules](docs/modules), a note per library in [docs/libraries](docs/libraries), and about seventy short [decision notes](docs/decisions) on why something is done the way it is. [docs/README.md](docs/README.md) is the index.
 
-The story behind the notes is in [docs/story/the-last-lamp.md](docs/story/the-last-lamp.md), in English under a short Polish note. It is a design draft: the sixteen lines on the notes and the title of the round end screen come from it, and the rest of it, an enemy among other things, is not in the game.
+The story behind the notes is in [docs/story/the-last-lamp.md](docs/story/the-last-lamp.md), in English under a short Polish note. It is a design draft: the lines on the notes, the shadow and the title of the round end screen come from it, and much of the rest of it is not in the game.
 
-Plans, not promises: an enemy that moves only when it is unlit and unseen, and more sound.
+Plans, not promises: more sound.
 
 ## Showcase images
 
@@ -212,7 +228,7 @@ pnpm install
 pnpm showcase                      # frames and banner, into docs/showcase/
 ```
 
-The kit cannot start a native game, so the capture is a script of mine. It starts the Release build in a 1280 x 720 window, with fixed seeds, in a folder of its own (your settings are not touched), and saves what the window shows. The views without a HUD come from the menu camera, set with command line switches. The views from a round need a few key presses and mouse turns. The script sends them only while the game window is the active one, so leave the mouse and the keyboard alone while it runs. It needs Python 3, ffmpeg on `PATH` and Windows.
+The kit cannot start a native game, so the capture is a script of mine. It starts the Release build in a 1280 x 720 window, with fixed seeds, in a folder of its own (your settings are not touched), and saves what the window shows. The views without a HUD come from the menu camera, set with command line switches. Some views from a round are reached with switches too: `--start-cell <column>,<row>` and `--start-yaw <degrees>` put the player somewhere in the first round, `--collect-all` starts it with every crystal collected, so the gate is open, and `--intro` plays the intro. Every run that plays a round has `--calm`, a calm night for that run only, so nothing catches the player in the middle of a picture. The one run that shows the shadow leaves it out and starts three cells away from it, with the light on it. The other views from a round need a few key presses and mouse turns. The script sends them only while the game window is the active one, so leave the mouse and the keyboard alone while it runs. It needs Python 3, ffmpeg on `PATH` and Windows.
 
 `pnpm showcase` only reads those pictures: from the same raw pictures it wrote the same files, byte for byte, every time I ran it on my PC. It needs Node 22, pnpm 10 and the Chromium of Playwright, downloaded once with `pnpm exec playwright install chromium`. The game itself is not a still picture (the crystals turn, a clock runs in the HUD), so a new capture is never identical to the last one.
 
