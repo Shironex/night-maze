@@ -87,6 +87,14 @@ struct GameSettings {
     /// From MIN_MASTER_VOLUME to MAX_MASTER_VOLUME, a whole number.
     float masterVolume = DEFAULT_MASTER_VOLUME;
 
+    /// Two volumes under the master volume, with the same limits, the same default and
+    /// the same rules: whole numbers from 0 to 100. The effects are every sound that
+    /// tells the player something (the lamp, a crystal, steps, the hum). The ambient
+    /// sounds are the winds. What is heard is the product of the master gain and the
+    /// gain of the group (masterVolumeGain of each).
+    float effectsVolume = DEFAULT_MASTER_VOLUME;
+    float ambientVolume = DEFAULT_MASTER_VOLUME;
+
     /// The "next unread line" of the story: the line the first story note of the next
     /// maze shows, from 0 to flavourLineCount() - 1. It moves on when a maze is finished
     /// (advanceStoryLine). It is not edited on the settings screen, but it is part of the
@@ -115,6 +123,8 @@ constexpr std::string_view FULLSCREEN_SETTING = "fullscreen";
 constexpr std::string_view WINDOW_SIZE_SETTING = "window_size";
 constexpr std::string_view DIFFICULTY_SETTING = "difficulty";
 constexpr std::string_view MASTER_VOLUME_SETTING = "master_volume";
+constexpr std::string_view EFFECTS_VOLUME_SETTING = "effects_volume";
+constexpr std::string_view AMBIENT_VOLUME_SETTING = "ambient_volume";
 constexpr std::string_view STORY_LINE_SETTING = "story_line";
 constexpr std::string_view CALM_NIGHT_SETTING = "calm_night";
 /// The name the story line counter had while the story had no lines about the shadow.
@@ -131,6 +141,8 @@ constexpr std::string_view INTRO_SEEN_SETTING = "intro_seen";
 ///     window_size         width and height with an x between them, "1280x720"
 ///     difficulty          "easy", "normal" or "hard"
 ///     master_volume       a number from 0 to 100, "80" (rounded to a whole number)
+///     effects_volume      the same
+///     ambient_volume      the same
 ///     story_line          a whole number, "5" (rounded; a number past the last story
 ///                         line is wrapped round to the start of the table)
 ///     calm_night          "on" or "off"
@@ -176,10 +188,12 @@ std::string mouseSensitivityLabel(float sensitivity);
 std::string fieldOfViewLabel(float degrees);
 
 /// The master volume as the settings screen shows it next to its slider and as the
-/// file holds it: a whole number, "80".
+/// file holds it: a whole number, "80". The effects volume and the ambient volume are
+/// written the same way, with this function.
 std::string masterVolumeLabel(float volume);
 
-/// The loudness the audio engine is given for a master volume of the settings: a factor
+/// The loudness the audio engine is given for a master volume of the settings (and, with
+/// the same curve, for the effects volume and for the ambient volume): a factor
 /// from 0 (silent) to 1 (the sound files as they are). Not a straight line but the
 /// square of volume / 100, so 50 gives 0.25. The ear hears loudness in ratios: with
 /// a straight line everything below the middle of the slider would sound almost equally

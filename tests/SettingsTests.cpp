@@ -204,6 +204,8 @@ TEST_CASE("the file is plain text a person can read and edit") {
           "window_size = 1280x720\n"
           "difficulty = normal\n"
           "master_volume = 100\n"
+          "effects_volume = 100\n"
+          "ambient_volume = 100\n"
           "story_line = 0\n"
           "calm_night = off\n"
           "intro_seen = off\n");
@@ -231,12 +233,66 @@ TEST_CASE("a file from before the intro means not seen, and nothing else changes
     CHECK(settings.calmNight);
 
     // Marking the intro as seen changes that one field, and in the file that one line:
-    // what is written is the old file with the new line at its end.
+    // what is written is the old file with the new line at its end. (The two volumes
+    // that came after the intro stand behind the master volume, at their default.)
     GameSettings seen = settings;
     seen.introSeen = true;
     CHECK(game::parseSettings(old + "intro_seen = on\n") == seen);
     const std::string written = game::formatSettings(seen);
-    CHECK(written.ends_with(old + "intro_seen = on\n"));
+    const std::string masterLine = "master_volume = 42\n";
+    const std::size_t afterMaster = old.find(masterLine) + masterLine.size();
+    CHECK(written.ends_with(old.substr(0, afterMaster) +
+                            "effects_volume = 100\nambient_volume = 100\n" +
+                            old.substr(afterMaster) + "intro_seen = on\n"));
+}
+
+TEST_CASE("the effects and the ambient volume are read and written like the master volume") {
+    CHECK(GameSettings{}.effectsVolume == game::DEFAULT_MASTER_VOLUME);
+    CHECK(GameSettings{}.ambientVolume == game::DEFAULT_MASTER_VOLUME);
+
+    GameSettings settings = game::parseSettings("effects_volume = 70\nambient_volume = 25\n");
+    CHECK(settings.effectsVolume == 70.0F);
+    CHECK(settings.ambientVolume == 25.0F);
+    // Each is a setting of its own: the master volume stays where it was.
+    CHECK(settings.masterVolume == game::DEFAULT_MASTER_VOLUME);
+
+    // The same limits and the same rounding as the master volume.
+    CHECK(game::applySetting(settings, "effects_volume", "250"));
+    CHECK(settings.effectsVolume == game::MAX_MASTER_VOLUME);
+    CHECK(game::applySetting(settings, "ambient_volume", "0"));
+    CHECK(settings.ambientVolume == game::MIN_MASTER_VOLUME);
+    CHECK(game::applySetting(settings, "ambient_volume", "62.6"));
+    CHECK(settings.ambientVolume == 63.0F);
+    // A value that cannot be read changes nothing.
+    CHECK_FALSE(game::applySetting(settings, "effects_volume", "loud"));
+    CHECK_FALSE(game::applySetting(settings, "ambient_volume", "-10"));
+    CHECK(settings.effectsVolume == game::MAX_MASTER_VOLUME);
+    CHECK(settings.ambientVolume == 63.0F);
+
+    // Written and read back.
+    settings.effectsVolume = 70.0F;
+    const std::string written = game::formatSettings(settings);
+    CHECK(written.find("effects_volume = 70\n") != std::string::npos);
+    CHECK(written.find("ambient_volume = 63\n") != std::string::npos);
+    CHECK(game::parseSettings(written) == settings);
+}
+
+TEST_CASE("a file of game 0.12, without the two new volumes, plays both at 100") {
+    // Every line version 0.12.0 wrote.
+    const GameSettings settings = game::parseSettings("mouse_sensitivity = 7.3\n"
+                                                      "field_of_view = 82\n"
+                                                      "fullscreen = on\n"
+                                                      "window_size = 1600x900\n"
+                                                      "difficulty = hard\n"
+                                                      "master_volume = 42\n"
+                                                      "story_line = 5\n"
+                                                      "calm_night = on\n"
+                                                      "intro_seen = on\n");
+    CHECK(settings.effectsVolume == 100.0F);
+    CHECK(settings.ambientVolume == 100.0F);
+    // The lines it has still count.
+    CHECK(settings.masterVolume == 42.0F);
+    CHECK(settings.introSeen);
 }
 
 TEST_CASE("the intro line reads on and off and nothing else") {

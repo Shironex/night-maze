@@ -163,6 +163,17 @@ bool applySetting(GameSettings& settings, std::string_view name, std::string_vie
             std::clamp(std::round(number), MIN_MASTER_VOLUME, MAX_MASTER_VOLUME);
         return true;
     }
+    // The two volumes under the master volume: read exactly like it.
+    if (name == EFFECTS_VOLUME_SETTING || name == AMBIENT_VOLUME_SETTING) {
+        float number = 0.0F;
+        if (!parseNumber(value, number)) {
+            return false;
+        }
+        float& volume =
+            name == EFFECTS_VOLUME_SETTING ? settings.effectsVolume : settings.ambientVolume;
+        volume = std::clamp(std::round(number), MIN_MASTER_VOLUME, MAX_MASTER_VOLUME);
+        return true;
+    }
     if (name == STORY_LINE_SETTING) {
         float number = 0.0F;
         if (!parseNumber(value, number)) {
@@ -259,6 +270,8 @@ std::string formatSettings(const GameSettings& settings) {
     text += settingLine(WINDOW_SIZE_SETTING, windowSizeValue(settings.windowSize));
     text += settingLine(DIFFICULTY_SETTING, difficultyLevel(settings.difficulty).key);
     text += settingLine(MASTER_VOLUME_SETTING, masterVolumeLabel(settings.masterVolume));
+    text += settingLine(EFFECTS_VOLUME_SETTING, masterVolumeLabel(settings.effectsVolume));
+    text += settingLine(AMBIENT_VOLUME_SETTING, masterVolumeLabel(settings.ambientVolume));
     text += settingLine(STORY_LINE_SETTING, std::to_string(settings.nextStoryLine));
     text += settingLine(CALM_NIGHT_SETTING, std::string(settings.calmNight ? ON_VALUE : OFF_VALUE));
     text += settingLine(INTRO_SEEN_SETTING, std::string(settings.introSeen ? ON_VALUE : OFF_VALUE));
