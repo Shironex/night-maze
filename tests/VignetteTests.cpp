@@ -1,5 +1,4 @@
 // Tests of the formula of the vignette, which needs no OpenGL context.
-// See docs/modules/renderer/post-process.md
 #include "game/Vignette.hpp"
 
 #include <doctest/doctest.h>

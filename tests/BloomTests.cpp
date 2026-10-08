@@ -1,6 +1,5 @@
 // Tests of the parts of the bloom that need no OpenGL context: the size of its render
 // targets and the weights of its blur.
-// See docs/modules/renderer/post-process.md
 #include "game/Bloom.hpp"
 
 #include <doctest/doctest.h>

@@ -1,6 +1,5 @@
 // Tests of the levers and the notes in a world and in a round (placement, pulling, the
 // opened wall, the note card) and of game::Interaction (the picking of a frame).
-// See docs/modules/scene/picking.md
 #include "game/Interaction.hpp"
 
 #include "game/Discovery.hpp"

@@ -1,5 +1,4 @@
 // Tests of game::parseStartOptions: the switches of the command line.
-// See docs/modules/game/menu-camera.md
 #include "game/StartOptions.hpp"
 
 #include <doctest/doctest.h>

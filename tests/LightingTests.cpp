@@ -1,5 +1,4 @@
 // Tests of game::Lighting: the settings of the lighting and the lights built for one frame.
-// See docs/modules/game/flashlight.md
 #include "game/Lighting.hpp"
 
 #include "game/Player.hpp"

@@ -1,5 +1,4 @@
 // Tests of the search of the debug window, which is plain text handling without ImGui.
-// See docs/modules/debug-ui.md
 #include "debug/Search.hpp"
 
 #include <doctest/doctest.h>

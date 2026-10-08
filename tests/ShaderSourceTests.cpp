@@ -1,5 +1,4 @@
 // Tests of gfx::expandIncludes and gfx::nameSourceFiles: #include in shader files.
-// See docs/modules/gfx/shader-includes.md
 #include "gfx/ShaderSource.hpp"
 
 #include <doctest/doctest.h>

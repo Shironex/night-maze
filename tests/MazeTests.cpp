@@ -1,5 +1,4 @@
 // Tests of game::Maze and of the helpers for game::Direction.
-// See docs/modules/game/maze-generator.md
 #include "game/Maze.hpp"
 
 #include <doctest/doctest.h>

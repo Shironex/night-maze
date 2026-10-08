@@ -1,6 +1,5 @@
 // Tests of the parts of gfx::Framebuffer that need no OpenGL context: the names of the
 // formats and the text for a framebuffer status.
-// See docs/modules/gfx/framebuffers.md
 #include "gfx/Framebuffer.hpp"
 
 #include <doctest/doctest.h>

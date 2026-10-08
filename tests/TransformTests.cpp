@@ -1,5 +1,4 @@
 // Tests of scene::normalMatrix: the matrix that takes normals to world space.
-// See docs/modules/scene/transforms.md
 #include "scene/Transform.hpp"
 
 #include <doctest/doctest.h>

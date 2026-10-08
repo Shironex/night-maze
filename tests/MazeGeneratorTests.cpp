@@ -1,5 +1,4 @@
 // Tests of game::randomBelow and game::generateMaze.
-// See docs/modules/game/maze-generator.md
 #include "game/MazeGenerator.hpp"
 
 #include <doctest/doctest.h>
@@ -333,8 +332,8 @@ TEST_CASE("golden maze: 4 x 4 cells from seed 1 has exactly these walls") {
 }
 
 TEST_CASE("the worked example of the documentation: 3 x 3 cells from seed 7") {
-    // docs/modules/game/maze-generator.md walks through this maze step by step. The test
-    // keeps the drawing in that document true.
+    // The drawing below is the maze of the worked example of the generator, step by step.
+    // The test keeps that drawing true.
     const game::Maze maze = game::generateMaze(3, 3, 7U);
 
     CHECK(drawMaze(maze) == "+--+--+--+\n"

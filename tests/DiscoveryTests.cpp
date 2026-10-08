@@ -1,6 +1,5 @@
 // Tests of game::Discovery: which cells the player has seen, the line of sight rule and
 // how a round starts and updates it.
-// See docs/modules/renderer/minimap.md
 #include "game/Discovery.hpp"
 
 #include "game/MazeLayout.hpp"

@@ -1,5 +1,4 @@
 // Tests of game::Exit: distances in a maze, the farthest cell, the gate and the exit zone.
-// See docs/modules/game/gameplay.md
 #include "game/Exit.hpp"
 
 #include "game/MazeGenerator.hpp"

@@ -1,6 +1,5 @@
 // Tests of game::Terrain: the heightmap lookup, the height formula, heightAt against the
 // drawn triangles, and the maze, the round and the player standing on uneven ground.
-// See docs/modules/renderer/terrain.md
 #include "game/Terrain.hpp"
 
 #include "assets/ImageLoader.hpp"

@@ -1,6 +1,5 @@
 // Tests of the parts of the fog that need no OpenGL context: its two formulas and the
 // way from a pixel and its depth back to a place in the world.
-// See docs/modules/renderer/post-process.md
 #include "game/Fog.hpp"
 
 #include "game/Lighting.hpp"

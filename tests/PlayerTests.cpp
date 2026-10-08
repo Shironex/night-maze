@@ -1,6 +1,5 @@
 // Tests of game::Player: walking, sprinting and its stamina, sliding along walls and
 // noclip flight.
-// See docs/modules/game/player.md
 #include "game/Player.hpp"
 
 #include "game/MazeGenerator.hpp"

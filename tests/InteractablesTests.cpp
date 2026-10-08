@@ -1,6 +1,5 @@
 // Tests of game::Interactables: which walls the levers open, where levers and notes hang,
 // the state of the levers, picking them with a ray and the text of the notes.
-// See docs/modules/game/interactables.md
 #include "game/Interactables.hpp"
 
 #include "game/Crystals.hpp"

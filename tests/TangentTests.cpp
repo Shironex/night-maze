@@ -1,6 +1,5 @@
 // Tests of assets::triangleTangents, assets::computeTangents and
 // assets::countMirroredTriangles.
-// See docs/modules/gfx/normal-mapping.md
 #include "assets/Tangents.hpp"
 
 #include <doctest/doctest.h>

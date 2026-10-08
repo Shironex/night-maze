@@ -1,5 +1,4 @@
 // Tests of scene::Aabb, scene::Sphere, scene::overlaps and scene::moveAndSlide.
-// See docs/modules/scene/collision.md
 #include "scene/Collider.hpp"
 
 #include <doctest/doctest.h>

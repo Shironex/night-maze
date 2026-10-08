@@ -1,6 +1,5 @@
 // Tests of game::Puddles: how many puddles a maze gets, which cells they lie in and the
 // mesh that lays their water on the ground.
-// See docs/modules/renderer/env-mapping.md
 #include "game/Puddles.hpp"
 
 #include "assets/ImageLoader.hpp"

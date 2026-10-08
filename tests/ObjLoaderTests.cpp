@@ -1,5 +1,4 @@
 // Tests of assets::parseObj, assets::parseMtl and assets::loadObj.
-// See docs/modules/assets/obj-loader.md
 #include "assets/ObjLoader.hpp"
 
 #include "assets/Tangents.hpp"

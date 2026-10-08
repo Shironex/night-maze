@@ -1,5 +1,4 @@
 // Tests of the world-space layout of a maze: cells, wall segments, pillars and boxes.
-// See docs/modules/game/maze-generator.md
 #include "game/MazeLayout.hpp"
 
 #include "game/MazeGenerator.hpp"

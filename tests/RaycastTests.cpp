@@ -1,6 +1,5 @@
 // Tests of scene::Ray: where it hits boxes and spheres, the nearest hit of a list and the
 // ray through a point of the picture.
-// See docs/modules/scene/picking.md
 #include "scene/Raycast.hpp"
 
 #include "scene/Camera.hpp"

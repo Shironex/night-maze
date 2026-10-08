@@ -1,5 +1,4 @@
 // Tests of game::placeGrass: how many tufts a world gets and where they stand.
-// See docs/modules/renderer/grass-geometry.md
 #include "game/Grass.hpp"
 
 #include "game/MazeLayout.hpp"

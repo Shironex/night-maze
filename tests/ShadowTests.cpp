@@ -1,7 +1,6 @@
 // Tests of the parts of the shadows that need no OpenGL context: the light space of the
 // moon (the box its shadow map covers) and of the flashlight (a pyramid), the bias and
 // the small helpers of the settings.
-// See docs/modules/renderer/shadows.md
 #include "game/Shadows.hpp"
 
 #include "game/Lighting.hpp"

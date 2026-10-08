@@ -1,5 +1,4 @@
 // Tests of scene::Light: attenuation, the cone of a spot light, the light block bytes.
-// See docs/modules/scene/lights.md
 #include "scene/Light.hpp"
 
 #include "scene/LightBlock.hpp"

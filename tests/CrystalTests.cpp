@@ -1,5 +1,4 @@
 // Tests of game::Crystals: how many crystals a maze gets, where they are and how they move.
-// See docs/modules/game/gameplay.md
 #include "game/Crystals.hpp"
 
 #include "game/Exit.hpp"

@@ -1,5 +1,4 @@
 // Tests of assets::loadImage.
-// See docs/modules/assets/images.md
 #include "assets/ImageLoader.hpp"
 
 #include <doctest/doctest.h>

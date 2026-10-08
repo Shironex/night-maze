@@ -1,5 +1,4 @@
 // Tests of game::Round: collecting crystals, the gate, the battery, the flicker and the win.
-// See docs/modules/game/gameplay.md
 #include "game/Round.hpp"
 
 #include "game/Crystals.hpp"
