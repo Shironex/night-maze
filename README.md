@@ -194,7 +194,7 @@ The game is then `build/release/Release/night_maze.exe`. Run it from the reposit
 
 `make check` needs GNU make and the developer shell of Visual Studio, which brings clang-format, clang-tidy and Ninja.
 
-Step by step guides: [docs/guides/build-windows.md](docs/guides/build-windows.md) and [docs/guides/build-macos.md](docs/guides/build-macos.md), both in Polish.
+The full steps, the prerequisites and what `make check` does are in [docs/building.md](docs/building.md).
 
 ## Repository layout
 
@@ -204,15 +204,15 @@ Step by step guides: [docs/guides/build-windows.md](docs/guides/build-windows.md
 | `assets/` | Shaders, textures, models, skybox, menu documents, fonts, sounds and the menu video. All of it ships with the game |
 | `tests/` | Unit tests |
 | `tools/` | Scripts that make assets (sounds, the menu loop, Blender scripts), the release notes and the README pictures |
-| `docs/` | Guides, module notes and decision notes |
+| `docs/` | The architecture overview, the build guide, the asset notes and the decision records, all in English, plus course material in Polish |
 
 The launcher that installs and updates the game has its own repository: [night-maze-launcher](https://github.com/Shironex/night-maze-launcher).
 
 ## Docs and the story
 
-Most of `docs/` is in Polish, because these are my study notes: [guides](docs/guides), a note per module in [docs/modules](docs/modules), a note per library in [docs/libraries](docs/libraries), and about seventy short [decision notes](docs/decisions) on why something is done the way it is. [docs/README.md](docs/README.md) is the index.
+The docs are in English: an [architecture overview](docs/architecture.md), a [build guide](docs/building.md), notes on the [assets](docs/assets.md), and short [decision records](docs/decisions/README.md) on why something is done the way it is. [docs/README.md](docs/README.md) is the index. The course material, `docs/PRD.pdf` and `docs/syllabus.md`, is in Polish. My own long study notes are not in this repository.
 
-The story behind the notes is in [docs/story/the-last-lamp.md](docs/story/the-last-lamp.md), in English under a short Polish note. It is a design draft: the lines on the notes, the shadow and the title of the round end screen come from it, and much of the rest of it is not in the game.
+The story behind the game is in [docs/story/the-last-lamp.md](docs/story/the-last-lamp.md), in English under a short Polish note. It is a design draft: the lines on the notes, the shadow and the title of the round end screen come from it, and much of the rest of it is not in the game.
 
 Plans, not promises: more sound.
 
