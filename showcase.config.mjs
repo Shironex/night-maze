@@ -39,7 +39,7 @@ export default defineConfig({
     {
       id: 'menu',
       title: 'Main menu',
-      caption: 'The main menu, over a video loop recorded from the game.',
+      caption: 'The main menu with Begin, Nights and Free play, over a video loop recorded from the game.',
     },
     {
       id: 'shade',
@@ -59,7 +59,7 @@ export default defineConfig({
     {
       id: 'gate-closed',
       title: 'The gate',
-      caption: 'The gate, still closed, with a crystal in front of it.',
+      caption: 'The gatehouse at the exit, its gate still closed, a lantern on each side and a crystal in front.',
     },
     {
       id: 'worn-walls',
@@ -79,7 +79,7 @@ export default defineConfig({
     {
       id: 'map',
       title: 'The map',
-      caption: 'The map while M is held: the corridors seen so far, a lever and a note.',
+      caption: 'The map while M is held: the corridors seen so far and a note.',
     },
     {
       id: 'round-end',

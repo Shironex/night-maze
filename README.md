@@ -51,7 +51,7 @@ Windows is what ships. I last ran the game on a Mac around version 0.9.0. Since 
     <td width="50%"><img src="docs/showcase/shade.webp" alt="Night Maze: The shadow" /></td>
   </tr>
   <tr>
-    <td align="center"><sub>The main menu, over a video loop recorded from the game.</sub></td>
+    <td align="center"><sub>The main menu with Begin, Nights and Free play, over a video loop recorded from the game.</sub></td>
     <td align="center"><sub>The shadow at the end of a corridor. It stands still while the light is on it.</sub></td>
   </tr>
   <tr>
@@ -63,11 +63,11 @@ Windows is what ships. I last ran the game on a Mac around version 0.9.0. Since 
     <td align="center"><sub>A crystal glows in front of the wall at the end of a corridor.</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/showcase/gate-closed.webp" alt="Night Maze: The gate" /></td>
+    <td width="50%"><img src="docs/showcase/gate-closed.webp" alt="Night Maze: The gatehouse at the exit, closed, with a lantern on each side" /></td>
     <td width="50%"><img src="docs/showcase/worn-walls.webp" alt="Night Maze: Worn walls" /></td>
   </tr>
   <tr>
-    <td align="center"><sub>The gate, still closed, with a crystal in front of it.</sub></td>
+    <td align="center"><sub>The gatehouse at the exit, its gate still closed, a lantern on each side and a crystal in front.</sub></td>
     <td align="center"><sub>Stones missing, moss and cracks. The seed decides which walls are worn.</sub></td>
   </tr>
   <tr>
@@ -83,7 +83,7 @@ Windows is what ships. I last ran the game on a Mac around version 0.9.0. Since 
     <td width="50%"><img src="docs/showcase/round-end.webp" alt="Night Maze: Through the gate" /></td>
   </tr>
   <tr>
-    <td align="center"><sub>The map while M is held: the corridors seen so far, a lever and a note.</sub></td>
+    <td align="center"><sub>The map while M is held: the corridors seen so far and a note.</sub></td>
     <td align="center"><sub>The end of a round: the time, the crystals, the difficulty and the seed.</sub></td>
   </tr>
 </table>
