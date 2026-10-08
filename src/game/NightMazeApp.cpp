@@ -808,9 +808,8 @@ void NightMazeApp::updateIntro() {
     if (frame.card != m_introCardShown) {
         m_introCardShown = frame.card;
         // Whether the shadow, the enemy of the game, takes part in it: the fourth card
-        // has another second line for a game without it (game::introLines).
-        const bool shadeInGame = true;
-        const IntroLines lines = introLines(frame.card, shadeInGame);
+        // has another second line for a calm night (game::introLines).
+        const IntroLines lines = introLines(frame.card, shadeInGame());
         m_ui.setText(m_cardDocument, CARD_FIRST_LINE_ID, lines.first);
         m_ui.setText(m_cardDocument, CARD_SECOND_LINE_ID, lines.second);
     }
