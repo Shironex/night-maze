@@ -37,8 +37,8 @@ import record_menu_loop as menu
 # measured in the recording, and the crossfade needs the start of the second round.
 SHOT = menu.Shot("launcher_glide", seed=1, difficulty="easy", shot="glide", time=0.0, seconds=49.0)
 
-# Where in the recording the end of the round is looked for, in frames (44 to 48 seconds).
-ROUND_SEARCH_FRAMES = (44 * menu.FRAMES_PER_SECOND, 48 * menu.FRAMES_PER_SECOND)
+# Where in the recording the end of the round is looked for, in frames (38 to 48 seconds).
+ROUND_SEARCH_FRAMES = (38 * menu.FRAMES_PER_SECOND, 48 * menu.FRAMES_PER_SECOND)
 
 CROSSFADE_SECONDS = 0.5
 
