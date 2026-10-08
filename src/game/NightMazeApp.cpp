@@ -359,6 +359,9 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
                 crystal.restPosition - glm::vec3(0.0F, PLAYER_REACH_HEIGHT, 0.0F);
             updateRound(m_round, m_mazeWorld, m_gameplay, feet, m_lighting.flashlightOn, 0.0F);
         }
+        // The gate has opened: its box leaves the obstacle list, like in a step that
+        // opens it (onUpdate).
+        m_obstacles = roundObstacles(m_mazeWorld, m_round);
         m_round.discovery = discoveredBefore;
         m_round.flasks = flasksBefore;
         m_round.flasksCollected = flasksCollectedBefore;
