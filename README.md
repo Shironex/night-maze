@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/showcase/hero.webp" alt="Night Maze: the main menu, a corridor with a crystal, and the shadow standing at the end of a corridor" width="100%" />
+<img src="docs/showcase/hero.webp" alt="Night Maze: the main menu, the shadow standing at the end of a corridor, and a corridor with a crystal" width="100%" />
 
 <h1>Night Maze</h1>
 

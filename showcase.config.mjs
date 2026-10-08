@@ -101,7 +101,7 @@ export default defineConfig({
     layout: 'stack',
     // The line under the title of the main menu.
     tagline: 'The moon sees every corridor. You see one.',
-    shots: ['menu', 'corridor', 'shade'],
+    shots: ['menu', 'shade', 'corridor'],
     background: BACKGROUND,
     theme: 'dark',
     output: 'docs/showcase/hero.webp',
