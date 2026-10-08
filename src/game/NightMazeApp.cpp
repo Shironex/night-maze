@@ -836,25 +836,9 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
         return true;
     }
     if (action == RESET_SETTINGS_ACTION) {
-        // Everything this screen shows goes back to its default, the keys too
-        // (GameSettings{} has the default ones). The difficulty and the calm night are
-        // chosen in free play and stay, and so do the story line counter and the
-        // campaign: a reset of the settings is no reset of the progress.
-        const GameSettings before = m_settings;
-        const Difficulty difficulty = m_settings.difficulty;
-        const int nextStoryLine = m_settings.nextStoryLine;
-        const bool calmNight = m_settings.calmNight;
-        // That the intro was seen is no setting of this screen either: a reset does not
-        // bring the intro back.
-        const bool introSeen = m_settings.introSeen;
-        m_settings = GameSettings{};
-        m_settings.difficulty = difficulty;
-        m_settings.nextStoryLine = nextStoryLine;
-        m_settings.calmNight = calmNight;
-        m_settings.introSeen = introSeen;
-        m_settings.campaignNight = before.campaignNight;
-        m_settings.campaignSeed = before.campaignSeed;
-        m_settings.campaignBestSeconds = before.campaignBestSeconds;
+        // Everything this screen shows goes back to its default, the keys too. What is
+        // chosen or earned somewhere else stays (game::resetSettings).
+        m_settings = resetSettings(m_settings);
         applyViewSettings();
         applyWindowSettings();
         applyAudioSettings();

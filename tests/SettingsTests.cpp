@@ -587,6 +587,42 @@ TEST_CASE("a file of game 0.12 loads with the default of everything that came la
           "key_restart = R\n");
 }
 
+TEST_CASE("reset defaults brings back the screen and the keys, and keeps the progress") {
+    GameSettings settings;
+    // What the settings screen shows.
+    settings.mouseSensitivity = 9.0F;
+    settings.fieldOfViewDegrees = 75.0F;
+    settings.fullscreen = true;
+    settings.windowSize = {.width = 1600, .height = 900};
+    settings.masterVolume = 10.0F;
+    settings.effectsVolume = 20.0F;
+    settings.ambientVolume = 30.0F;
+    CHECK(game::applySetting(settings, "key_sprint", "Q"));
+    CHECK(settings.keys != game::defaultKeyBindings());
+    // What is chosen or earned somewhere else.
+    settings.difficulty = game::Difficulty::Hard;
+    settings.nextStoryLine = 7;
+    settings.calmNight = true;
+    settings.introSeen = true;
+    settings.campaignNight = 3;
+    settings.campaignSeed = 482113;
+    settings.campaignBestSeconds = {95, 140, 0, 0, 0};
+
+    GameSettings expected;
+    expected.difficulty = game::Difficulty::Hard;
+    expected.nextStoryLine = 7;
+    expected.calmNight = true;
+    expected.introSeen = true;
+    expected.campaignNight = 3;
+    expected.campaignSeed = 482113;
+    expected.campaignBestSeconds = {95, 140, 0, 0, 0};
+    // Every other field is the default one, the keys too.
+    CHECK(game::resetSettings(settings) == expected);
+    CHECK(game::resetSettings(settings).keys == game::defaultKeyBindings());
+    // A second reset changes nothing.
+    CHECK(game::resetSettings(expected) == expected);
+}
+
 TEST_CASE("the campaign is written and read back: night, seed and best times") {
     GameSettings settings;
     settings.campaignNight = 3;

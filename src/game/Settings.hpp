@@ -227,6 +227,14 @@ GameSettings parseSettings(std::string_view text);
 /// Numbers are always written with a point, whatever the language of the system is.
 std::string formatSettings(const GameSettings& settings);
 
+/// The settings after the button "Reset defaults" of the settings screen: everything
+/// that screen shows is back at its default (the mouse, the field of view, the window,
+/// the three volumes and the keys). What is chosen or earned somewhere else stays: the
+/// difficulty and the calm night of free play, the story line counter, that the intro
+/// was seen, and the campaign (its next night, its seed and its best times). A reset of
+/// the settings is no reset of the progress.
+GameSettings resetSettings(const GameSettings& settings);
+
 /// How far the camera turns for one unit of mouse movement at this sensitivity, in
 /// degrees: sensitivity times MOUSE_DEGREES_PER_SENSITIVITY.
 float mouseDegreesPerUnit(float sensitivity);

@@ -336,6 +336,18 @@ std::string formatSettings(const GameSettings& settings) {
     return text;
 }
 
+GameSettings resetSettings(const GameSettings& settings) {
+    GameSettings reset;
+    reset.difficulty = settings.difficulty;
+    reset.nextStoryLine = settings.nextStoryLine;
+    reset.calmNight = settings.calmNight;
+    reset.introSeen = settings.introSeen;
+    reset.campaignNight = settings.campaignNight;
+    reset.campaignSeed = settings.campaignSeed;
+    reset.campaignBestSeconds = settings.campaignBestSeconds;
+    return reset;
+}
+
 std::string campaignBestSetting(int night) {
     return std::string(CAMPAIGN_BEST_SETTING_PREFIX) + std::to_string(night);
 }
