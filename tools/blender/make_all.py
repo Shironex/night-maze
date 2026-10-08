@@ -17,6 +17,7 @@ import build_flask
 import build_gate
 import build_lever
 import build_note
+import build_shade
 import build_wall_pillar
 import build_wall_straight
 import make_heightmap
@@ -36,6 +37,7 @@ build_gate.build(shots)
 build_lever.build(shots)
 build_note.build(shots)
 build_flask.build(shots)
+build_shade.build(shots)
 
 # The six faces of the sky. They depend on nothing above: no model uses them.
 make_skybox.build()

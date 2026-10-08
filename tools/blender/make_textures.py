@@ -1,8 +1,8 @@
 # Generates the textures of the game into assets/textures: the colour pictures
 # wall_stone.png, wall_cracked.png, wall_mossy.png, wall_damaged.png, ground.png,
-# gate_wood.png, crystal.png, lever_iron.png, lever_brass.png, note_paper.png and
-# flask.png, and one normal map for each of them (the same name with _normal).
-# All twenty-two are 512 x 512 pixels, 8 bits per channel, RGB.
+# gate_wood.png, crystal.png, lever_iron.png, lever_brass.png, note_paper.png,
+# flask.png and shade.png, and one normal map for each of them (the same name with
+# _normal). All twenty-four are 512 x 512 pixels, 8 bits per channel, RGB.
 # See docs/guides/blender.md
 #
 # Run from the repository root:
@@ -13,9 +13,10 @@
 # the stones and planks divide the image evenly, the noise is smoothed with wrap-around,
 # and the distances between the cells of the crystal and to the stones of the ground are
 # measured across the edges.
-# The exceptions are note_paper.png and flask.png: the model of the note shows the whole
-# picture exactly once, so its ink lines do not have to continue across the edges, and the
-# picture of the flask goes once around the flask, so only its left and right edges meet.
+# The exceptions are note_paper.png, flask.png and shade.png: the model of the note shows
+# the whole picture exactly once, so its ink lines do not have to continue across the edges,
+# and the pictures of the flask and of the shade go once around their models, so only their
+# left and right edges meet.
 # Their noise still wraps around, because it comes from the same helpers.
 #
 # A colour picture and its normal map are made from the same pattern (the same stones, the
@@ -63,6 +64,7 @@ WALL_CRACKED_SEED = 83
 WALL_MOSSY_SEED = 89
 WALL_DAMAGED_SEED = 97
 FLASK_SEED = 101
+SHADE_SEED = 103
 
 # The wall model is 3 m high and one repeat of the texture is 2 m, so the lower 1 m of
 # the picture (courses 0 to 3) is seen twice on a wall: at the bottom and again at the
@@ -81,6 +83,17 @@ FLASK_CORD_ROWS = (338, 389)
 FLASK_CORD_TURN_HEIGHT = 8.5
 # From this row up the picture shows the cork (the lip ends at 21.2 cm).
 FLASK_CORK_ROW = 433
+
+# The picture of the shade, used like the one of the flask: the model (build_shade.py)
+# puts its height on the y axis of the picture and goes once around it along x. The
+# hollow of the hood, where a face would be, lies between these two pixel rows from the
+# bottom, around the column that is the front of the figure (three quarters of the way
+# across: the front is at 270 degrees), this many columns to each side.
+SHADE_FACE_ROWS = (400, 482)
+SHADE_FACE_COLUMN = 384
+SHADE_FACE_HALF_WIDTH = 62
+# The hem of the cloak is frayed and darker below this row.
+SHADE_HEM_ROW = 70
 
 # The stones that are missing in the damaged wall, as (course, stone in the course).
 # Both lie in the courses that are seen once, at 1.0 m and at 1.5 m above the ground,
@@ -1290,6 +1303,9 @@ def build():
     # own, so they can also be made without writing the pictures above again.
     build_interactable_textures()
 
+    # The two pictures of the shade, in a function of their own for the same reason.
+    build_shade_textures()
+
 
 def build_interactable_textures():
     """Writes the textures of the things the player uses: the lever, the note, the flask.
@@ -1348,6 +1364,65 @@ def build_note_textures():
     # The relief of the note: a gently crumpled sheet.
     note_relief = paper_height(note, crumple_depth=5.0, grain_depth=0.4)
     save_png(normal_map(note_relief), "note_paper_normal.png")
+
+
+def build_shade_textures():
+    """Writes the texture of the shade with its normal map.
+
+    To make only these two pictures, run from the repository root (one line):
+      blender --background --factory-startup --python-expr "import sys;
+      sys.path.append('tools/blender'); import make_textures;
+      make_textures.build_shade_textures()"
+
+    The shade is a hooded figure in a cloak that is nearly black. Nearly, not fully: a
+    black picture would show a hole in the beam of the flashlight and not a shape. So the
+    cloth is a very dark blue-grey, a little lighter on the ridges of its folds, and the
+    folds are in the normal map too, where the light of the flashlight finds them.
+    """
+    rng = np.random.default_rng(SHADE_SEED)
+    y, x = np.mgrid[0:SIZE, 0:SIZE]
+    # One full turn around the figure, as in build_flask_textures.
+    turn = x / SIZE * 2.0 * np.pi
+
+    patches = smooth_noise(rng, 14)
+    grain = smooth_noise(rng, 1)
+
+    # The folds of the cloak: long ridges that run from the shoulders to the ground. Three
+    # sine waves around the figure (whole multiples of the turn, so the left edge meets
+    # the right one), bent sideways a little by the patches so no two ridges are alike.
+    bend = 1.6 * (patches - 0.5)
+    folds = (
+        0.50
+        + 0.26 * np.sin(9.0 * turn + bend + 0.4)
+        + 0.14 * np.sin(17.0 * turn - 2.0 * bend + 1.9)
+        + 0.10 * np.sin(4.0 * turn + 0.7)
+    )
+
+    # The cloth: darkest in the valleys of the folds, lightest on their ridges. The woven
+    # threads are the fine noise drawn out along y.
+    weave = stretch(blur_along(rng.random((SIZE, SIZE)), 6, axis=0))
+    cloth = np.array((0.070, 0.078, 0.110))
+    shade = (0.50 + 0.85 * folds) * (0.85 + 0.30 * weave) * (0.90 + 0.20 * patches)
+
+    # The hem is frayed and wet from the grass: it gets darker towards the ground.
+    hem = smooth_step(np.clip(y / SHADE_HEM_ROW, 0.0, 1.0))
+    shade = shade * (0.45 + 0.55 * hem)
+    color = shade[..., None] * cloth
+
+    # The hollow of the hood: no face, only the dark. Soft at its border, so it reads as
+    # a depth and not as a painted patch.
+    face_low, face_high = SHADE_FACE_ROWS
+    across = np.abs(x - SHADE_FACE_COLUMN) / SHADE_FACE_HALF_WIDTH
+    along = np.abs(y - (face_low + face_high) / 2.0) / ((face_high - face_low) / 2.0)
+    inside = 1.0 - smooth_step(np.clip((np.maximum(across, along) - 0.7) / 0.3, 0.0, 1.0))
+    color = color * (1.0 - 0.9 * inside)[..., None]
+
+    # The relief: the folds stand out, the weave is a fine grain on them, and the hollow
+    # of the hood is flat.
+    height = (9.0 * folds + 0.8 * (blur(grain, GRAIN_BLUR_RADIUS) - 0.5)) * (1.0 - inside)
+
+    save_png(np.clip(color, 0.0, 1.0), "shade.png")
+    save_png(normal_map(height), "shade_normal.png")
 
 
 if __name__ == "__main__":
