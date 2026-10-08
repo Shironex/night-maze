@@ -212,13 +212,20 @@ bool advanceShade(Shade& shade, const ShadeSettings& settings, const Maze& maze,
     shade.previousPosition = shade.position;
     shade.lit = shadeLit(shade, step.lamp, step.obstacles);
 
-    // It stands still in its grace time and while it is lit. The way to the player is
-    // kept up to date all the same, because the hum is told how long that way is.
+    // It stands still in its grace time, while it is lit and for a moment after. The way to the
+    // player is kept up to date all the same, because the hum is told how long that way is.
     const bool waiting = shade.graceLeft > 0.0F;
     if (waiting) {
         shade.graceLeft -= stepSeconds;
     }
-    const bool walks = !waiting && !shade.lit;
+    // Lit: the wait after the light starts anew. Not lit any more: that wait runs down.
+    const bool thawing = !shade.lit && shade.thawLeft > 0.0F;
+    if (shade.lit) {
+        shade.thawLeft = settings.thawSeconds;
+    } else if (thawing) {
+        shade.thawLeft -= stepSeconds;
+    }
+    const bool walks = !waiting && !shade.lit && !thawing;
 
     MazeCell own = cellAt(shade.position);
     const MazeCell playerCell = cellAt(step.playerFeet);

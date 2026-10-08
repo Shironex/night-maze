@@ -8,6 +8,7 @@
 #include "game/Maze.hpp"
 #include "game/MazeLayout.hpp"
 #include "game/MazeWorld.hpp"
+#include "game/Player.hpp"
 #include "game/Round.hpp"
 #include "game/Terrain.hpp"
 
@@ -105,6 +106,7 @@ TEST_CASE("the shade settings start with the agreed numbers") {
     CHECK(settings.speed == 4.0F);
     CHECK(settings.graceSeconds == 8.0F);
     CHECK(settings.catchDistance == 0.9F);
+    CHECK(settings.thawSeconds == 2.0F);
     CHECK_FALSE(settings.showOnMap);
     // Faster than the player walks, slower than the player sprints.
     CHECK(settings.speed > 3.0F);
@@ -668,4 +670,83 @@ TEST_CASE("the shade turns its front towards the player") {
     // The height of the player does not matter, and the same spot gives no turn.
     CHECK(game::shadeYawDegrees(here, {9.0F, 5.0F, 9.0F}) == doctest::Approx(45.0F));
     CHECK(game::shadeYawDegrees(here, here) == 0.0F);
+}
+
+TEST_CASE("after the light leaves it the shade stands still a moment longer, then walks") {
+    const game::Maze maze = corridor(8);
+    const std::vector<scene::Aabb> walls = game::mazeColliders(maze);
+    const game::Terrain flat;
+    game::ShadeSettings settings;
+    settings.thawSeconds = 2.0F;
+    const glm::vec3 player = feetIn({.x = 0, .z = 0});
+    game::Shade shade = shadeIn({.x = 3, .z = 0});
+    const glm::vec3 before = shade.position;
+
+    // One step in the light.
+    const game::ShadeStep lit{
+        .playerFeet = player, .lamp = lampAimedAt(player, shade.position), .obstacles = walls};
+    REQUIRE_FALSE(game::advanceShade(shade, settings, maze, flat, lit, STEP));
+    REQUIRE(shade.lit);
+
+    // The lamp is switched off. For two seconds nothing moves, and a player who walks
+    // right through the shade in that time is not caught.
+    for (int i = 0; i < 2 * STEPS_PER_SECOND - 1; ++i) {
+        REQUIRE_FALSE(stepInTheDark(shade, maze, i % 2 == 0 ? player : before, settings));
+    }
+    CHECK_FALSE(shade.lit);
+    CHECK(shade.position == before);
+
+    // Then it comes: 6 m less the catch distance at 4 m/s.
+    int steps = 0;
+    while (steps < 10 * STEPS_PER_SECOND && !stepInTheDark(shade, maze, player, settings)) {
+        ++steps;
+    }
+    CHECK(static_cast<float>(steps) * STEP == doctest::Approx(1.275F).epsilon(0.05));
+
+    // Without the wait it walks in the very step after the light.
+    settings.thawSeconds = 0.0F;
+    game::Shade eager = shadeIn({.x = 3, .z = 0});
+    REQUIRE_FALSE(game::advanceShade(eager, settings, maze, flat, lit, STEP));
+    REQUIRE_FALSE(stepInTheDark(eager, maze, player, settings));
+    CHECK(eager.position != before);
+}
+
+TEST_CASE("sprinting away from the shade works, walking away and being winded do not") {
+    // A long straight corridor, the shade behind the player, nobody shines at it.
+    const game::Maze maze = corridor(200);
+    const game::ShadeSettings settings;
+    const game::StaminaSettings staminaSettings;
+
+    // What happens in 30 seconds to a player who runs east and holds the sprint key or
+    // not. Returns the gap at the end, or a negative number when the shade caught up.
+    // The player starts in cell 10 and the shade in the cell shadeColumn: every cell
+    // between them is 2 m.
+    const auto flee = [&](bool holdsSprint, game::Stamina stamina, int shadeColumn) {
+        glm::vec3 player = feetIn({.x = 10, .z = 0});
+        game::Shade shade = shadeIn({.x = shadeColumn, .z = 0});
+        for (int i = 0; i < 30 * STEPS_PER_SECOND; ++i) {
+            const bool sprints = game::advanceStamina(stamina, staminaSettings, holdsSprint, STEP);
+            player.x += (sprints ? game::Player::SPRINT_SPEED : game::Player::WALK_SPEED) * STEP;
+            if (stepInTheDark(shade, maze, player, settings)) {
+                return -1.0F;
+            }
+        }
+        return game::shadeDistance(shade, player);
+    };
+
+    // With the sprint key held the stamina runs out and comes back in turns, and over
+    // those turns the player is a little faster than the shade: never caught, and
+    // farther away than at the start.
+    CHECK(flee(true, game::Stamina{}, 7) > 6.0F);
+    // Walking loses a metre every second: caught, from 6 m behind and from 20 m behind.
+    CHECK(flee(false, game::Stamina{}, 7) < 0.0F);
+    CHECK(flee(false, game::Stamina{}, 0) < 0.0F);
+    // A winded player cannot sprint until the stamina is half back, which takes three
+    // seconds of walking. With the shade 2 m behind that is too late. With it 6 m behind
+    // there is just time.
+    game::Stamina winded;
+    winded.level = 0.0F;
+    winded.winded = true;
+    CHECK(flee(true, winded, 9) < 0.0F);
+    CHECK(flee(true, winded, 7) > 0.0F);
 }

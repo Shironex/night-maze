@@ -43,6 +43,12 @@ constexpr float SHADE_GRACE_SECONDS = 8.0F;
 /// m wide and the shade about 0.8 m, so at 0.9 m they almost touch.
 constexpr float SHADE_CATCH_DISTANCE = 0.9F;
 
+/// How long the shade goes on standing still after the light has left it, in seconds.
+/// Without this wait nobody could get past a shade that stands lit in a corridor: the
+/// moment the player has passed it, it is behind the lamp, unlit, and within reach. With
+/// it, shining at the shade buys a few steps: about 6 m at a walk, 11 m at a sprint.
+constexpr float SHADE_THAW_SECONDS = 2.0F;
+
 /// The height of the figure, in metres (the model shade.obj).
 constexpr float SHADE_HEIGHT = 2.1F;
 
@@ -71,6 +77,9 @@ struct ShadeSettings {
     float graceSeconds = SHADE_GRACE_SECONDS;
     float catchDistance = SHADE_CATCH_DISTANCE;
 
+    /// See SHADE_THAW_SECONDS.
+    float thawSeconds = SHADE_THAW_SECONDS;
+
     /// Debug switch: draw the shade on the map. The map of the game never shows it.
     bool showOnMap = false;
 };
@@ -98,6 +107,10 @@ struct Shade {
 
     /// Whether the flashlight was on it in the last step (shadeLit).
     bool lit = false;
+
+    /// Seconds it still stands still because it was lit a moment ago
+    /// (ShadeSettings::thawSeconds from the last step in which it was lit).
+    float thawLeft = 0.0F;
 
     /// How far it still has to WALK to the player, in metres, along the passages
     /// (advanceShade keeps it up to date, also while the shade stands still).
@@ -183,7 +196,9 @@ struct ShadeStep {
 ///   - Switched off in the settings: the shade is gone.
 ///   - While the grace time runs it stands still and cannot catch.
 ///   - While it is lit (shadeLit) it stands still and cannot catch: a lit shade is only
-///     a dark place on the ground, and the player may walk past it.
+///     a dark place on the ground, and the player may walk past it. It goes on standing
+///     still, and still cannot catch, for ShadeSettings::thawSeconds after the light has
+///     left it.
 ///   - Otherwise it walks ShadeSettings::speed metres per second along the shortest way
 ///     through the passages of maze, from cell centre to cell centre, so it never
 ///     crosses a wall. maze is the maze of the ROUND (game::roundMaze): a wall sunk by
