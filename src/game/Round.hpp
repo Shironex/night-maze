@@ -4,6 +4,7 @@
 
 #include "game/Discovery.hpp"
 #include "game/Flasks.hpp"
+#include "game/GateLamp.hpp"
 #include "game/Interactables.hpp"
 #include "game/Lighting.hpp"
 #include "game/Maze.hpp"
@@ -89,6 +90,9 @@ struct GameplaySettings {
     /// True when the debug UI asked to pull every lever of the round at once: a switch
     /// for testing, handled by the application in the same way as restart.
     bool pullAllLevers = false;
+
+    /// The numbers of the lamp and of the bell of the gate (game/GateLamp.hpp).
+    GateSettings gate;
 };
 
 /// Whether a round is still being played. There is no "lost": an empty battery only

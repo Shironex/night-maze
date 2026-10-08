@@ -40,6 +40,11 @@ constexpr float WALL_COLLISION_THICKNESS = PILLAR_SIZE;
 /// Height of a pillar. It stands a little above the walls.
 constexpr float PILLAR_HEIGHT = 3.15F;
 
+/// Height of the gatehouse that stands over the exit gate (the model gate_arch), from the
+/// base of the gate to the ridge of the small roof over its lantern: the tallest thing
+/// of the maze, twice as high as a wall, so its lantern shows above the walls.
+constexpr float GATE_HOUSE_HEIGHT = 6.0F;
+
 /// The world axis a wall segment runs along.
 enum class WallAxis {
     AlongX, ///< on the north or south edge of a cell
