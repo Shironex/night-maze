@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <random>
+#include <span>
 #include <vector>
 
 namespace game {
@@ -102,6 +103,8 @@ void shuffleCells(std::vector<MazeCell>& cells, std::mt19937& generator);
 ///   - dead ends first, in an order shuffled by the seed: a dead end is a place worth
 ///     walking into only if something is there,
 ///   - when the dead ends run out, the other cells, also shuffled by the seed,
+///   - the reserved cells (the dead ends kept for the flasks, game::flaskDeadEnds) come
+///     after all of those: a crystal lies in one only when no other cell is left,
 ///   - wantedCount crystals (brought into 0 to MAX_CRYSTAL_COUNT), or
 ///     crystalCountFor(cells) of them when wantedCount is CRYSTAL_COUNT_FROM_SIZE, or
 ///     fewer when the maze has fewer free cells (a maze of one or two cells gets none).
@@ -111,7 +114,8 @@ void shuffleCells(std::vector<MazeCell>& cells, std::mt19937& generator);
 ///
 /// Throws std::out_of_range when start or exit is not a cell of the maze.
 std::vector<CrystalSpawn> placeCrystals(const Maze& maze, std::uint32_t seed, MazeCell start,
-                                        MazeCell exit, int wantedCount = CRYSTAL_COUNT_FROM_SIZE);
+                                        MazeCell exit, int wantedCount = CRYSTAL_COUNT_FROM_SIZE,
+                                        std::span<const MazeCell> reserved = {});
 
 /// Where the base of a crystal rests: above the centre of its cell, CRYSTAL_FLOAT_HEIGHT
 /// over the ground. groundHeight is the height of the ground at the centre of the cell

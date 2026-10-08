@@ -5,6 +5,7 @@
 
 #include "game/Crystals.hpp"
 #include "game/Difficulty.hpp"
+#include "game/Exit.hpp"
 #include "game/Maze.hpp"
 #include "game/MazeLayout.hpp"
 #include "game/MazeWorld.hpp"
@@ -111,6 +112,53 @@ TEST_CASE("every free dead end gets a flask before any other cell does") {
     }
 }
 
+TEST_CASE("on every level the flasks lie in dead ends, apart from crystals, start and exit") {
+    // The world keeps the crystals out of the dead ends the flasks use, so this holds
+    // for all three levels and many seeds, and the level still has all its crystals.
+    constexpr std::uint32_t SEED_COUNT = 200;
+    for (const game::Difficulty difficulty : game::ALL_DIFFICULTIES) {
+        const game::DifficultyLevel& level = game::difficultyLevel(difficulty);
+        for (std::uint32_t seed = 1; seed <= SEED_COUNT; ++seed) {
+            CAPTURE(level.name);
+            CAPTURE(seed);
+            const game::MazeWorld world = game::buildMazeWorld(level.mazeWidth, level.mazeHeight,
+                                                               seed, {}, level.crystalCount);
+            CHECK(world.crystals.size() == static_cast<std::size_t>(level.crystalCount));
+
+            const std::vector<game::MazeCell> flasks = flasksOf(world, level.flaskCount);
+            REQUIRE(flasks.size() == static_cast<std::size_t>(level.flaskCount));
+            for (const game::MazeCell cell : flasks) {
+                CHECK(game::isDeadEnd(world.maze, cell.x, cell.z));
+                CHECK_FALSE(holdsCrystal(world, cell));
+                CHECK_FALSE(cell == game::START_CELL);
+                CHECK_FALSE(cell == world.exitCell);
+            }
+        }
+    }
+}
+
+TEST_CASE("the dead ends of the flasks are far from the start first, and the same every time") {
+    const game::MazeWorld world = normalWorld(3U);
+    const std::vector<game::MazeCell> ends =
+        game::flaskDeadEnds(world.maze, world.seed, game::START_CELL, world.exitCell);
+    CHECK(ends == game::flaskDeadEnds(world.maze, world.seed, game::START_CELL, world.exitCell));
+    REQUIRE(ends.size() > 3);
+
+    const std::vector<int> distances = game::passageDistances(world.maze, game::START_CELL);
+    const int farthest = *std::ranges::max_element(distances);
+    // Once a near dead end has come, no far one follows.
+    bool nearSeen = false;
+    for (const game::MazeCell cell : ends) {
+        const int index = cell.z * world.maze.width() + cell.x;
+        const bool far = distances[static_cast<std::size_t>(index)] * 2 >= farthest;
+        CHECK_FALSE((nearSeen && far));
+        nearSeen = nearSeen || !far;
+    }
+    // The start and the exit are never in the list.
+    CHECK(std::ranges::find(ends, game::START_CELL) == ends.end());
+    CHECK(std::ranges::find(ends, world.exitCell) == ends.end());
+}
+
 TEST_CASE("no two flasks share a cell") {
     const game::MazeWorld world = normalWorld(7U);
     const std::vector<game::MazeCell> flasks = flasksOf(world, game::MAX_FLASK_COUNT);
@@ -122,22 +170,26 @@ TEST_CASE("no two flasks share a cell") {
 }
 
 TEST_CASE("without a free dead end the flasks take other cells that hold no crystal") {
-    // 60 crystals in a maze of 100 cells: every dead end holds one, and so do many
-    // other cells.
+    // Crystals placed without reserving anything: 60 of them in a maze of 100 cells,
+    // so every dead end holds one, and so do many other cells. (In a built world the
+    // crystals leave the dead ends of the flasks alone.)
     constexpr int MANY_CRYSTALS = 60;
-    const game::MazeWorld world = game::buildMazeWorld(10, 10, 1U, {}, MANY_CRYSTALS);
-    REQUIRE(world.crystals.size() == static_cast<std::size_t>(MANY_CRYSTALS));
+    const game::MazeWorld world = game::buildMazeWorld(10, 10, 1U, {}, 0);
+    const std::vector<game::CrystalSpawn> crystals =
+        game::placeCrystals(world.maze, 1U, game::START_CELL, world.exitCell, MANY_CRYSTALS);
+    REQUIRE(crystals.size() == static_cast<std::size_t>(MANY_CRYSTALS));
 
-    const std::vector<game::MazeCell> flasks = flasksOf(world, 3);
+    const std::vector<game::MazeCell> flasks =
+        game::placeFlasks(world.maze, world.seed, game::START_CELL, world.exitCell, crystals, 3);
     REQUIRE(flasks.size() == 3);
     for (const game::MazeCell cell : flasks) {
         CHECK_FALSE(game::isDeadEnd(world.maze, cell.x, cell.z));
-        CHECK_FALSE(holdsCrystal(world, cell));
+        CHECK_FALSE(std::ranges::any_of(
+            crystals, [cell](const game::CrystalSpawn& crystal) { return crystal.cell == cell; }));
         CHECK_FALSE(cell == game::START_CELL);
         CHECK_FALSE(cell == world.exitCell);
     }
 }
-
 TEST_CASE("a maze with too few free cells gets fewer flasks, down to none") {
     // Two cells: the start and the exit. Nothing is free.
     const game::MazeWorld tiny = game::buildMazeWorld(2, 1, 1U);
@@ -281,3 +333,4 @@ TEST_CASE("a new round puts the flasks back") {
     REQUIRE(round.flasks.size() == 1);
     CHECK_FALSE(round.flasks[0].collected);
 }
+#include <cstdio>

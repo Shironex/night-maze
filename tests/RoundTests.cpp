@@ -134,7 +134,8 @@ TEST_CASE("the reach of the player is a sphere at the middle of the body") {
 }
 
 TEST_CASE("a crystal is collected from the middle of its cell, not from the next cell") {
-    const game::MazeWorld world = goldenWorld();
+    // Seed 4: its two crystals, (3, 3) and (1, 3), are not in neighbouring cells.
+    const game::MazeWorld world = game::buildMazeWorld(4, 4, 4U);
     const game::GameplaySettings settings;
     game::Round round = game::startRound(world, settings);
     bool flashlightOn = false;

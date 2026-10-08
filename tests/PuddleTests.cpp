@@ -182,7 +182,7 @@ TEST_CASE("the default maze has 13 puddles at the default share") {
 
 TEST_CASE("golden maze: 4 x 4 cells from seed 1 has exactly these puddles") {
     // The maze of the golden tests of the generator and of the crystals. Its exit is the
-    // cell (3, 1) and its crystals float in (0, 3) and (1, 1), so 12 cells are free, and
+    // cell (3, 1) and its crystals float in (1, 1) and (1, 0), so 12 cells are free, and
     // half of them get a puddle. These cells must come out on every system: the choice
     // uses std::mt19937 and randomBelow only.
     const game::MazeWorld world = game::buildMazeWorld(4, 4, 1);
@@ -191,12 +191,12 @@ TEST_CASE("golden maze: 4 x 4 cells from seed 1 has exactly these puddles") {
 
     const std::vector<game::PuddleSpawn> puddles = spawnsOf(world, 0.5F);
     REQUIRE(puddles.size() == 6U);
-    CHECK(puddles[0].cell == game::MazeCell{.x = 3, .z = 0});
-    CHECK(puddles[1].cell == game::MazeCell{.x = 0, .z = 2});
-    CHECK(puddles[2].cell == game::MazeCell{.x = 0, .z = 1});
+    CHECK(puddles[0].cell == game::MazeCell{.x = 0, .z = 1});
+    CHECK(puddles[1].cell == game::MazeCell{.x = 1, .z = 2});
+    CHECK(puddles[2].cell == game::MazeCell{.x = 2, .z = 1});
     CHECK(puddles[3].cell == game::MazeCell{.x = 3, .z = 3});
-    CHECK(puddles[4].cell == game::MazeCell{.x = 1, .z = 2});
-    CHECK(puddles[5].cell == game::MazeCell{.x = 2, .z = 1});
+    CHECK(puddles[4].cell == game::MazeCell{.x = 2, .z = 2});
+    CHECK(puddles[5].cell == game::MazeCell{.x = 0, .z = 2});
 
     // The first puddle in full: its place in the cell and its size.
     CHECK(puddles[0].offset.x == doctest::Approx(-0.24375F));

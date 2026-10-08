@@ -1,6 +1,7 @@
 // Flasks: the flasks of tea a maze gets, which cells they lie in and how they glow.
 #include "game/Flasks.hpp"
 
+#include "game/Exit.hpp"
 #include "game/MazeLayout.hpp"
 
 #include <algorithm>
@@ -25,34 +26,60 @@ bool holdsCrystal(MazeCell cell, std::span<const CrystalSpawn> crystals) {
 
 } // namespace
 
+std::vector<MazeCell> flaskDeadEnds(const Maze& maze, std::uint32_t seed, MazeCell start,
+                                    MazeCell exit) {
+    // The dead ends in row order, then shuffled by the generator of the flasks: the
+    // order before the shuffle is part of the result, like in placeCrystals.
+    std::vector<MazeCell> deadEnds;
+    for (int z = 0; z < maze.height(); ++z) {
+        for (int x = 0; x < maze.width(); ++x) {
+            const MazeCell cell{.x = x, .z = z};
+            if (cell != start && cell != exit && isDeadEnd(maze, x, z)) {
+                deadEnds.push_back(cell);
+            }
+        }
+    }
+    std::mt19937 generator(seed + FLASK_SEED_OFFSET);
+    shuffleCells(deadEnds, generator);
+
+    // The far dead ends first: stable_partition moves the ones that pass the test to
+    // the front and keeps the shuffled order inside both groups. A far dead end is one
+    // at least half as many passages from the start as the farthest cell of the maze.
+    const std::vector<int> distances = passageDistances(maze, start);
+    const int farthest = *std::ranges::max_element(distances);
+    std::ranges::stable_partition(deadEnds, [&](MazeCell cell) {
+        const int index = cell.z * maze.width() + cell.x;
+        return distances[static_cast<std::size_t>(index)] * 2 >= farthest;
+    });
+    return deadEnds;
+}
+
 std::vector<MazeCell> placeFlasks(const Maze& maze, std::uint32_t seed, MazeCell start,
                                   MazeCell exit, std::span<const CrystalSpawn> crystals,
                                   int wantedCount) {
-    // The free cells in two lists, each filled row after row: the order before the
-    // shuffle is part of the result, like in placeCrystals.
-    std::vector<MazeCell> deadEnds;
+    // The dead ends that hold no crystal, in the order of flaskDeadEnds, and then the
+    // other free cells in row order.
+    std::vector<MazeCell> candidates;
+    for (const MazeCell cell : flaskDeadEnds(maze, seed, start, exit)) {
+        if (!holdsCrystal(cell, crystals)) {
+            candidates.push_back(cell);
+        }
+    }
     std::vector<MazeCell> otherCells;
     for (int z = 0; z < maze.height(); ++z) {
         for (int x = 0; x < maze.width(); ++x) {
             const MazeCell cell{.x = x, .z = z};
-            if (cell == start || cell == exit || holdsCrystal(cell, crystals)) {
-                continue;
-            }
-            if (isDeadEnd(maze, x, z)) {
-                deadEnds.push_back(cell);
-            } else {
+            if (cell != start && cell != exit && !holdsCrystal(cell, crystals) &&
+                !isDeadEnd(maze, x, z)) {
                 otherCells.push_back(cell);
             }
         }
     }
 
+    // The fallback when the dead ends run out: the other cells, shuffled by the seed.
+    // A cell is in the list once, so no cell can get two flasks.
     std::mt19937 generator(seed + FLASK_SEED_OFFSET);
-    shuffleCells(deadEnds, generator);
     shuffleCells(otherCells, generator);
-
-    // One list of candidates: every dead end comes before every other cell. A cell is
-    // in it once, so no cell can get two flasks.
-    std::vector<MazeCell> candidates = deadEnds;
     candidates.insert(candidates.end(), otherCells.begin(), otherCells.end());
 
     // Never more than there are candidates. resize cuts the list off after the first

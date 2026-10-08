@@ -3,9 +3,11 @@
 #include "game/MazeWorld.hpp"
 
 #include "game/Exit.hpp"
+#include "game/Flasks.hpp"
 #include "game/MazeGenerator.hpp"
 #include "scene/Transform.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <stdexcept>
 
@@ -154,8 +156,12 @@ MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed, const Height
     }
 
     // The crystals: never in the start cell (the player would collect one without
-    // moving) and never in the exit cell (it is behind the gate).
-    world.crystals = placeCrystals(maze, seed, START_CELL, exit.cell, crystalCount);
+    // moving) and never in the exit cell (it is behind the gate). They also keep out of
+    // the dead ends the flasks will use when a round starts.
+    std::vector<MazeCell> flaskCells = flaskDeadEnds(maze, seed, START_CELL, exit.cell);
+    flaskCells.resize(
+        std::min(flaskCells.size(), static_cast<std::size_t>(FLASK_RESERVED_DEAD_ENDS)));
+    world.crystals = placeCrystals(maze, seed, START_CELL, exit.cell, crystalCount, flaskCells);
 
     // The levers and the notes come after the crystals: a lever avoids the cells that
     // have a crystal. For every lever the wall it opens is looked up in the wall list

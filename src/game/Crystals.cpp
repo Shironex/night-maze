@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cstddef>
 #include <random>
+#include <span>
 #include <stdexcept>
 #include <utility>
 
@@ -60,7 +61,8 @@ int crystalCountFor(int cellCount) {
 }
 
 std::vector<CrystalSpawn> placeCrystals(const Maze& maze, std::uint32_t seed, MazeCell start,
-                                        MazeCell exit, int wantedCount) {
+                                        MazeCell exit, int wantedCount,
+                                        std::span<const MazeCell> reserved) {
     if (!maze.contains(start.x, start.z) || !maze.contains(exit.x, exit.z)) {
         throw std::out_of_range("placeCrystals: the start or the exit is outside the maze");
     }
@@ -69,13 +71,18 @@ std::vector<CrystalSpawn> placeCrystals(const Maze& maze, std::uint32_t seed, Ma
     // shuffle is part of the result, like the order of the directions in the generator.
     std::vector<MazeCell> deadEnds;
     std::vector<MazeCell> otherCells;
+    std::vector<MazeCell> reservedCells;
     for (int z = 0; z < maze.height(); ++z) {
         for (int x = 0; x < maze.width(); ++x) {
             const MazeCell cell{.x = x, .z = z};
             if (cell == start || cell == exit) {
                 continue;
             }
-            if (isDeadEnd(maze, x, z)) {
+            // A reserved cell is kept for something else (the flasks): it goes into a
+            // list of its own, which comes last.
+            if (std::ranges::find(reserved, cell) != reserved.end()) {
+                reservedCells.push_back(cell);
+            } else if (isDeadEnd(maze, x, z)) {
                 deadEnds.push_back(cell);
             } else {
                 otherCells.push_back(cell);
@@ -87,10 +94,13 @@ std::vector<CrystalSpawn> placeCrystals(const Maze& maze, std::uint32_t seed, Ma
     shuffleCells(deadEnds, generator);
     shuffleCells(otherCells, generator);
 
-    // One list of candidates: every dead end comes before every other cell. A cell is
-    // in it once, so no cell can get two crystals.
+    // One list of candidates: every dead end comes before every other cell, and the
+    // reserved cells come after all of them, so they are used only when nothing else is
+    // left (the number of crystals never drops because of them). A cell is in it once,
+    // so no cell can get two crystals.
     std::vector<MazeCell> candidates = deadEnds;
     candidates.insert(candidates.end(), otherCells.begin(), otherCells.end());
+    candidates.insert(candidates.end(), reservedCells.begin(), reservedCells.end());
 
     // The wanted number: the one that was asked for, or the one the size of the maze
     // gives. Never more than there are candidates.
