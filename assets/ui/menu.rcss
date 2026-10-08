@@ -209,16 +209,15 @@ button.item:active {
     color: #ff6b5a;
 }
 
-/* The way of the arrow keys through the main menu, named element by element. "auto"
-   would look for the nearest element straight below, and the small controls of the two
-   rows do not stand below the word "Play": the arrows would skip them. */
+/* The way of the arrow keys through free play, named element by element. "auto" would
+   look for the nearest element straight below, and the small controls of the three rows
+   do not stand below the word "Play": the arrows would skip them. */
 #play { nav-down: #difficulty-normal; }
 #difficulty-easy, #difficulty-normal, #difficulty-hard { nav-up: #play; nav-down: #calm-night; }
 #calm-night { nav-up: #difficulty-normal; nav-down: #seed; nav-left: none; nav-right: none; }
-#seed { nav-up: #calm-night; nav-down: #open-settings; }
-#new-seed { nav-up: #difficulty-hard; nav-down: #open-settings; }
-#open-settings { nav-up: #seed; nav-down: #quit; }
-#quit { nav-up: #open-settings; }
+#seed { nav-up: #calm-night; nav-down: #free-play-back; }
+#new-seed { nav-up: #difficulty-hard; nav-down: #free-play-back; }
+#free-play-back { nav-up: #seed; }
 
 /* ---- small buttons, the text field ---------------------------------------------------- */
 
@@ -735,16 +734,13 @@ button.chip.key.waiting, button.chip.key.waiting:focus-visible {
     top: 16vh;
 }
 
-/* The way of the arrow keys through the main menu and through free play, named element
-   by element like above. The rules for #seed, #new-seed and #open-settings above were
-   written when all of them stood in the main menu: the ones here come later and win. */
+/* The way of the arrow keys through the main menu, named element by element like the
+   one through free play above. */
 #campaign { nav-down: #open-nights; }
 #open-nights { nav-up: #campaign; nav-down: #open-free-play; }
 #open-free-play { nav-up: #open-nights; nav-down: #open-settings; }
 #open-settings { nav-up: #open-free-play; nav-down: #quit; }
-#seed { nav-up: #calm-night; nav-down: #free-play-back; }
-#new-seed { nav-up: #difficulty-hard; nav-down: #free-play-back; }
-#free-play-back { nav-up: #seed; }
+#quit { nav-up: #open-settings; }
 
 /* One night in the list: its number, its title and its state in three columns. It is
    a menu item like the others (amber on hover, a crystal frame with the keyboard). */
