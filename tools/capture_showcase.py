@@ -51,7 +51,7 @@ LOCK_FILE = os.path.join(tempfile.gettempdir(), "nm-input.lock")
 # How long to wait for the lock of another script, and for the mouse pointer of the
 # person at the computer to leave the game window, in seconds.
 LOCK_WAIT_SECONDS = 120.0
-POINTER_WAIT_SECONDS = 20.0
+POINTER_WAIT_SECONDS = 10.0
 
 # The settings file writes mouse_sensitivity = 4, which is 0.1 degrees per unit of mouse
 # movement (game/Settings.hpp), so a turn of 90 degrees is 900 units.
