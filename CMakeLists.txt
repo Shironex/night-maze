@@ -133,7 +133,8 @@ night_maze_enable_warnings(engine)
 # levers and the notes with the picking of a frame, the sound cues (which short sound
 # belongs to what happened, and the clock of the low battery pulse), what the minimap
 # shows (the discovered cells and its shapes), the path of the menu camera, the screens
-# of the game (menu, playing, paused, round end, settings), the rule that chooses what is
+# of the game (menu, intro, free play, campaign nights, playing, paused, round end,
+# settings, cards), the rule that chooses what is
 # behind the main menu, the three difficulty levels, the settings of the player with
 # the text of their file and the switches of the command line are plain data and math.
 # They live in a library of their own, and not in the night_maze executable, so that

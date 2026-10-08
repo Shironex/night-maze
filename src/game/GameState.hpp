@@ -1,5 +1,5 @@
-// GameState: which screen the game is on (menu, playing, paused, round end, settings)
-// and the rules for going from one to the next.
+// GameState: which screen the game is on (menu, intro, free play, nights of the campaign,
+// playing, paused, round end, settings, cards) and the rules for going from one to the next.
 #pragma once
 
 #include "game/Difficulty.hpp"

@@ -93,8 +93,9 @@ namespace game {
 /// through the maze alone (game/MenuCamera.hpp). The round stands still meanwhile, and
 /// the keys and the mouse of the round are ignored.
 ///
-/// The game is always on one screen (game/GameState.hpp): the main menu, a round being
-/// played, the pause menu, the result of a won round or the settings. The round runs
+/// The game is always on one screen (game/GameState.hpp): the intro, the main menu, free
+/// play, the list of campaign nights, a title card, a round being played, the pause
+/// menu, the result of a won round, the ending card or the settings. The round runs
 /// only while it is played. The menus are documents drawn by RmlUi (ui::UiLayer) on top
 /// of the finished frame. Their buttons and the Escape key are events, and
 /// game::nextMode says which screen follows.
