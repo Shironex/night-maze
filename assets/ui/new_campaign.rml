@@ -1,0 +1,24 @@
+<rml>
+<head>
+    <title>New campaign</title>
+    <link type="text/rcss" href="menu.rcss"/>
+</head>
+<body class="dim">
+<!-- Asked once, when the first entry of the main menu reads "New campaign": a new
+     campaign draws five new mazes, and the list of the finished one goes away with its
+     best times. The keyboard starts on the answer that changes nothing. -->
+<div class="center">
+    <div class="card">
+        <h2 class="card-title">New campaign</h2>
+        <div class="sep"></div>
+        <p class="card-text">Five new mazes for five new nights.</p>
+        <p class="card-text">The finished campaign and its best times will be gone.</p>
+        <div class="buttons">
+            <button class="btn primary" data-action="menu" autofocus>Keep it</button>
+            <button class="btn" data-action="new-campaign">Start a new campaign</button>
+        </div>
+        <p class="keys">Left and right: move | Enter: choose | Esc: back to menu</p>
+    </div>
+</div>
+</body>
+</rml>

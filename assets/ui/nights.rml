@@ -1,0 +1,37 @@
+<rml>
+<head>
+    <title>Nights</title>
+    <link type="text/rcss" href="menu.rcss"/>
+</head>
+<body class="left">
+<!-- The five nights of the campaign, one row each. The game writes the title and the
+     state of every row and sets one class on it: "finished" (it shows its best time and
+     can be played again), "open" (the next night) or "locked" (it does nothing yet). -->
+<div class="column page">
+    <div class="rise">
+        <p class="overline">The five nights</p>
+    </div>
+    <div class="menu">
+        <div class="rise d1">
+            <button class="night" id="night-1" data-action="night-1"><div class="bar"></div><span class="night-number">Night 1</span><span class="night-title" id="night-1-title"></span><span class="night-state" id="night-1-state"></span></button>
+        </div>
+        <div class="rise d2">
+            <button class="night" id="night-2" data-action="night-2"><div class="bar"></div><span class="night-number">Night 2</span><span class="night-title" id="night-2-title"></span><span class="night-state" id="night-2-state"></span></button>
+        </div>
+        <div class="rise d3">
+            <button class="night" id="night-3" data-action="night-3"><div class="bar"></div><span class="night-number">Night 3</span><span class="night-title" id="night-3-title"></span><span class="night-state" id="night-3-state"></span></button>
+        </div>
+        <div class="rise d4">
+            <button class="night" id="night-4" data-action="night-4"><div class="bar"></div><span class="night-number">Night 4</span><span class="night-title" id="night-4-title"></span><span class="night-state" id="night-4-state"></span></button>
+        </div>
+        <div class="rise d5">
+            <button class="night" id="night-5" data-action="night-5"><div class="bar"></div><span class="night-number">Night 5</span><span class="night-title" id="night-5-title"></span><span class="night-state" id="night-5-state"></span></button>
+        </div>
+        <div class="rise d6">
+            <button class="item small" id="nights-back" data-action="menu"><div class="bar"></div>Back</button>
+        </div>
+    </div>
+</div>
+<p class="keys corner">Arrows or Tab: move | Enter: play | Esc: back</p>
+</body>
+</rml>

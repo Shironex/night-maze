@@ -205,4 +205,19 @@ constexpr float ENDING_CARD_SECONDS = 15.0F;
 constexpr float ENDING_BELL_SECONDS = 0.5F;
 StoryCardFrame endingCardFrame(float seconds);
 
+/// What the debug window asks of the campaign, for testing. It only writes this data: the
+/// application reads it at the start of its next frame, does what is asked and clears
+/// it, like MazeSettings::regenerate.
+struct CampaignRequest {
+    /// The next night the campaign should have, 1 to CAMPAIGN_FINISHED: the nights before
+    /// it then count as won (without a best time). 0: nothing is asked.
+    int setNight = 0;
+
+    /// True: forget the campaign. No night is won, no seed, no best time.
+    bool clear = false;
+
+    /// True: the round that is being played is won at once, with the crystals it has.
+    bool winRound = false;
+};
+
 } // namespace game

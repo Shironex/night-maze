@@ -136,6 +136,16 @@ const char* screenName(game::GameMode mode) {
         return "Settings (from menu)";
     case game::GameMode::SettingsFromPause:
         return "Settings (from pause)";
+    case game::GameMode::FreePlay:
+        return "free play";
+    case game::GameMode::Nights:
+        return "nights";
+    case game::GameMode::NewCampaign:
+        return "new campaign";
+    case game::GameMode::NightCard:
+        return "night card";
+    case game::GameMode::EndingCard:
+        return "ending card";
     case game::GameMode::Intro:
         return "Intro";
     }

@@ -5,6 +5,7 @@
 #include "assets/AssetCache.hpp"
 #include "audio/AudioEngine.hpp"
 #include "core/Application.hpp"
+#include "game/Campaign.hpp"
 #include "game/ColliderLines.hpp"
 #include "game/Difficulty.hpp"
 #include "game/EnvironmentMapping.hpp"
@@ -109,7 +110,13 @@ namespace game {
 /// with a wind and a few sounds under them. It is played live, by the same code that
 /// draws a round. Any key ends it, and it is shown once: the settings file remembers.
 ///
-/// A new game has a difficulty (game/Difficulty.hpp), which decides the size of the
+/// The game is played as a campaign of five nights (game/Campaign.hpp): the first entry
+/// of the main menu starts the next night, each night begins with a title card and has
+/// a maze, notes and numbers of its own, and the last one ends with the ending card. The
+/// progress is part of the settings file. Next to it is free play: one maze of a chosen
+/// difficulty and seed.
+///
+/// A game of free play has a difficulty (game/Difficulty.hpp), which decides the size of the
 /// maze, its crystals, the gate and the battery, and a seed, which decides the maze.
 /// What the player sets on the settings screen (game/Settings.hpp) is used at once and
 /// kept in a small text file in the working directory.
@@ -387,6 +394,15 @@ protected:
     /// it names the keys in its prompts.
     const KeyBindings& keyBindings() const { return m_settings.keys; }
 
+    /// The campaign as the settings file has it (the next night, the seed, the best
+    /// times) and the night that is in play (0 in free play), for the debug UI.
+    const GameSettings& settings() const { return m_settings; }
+    int playedNight() const { return m_playedNight; }
+
+    /// What the debug UI asks of the campaign (game::CampaignRequest): it writes, and the
+    /// next frame does it.
+    CampaignRequest& campaignRequest() { return m_campaignRequest; }
+
 private:
     // Camera turn for one screen coordinate unit of mouse movement, in degrees. The mouse
     // is measured in the units of the window size, not in framebuffer pixels, so the same
@@ -394,8 +410,10 @@ private:
     static constexpr float DEFAULT_MOUSE_SENSITIVITY = 0.1F;
 
     /// Builds the maze described by m_mazeSettings on its terrain and starts a round in
-    /// it (beginRound).
-    void regenerateMaze();
+    /// it (beginRound). night is the night of the campaign the maze is built for: its
+    /// notes are then the ones of that night (game::campaignInteractables). 0 is a maze
+    /// of free play or one the debug UI asked for, with the notes of m_mazeSettings.
+    void regenerateMaze(int night = 0);
 
     /// Builds the terrain of the maze in play again with the height scale of
     /// m_terrainSettings and puts everything back on it: the walls, the gate, the
@@ -433,9 +451,11 @@ private:
     /// (handleMenuCommand).
     void handleMenuActions();
 
-    /// Does what a button asks for that does not change the screen: choose a difficulty
-    /// or roll a new seed in the main menu, switch fullscreen, step the window size or
-    /// reset the settings on the settings screen. False for a name it does not know.
+    /// Does what a button asks for that is no event by itself: choose a difficulty or
+    /// roll a new seed in free play, switch fullscreen, step the window size or reset the
+    /// settings on the settings screen, and the buttons that start a night of the
+    /// campaign (the first entry of the main menu, a row of the list of nights, the
+    /// answer to a new campaign). False for a name it does not know.
     bool handleMenuCommand(const std::string& action);
 
     /// The two questions every action of the player is read with, and the one place
@@ -468,13 +488,13 @@ private:
     /// (game::applySetting) and uses them at once.
     void handleControlChanges();
 
-    /// Reads the seed field of the main menu into m_newGame.seed. An empty field takes
+    /// Reads the seed field of the free play screen into m_newGame.seed. An empty field takes
     /// a random seed. False when the field holds something that is not a seed: a hint
     /// is then shown next to it, and the game is not started.
     bool readSeedField();
 
     /// Chooses a random seed for the next game and writes it into the seed field of
-    /// the main menu.
+    /// the free play screen.
     void rollSeed();
 
     /// Makes the window match m_mode: shows the document of the screen (or none while
@@ -482,16 +502,35 @@ private:
     /// gives it back to the menu.
     void showScreen();
 
-    /// Starts a new game: the numbers of its difficulty level go into the request for
-    /// the maze and into the rules of the round (they overwrite what the debug UI set
-    /// there), the maze is built from the seed and its round starts.
+    /// Starts a new game of free play: the numbers of its difficulty level go into the
+    /// request for the maze and into the rules of the round (they overwrite what the
+    /// debug UI set there), the maze is built from the seed and its round starts.
     void startNewGame(const NewGame& newGame);
 
-    /// The four functions that write what a screen shows into its document. The main
-    /// menu: the chosen difficulty and its numbers, and the switch "Calm night". The pause menu:
-    /// the difficulty and the seed of the round. The result screen: the time, the crystals, the
-    /// difficulty and the seed. The settings screen: where its controls stand.
+    /// Builds the maze of a night of the campaign and starts its round: the numbers of
+    /// the night (game::campaignNight) go into the request for the maze and into the
+    /// rules of the round, like the numbers of a level do in startNewGame. The seed of
+    /// the maze follows from campaignSeed (game::campaignNightSeed). counts says whether
+    /// winning the night changes the campaign in the settings file: true for a night
+    /// started from the menus, false for one of the command line (--night).
+    void startNight(int night, std::uint32_t campaignSeed, bool counts);
+
+    /// Starts a night of the campaign of the settings file, from a menu: draws the seed
+    /// of the campaign when it has none yet, builds the maze (startNight), writes the
+    /// settings file and sends GameEvent::StartNight, which brings up the title card.
+    /// Nothing happens on a screen that cannot start a night.
+    void beginCampaignNight(int night);
+
+    /// The functions that write what a screen shows into its document. The main menu:
+    /// the label of its first entry, the night beside it and the numbers of that night.
+    /// Free play: the chosen difficulty and its numbers, and the switch "Calm night".
+    /// The list of nights: the title and the state of every row. The pause menu: the
+    /// difficulty or the night and the seed of the round. The result screen: the time,
+    /// the crystals, the difficulty or the night, the seed and, after a night, its line of
+    /// the story. The settings screen: where its controls stand.
     void fillMainMenuDocument();
+    void fillFreePlayDocument();
+    void fillNightsDocument();
     void fillPauseDocument();
     void fillRoundEndDocument();
     void fillSettingsDocument();
@@ -537,6 +576,48 @@ private:
     /// and the card document gets its two lines and its three opacities
     /// (game::introFrame). At the end of the script it sends GameEvent::IntroFinished.
     void updateIntro();
+
+    /// True when any key or any mouse button was pressed in this frame: what skips the
+    /// intro and the cards.
+    bool anyKeyPressed();
+
+    /// Writes the lines of the card of text (assets/ui/card.rml): up to
+    /// STORY_CARD_LINE_COUNT of them, an empty text for a line that is not used. middle
+    /// puts them in the middle of the window, for a card on black.
+    void writeCardLines(const std::array<const char*, STORY_CARD_LINE_COUNT>& lines, bool middle);
+
+    /// Sets how much of each part of the card of text is there in this frame: the black
+    /// over the picture, the card as a whole, each of its lines and the hint.
+    void showCardFrame(float black, float card,
+                       const std::array<float, STORY_CARD_LINE_COUNT>& lines, float hint);
+
+    /// Starts the card of the screen the game has just come to: the title card of the
+    /// night in play (GameMode::NightCard) or the ending card (GameMode::EndingCard).
+    /// Its clock starts at 0 and its lines are written. Without the document of the card
+    /// it is over at once.
+    void startStoryCard();
+
+    /// One frame of the title card or of the ending card, called once per frame while
+    /// the game is on one of the two screens. A key or a mouse button ends it. Otherwise
+    /// its clock moves on by the time of the frame, the bell of the ending card rings when
+    /// its moment is passed, and the card gets its opacities (game::nightCardFrame,
+    /// game::endingCardFrame). At its end it sends GameEvent::CardFinished.
+    void updateStoryCard();
+
+    /// Does what the debug UI asked of the campaign (m_campaignRequest) and clears the
+    /// request. Called once per frame.
+    void handleCampaignRequest();
+
+    /// The round is won: called by the fixed step that took the player through the gate.
+    /// In free play the story line counter moves on. In a night of the campaign the best
+    /// time and the next night are written to the settings file (unless the night came
+    /// from the command line). Then the result screen comes up, or the ending card after
+    /// the last night.
+    void finishRound();
+
+    /// Forgets the campaign of the settings: no night is won, no seed, no best time. For
+    /// a new campaign and for the debug UI. The file is not written here.
+    void forgetCampaign();
 
     /// What has to happen when the intro is left, at its end, by a key or by Escape:
     /// called by handleGameEvent, the one place all three come through. Every sound
@@ -870,9 +951,19 @@ private:
     // The screen the game is on. It starts with the main menu, or straight in a round
     // when the command line asked for that.
     GameMode m_mode = GameMode::MainMenu;
-    // The game the button "Play" starts: the difficulty chosen in the main menu and
-    // the seed its seed field shows.
+    // The game the button "Play" starts: the difficulty chosen on the free play screen
+    // and the seed its seed field shows.
     NewGame m_newGame;
+    // The night of the campaign that is in play, 1 to CAMPAIGN_NIGHT_COUNT, or 0 for
+    // a maze of free play and for one the debug UI asked for. Set whenever a maze is
+    // built (regenerateMaze).
+    int m_playedNight = 0;
+    // True when winning the night in play changes the campaign of the settings file.
+    // False for a night started from the command line (--night), which has a campaign
+    // seed of its own, and after the debug UI changed the campaign under a running night.
+    bool m_nightCounts = false;
+    // What the debug UI asks of the campaign (handleCampaignRequest).
+    CampaignRequest m_campaignRequest;
     // The seed of the command line (StartOptions::seed): the maze behind the main menu
     // is built from it again when the intro, which has a maze of its own, is over.
     std::uint32_t m_startSeed = DEFAULT_MAZE_SEED;
@@ -884,14 +975,17 @@ private:
     // stops being active pauses a running round.
     bool m_windowWasFocused = true;
 
-    // The menu: RmlUi and the four documents, one per screen with a menu. Each
-    // DocumentId is ui::NO_DOCUMENT when its file could not be loaded.
+    // The menu: RmlUi and its documents, one per screen with a menu. Each DocumentId is
+    // ui::NO_DOCUMENT when its file could not be loaded.
     ui::UiLayer m_ui;
     ui::DocumentId m_mainMenuDocument = ui::NO_DOCUMENT;
+    ui::DocumentId m_freePlayDocument = ui::NO_DOCUMENT;
+    ui::DocumentId m_nightsDocument = ui::NO_DOCUMENT;
+    ui::DocumentId m_newCampaignDocument = ui::NO_DOCUMENT;
     ui::DocumentId m_pauseDocument = ui::NO_DOCUMENT;
     ui::DocumentId m_roundEndDocument = ui::NO_DOCUMENT;
     ui::DocumentId m_settingsDocument = ui::NO_DOCUMENT;
-    // True when all four documents are loaded. Without them a menu screen would show
+    // True when all of these documents are loaded. Without them a menu screen would show
     // nothing and could not be left, so the game then never enters one.
     bool m_menusLoaded = false;
 
@@ -903,10 +997,14 @@ private:
     // The card whose two lines stand in the document: they are written when the card
     // changes, not in every frame. INTRO_CARD_COUNT means none yet.
     std::size_t m_introCardShown = INTRO_CARD_COUNT;
+    // The clock of the title card of a night and of the ending card: seconds since the
+    // card came up (game::nightCardFrame, game::endingCardFrame). The two cards use the
+    // document of the intro.
+    double m_cardSeconds = 0.0;
     // Set by the debug UI: play the intro again (introRequest).
     bool m_introRequested = false;
-    // True while the main menu is the one that followed the intro: it then comes in out
-    // of black, with the name of the story under its title (fillMainMenuDocument).
+    // True while the main menu is the one that followed the intro or the ending card: it
+    // then comes in out of black (fillMainMenuDocument).
     bool m_menuAfterIntro = false;
 
     // The sound device with the sounds of the cues, loaded once in the constructor in

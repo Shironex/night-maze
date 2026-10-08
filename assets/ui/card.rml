@@ -4,11 +4,14 @@
     <link type="text/rcss" href="menu.rcss"/>
 </head>
 <body class="cut">
-<!-- A card of text over a picture of the game: two lines in the lower third of the
-     window. It has no buttons. The game writes the two lines and sets, in every frame,
-     how much of three things is there (ui::UiLayer::setOpacity): the black over the
-     picture, the card itself and the hint. The intro shows its five cards with it
-     (game/Intro.hpp), and any other text between two screens can use it too. -->
+<!-- A card of text over a picture of the game: up to four lines in the lower third of
+     the window. It has no buttons. The game writes the lines and sets, in every frame,
+     how much of each thing is there (ui::UiLayer::setOpacity): the black over the
+     picture, the card itself, each of its lines and the hint. A line without text has
+     no height. The intro shows its five cards of two lines with it (game/Intro.hpp).
+     The title card of a night and the ending card (game/Campaign.hpp) are text on
+     black: the game then sets the class "middle" on the card, which lifts the lines to
+     the middle of the window. -->
 <div class="black" id="black"></div>
 <div class="story" id="card">
     <div class="story-band"></div>
@@ -16,6 +19,8 @@
         <div class="story-mark"></div>
         <p class="story-line" id="line-first"></p>
         <p class="story-line second" id="line-second"></p>
+        <p class="story-line" id="line-third"></p>
+        <p class="story-line second" id="line-fourth"></p>
     </div>
 </div>
 <p class="keys corner" id="hint">Press any key to skip</p>

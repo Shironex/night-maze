@@ -7,20 +7,25 @@
 <div class="center">
     <div class="card">
         <h2 class="card-title">Through the gate</h2>
+        <!-- One line of the story after a night of the campaign. Empty in free play, and
+             then it has no height. -->
+        <p class="card-line" id="night-line"></p>
         <div class="sep"></div>
         <!-- The four values are written by the game when the screen comes up
              (NightMazeApp::fillRoundEndDocument). The seed and the difficulty together
-             name the maze: a friend who enters both plays the same one. -->
+             name the maze: a friend who enters both plays the same one. After a night
+             of the campaign the third row names the night. -->
         <div class="row"><span class="row-name">Time</span><span class="row-value" id="time">0:00</span></div>
         <div class="row"><span class="row-name">Crystals</span><span class="row-value" id="crystals">0 of 0</span></div>
-        <div class="row"><span class="row-name">Difficulty</span><span class="row-value" id="difficulty">Normal</span></div>
+        <div class="row"><span class="row-name" id="level-name">Difficulty</span><span class="row-value" id="difficulty">Normal</span></div>
         <div class="row"><span class="row-name">Seed</span><span class="row-value" id="seed">1</span></div>
         <div class="buttons">
             <button class="btn primary" data-action="restart" autofocus>Play again</button>
-            <button class="btn" data-action="new-maze">New maze</button>
+            <!-- Free play only: the game sets the class "gone" after a night. -->
+            <button class="btn" id="new-maze" data-action="new-maze">New maze</button>
             <button class="btn" data-action="menu">Back to menu</button>
         </div>
-        <p class="keys">Play again: the same maze | New maze: another seed | Esc: back to menu</p>
+        <p class="keys" id="keys">Play again: the same maze | New maze: another seed | Esc: back to menu</p>
     </div>
 </div>
 </body>

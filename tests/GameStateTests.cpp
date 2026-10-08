@@ -13,20 +13,40 @@ using game::GameEvent;
 using game::GameMode;
 
 // Every screen and every event, for the tests that go through all of them.
-constexpr std::array<GameMode, 8> ALL_MODES = {
-    GameMode::MainMenu,          GameMode::Playing,  GameMode::Paused,
-    GameMode::RoundEnd,          GameMode::Quitting, GameMode::SettingsFromMenu,
-    GameMode::SettingsFromPause, GameMode::Intro};
-constexpr std::array<GameEvent, 12> ALL_EVENTS = {
-    GameEvent::Play,          GameEvent::Resume,  GameEvent::Restart,   GameEvent::BackToMenu,
-    GameEvent::Quit,          GameEvent::Escape,  GameEvent::RoundWon,  GameEvent::OpenSettings,
-    GameEvent::CloseSettings, GameEvent::NewMaze, GameEvent::FocusLost, GameEvent::IntroFinished};
+constexpr std::array<GameMode, 13> ALL_MODES = {GameMode::MainMenu,
+                                                GameMode::Playing,
+                                                GameMode::Paused,
+                                                GameMode::RoundEnd,
+                                                GameMode::Quitting,
+                                                GameMode::SettingsFromMenu,
+                                                GameMode::SettingsFromPause,
+                                                GameMode::Intro,
+                                                GameMode::FreePlay,
+                                                GameMode::Nights,
+                                                GameMode::NewCampaign,
+                                                GameMode::NightCard,
+                                                GameMode::EndingCard};
+constexpr std::array<GameEvent, 18> ALL_EVENTS = {
+    GameEvent::Play,         GameEvent::Resume,       GameEvent::Restart,
+    GameEvent::BackToMenu,   GameEvent::Quit,         GameEvent::Escape,
+    GameEvent::RoundWon,     GameEvent::OpenSettings, GameEvent::CloseSettings,
+    GameEvent::NewMaze,      GameEvent::FocusLost,    GameEvent::IntroFinished,
+    GameEvent::OpenFreePlay, GameEvent::OpenNights,   GameEvent::AskNewCampaign,
+    GameEvent::StartNight,   GameEvent::CardFinished, GameEvent::CampaignWon};
+
+// The three screens that are opened from the main menu and lead back to it.
+constexpr std::array<GameMode, 3> MENU_PAGES = {GameMode::FreePlay, GameMode::Nights,
+                                                GameMode::NewCampaign};
 
 } // namespace
 
-TEST_CASE("the main menu starts a game with Play and leaves the program with Quit") {
-    CHECK(game::nextMode(GameMode::MainMenu, GameEvent::Play) == GameMode::Playing);
+TEST_CASE("the main menu opens its screens and leaves the program with Quit") {
+    CHECK(game::nextMode(GameMode::MainMenu, GameEvent::OpenFreePlay) == GameMode::FreePlay);
+    CHECK(game::nextMode(GameMode::MainMenu, GameEvent::OpenNights) == GameMode::Nights);
+    CHECK(game::nextMode(GameMode::MainMenu, GameEvent::AskNewCampaign) == GameMode::NewCampaign);
     CHECK(game::nextMode(GameMode::MainMenu, GameEvent::Quit) == GameMode::Quitting);
+    // The button that starts a game of free play is on the screen of free play.
+    CHECK(game::nextMode(GameMode::MainMenu, GameEvent::Play) == GameMode::MainMenu);
 }
 
 TEST_CASE("in the main menu Escape and the buttons of other screens do nothing") {
@@ -148,9 +168,10 @@ TEST_CASE("a round starts from the beginning on the same maze with Restart") {
     CHECK_FALSE(game::startsRound(GameMode::RoundEnd, GameEvent::NewMaze));
 }
 
-TEST_CASE("a new game starts with Play in the main menu and with New maze after a round") {
-    CHECK(game::startsNewGame(GameMode::MainMenu, GameEvent::Play));
+TEST_CASE("a new game starts with Play in free play and with New maze after a round") {
+    CHECK(game::startsNewGame(GameMode::FreePlay, GameEvent::Play));
     CHECK(game::startsNewGame(GameMode::RoundEnd, GameEvent::NewMaze));
+    CHECK_FALSE(game::startsNewGame(GameMode::MainMenu, GameEvent::Play));
 
     // The same maze again is not a new game.
     CHECK_FALSE(game::startsNewGame(GameMode::RoundEnd, GameEvent::Restart));
@@ -191,6 +212,10 @@ TEST_CASE("the names of the menu buttons give their events") {
     CHECK(event == GameEvent::CloseSettings);
     CHECK(game::eventForAction("new-maze", event));
     CHECK(event == GameEvent::NewMaze);
+    CHECK(game::eventForAction("free-play", event));
+    CHECK(event == GameEvent::OpenFreePlay);
+    CHECK(game::eventForAction("nights", event));
+    CHECK(event == GameEvent::OpenNights);
 }
 
 TEST_CASE("an unknown button name gives no event") {
@@ -230,6 +255,9 @@ TEST_CASE("a menu is open on every screen but the game itself") {
     CHECK(game::isMenuOpen(GameMode::SettingsFromPause));
     CHECK_FALSE(game::isMenuOpen(GameMode::Playing));
     CHECK_FALSE(game::isMenuOpen(GameMode::Quitting));
+    for (const GameMode page : MENU_PAGES) {
+        CHECK(game::isMenuOpen(page));
+    }
 }
 
 TEST_CASE("a screen never runs the round under an open menu") {
@@ -274,9 +302,15 @@ TEST_CASE("an open note card and the menu camera keep the map away") {
     CHECK_FALSE(game::showsMap(GameMode::Playing, {.pinned = true, .menuCamera = true}));
 }
 
-TEST_CASE("only the main menu and its settings are shown through the menu camera") {
+TEST_CASE("only the main menu and the screens opened from it are shown through the menu camera") {
     CHECK(game::usesMenuCamera(GameMode::MainMenu));
     CHECK(game::usesMenuCamera(GameMode::SettingsFromMenu));
+    for (const GameMode page : MENU_PAGES) {
+        CHECK(game::usesMenuCamera(page));
+        // And they keep the picture of the main menu: its video covers the scene.
+        CHECK(game::drawsScene(page, true) == game::drawsScene(GameMode::MainMenu, true));
+        CHECK(game::animatesScene(page));
+    }
     CHECK_FALSE(game::usesMenuCamera(GameMode::Playing));
     CHECK_FALSE(game::usesMenuCamera(GameMode::Paused));
     CHECK_FALSE(game::usesMenuCamera(GameMode::SettingsFromPause));
@@ -383,6 +417,13 @@ TEST_CASE("a run driven by a tool never opens with the intro") {
     menuCamera.toolSwitch = true;
     CHECK(game::startMode(menuCamera, false) == GameMode::Playing);
 
+    // A night of the campaign named on the command line starts in its round.
+    game::StartOptions night;
+    night.night = 3;
+    night.toolSwitch = true;
+    CHECK(game::startMode(night, false) == GameMode::Playing);
+    CHECK(game::startMode(night, true) == GameMode::Playing);
+
     // --seed, --menu-shot, --menu-time and --menu-background leave the main menu as the
     // first screen: what they have in common is the mark of a tool.
     game::StartOptions tool;
@@ -429,9 +470,111 @@ TEST_CASE("the switches of the command line give the start screen they describe"
     CHECK(screen({"--menu-shot", "walk"}, false) == GameMode::MainMenu);
     CHECK(screen({"--menu-time", "14"}, false) == GameMode::MainMenu);
     CHECK(screen({"--play"}, false) == GameMode::Playing);
+    CHECK(screen({"--night", "2"}, false) == GameMode::Playing);
     CHECK(screen({"--menu-camera"}, false) == GameMode::Playing);
     CHECK(screen({"--skip-intro"}, false) == GameMode::MainMenu);
     CHECK(screen({"--intro"}, true) == GameMode::Intro);
     CHECK(screen({"--intro", "--seed", "1", "--menu-background", "scene"}, true) ==
           GameMode::Intro);
+}
+
+TEST_CASE("free play, the list of nights and the question lead back to the main menu") {
+    for (const GameMode page : MENU_PAGES) {
+        CHECK(game::nextMode(page, GameEvent::BackToMenu) == GameMode::MainMenu);
+        CHECK(game::nextMode(page, GameEvent::Escape) == GameMode::MainMenu);
+        // Nothing of the round and nothing of another screen happens there.
+        CHECK(game::nextMode(page, GameEvent::Resume) == page);
+        CHECK(game::nextMode(page, GameEvent::Restart) == page);
+        CHECK(game::nextMode(page, GameEvent::RoundWon) == page);
+        CHECK(game::nextMode(page, GameEvent::CampaignWon) == page);
+        CHECK(game::nextMode(page, GameEvent::Quit) == page);
+        CHECK(game::nextMode(page, GameEvent::OpenSettings) == page);
+        CHECK(game::nextMode(page, GameEvent::FocusLost) == page);
+        CHECK_FALSE(game::updatesRound(page));
+        CHECK_FALSE(game::showsHud(page));
+        CHECK_FALSE(game::isFilm(page));
+    }
+}
+
+TEST_CASE("free play starts a game with Play, and only free play does") {
+    CHECK(game::nextMode(GameMode::FreePlay, GameEvent::Play) == GameMode::Playing);
+    CHECK(game::nextMode(GameMode::Nights, GameEvent::Play) == GameMode::Nights);
+    CHECK(game::nextMode(GameMode::NewCampaign, GameEvent::Play) == GameMode::NewCampaign);
+    // A night is not started from there.
+    CHECK(game::nextMode(GameMode::FreePlay, GameEvent::StartNight) == GameMode::FreePlay);
+}
+
+TEST_CASE("a night begins with its title card, from the menu, the list and the question") {
+    CHECK(game::nextMode(GameMode::MainMenu, GameEvent::StartNight) == GameMode::NightCard);
+    CHECK(game::nextMode(GameMode::Nights, GameEvent::StartNight) == GameMode::NightCard);
+    CHECK(game::nextMode(GameMode::NewCampaign, GameEvent::StartNight) == GameMode::NightCard);
+    // From nowhere else: not out of a round, a pause or a result.
+    for (const GameMode mode : ALL_MODES) {
+        const bool starts = game::nextMode(mode, GameEvent::StartNight) == GameMode::NightCard;
+        const bool expected = mode == GameMode::MainMenu || mode == GameMode::Nights ||
+                              mode == GameMode::NewCampaign || mode == GameMode::NightCard;
+        CHECK(starts == expected);
+    }
+}
+
+TEST_CASE("the title card leads into the round, at its end and when it is skipped") {
+    CHECK(game::nextMode(GameMode::NightCard, GameEvent::CardFinished) == GameMode::Playing);
+    CHECK(game::nextMode(GameMode::NightCard, GameEvent::Escape) == GameMode::Playing);
+    for (const GameEvent event : ALL_EVENTS) {
+        if (event == GameEvent::CardFinished || event == GameEvent::Escape) {
+            continue;
+        }
+        CHECK(game::nextMode(GameMode::NightCard, event) == GameMode::NightCard);
+        // The round of the night was started when its maze was built: the card starts
+        // neither a round nor a game.
+        CHECK_FALSE(game::startsRound(GameMode::NightCard, event));
+        CHECK_FALSE(game::startsNewGame(GameMode::NightCard, event));
+    }
+    CHECK_FALSE(game::startsRound(GameMode::NightCard, GameEvent::CardFinished));
+    CHECK_FALSE(game::startsNewGame(GameMode::NightCard, GameEvent::CardFinished));
+}
+
+TEST_CASE("the last night ends with the ending card, and the card with the main menu") {
+    CHECK(game::nextMode(GameMode::Playing, GameEvent::CampaignWon) == GameMode::EndingCard);
+    CHECK(game::nextMode(GameMode::EndingCard, GameEvent::CardFinished) == GameMode::MainMenu);
+    CHECK(game::nextMode(GameMode::EndingCard, GameEvent::Escape) == GameMode::MainMenu);
+    for (const GameEvent event : ALL_EVENTS) {
+        if (event == GameEvent::CardFinished || event == GameEvent::Escape) {
+            continue;
+        }
+        CHECK(game::nextMode(GameMode::EndingCard, event) == GameMode::EndingCard);
+    }
+    // Only a round that is being played can be won.
+    for (const GameMode mode : ALL_MODES) {
+        if (mode != GameMode::Playing) {
+            CHECK(game::nextMode(mode, GameEvent::CampaignWon) == mode);
+        }
+    }
+    // The end of a card means nothing on a screen that is no card.
+    for (const GameMode mode : ALL_MODES) {
+        if (mode != GameMode::NightCard && mode != GameMode::EndingCard) {
+            CHECK(game::nextMode(mode, GameEvent::CardFinished) == mode);
+        }
+    }
+}
+
+TEST_CASE("the intro and the two cards are films: no round, no menu, no HUD, no map") {
+    CHECK(game::isFilm(GameMode::Intro));
+    CHECK(game::isFilm(GameMode::NightCard));
+    CHECK(game::isFilm(GameMode::EndingCard));
+    for (const GameMode mode : ALL_MODES) {
+        if (!game::isFilm(mode)) {
+            continue;
+        }
+        CHECK_FALSE(game::updatesRound(mode));
+        CHECK_FALSE(game::isMenuOpen(mode));
+        CHECK_FALSE(game::showsHud(mode));
+        CHECK_FALSE(game::showsMap(mode, {.keyHeld = true, .pinned = true}));
+        // A lost focus does not stop a film: it runs on and ends by itself.
+        CHECK(game::nextMode(mode, GameEvent::FocusLost) == mode);
+    }
+    CHECK_FALSE(game::isFilm(GameMode::MainMenu));
+    CHECK_FALSE(game::isFilm(GameMode::Playing));
+    CHECK_FALSE(game::isFilm(GameMode::RoundEnd));
+    CHECK_FALSE(game::isFilm(GameMode::Paused));
 }

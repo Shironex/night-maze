@@ -15,6 +15,8 @@ constexpr std::string_view QUIT_ACTION = "quit";
 constexpr std::string_view SETTINGS_ACTION = "settings";
 constexpr std::string_view BACK_ACTION = "back";
 constexpr std::string_view NEW_MAZE_ACTION = "new-maze";
+constexpr std::string_view FREE_PLAY_ACTION = "free-play";
+constexpr std::string_view NIGHTS_ACTION = "nights";
 
 } // namespace
 
@@ -23,8 +25,17 @@ GameMode nextMode(GameMode mode, GameEvent event) {
     // falls through to the last line and changes nothing.
     switch (mode) {
     case GameMode::MainMenu:
-        if (event == GameEvent::Play) {
-            return GameMode::Playing;
+        if (event == GameEvent::StartNight) {
+            return GameMode::NightCard;
+        }
+        if (event == GameEvent::AskNewCampaign) {
+            return GameMode::NewCampaign;
+        }
+        if (event == GameEvent::OpenNights) {
+            return GameMode::Nights;
+        }
+        if (event == GameEvent::OpenFreePlay) {
+            return GameMode::FreePlay;
         }
         if (event == GameEvent::Quit) {
             return GameMode::Quitting;
@@ -41,6 +52,10 @@ GameMode nextMode(GameMode mode, GameEvent event) {
         }
         if (event == GameEvent::RoundWon) {
             return GameMode::RoundEnd;
+        }
+        // The last night of the campaign: its ending card in the place of the result.
+        if (event == GameEvent::CampaignWon) {
+            return GameMode::EndingCard;
         }
         break;
     case GameMode::Paused:
@@ -83,6 +98,36 @@ GameMode nextMode(GameMode mode, GameEvent event) {
             return GameMode::MainMenu;
         }
         break;
+    case GameMode::FreePlay:
+        if (event == GameEvent::Play) {
+            return GameMode::Playing;
+        }
+        if (event == GameEvent::BackToMenu || event == GameEvent::Escape) {
+            return GameMode::MainMenu;
+        }
+        break;
+    case GameMode::Nights:
+    case GameMode::NewCampaign:
+        // A night of the list, or "yes" to a new campaign: both begin with a title card.
+        if (event == GameEvent::StartNight) {
+            return GameMode::NightCard;
+        }
+        if (event == GameEvent::BackToMenu || event == GameEvent::Escape) {
+            return GameMode::MainMenu;
+        }
+        break;
+    case GameMode::NightCard:
+        // Into the round, at its end or when it is skipped. Escape skips like any key:
+        // there is nothing to go back to that the player would expect.
+        if (event == GameEvent::CardFinished || event == GameEvent::Escape) {
+            return GameMode::Playing;
+        }
+        break;
+    case GameMode::EndingCard:
+        if (event == GameEvent::CardFinished || event == GameEvent::Escape) {
+            return GameMode::MainMenu;
+        }
+        break;
     }
     return mode;
 }
@@ -93,7 +138,8 @@ GameMode startMode(const StartOptions& options, bool introSeen) {
     }
     // The menu camera is a tool for recording the game: with it the main menu is
     // skipped like with --play, so no menu ever lies over the recorded picture.
-    if (options.play || options.menuCamera.enabled) {
+    // A night of the campaign named on the command line starts in its round at once.
+    if (options.play || options.menuCamera.enabled || options.night != 0) {
         return GameMode::Playing;
     }
     if (options.skipIntro || options.toolSwitch || introSeen) {
@@ -111,7 +157,7 @@ bool startsRound(GameMode mode, GameEvent event) {
 
 bool startsNewGame(GameMode mode, GameEvent event) {
     if (event == GameEvent::Play) {
-        return mode == GameMode::MainMenu;
+        return mode == GameMode::FreePlay;
     }
     if (event == GameEvent::NewMaze) {
         return mode == GameMode::RoundEnd;
@@ -136,6 +182,10 @@ bool eventForAction(std::string_view action, GameEvent& event) {
         event = GameEvent::CloseSettings;
     } else if (action == NEW_MAZE_ACTION) {
         event = GameEvent::NewMaze;
+    } else if (action == FREE_PLAY_ACTION) {
+        event = GameEvent::OpenFreePlay;
+    } else if (action == NIGHTS_ACTION) {
+        event = GameEvent::OpenNights;
     } else {
         return false;
     }
@@ -152,7 +202,12 @@ bool animatesScene(GameMode mode) {
 
 bool isMenuOpen(GameMode mode) {
     return mode == GameMode::MainMenu || mode == GameMode::Paused || mode == GameMode::RoundEnd ||
-           mode == GameMode::SettingsFromMenu || mode == GameMode::SettingsFromPause;
+           mode == GameMode::SettingsFromMenu || mode == GameMode::SettingsFromPause ||
+           mode == GameMode::FreePlay || mode == GameMode::Nights || mode == GameMode::NewCampaign;
+}
+
+bool isFilm(GameMode mode) {
+    return mode == GameMode::Intro || mode == GameMode::NightCard || mode == GameMode::EndingCard;
 }
 
 bool showsHud(GameMode mode) {
@@ -165,7 +220,8 @@ bool showsMap(GameMode mode, const MapRequest& request) {
 }
 
 bool usesMenuCamera(GameMode mode) {
-    return mode == GameMode::MainMenu || mode == GameMode::SettingsFromMenu;
+    return mode == GameMode::MainMenu || mode == GameMode::SettingsFromMenu ||
+           mode == GameMode::FreePlay || mode == GameMode::Nights || mode == GameMode::NewCampaign;
 }
 
 bool drawsScene(GameMode mode, bool fullscreenBackground) {

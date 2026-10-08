@@ -1,0 +1,62 @@
+<rml>
+<head>
+    <title>Free play</title>
+    <link type="text/rcss" href="menu.rcss"/>
+</head>
+<body class="left">
+<!-- One maze of a chosen difficulty and seed, outside the campaign. The elements with an
+     id are written by the game: the chosen difficulty, the switch, the seed and the
+     numbers of the info block. -->
+<div class="column page">
+    <div class="rise">
+        <p class="overline">Free play</p>
+    </div>
+    <div class="menu">
+        <div class="rise d1">
+            <button class="item" id="play" data-action="play" autofocus><div class="bar"></div>Play</button>
+        </div>
+        <div class="rise d2">
+            <div class="choices">
+                <span class="label">Difficulty</span>
+                <button class="chip" id="difficulty-easy" data-action="difficulty-easy">Easy</button>
+                <button class="chip" id="difficulty-normal" data-action="difficulty-normal">Normal</button>
+                <button class="chip" id="difficulty-hard" data-action="difficulty-hard">Hard</button>
+            </div>
+            <!-- A calm night has no shadow in the maze, on every difficulty. The game sets
+                 the class "on" of the switch. -->
+            <div class="choices">
+                <span class="label">Calm night</span>
+                <button class="toggle" id="calm-night" data-action="toggle-calm-night"><div class="knob"></div></button>
+                <span class="aside">Nothing follows you.</span>
+            </div>
+            <!-- Enter in the seed field starts the game, like the button Play. -->
+            <div class="choices">
+                <span class="label">Seed</span>
+                <input type="text" id="seed" maxlength="10" data-submit="play"/>
+                <button class="chip" id="new-seed" data-action="new-seed">New seed</button>
+            </div>
+            <!-- Empty until the seed field holds something that is not a seed. -->
+            <p class="hint" id="seed-hint"></p>
+        </div>
+        <div class="rise d3">
+            <button class="item" id="free-play-back" data-action="menu"><div class="bar"></div>Back</button>
+        </div>
+    </div>
+</div>
+<div class="info rise d5">
+    <div class="fact">
+        <p class="fact-name">Maze</p>
+        <p class="fact-value" id="info-maze">16 x 16</p>
+    </div>
+    <div class="fact">
+        <p class="fact-name">Crystals to find</p>
+        <p class="fact-value" id="info-crystals">19 of 26</p>
+    </div>
+    <div class="fact">
+        <p class="fact-name">Battery</p>
+        <p class="fact-value" id="info-battery">2:30</p>
+    </div>
+</div>
+<p class="keys corner">Arrows or Tab: move | Enter: choose | Esc: back</p>
+</body>
+</rml>

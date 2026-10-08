@@ -126,7 +126,13 @@ constexpr const char* MAIN_MENU_DOCUMENT_FILE = "ui/main_menu.rml";
 constexpr const char* PAUSE_DOCUMENT_FILE = "ui/pause.rml";
 constexpr const char* ROUND_END_DOCUMENT_FILE = "ui/round_end.rml";
 constexpr const char* SETTINGS_DOCUMENT_FILE = "ui/settings.rml";
-// The card of text the intro is told with. It has no buttons.
+// The screens the main menu opens: free play, the list of the nights of the campaign and
+// the question before a new campaign.
+constexpr const char* FREE_PLAY_DOCUMENT_FILE = "ui/free_play.rml";
+constexpr const char* NIGHTS_DOCUMENT_FILE = "ui/nights.rml";
+constexpr const char* NEW_CAMPAIGN_DOCUMENT_FILE = "ui/new_campaign.rml";
+// The card of text the intro is told with, and the title card of a night and the ending
+// card after it. It has no buttons.
 constexpr const char* CARD_DOCUMENT_FILE = "ui/card.rml";
 
 // The elements of the documents the code writes into or reads: their id attributes.
@@ -135,14 +141,29 @@ constexpr const char* TIME_ID = "time";
 constexpr const char* CRYSTALS_ID = "crystals";
 constexpr const char* DIFFICULTY_ID = "difficulty";
 constexpr const char* SEED_ID = "seed";
-// The main menu: the hint next to the seed field, the three numbers of the info block
+// The main menu: the label of its first entry and the night beside it. Its info block
+// has the three numbers named below, like the one of free play.
+constexpr const char* CAMPAIGN_LABEL_ID = "campaign-label";
+constexpr const char* CAMPAIGN_NIGHT_ID = "campaign-night";
+// The list of nights: the id of a row is this prefix and the number of the night
+// ("night-2"), and its title and its state are that id with one of the two endings.
+constexpr const char* NIGHT_ID_PREFIX = "night-";
+constexpr const char* NIGHT_TITLE_ID_SUFFIX = "-title";
+constexpr const char* NIGHT_STATE_ID_SUFFIX = "-state";
+// The result screen: the line of the story under its title, the name of its third row
+// ("Difficulty" or "Night 2"), the button "New maze" and the line of keys.
+constexpr const char* NIGHT_LINE_ID = "night-line";
+constexpr const char* LEVEL_NAME_ID = "level-name";
+constexpr const char* NEW_MAZE_ID = "new-maze";
+constexpr const char* KEYS_ID = "keys";
+// Free play: the hint next to the seed field, the three numbers of the info block
 // and the three difficulty buttons, whose ids are this prefix and the key of a level.
 constexpr const char* SEED_HINT_ID = "seed-hint";
 constexpr const char* INFO_MAZE_ID = "info-maze";
 constexpr const char* INFO_CRYSTALS_ID = "info-crystals";
 constexpr const char* INFO_BATTERY_ID = "info-battery";
 constexpr const char* DIFFICULTY_ID_PREFIX = "difficulty-";
-// The switch "Calm night" of the main menu.
+// The switch "Calm night" of free play.
 constexpr const char* CALM_NIGHT_ID = "calm-night";
 // The settings screen: the two sliders (their ids are the names of their settings), the
 // text next to each control and the row of the window size.
@@ -158,8 +179,8 @@ constexpr const char* CONTROLS_NOTE_ID = "controls-note";
 // The card: the black over the picture, the card with its two lines, and the hint.
 constexpr const char* CARD_BLACK_ID = "black";
 constexpr const char* CARD_ID = "card";
-constexpr const char* CARD_FIRST_LINE_ID = "line-first";
-constexpr const char* CARD_SECOND_LINE_ID = "line-second";
+constexpr std::array<const char*, STORY_CARD_LINE_COUNT> CARD_LINE_IDS = {
+    "line-first", "line-second", "line-third", "line-fourth"};
 constexpr const char* CARD_HINT_ID = "hint";
 // The main menu after the intro: the document itself (a name RmlUi knows, see
 // ui::UiLayer::setClass) and the black it comes out of.
@@ -176,6 +197,13 @@ constexpr const char* WAITING_CLASS = "waiting";
 // there.
 constexpr const char* CUT_CLASS = "cut";
 constexpr const char* DRAWN_CLASS = "drawn";
+// A row of the list of nights carries one of these three.
+constexpr const char* FINISHED_CLASS = "finished";
+constexpr const char* NEXT_CLASS = "open";
+constexpr const char* LOCKED_CLASS = "locked";
+// An element that is not shown at the moment, and a card of text on black.
+constexpr const char* GONE_CLASS = "gone";
+constexpr const char* MIDDLE_CLASS = "middle";
 
 // The buttons that do not change the screen: their data-action names. A difficulty
 // button is named by the same prefix as its id.
@@ -188,6 +216,27 @@ constexpr const char* RESET_SETTINGS_ACTION = "reset-settings";
 constexpr const char* RESET_CONTROLS_ACTION = "reset-controls";
 // The button that starts a game: its seed is read from the seed field first.
 constexpr const char* PLAY_ACTION = "play";
+// The first entry of the main menu, and the answer "yes" to a new campaign. A row of the
+// list of nights is named like its id: NIGHT_ID_PREFIX and its number.
+constexpr const char* CAMPAIGN_ACTION = "campaign";
+constexpr const char* NEW_CAMPAIGN_ACTION = "new-campaign";
+
+// What the first entry of the main menu reads (game::campaignStage).
+constexpr const char* BEGIN_LABEL = "Begin";
+constexpr const char* CONTINUE_LABEL = "Continue";
+constexpr const char* NEW_CAMPAIGN_LABEL = "New campaign";
+// The state of a row of the list of nights. A finished night shows its best time after
+// BEST_TIME_PREFIX, or NIGHT_FINISHED_TEXT when it has none (the debug UI can move the
+// campaign on without a win).
+constexpr const char* NIGHT_NEXT_TEXT = "Next";
+constexpr const char* NIGHT_LOCKED_TEXT = "Locked";
+constexpr const char* NIGHT_FINISHED_TEXT = "Finished";
+constexpr const char* BEST_TIME_PREFIX = "Best ";
+// The result screen: the name of its third row in free play, and the two lines of keys.
+constexpr const char* DIFFICULTY_ROW_NAME = "Difficulty";
+constexpr const char* ROUND_END_KEYS_TEXT =
+    "Play again: the same maze | New maze: another seed | Esc: back to menu";
+constexpr const char* NIGHT_END_KEYS_TEXT = "Play again: the same night | Esc: back to menu";
 
 // While the volume slider of the settings screen is moved, a short click lets the
 // player hear the new loudness: at most one in this many seconds. A dragged slider
@@ -418,9 +467,19 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
 
     // The first maze was built in the initializer list, because MazeWorld cannot be
     // created empty. What is left is the same as after every later regeneration.
-    uploadGround();
-    beginRound();
-    m_menuCameraPath = buildMenuCameraPath(m_mazeWorld);
+    if (options.night != 0) {
+        // A night of the campaign named on the command line (--night): its maze takes the
+        // place of the first one. The campaign of such a run is one of its own, with the
+        // seed of the command line or a fixed one, and winning the night does not touch
+        // the settings file.
+        // ponytail: a tool run builds two mazes at its start, the first one for nothing.
+        // Build the night in the initializer list if that half second ever matters.
+        startNight(options.night, options.seedGiven ? options.seed : TOOL_CAMPAIGN_SEED, false);
+    } else {
+        uploadGround();
+        beginRound();
+        m_menuCameraPath = buildMenuCameraPath(m_mazeWorld);
+    }
 
     // The switches for captures change the first round only: beginRound above is the
     // normal start, and R and "Play again" call it again, so they go back to it.
@@ -478,15 +537,21 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     // focus it never had.
     m_windowWasFocused = window().isFocused();
 
-    // The documents of the four screens with a menu. They are loaded once and stay
-    // hidden until their screen comes up. An error is in the log (ui::UiLayer).
+    // The documents of the screens with a menu. They are loaded once and stay hidden
+    // until their screen comes up. An error is in the log (ui::UiLayer).
     m_mainMenuDocument = m_ui.loadDocument(MAIN_MENU_DOCUMENT_FILE);
+    m_freePlayDocument = m_ui.loadDocument(FREE_PLAY_DOCUMENT_FILE);
+    m_nightsDocument = m_ui.loadDocument(NIGHTS_DOCUMENT_FILE);
+    m_newCampaignDocument = m_ui.loadDocument(NEW_CAMPAIGN_DOCUMENT_FILE);
     m_pauseDocument = m_ui.loadDocument(PAUSE_DOCUMENT_FILE);
     m_roundEndDocument = m_ui.loadDocument(ROUND_END_DOCUMENT_FILE);
     m_settingsDocument = m_ui.loadDocument(SETTINGS_DOCUMENT_FILE);
-    m_menusLoaded = m_mainMenuDocument != ui::NO_DOCUMENT && m_pauseDocument != ui::NO_DOCUMENT &&
-                    m_roundEndDocument != ui::NO_DOCUMENT && m_settingsDocument != ui::NO_DOCUMENT;
-    // The card of the intro: a fifth document, not one of the menus.
+    m_menusLoaded = m_mainMenuDocument != ui::NO_DOCUMENT &&
+                    m_freePlayDocument != ui::NO_DOCUMENT && m_nightsDocument != ui::NO_DOCUMENT &&
+                    m_newCampaignDocument != ui::NO_DOCUMENT &&
+                    m_pauseDocument != ui::NO_DOCUMENT && m_roundEndDocument != ui::NO_DOCUMENT &&
+                    m_settingsDocument != ui::NO_DOCUMENT;
+    // The card of the intro and of the nights: one more document, not one of the menus.
     m_cardDocument = m_ui.loadDocument(CARD_DOCUMENT_FILE);
     if (!m_menusLoaded) {
         core::logError("The menus cannot be shown: the game starts straight in a round");
@@ -496,6 +561,8 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     // when its class changes: filled only when the screen comes up, a fullscreen that
     // was saved as on would slide from off to on before the eyes of the player.
     fillSettingsDocument();
+    // The same for the free play screen and its switch "Calm night".
+    fillFreePlayDocument();
 
     // The sounds: one file per cue, in the order of the enum, so the number of a cue is
     // the number of its sound (game::soundCueIndex). A missing file is in the log and
@@ -511,10 +578,10 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     }
     m_audio.load(soundFiles);
 
-    // The seed the main menu offers for the first game: the one of the command line, or
+    // The seed free play offers for the first game: the one of the command line, or
     // a random one.
     if (options.seedGiven) {
-        m_ui.setValue(m_mainMenuDocument, SEED_ID, std::to_string(m_newGame.seed));
+        m_ui.setValue(m_freePlayDocument, SEED_ID, std::to_string(m_newGame.seed));
     } else {
         rollSeed();
     }
@@ -602,10 +669,16 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
     if (before == GameMode::Intro) {
         leaveIntro();
     }
-    m_menuAfterIntro = before == GameMode::Intro;
+    // The ending card is over, at its end or skipped: its bell must not ring on over
+    // the main menu.
+    if (before == GameMode::EndingCard) {
+        m_audio.stopAll();
+    }
+    // After a film that ends in black the main menu comes in out of black.
+    m_menuAfterIntro = before == GameMode::Intro || before == GameMode::EndingCard;
     if (newGame) {
         // "New maze" on the result screen: the same difficulty, another seed. "Play"
-        // in the main menu starts the seed its field shows (handleMenuActions has read
+        // in free play starts the seed its field shows (handleMenuActions has read
         // it).
         if (event == GameEvent::NewMaze) {
             m_newGame.seed = randomSeed();
@@ -621,11 +694,13 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
     if (wasSettings) {
         saveSettings();
     }
-    // Back in the main menu after a game: the next game gets a fresh seed. Coming back
-    // from the settings the seed stays, with whatever was typed into its field. After
-    // the intro it stays too: that is the first seed the menu offers, and it may be the
-    // one of the command line.
-    if (m_mode == GameMode::MainMenu && !wasSettings && before != GameMode::Intro) {
+    // Back in the main menu after a game: the next game of free play gets a fresh seed.
+    // Coming back from the settings, from free play or from the list of nights the seed
+    // stays, with whatever was typed into its field. After the intro it stays too: that
+    // is the first seed the menu offers, and it may be the one of the command line.
+    const bool afterGame = before == GameMode::Paused || before == GameMode::RoundEnd ||
+                           before == GameMode::EndingCard;
+    if (m_mode == GameMode::MainMenu && afterGame) {
         rollSeed();
     }
 
@@ -634,6 +709,11 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
         window().requestClose();
     }
     showScreen();
+    // The title card of a night or the ending card has just come up: its clock starts.
+    // Last, because a card that cannot be shown is over at once, which is an event again.
+    if (m_mode != before && (m_mode == GameMode::NightCard || m_mode == GameMode::EndingCard)) {
+        startStoryCard();
+    }
 }
 
 void NightMazeApp::handleMenuActions() {
@@ -643,9 +723,9 @@ void NightMazeApp::handleMenuActions() {
         stopKeyCapture();
         GameEvent event = GameEvent::Escape;
         if (eventForAction(action, event)) {
-            // Play in the main menu starts the seed of the seed field. A field that
-            // cannot be read keeps the menu open.
-            if (action == PLAY_ACTION && m_mode == GameMode::MainMenu && !readSeedField()) {
+            // Play in free play starts the seed of the seed field. A field that cannot
+            // be read keeps the screen open.
+            if (action == PLAY_ACTION && m_mode == GameMode::FreePlay && !readSeedField()) {
                 continue;
             }
             handleGameEvent(event);
@@ -656,7 +736,42 @@ void NightMazeApp::handleMenuActions() {
 }
 
 bool NightMazeApp::handleMenuCommand(const std::string& action) {
-    // The three difficulty buttons of the main menu: "difficulty-" and the key of
+    // The first entry of the main menu: the next night of the campaign, or the question
+    // about a new campaign once the last night is won.
+    if (action == CAMPAIGN_ACTION) {
+        if (campaignStage(m_settings.campaignNight) == CampaignStage::Finished) {
+            handleGameEvent(GameEvent::AskNewCampaign);
+        } else {
+            beginCampaignNight(nightToOffer(m_settings.campaignNight));
+        }
+        return true;
+    }
+    // "Yes" to a new campaign: the finished one is forgotten, and the first night of
+    // the new one starts with mazes of its own.
+    if (action == NEW_CAMPAIGN_ACTION) {
+        if (m_mode == GameMode::NewCampaign) {
+            forgetCampaign();
+            beginCampaignNight(1);
+        }
+        return true;
+    }
+    // A row of the list of nights: "night-" and the number of the night, one digit. A
+    // night that is still locked does nothing.
+    const std::string nightPrefix = NIGHT_ID_PREFIX;
+    if (action.starts_with(nightPrefix)) {
+        const std::string number = action.substr(nightPrefix.size());
+        if (number.size() != 1 || number.front() < '1' ||
+            number.front() > '0' + CAMPAIGN_NIGHT_COUNT) {
+            return false;
+        }
+        const int night = number.front() - '0';
+        if (nightStatus(m_settings.campaignNight, night) != NightStatus::Locked) {
+            beginCampaignNight(night);
+        }
+        return true;
+    }
+
+    // The three difficulty buttons of free play: "difficulty-" and the key of
     // a level. The choice is a setting too, so the next start of the game shows it.
     const std::string difficultyPrefix = DIFFICULTY_ID_PREFIX;
     if (action.starts_with(difficultyPrefix)) {
@@ -664,18 +779,19 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
             return false;
         }
         m_settings.difficulty = m_newGame.difficulty;
-        fillMainMenuDocument();
+        fillFreePlayDocument();
         return true;
     }
     if (action == NEW_SEED_ACTION) {
         rollSeed();
         return true;
     }
-    // The switch "Calm night" of the main menu. It is a setting like the difficulty: the
-    // next game uses it, and it is written to the file when that game starts.
+    // The switch "Calm night" of free play. It is a setting like the difficulty: the
+    // next game of free play uses it, and it is written to the file when that game starts.
+    // The campaign does not ask it: its nights say themselves whether they have a shade.
     if (action == TOGGLE_CALM_NIGHT_ACTION) {
         m_settings.calmNight = !m_settings.calmNight;
-        fillMainMenuDocument();
+        fillFreePlayDocument();
         return true;
     }
 
@@ -719,9 +835,10 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
     }
     if (action == RESET_SETTINGS_ACTION) {
         // Everything this screen shows goes back to its default, the keys too
-        // (GameSettings{} has the default ones). The difficulty and the
-        // calm night are chosen in the main menu and stay, and so does the story line
-        // counter.
+        // (GameSettings{} has the default ones). The difficulty and the calm night are
+        // chosen in free play and stay, and so do the story line counter and the
+        // campaign: a reset of the settings is no reset of the progress.
+        const GameSettings before = m_settings;
         const Difficulty difficulty = m_settings.difficulty;
         const int nextStoryLine = m_settings.nextStoryLine;
         const bool calmNight = m_settings.calmNight;
@@ -733,6 +850,9 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
         m_settings.nextStoryLine = nextStoryLine;
         m_settings.calmNight = calmNight;
         m_settings.introSeen = introSeen;
+        m_settings.campaignNight = before.campaignNight;
+        m_settings.campaignSeed = before.campaignSeed;
+        m_settings.campaignBestSeconds = before.campaignBestSeconds;
         applyViewSettings();
         applyWindowSettings();
         applyAudioSettings();
@@ -848,24 +968,24 @@ void NightMazeApp::handleControlChanges() {
 }
 
 bool NightMazeApp::readSeedField() {
-    const std::string text = m_ui.value(m_mainMenuDocument, SEED_ID);
+    const std::string text = m_ui.value(m_freePlayDocument, SEED_ID);
     if (text.empty()) {
         // Nothing typed: any maze will do.
         rollSeed();
         return true;
     }
     if (!parseSeed(text, m_newGame.seed)) {
-        m_ui.setText(m_mainMenuDocument, SEED_HINT_ID, SEED_HINT_TEXT);
+        m_ui.setText(m_freePlayDocument, SEED_HINT_ID, SEED_HINT_TEXT);
         return false;
     }
-    m_ui.setText(m_mainMenuDocument, SEED_HINT_ID, "");
+    m_ui.setText(m_freePlayDocument, SEED_HINT_ID, "");
     return true;
 }
 
 void NightMazeApp::rollSeed() {
     m_newGame.seed = randomSeed();
-    m_ui.setValue(m_mainMenuDocument, SEED_ID, std::to_string(m_newGame.seed));
-    m_ui.setText(m_mainMenuDocument, SEED_HINT_ID, "");
+    m_ui.setValue(m_freePlayDocument, SEED_ID, std::to_string(m_newGame.seed));
+    m_ui.setText(m_freePlayDocument, SEED_HINT_ID, "");
 }
 
 void NightMazeApp::showScreen() {
@@ -887,18 +1007,33 @@ void NightMazeApp::showScreen() {
     } else if (m_mode == GameMode::SettingsFromMenu || m_mode == GameMode::SettingsFromPause) {
         document = m_settingsDocument;
         fillSettingsDocument();
-    } else if (m_mode == GameMode::Intro) {
-        // The card is not filled here: updateIntro writes it in every frame.
+    } else if (m_mode == GameMode::FreePlay) {
+        document = m_freePlayDocument;
+        fillFreePlayDocument();
+    } else if (m_mode == GameMode::Nights) {
+        document = m_nightsDocument;
+        fillNightsDocument();
+    } else if (m_mode == GameMode::NewCampaign) {
+        // Nothing to fill: the question is always the same.
+        document = m_newCampaignDocument;
+    } else if (isFilm(m_mode)) {
+        // The card is not filled here: updateIntro and updateStoryCard write it in
+        // every frame.
         document = m_cardDocument;
     }
     m_ui.show(document);
+    // The list of nights opens with the keyboard on the night the menu offers: the next
+    // one. Which row that is changes, so the document cannot name it (autofocus).
+    if (m_mode == GameMode::Nights) {
+        m_ui.focus(m_nightsDocument, std::string(NIGHT_ID_PREFIX) +
+                                         std::to_string(nightToOffer(m_settings.campaignNight)));
+    }
 
     // The cursor follows the screen: captured for mouse look while a round is played,
     // free for the buttons of a menu. The menu camera does not turn with the mouse, so
-    // it leaves the cursor free too. The intro captures it for another reason: a film
-    // has no cursor in its picture, and there is nothing to click.
-    input().setCursorCaptured((updatesRound(m_mode) && !m_menuCamera.enabled) ||
-                              m_mode == GameMode::Intro);
+    // it leaves the cursor free too. The intro and the cards capture it for another
+    // reason: a film has no cursor in its picture, and there is nothing to click.
+    input().setCursorCaptured((updatesRound(m_mode) && !m_menuCamera.enabled) || isFilm(m_mode));
 }
 
 void NightMazeApp::startIntro() {
@@ -917,24 +1052,101 @@ void NightMazeApp::startIntro() {
     showScreen();
 }
 
+bool NightMazeApp::anyKeyPressed() {
+    // GLFW numbers its keys from GLFW_KEY_SPACE to GLFW_KEY_LAST, with gaps that are
+    // never pressed, and its mouse buttons from 0. wasKeyPressed is true for one frame.
+    for (int key = GLFW_KEY_SPACE; key <= GLFW_KEY_LAST; ++key) {
+        if (input().wasKeyPressed(key)) {
+            return true;
+        }
+    }
+    for (int button = 0; button <= GLFW_MOUSE_BUTTON_LAST; ++button) {
+        if (input().wasMouseButtonPressed(button)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void NightMazeApp::writeCardLines(const std::array<const char*, STORY_CARD_LINE_COUNT>& lines,
+                                  bool middle) {
+    for (std::size_t line = 0; line < STORY_CARD_LINE_COUNT; ++line) {
+        m_ui.setText(m_cardDocument, CARD_LINE_IDS.at(line), lines.at(line));
+    }
+    m_ui.setClass(m_cardDocument, CARD_ID, MIDDLE_CLASS, middle);
+}
+
+void NightMazeApp::showCardFrame(float black, float card,
+                                 const std::array<float, STORY_CARD_LINE_COUNT>& lines,
+                                 float hint) {
+    m_ui.setOpacity(m_cardDocument, CARD_BLACK_ID, black);
+    m_ui.setOpacity(m_cardDocument, CARD_ID, card);
+    for (std::size_t line = 0; line < STORY_CARD_LINE_COUNT; ++line) {
+        m_ui.setOpacity(m_cardDocument, CARD_LINE_IDS.at(line), lines.at(line));
+    }
+    m_ui.setOpacity(m_cardDocument, CARD_HINT_ID, hint);
+}
+
+void NightMazeApp::startStoryCard() {
+    m_cardSeconds = 0.0;
+    // A card that cannot be shown would be seconds of the scene with nothing on it: it
+    // is left at once, like at its end.
+    if (m_cardDocument == ui::NO_DOCUMENT) {
+        handleGameEvent(GameEvent::CardFinished);
+        return;
+    }
+    if (m_mode == GameMode::NightCard) {
+        // "Night 2" and the name of the night.
+        const std::string label = campaignNightLabel(m_playedNight);
+        writeCardLines({label.c_str(), campaignNight(m_playedNight).title, "", ""}, true);
+    } else {
+        // The ending card: its third line says whether a crystal was left in the maze.
+        const bool crystalsLeft =
+            m_round.collectedCount < static_cast<int>(m_round.crystals.size());
+        writeCardLines(endingLines(crystalsLeft), true);
+    }
+    // Black from the first frame, and no text yet: the lines come up by themselves.
+    showCardFrame(1.0F, 1.0F, {}, 0.0F);
+}
+
+void NightMazeApp::updateStoryCard() {
+    const bool ending = m_mode == GameMode::EndingCard;
+    const auto frameAt = [ending](double seconds) {
+        return ending ? endingCardFrame(static_cast<float>(seconds))
+                      : nightCardFrame(static_cast<float>(seconds));
+    };
+    // Any key and any mouse button skip the card, but not in its first half second:
+    // the key that started the night is still down then (StoryCardFrame::skippable).
+    if (frameAt(m_cardSeconds).skippable && anyKeyPressed()) {
+        handleGameEvent(GameEvent::CardFinished);
+        return;
+    }
+
+    // The clock follows the real time of the frames, like the one of the intro. The
+    // bell of the ending card rings in the frame that passes its moment: once.
+    const double before = m_cardSeconds;
+    m_cardSeconds += time().deltaSeconds();
+    const double bell = ENDING_BELL_SECONDS;
+    if (ending && before <= bell && bell < m_cardSeconds) {
+        playCue(SoundCue::IntroBell);
+    }
+
+    const StoryCardFrame frame = frameAt(m_cardSeconds);
+    if (frame.finished) {
+        handleGameEvent(GameEvent::CardFinished);
+        return;
+    }
+    // A card on black: the black and the card are all there, the lines come and go.
+    showCardFrame(1.0F, 1.0F, frame.lineOpacity, frame.hintOpacity);
+}
+
 void NightMazeApp::updateIntro() {
     // Any key and any mouse button skip the whole intro. Escape is one of them, and it
     // also arrives as an event of its own before this function runs (onEscapePressed).
-    // wasKeyPressed is true for one frame, and this function runs once per frame.
-    if (introFrame(static_cast<float>(m_introSeconds)).skippable) {
-        bool pressed = false;
-        // GLFW numbers its keys from GLFW_KEY_SPACE to GLFW_KEY_LAST, with gaps that
-        // are never pressed, and its mouse buttons from 0.
-        for (int key = GLFW_KEY_SPACE; key <= GLFW_KEY_LAST && !pressed; ++key) {
-            pressed = input().wasKeyPressed(key);
-        }
-        for (int button = 0; button <= GLFW_MOUSE_BUTTON_LAST && !pressed; ++button) {
-            pressed = input().wasMouseButtonPressed(button);
-        }
-        if (pressed) {
-            handleGameEvent(GameEvent::IntroFinished);
-            return;
-        }
+    // This function runs once per frame.
+    if (introFrame(static_cast<float>(m_introSeconds)).skippable && anyKeyPressed()) {
+        handleGameEvent(GameEvent::IntroFinished);
+        return;
     }
 
     // The clock follows the real time of the frames. The sounds between the moment
@@ -959,12 +1171,12 @@ void NightMazeApp::updateIntro() {
         // Whether the shadow, the enemy of the game, takes part in it: the fourth card
         // has another second line for a calm night (game::introLines).
         const IntroLines lines = introLines(frame.card, shadeInGame());
-        m_ui.setText(m_cardDocument, CARD_FIRST_LINE_ID, lines.first);
-        m_ui.setText(m_cardDocument, CARD_SECOND_LINE_ID, lines.second);
+        writeCardLines({lines.first, lines.second, "", ""}, false);
     }
-    m_ui.setOpacity(m_cardDocument, CARD_BLACK_ID, frame.blackOpacity);
-    m_ui.setOpacity(m_cardDocument, CARD_ID, frame.textOpacity);
-    m_ui.setOpacity(m_cardDocument, CARD_HINT_ID, frame.hintOpacity);
+    // The two lines of a card of the intro come and go together, as the card: each line
+    // by itself is all there.
+    showCardFrame(frame.blackOpacity, frame.textOpacity, {1.0F, 1.0F, 1.0F, 1.0F},
+                  frame.hintOpacity);
 }
 
 void NightMazeApp::leaveIntro() {
@@ -1012,24 +1224,78 @@ void NightMazeApp::startNewGame(const NewGame& newGame) {
     regenerateMaze();
     m_playedDifficultyName = level.name;
 
-    // The difficulty that was just played is the one the main menu starts with next
-    // time, so it is written to the settings file now.
+    // The difficulty that was just played is the one free play starts with next time,
+    // so it is written to the settings file now.
     saveSettings();
 }
 
-void NightMazeApp::fillMainMenuDocument() {
-    // The chosen one of the three difficulty buttons carries a class.
-    for (const Difficulty difficulty : ALL_DIFFICULTIES) {
-        m_ui.setClass(m_mainMenuDocument,
-                      std::string(DIFFICULTY_ID_PREFIX) + difficultyLevel(difficulty).key,
-                      CHOSEN_CLASS, difficulty == m_newGame.difficulty);
+void NightMazeApp::startNight(int night, std::uint32_t campaignSeed, bool counts) {
+    // The numbers of the night, where startNewGame puts the numbers of a level: they
+    // overwrite what the debug UI or a game of free play left there.
+    const CampaignNight& level = campaignNight(night);
+    m_mazeSettings.width = level.mazeWidth;
+    m_mazeSettings.height = level.mazeHeight;
+    m_mazeSettings.crystalCount = level.crystalCount;
+    m_gameplay.requiredFraction = level.requiredFraction;
+    m_gameplay.batteryLifetimeSeconds = level.batteryLifetimeSeconds;
+    m_gameplay.flaskCount = level.flaskCount;
+    // The shade: the night says whether it has one. The switch "Calm night" of free play
+    // is not asked. Only a calm run of the command line (--calm) still has no shade in
+    // any maze: that switch is a promise to the tool that gave it.
+    m_gameplay.shade.enabled = level.shade && !m_calmRun;
+
+    // The maze of the night: its seed follows from the seed of the campaign, so the
+    // night keeps its maze for as long as the campaign lasts.
+    m_mazeSettings.seed = campaignNightSeed(campaignSeed, night);
+    m_mazeSettings.regenerate = false;
+    regenerateMaze(night);
+    m_playedDifficultyName = campaignNightName(night);
+    m_nightCounts = counts;
+}
+
+void NightMazeApp::beginCampaignNight(int night) {
+    // A click that arrives on a screen that starts no night (the screen changed in the
+    // same frame) builds nothing.
+    if (nextMode(m_mode, GameEvent::StartNight) != GameMode::NightCard) {
+        return;
     }
+    // The first night that is started draws the seed of the campaign: its five mazes are
+    // fixed from here on. std::random_device asks the operating system for a number
+    // nobody can predict, like for a seed of free play.
+    if (m_settings.campaignSeed == NO_CAMPAIGN_SEED) {
+        std::random_device device;
+        m_settings.campaignSeed = drawnCampaignSeed(static_cast<std::uint32_t>(device()));
+    }
+    startNight(night, m_settings.campaignSeed, true);
+    // The seed is written now: a player who leaves the night and comes back another day
+    // finds the same maze. The progress itself is written when a night is won.
+    saveSettings();
+    handleGameEvent(GameEvent::StartNight);
+}
 
-    // The switch "Calm night": a class moves its knob.
-    m_ui.setClass(m_mainMenuDocument, CALM_NIGHT_ID, ON_CLASS, m_settings.calmNight);
+void NightMazeApp::forgetCampaign() {
+    m_settings.campaignNight = 1;
+    m_settings.campaignSeed = NO_CAMPAIGN_SEED;
+    m_settings.campaignBestSeconds = {};
+}
 
-    // The info block: what the chosen level means in numbers.
-    const DifficultyLevel& level = difficultyLevel(m_newGame.difficulty);
+void NightMazeApp::fillMainMenuDocument() {
+    // The first entry: what it reads follows from how far the campaign is, and while
+    // the campaign runs the next night stands beside it.
+    const CampaignStage stage = campaignStage(m_settings.campaignNight);
+    const char* label = BEGIN_LABEL;
+    if (stage == CampaignStage::Running) {
+        label = CONTINUE_LABEL;
+    } else if (stage == CampaignStage::Finished) {
+        label = NEW_CAMPAIGN_LABEL;
+    }
+    m_ui.setText(m_mainMenuDocument, CAMPAIGN_LABEL_ID, label);
+    m_ui.setText(m_mainMenuDocument, CAMPAIGN_NIGHT_ID,
+                 stage == CampaignStage::Running ? campaignNightName(m_settings.campaignNight)
+                                                 : std::string());
+
+    // The info block: the numbers of the night that entry starts.
+    const CampaignNight& level = campaignNight(nightToOffer(m_settings.campaignNight));
     m_ui.setText(m_mainMenuDocument, INFO_MAZE_ID,
                  std::to_string(level.mazeWidth) + " x " + std::to_string(level.mazeHeight));
     m_ui.setText(m_mainMenuDocument, INFO_CRYSTALS_ID,
@@ -1037,10 +1303,54 @@ void NightMazeApp::fillMainMenuDocument() {
                      " of " + std::to_string(level.crystalCount));
     m_ui.setText(m_mainMenuDocument, INFO_BATTERY_ID, timeText(level.batteryLifetimeSeconds));
 
-    // The menu that follows the intro comes in out of black. Every other time the two
-    // classes are taken away, and the menu fades in like every screen.
+    // The menu that follows the intro or the ending card comes in out of black. Every
+    // other time the two classes are taken away, and the menu fades in like every screen.
     m_ui.setClass(m_mainMenuDocument, DOCUMENT_ID, CUT_CLASS, m_menuAfterIntro);
     m_ui.setClass(m_mainMenuDocument, CURTAIN_ID, DRAWN_CLASS, m_menuAfterIntro);
+}
+
+void NightMazeApp::fillFreePlayDocument() {
+    // The chosen one of the three difficulty buttons carries a class.
+    for (const Difficulty difficulty : ALL_DIFFICULTIES) {
+        m_ui.setClass(m_freePlayDocument,
+                      std::string(DIFFICULTY_ID_PREFIX) + difficultyLevel(difficulty).key,
+                      CHOSEN_CLASS, difficulty == m_newGame.difficulty);
+    }
+
+    // The switch "Calm night": a class moves its knob.
+    m_ui.setClass(m_freePlayDocument, CALM_NIGHT_ID, ON_CLASS, m_settings.calmNight);
+
+    // The info block: what the chosen level means in numbers.
+    const DifficultyLevel& level = difficultyLevel(m_newGame.difficulty);
+    m_ui.setText(m_freePlayDocument, INFO_MAZE_ID,
+                 std::to_string(level.mazeWidth) + " x " + std::to_string(level.mazeHeight));
+    m_ui.setText(m_freePlayDocument, INFO_CRYSTALS_ID,
+                 std::to_string(requiredCrystalCount(level.crystalCount, level.requiredFraction)) +
+                     " of " + std::to_string(level.crystalCount));
+    m_ui.setText(m_freePlayDocument, INFO_BATTERY_ID, timeText(level.batteryLifetimeSeconds));
+}
+
+void NightMazeApp::fillNightsDocument() {
+    for (int night = 1; night <= CAMPAIGN_NIGHT_COUNT; ++night) {
+        const std::string id = std::string(NIGHT_ID_PREFIX) + std::to_string(night);
+        m_ui.setText(m_nightsDocument, id + NIGHT_TITLE_ID_SUFFIX, campaignNight(night).title);
+
+        // What the row says and looks like: a finished night shows its best time, the
+        // next one is marked, a later one is locked.
+        const NightStatus status = nightStatus(m_settings.campaignNight, night);
+        std::string state = NIGHT_LOCKED_TEXT;
+        if (status == NightStatus::Open) {
+            state = NIGHT_NEXT_TEXT;
+        } else if (status == NightStatus::Finished) {
+            const int best = m_settings.campaignBestSeconds.at(static_cast<std::size_t>(night - 1));
+            state = best == NO_BEST_TIME ? std::string(NIGHT_FINISHED_TEXT)
+                                         : BEST_TIME_PREFIX + timeText(static_cast<float>(best));
+        }
+        m_ui.setText(m_nightsDocument, id + NIGHT_STATE_ID_SUFFIX, state);
+        m_ui.setClass(m_nightsDocument, id, FINISHED_CLASS, status == NightStatus::Finished);
+        m_ui.setClass(m_nightsDocument, id, NEXT_CLASS, status == NightStatus::Open);
+        m_ui.setClass(m_nightsDocument, id, LOCKED_CLASS, status == NightStatus::Locked);
+    }
 }
 
 void NightMazeApp::fillPauseDocument() {
@@ -1054,9 +1364,21 @@ void NightMazeApp::fillRoundEndDocument() {
                  std::to_string(m_round.collectedCount) + " of " +
                      std::to_string(m_round.crystals.size()));
     // The difficulty and the seed together name the maze: with both, a friend plays
-    // the same one.
-    m_ui.setText(m_roundEndDocument, DIFFICULTY_ID, m_playedDifficultyName);
+    // the same one. After a night of the campaign the row names the night ("Night 2",
+    // "The Shepherds' Gates"), and the line of the story of that night stands under the
+    // title. In free play that line is empty and takes no room.
+    const bool night = m_playedNight != 0;
+    m_ui.setText(m_roundEndDocument, NIGHT_LINE_ID,
+                 night ? campaignNight(m_playedNight).endLine : "");
+    m_ui.setText(m_roundEndDocument, LEVEL_NAME_ID,
+                 night ? campaignNightLabel(m_playedNight) : std::string(DIFFICULTY_ROW_NAME));
+    m_ui.setText(m_roundEndDocument, DIFFICULTY_ID,
+                 night ? std::string(campaignNight(m_playedNight).title) : m_playedDifficultyName);
     m_ui.setText(m_roundEndDocument, SEED_ID, std::to_string(m_mazeWorld.seed));
+    // "New maze" belongs to free play: the maze of a night is fixed. After a night the
+    // player plays it again or goes back to the menu, where the next night waits.
+    m_ui.setClass(m_roundEndDocument, NEW_MAZE_ID, GONE_CLASS, night);
+    m_ui.setText(m_roundEndDocument, KEYS_ID, night ? NIGHT_END_KEYS_TEXT : ROUND_END_KEYS_TEXT);
 }
 
 void NightMazeApp::fillSettingsDocument() {
@@ -1142,7 +1464,7 @@ void NightMazeApp::saveSettings() {
     }
 }
 
-void NightMazeApp::regenerateMaze() {
+void NightMazeApp::regenerateMaze(int night) {
     // generateMaze throws for a size outside 1 to Maze::MAX_SIZE. The request comes from
     // a panel, where any number can be typed, so it is brought into the range here and
     // written back for the panel to show.
@@ -1158,6 +1480,12 @@ void NightMazeApp::regenerateMaze() {
     interactables.firstStoryLine = m_settings.nextStoryLine;
     // A maze without a shade does not talk about one.
     interactables.shadeLines = shadeInGame();
+    // A night of the campaign has a mix of notes and story lines of its own. They go
+    // into a copy: the request above stays the one of free play, with its counter, so
+    // a game of free play after a night is what it was before.
+    m_playedNight = night;
+    const InteractableSettings built =
+        night == 0 ? interactables : campaignInteractables(night, interactables);
 
     // The height scale can be typed into its slider too.
     m_terrainSettings.heightScale =
@@ -1167,9 +1495,10 @@ void NightMazeApp::regenerateMaze() {
     // the crystals, the levers and the notes in one assignment. A new maze is a new
     // round.
     m_mazeWorld = buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed,
-                                 m_heightmap, m_terrainSettings.heightScale, interactables,
+                                 m_heightmap, m_terrainSettings.heightScale, built,
                                  m_mazeSettings.crystalCount);
-    // Until a new game says otherwise (startNewGame), this is a maze of no level.
+    // Until a new game or a night says otherwise (startNewGame, startNight), this is
+    // a maze of no level.
     m_playedDifficultyName = CUSTOM_DIFFICULTY_NAME;
     uploadGround();
     beginRound();
@@ -1473,11 +1802,17 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // This step took the player through the open gate: the result screen comes up. The
     // steps that may follow in the same frame then find the round stopped.
     if (m_round.state == RoundState::Won) {
-        // The maze is finished: the story goes on after the lines this maze showed. The
-        // counter is written now, once, and not at every frame (saveSettings writes only
-        // when something changed). The counter is moved on from the line THIS maze started
-        // with, so winning the same maze twice ("Play again") does not skip a line. The
-        // maze keeps its lines until a new one is built.
+        finishRound();
+    }
+}
+
+void NightMazeApp::finishRound() {
+    if (m_playedNight == 0) {
+        // A maze of free play is finished: the story goes on after the lines this maze
+        // showed. The counter is written now, once, and not at every frame (saveSettings
+        // writes only when something changed). The counter is moved on from the line THIS
+        // maze started with, so winning the same maze twice ("Play again") does not skip
+        // a line. The maze keeps its lines until a new one is built.
         // Whether the maze skipped the lines about the shadow is asked from the request
         // it was built with, not from the settings of this moment.
         m_settings.nextStoryLine = advanceStoryLine(m_mazeSettings.interactables.firstStoryLine,
@@ -1485,6 +1820,57 @@ void NightMazeApp::onUpdate(double fixedDt) {
                                                     m_mazeSettings.interactables.shadeLines);
         saveSettings();
         handleGameEvent(GameEvent::RoundWon);
+        return;
+    }
+
+    // A night of the campaign is won. The story line counter of free play is left alone:
+    // a night has its own lines. What is written is the progress: the best time of the
+    // night, and the next night when this one was the next. A finished night that is won
+    // again can only improve its time. This is the one place the progress is written:
+    // being caught, a restart and leaving the night change nothing.
+    if (m_nightCounts) {
+        int& best = m_settings.campaignBestSeconds.at(static_cast<std::size_t>(m_playedNight - 1));
+        best = bestAfterWin(best, m_round.elapsedSeconds);
+        m_settings.campaignNight = nightAfterWin(m_settings.campaignNight, m_playedNight);
+        saveSettings();
+    }
+    // The last night ends with the ending card, every other one with the result screen.
+    handleGameEvent(m_playedNight == CAMPAIGN_NIGHT_COUNT ? GameEvent::CampaignWon
+                                                          : GameEvent::RoundWon);
+}
+
+void NightMazeApp::handleCampaignRequest() {
+    const CampaignRequest request = m_campaignRequest;
+    m_campaignRequest = {};
+
+    // The round that is being played is won as it stands: the fixed step that follows
+    // finds it won and does what a walk through the gate does (finishRound).
+    if (request.winRound && m_mode == GameMode::Playing) {
+        m_round.state = RoundState::Won;
+    }
+    if (!request.clear && request.setNight == 0) {
+        return;
+    }
+    if (request.clear) {
+        forgetCampaign();
+    }
+    if (request.setNight != 0) {
+        m_settings.campaignNight = std::clamp(request.setNight, 1, CAMPAIGN_FINISHED);
+        // A night that is not won any more has no best time, like after reading a file.
+        for (int night = 1; night <= CAMPAIGN_NIGHT_COUNT; ++night) {
+            if (nightStatus(m_settings.campaignNight, night) != NightStatus::Finished) {
+                m_settings.campaignBestSeconds.at(static_cast<std::size_t>(night - 1)) =
+                    NO_BEST_TIME;
+            }
+        }
+    }
+    // A night that is in play belongs to the campaign as it was: winning it now must
+    // not write into the one that was just set.
+    m_nightCounts = false;
+    saveSettings();
+    // A menu that shows the campaign shows the new one at once.
+    if (isMenuOpen(m_mode)) {
+        showScreen();
     }
 }
 
@@ -1505,6 +1891,12 @@ void NightMazeApp::onRender(double alpha) {
     }
     if (m_mode == GameMode::Intro) {
         updateIntro();
+    }
+    // What the debug UI asked of the campaign, and the frame of the title card of a night
+    // or of the ending card: like the intro, a card may end in this frame.
+    handleCampaignRequest();
+    if (m_mode == GameMode::NightCard || m_mode == GameMode::EndingCard) {
+        updateStoryCard();
     }
 
     // A player who switches to another program does not want the round to go on: the

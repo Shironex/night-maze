@@ -713,3 +713,145 @@ button.chip.key.waiting, button.chip.key.waiting:focus-visible {
 .key-row button.key { nav-left: #fullscreen; nav-right: none; }
 #key_restart { nav-down: #reset-controls; }
 #reset-controls { nav-up: #key_restart; nav-left: #fullscreen; nav-right: none; }
+
+/* ---- the campaign: the first entry of the main menu, free play, the list of nights ----- */
+
+/* The first entry of the main menu and the night beside it, on one line. */
+.entry {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+.entry .beside {
+    display: block;
+    margin-left: 2.4vh;
+    font-size: 2.9vh;
+    color: #8c9ab6;
+}
+
+/* Free play and the list of nights have no wordmark above them: a word in small capitals
+   names the screen, like "Paused" in the pause menu, and the column starts lower. */
+.column.page {
+    top: 16vh;
+}
+
+/* The way of the arrow keys through the main menu and through free play, named element
+   by element like above. The rules for #seed, #new-seed and #open-settings above were
+   written when all of them stood in the main menu: the ones here come later and win. */
+#campaign { nav-down: #open-nights; }
+#open-nights { nav-up: #campaign; nav-down: #open-free-play; nav-left: none; nav-right: none; }
+#open-free-play { nav-up: #open-nights; nav-down: #open-settings; }
+#open-settings { nav-up: #open-free-play; nav-down: #quit; }
+#seed { nav-up: #calm-night; nav-down: #free-play-back; }
+#new-seed { nav-up: #difficulty-hard; nav-down: #free-play-back; }
+#free-play-back { nav-up: #seed; }
+
+/* One night in the list: its number, its title and its state in three columns. It is
+   a menu item like the others (amber on hover, a crystal frame with the keyboard). */
+button.night {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    position: relative;
+    width: 96vh;
+    padding: 1vh 1.6vh 1vh 2.8vh;
+    margin-bottom: 0.6vh;
+    font-size: 3.4vh;
+    line-height: 1.15;
+    text-align: left;
+    color: #e2eaf6d1;
+    border-radius: 0.9vh;
+    transition: color transform background-color 0.22s cubic-out;
+}
+button.night .bar {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 0vh;
+    height: 0.5vh;
+    margin-top: -0.25vh;
+    background-color: #ffb854;
+    transition: width 0.25s cubic-out;
+}
+button.night .night-number {
+    display: block;
+    width: 17vh;
+    color: #8c9ab6;
+}
+button.night .night-title {
+    display: block;
+    width: 48vh;
+}
+button.night .night-state {
+    display: block;
+    width: 26vh;
+    text-align: right;
+    font-size: 2.7vh;
+    color: #8c9ab6;
+}
+button.night:hover {
+    color: #ffb854;
+    transform: translateX(1.4vh);
+}
+button.night:hover .bar, button.night:focus-visible .bar {
+    width: 2vh;
+}
+button.night:focus-visible {
+    color: #e2eaf6;
+    box-shadow: #56d6ca 0 0 0 0.25vh, #56d6ca47 0 0 2.2vh 0.7vh;
+}
+button.night:focus-visible:hover {
+    color: #ffb854;
+}
+button.night:active {
+    background-color: #4e3616;
+}
+/* The next night: its state in the amber of the flashlight. A finished night: its best
+   time in the colour of the crystals. */
+button.night.open .night-state {
+    color: #ffb854;
+}
+button.night.finished .night-state {
+    color: #56d6ca;
+}
+/* A night that cannot be played yet: dimmed, and it does not answer to the mouse. The
+   keyboard can still stand on it, so the arrows never jump over a row. */
+button.night.locked, button.night.locked:hover, button.night.locked:focus-visible {
+    color: #8c9ab666;
+    transform: translateX(0vh);
+    cursor: default;
+}
+button.night.locked .night-number, button.night.locked .night-state {
+    color: #8c9ab666;
+}
+button.night.locked:hover .bar, button.night.locked:focus-visible .bar {
+    width: 0vh;
+}
+button.night.locked:active {
+    background-color: transparent;
+}
+
+/* The line of the story under the title of the result screen, in the amber of the
+   flashlight, and a line of plain text in a card (the question about a new campaign). */
+.card-line {
+    margin-top: 1.2vh;
+    font-size: 2.9vh;
+    line-height: 1.35;
+    color: #ffb854;
+}
+.card-text {
+    margin-bottom: 0.8vh;
+    font-size: 3vh;
+    line-height: 1.35;
+    color: #e2eaf6;
+}
+/* An element that is not there at the moment: the button "New maze" after a night. */
+button.gone {
+    display: none;
+}
+
+/* A card of text on black (the title card of a night, the ending card): its lines stand
+   in the middle of the window, not in the lower third. */
+.story.middle .story-lines {
+    bottom: 38vh;
+}
