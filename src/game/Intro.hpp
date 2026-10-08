@@ -129,6 +129,16 @@ constexpr float INTRO_BLACK_FADE_SECONDS = 1.2F;
 constexpr float INTRO_HINT_SECONDS = 4.0F;
 constexpr float INTRO_HINT_FADE_SECONDS = 0.5F;
 
+/// How much of the text of a card is there, cardSeconds after the cut to the card, for
+/// a card that takes seconds: 0 during the delay, up along a straight line, 1 for
+/// a while, down again and 0 for the gap at the end. The cards of the intro use it, and
+/// so do the other cards of text of the game (game/Campaign.hpp).
+float cardTextOpacity(float cardSeconds, float seconds);
+
+/// How much of the hint "Press any key to skip" is there, seconds after the cards
+/// began (INTRO_HINT_SECONDS and INTRO_HINT_FADE_SECONDS).
+float skipHintOpacity(float seconds);
+
 /// A key or a mouse button skips the intro only after this many seconds. The key that
 /// started the game (Enter in the launcher, the click on its button) may still be down
 /// when the window opens, and it must not skip what the player has not seen yet.

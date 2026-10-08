@@ -94,16 +94,20 @@ float unit(float value) {
     return std::clamp(value, 0.0F, 1.0F);
 }
 
-// How much of the text of a card is there, cardSeconds after the cut to the card, for
-// a card that takes seconds: up along a straight line, 1 for a while, down again.
-float textOpacity(float cardSeconds, float seconds) {
+} // namespace
+
+float cardTextOpacity(float cardSeconds, float seconds) {
     const float rising = (cardSeconds - INTRO_TEXT_DELAY_SECONDS) / INTRO_TEXT_FADE_SECONDS;
     const float falling =
         (seconds - INTRO_TEXT_GAP_SECONDS - cardSeconds) / INTRO_TEXT_FADE_SECONDS;
     return unit(std::min(rising, falling));
 }
 
-} // namespace
+float skipHintOpacity(float seconds) {
+    return unit(std::min(seconds / INTRO_HINT_FADE_SECONDS,
+                         (INTRO_HINT_SECONDS + INTRO_HINT_FADE_SECONDS - seconds) /
+                             INTRO_HINT_FADE_SECONDS));
+}
 
 const std::array<IntroCard, INTRO_CARD_COUNT>& introCards() {
     return INTRO_CARDS;
@@ -151,7 +155,7 @@ IntroFrame introFrame(float seconds) {
     }
     const IntroCard& card = INTRO_CARDS.at(frame.card);
     frame.cardSeconds = moment - cardStart;
-    frame.textOpacity = textOpacity(frame.cardSeconds, card.seconds);
+    frame.textOpacity = cardTextOpacity(frame.cardSeconds, card.seconds);
 
     // The black. All of it on a card without a picture. On the card after such a card
     // it lifts, and at the end of the intro it comes down again, so the main menu can
@@ -166,9 +170,7 @@ IntroFrame introFrame(float seconds) {
         frame.blackOpacity = unit(std::max(lifting, falling));
     }
 
-    frame.hintOpacity = unit(std::min(moment / INTRO_HINT_FADE_SECONDS,
-                                      (INTRO_HINT_SECONDS + INTRO_HINT_FADE_SECONDS - moment) /
-                                          INTRO_HINT_FADE_SECONDS));
+    frame.hintOpacity = skipHintOpacity(moment);
     frame.skippable = moment >= INTRO_SKIP_DELAY_SECONDS;
     return frame;
 }
