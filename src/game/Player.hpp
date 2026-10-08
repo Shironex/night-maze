@@ -16,13 +16,13 @@ class Terrain;
 /// application from the keyboard, so that the player code knows nothing about keys and
 /// a test can "hold a key" by setting a field.
 struct PlayerInput {
-    bool forward = false;  ///< W
-    bool backward = false; ///< S
-    bool left = false;     ///< A
-    bool right = false;    ///< D
+    bool forward = false;  ///< the key of KeyAction::Forward (W)
+    bool backward = false; ///< the key of KeyAction::Back (S)
+    bool left = false;     ///< the key of KeyAction::Left (A)
+    bool right = false;    ///< the key of KeyAction::Right (D)
     bool up = false;       ///< Space, used only in noclip mode
     bool down = false;     ///< Left Shift, used only in noclip mode
-    bool sprint = false;   ///< Left Shift, used only in walking mode
+    bool sprint = false;   ///< the key of KeyAction::Sprint (Left Shift), only when walking
 };
 
 /// The keys that reach the player in a fixed step: held as it is, or nothing at all

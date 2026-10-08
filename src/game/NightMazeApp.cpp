@@ -103,21 +103,20 @@ constexpr glm::vec3 PICK_MISS_COLOR{0.6F, 0.6F, 0.6F};
 // Radius of the small sphere that marks the end of the drawn picking ray, in metres.
 constexpr float PICK_MARKER_RADIUS = 0.04F;
 
+// The keys of the player (walk, sprint, use, flashlight, map, restart) are not named
+// here: the player chooses them on the settings screen (game/KeyBindings.hpp), and they
+// are read through actionDown and actionPressed. What follows are the keys of the
+// tools. They are fixed, and game::isFixedKey lists them so that no action can be put
+// on one of them.
+
 // Key that switches between walking and noclip (free flight).
 constexpr int NOCLIP_KEY = GLFW_KEY_N;
 
-// Key that switches the flashlight on and off.
-constexpr int FLASHLIGHT_KEY = GLFW_KEY_F;
-
-// Key that starts the round again on the same maze.
-constexpr int RESTART_KEY = GLFW_KEY_R;
-
-// Key that shows the map for as long as it is held.
-constexpr int MINIMAP_KEY = GLFW_KEY_M;
-
-// Key that uses what the picking ray points at: pulls a lever, reads a note, closes the
-// card of a note. A left click does the same.
-constexpr int INTERACT_KEY = GLFW_KEY_E;
+// The two keys that fly up and down in noclip. They belong to that tool only, so the
+// player may put an action on them: Left Shift is the sprint of a game without
+// a settings file.
+constexpr int NOCLIP_UP_KEY = GLFW_KEY_SPACE;
+constexpr int NOCLIP_DOWN_KEY = GLFW_KEY_LEFT_SHIFT;
 
 // Key that switches the menu camera on and off: the game then shows itself.
 constexpr int MENU_CAMERA_KEY = GLFW_KEY_F2;
@@ -151,6 +150,11 @@ constexpr const char* TEXT_ID_SUFFIX = "-text";
 constexpr const char* FULLSCREEN_ID = "fullscreen";
 constexpr const char* WINDOW_SIZE_ID = "window-size";
 constexpr const char* WINDOW_SIZE_ROW_ID = "window-size-row";
+// Its part "Controls": the button of an action has the settings name of the action as
+// its id and as its data-action ("key_sprint"), the name of the action stands in the
+// element with that id and this suffix, and one line of text stands under the rows.
+constexpr const char* KEY_NAME_ID_SUFFIX = "-name";
+constexpr const char* CONTROLS_NOTE_ID = "controls-note";
 // The card: the black over the picture, the card with its two lines, and the hint.
 constexpr const char* CARD_BLACK_ID = "black";
 constexpr const char* CARD_ID = "card";
@@ -166,6 +170,8 @@ constexpr const char* CURTAIN_ID = "curtain";
 constexpr const char* CHOSEN_CLASS = "chosen";
 constexpr const char* ON_CLASS = "on";
 constexpr const char* OFF_CLASS = "off";
+// The button of the action that waits for a key.
+constexpr const char* WAITING_CLASS = "waiting";
 // The main menu after the intro: no fade of the whole document, and the curtain is
 // there.
 constexpr const char* CUT_CLASS = "cut";
@@ -179,6 +185,7 @@ constexpr const char* TOGGLE_CALM_NIGHT_ACTION = "toggle-calm-night";
 constexpr const char* WINDOW_SIZE_SMALLER_ACTION = "window-size-smaller";
 constexpr const char* WINDOW_SIZE_LARGER_ACTION = "window-size-larger";
 constexpr const char* RESET_SETTINGS_ACTION = "reset-settings";
+constexpr const char* RESET_CONTROLS_ACTION = "reset-controls";
 // The button that starts a game: its seed is read from the seed field first.
 constexpr const char* PLAY_ACTION = "play";
 
@@ -190,6 +197,12 @@ constexpr double VOLUME_SAMPLE_SECONDS = 0.2;
 // How long the wind of the maze is heard after the button of the debug window asked for
 // it, in seconds: long enough to hear it move.
 constexpr double WIND_PREVIEW_SECONDS = 5.0;
+
+// The part "Controls" of the settings screen: what the button of an action says while
+// it waits for a key, and the line under the rows while there is nothing else to say.
+constexpr const char* PRESS_A_KEY_TEXT = "Press a key";
+constexpr const char* CONTROLS_RULE_TEXT = "A key already in use swaps the two.";
+constexpr const char* CONTROLS_RESET_TEXT = "The default keys are back.";
 
 // What the hint next to the seed field says when the field cannot be read.
 constexpr const char* SEED_HINT_TEXT = "Digits only, up to 4294967295";
@@ -625,6 +638,9 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
 
 void NightMazeApp::handleMenuActions() {
     for (const std::string& action : m_ui.takeActions()) {
+        // A button was clicked while a row of the controls waited for a key: the wait
+        // is over, and the button does what it always does.
+        stopKeyCapture();
         GameEvent event = GameEvent::Escape;
         if (eventForAction(action, event)) {
             // Play in the main menu starts the seed of the seed field. A field that
@@ -685,8 +701,25 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
         }
         return true;
     }
+    // The part "Controls". A row: its action waits for the next key press
+    // (handleKeyCapture). From now on the UI layer keeps every key from the menu, and
+    // main.cpp blocks the keyboard for the game, because the layer says it wants it.
+    if (KeyAction keyAction = KeyAction::Forward; keyActionFromSetting(action, keyAction)) {
+        m_keyCaptureAction = keyAction;
+        m_controlsNote.clear();
+        m_ui.setKeyCapture(true);
+        fillControls();
+        return true;
+    }
+    if (action == RESET_CONTROLS_ACTION) {
+        m_settings.keys = defaultKeyBindings();
+        m_controlsNote = CONTROLS_RESET_TEXT;
+        fillControls();
+        return true;
+    }
     if (action == RESET_SETTINGS_ACTION) {
-        // Everything this screen shows goes back to its default. The difficulty and the
+        // Everything this screen shows goes back to its default, the keys too
+        // (GameSettings{} has the default ones). The difficulty and the
         // calm night are chosen in the main menu and stay, and so does the story line
         // counter.
         const Difficulty difficulty = m_settings.difficulty;
@@ -703,10 +736,63 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
         applyViewSettings();
         applyWindowSettings();
         applyAudioSettings();
+        m_controlsNote.clear();
         fillSettingsDocument();
         return true;
     }
     return false;
+}
+
+void NightMazeApp::handleKeyCapture() {
+    if (!m_keyCaptureAction.has_value()) {
+        return;
+    }
+    const int key = m_ui.takeCapturedKey();
+    if (key == ui::NO_CAPTURED_KEY) {
+        return;
+    }
+    // Escape: the action keeps its key. The game does not see this Escape (its keyboard
+    // is blocked while the layer captures), so the screen stays.
+    if (key == GLFW_KEY_ESCAPE) {
+        m_controlsNote.clear();
+        stopKeyCapture();
+        return;
+    }
+    const KeyAction action = *m_keyCaptureAction;
+    const BindResult result = bindKey(m_settings.keys, action, key);
+    if (!result.accepted) {
+        // A fixed key or a key without a name: the row goes on waiting.
+        m_controlsNote = keyRefusedLine(key);
+        fillControls();
+        return;
+    }
+    // The file is written when the screen is left, like every other setting.
+    m_controlsNote = result.swappedWith.has_value()
+                         ? keySwappedLine(m_settings.keys, *result.swappedWith)
+                         : std::string();
+    stopKeyCapture();
+}
+
+void NightMazeApp::stopKeyCapture() {
+    if (!m_keyCaptureAction.has_value()) {
+        return;
+    }
+    m_keyCaptureAction.reset();
+    m_ui.setKeyCapture(false);
+    fillControls();
+}
+
+void NightMazeApp::fillControls() {
+    for (const KeyActionInfo& info : keyActions()) {
+        const std::string id(info.settingName);
+        const bool waiting = m_keyCaptureAction == info.action;
+        m_ui.setText(m_settingsDocument, id + KEY_NAME_ID_SUFFIX, std::string(info.label));
+        m_ui.setText(m_settingsDocument, id,
+                     waiting ? PRESS_A_KEY_TEXT : boundKeyName(m_settings.keys, info.action));
+        m_ui.setClass(m_settingsDocument, id, WAITING_CLASS, waiting);
+    }
+    m_ui.setText(m_settingsDocument, CONTROLS_NOTE_ID,
+                 m_controlsNote.empty() ? CONTROLS_RULE_TEXT : m_controlsNote);
 }
 
 void NightMazeApp::handleControlChanges() {
@@ -783,6 +869,10 @@ void NightMazeApp::rollSeed() {
 }
 
 void NightMazeApp::showScreen() {
+    // A row of the controls that waited for a key waits no longer, and the line under
+    // the rows starts empty when the settings screen comes up again.
+    stopKeyCapture();
+    m_controlsNote.clear();
     // The document of the screen, filled with what it shows at this moment.
     ui::DocumentId document = ui::NO_DOCUMENT;
     if (m_mode == GameMode::MainMenu) {
@@ -1014,6 +1104,8 @@ void NightMazeApp::fillSettingsDocument() {
     } else {
         m_ui.setText(m_settingsDocument, WINDOW_SIZE_ID, windowSizeLabel(m_settings.windowSize));
     }
+
+    fillControls();
 }
 
 void NightMazeApp::applyViewSettings() {
@@ -1253,16 +1345,18 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // Without the capture the struct stays as it is created: nothing is held.
     PlayerInput wanted;
     if (input().isCursorCaptured()) {
-        wanted.forward = input().isKeyDown(GLFW_KEY_W);
-        wanted.backward = input().isKeyDown(GLFW_KEY_S);
-        wanted.left = input().isKeyDown(GLFW_KEY_A);
-        wanted.right = input().isKeyDown(GLFW_KEY_D);
-        wanted.up = input().isKeyDown(GLFW_KEY_SPACE);
-        // Left Shift has one meaning per mode: sprint when walking, down when flying.
-        // The player uses the field that belongs to its mode and ignores the other.
-        // Whether the sprint really happens is decided by the stamina (Player::update).
-        wanted.down = input().isKeyDown(GLFW_KEY_LEFT_SHIFT);
-        wanted.sprint = input().isKeyDown(GLFW_KEY_LEFT_SHIFT);
+        wanted.forward = actionDown(KeyAction::Forward);
+        wanted.backward = actionDown(KeyAction::Back);
+        wanted.left = actionDown(KeyAction::Left);
+        wanted.right = actionDown(KeyAction::Right);
+        // Up and down are for flying (noclip) and sprint is for walking: the player
+        // uses the fields that belong to its mode and ignores the others. So with the
+        // default keys Left Shift has one meaning per mode: sprint when walking, down
+        // when flying. Whether the sprint really happens is decided by the stamina
+        // (Player::update).
+        wanted.up = input().isKeyDown(NOCLIP_UP_KEY);
+        wanted.down = input().isKeyDown(NOCLIP_DOWN_KEY);
+        wanted.sprint = actionDown(KeyAction::Sprint);
     }
     // A player who reads the map stands still: the keys are dropped for this step
     // (game::movementInput). The step below still runs, and so does the rest of the
@@ -1400,6 +1494,7 @@ void NightMazeApp::onRender(double alpha) {
     // frame were read, so the screen they lead to is drawn in this very frame.
     handleMenuActions();
     handleControlChanges();
+    handleKeyCapture();
 
     // The intro: the request of the debug UI to play it again, and its frame. Both come
     // before everything below, because the frame may end the intro: the rest of this
@@ -1468,7 +1563,7 @@ void NightMazeApp::onRender(double alpha) {
     // A new round on the same maze, asked for with the restart key or by the debug UI.
     // It is started here for the same reason: between two fixed steps, never inside one.
     // wasKeyPressed is true for one frame, so the key is read once per frame.
-    if (m_gameplay.restart || (roundInput && input().wasKeyPressed(RESTART_KEY))) {
+    if (m_gameplay.restart || (roundInput && actionPressed(KeyAction::Restart))) {
         m_gameplay.restart = false;
         if (m_mode == GameMode::RoundEnd) {
             // The debug UI asked on the result screen: the button "Play again" of that
@@ -1525,7 +1620,7 @@ void NightMazeApp::onRender(double alpha) {
     // (game::lightingForFrame). The sound of the key is chosen before the switch moves:
     // a click on, a click off, or the dull click of an empty battery
     // (game::flashlightKeyCue).
-    if (roundInput && input().wasKeyPressed(FLASHLIGHT_KEY)) {
+    if (roundInput && actionPressed(KeyAction::Flashlight)) {
         playCue(flashlightKeyCue(m_round.battery, m_lighting.flashlightOn));
         m_lighting.flashlightOn = !m_lighting.flashlightOn;
     }
@@ -1920,7 +2015,7 @@ void NightMazeApp::handleInteraction(bool cursorCaptured) {
     // wasKeyPressed and wasMouseButtonPressed are true for one frame. A click on
     // a debug panel does not arrive here: main.cpp blocks the mouse for the game while
     // the debug UI is using it.
-    const bool keyPressed = input().wasKeyPressed(INTERACT_KEY);
+    const bool keyPressed = actionPressed(KeyAction::Use);
     const bool clicked = input().wasMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT);
 
     if ((keyPressed || clicked) && m_pick.action != Interaction::None) {
@@ -1943,7 +2038,7 @@ void NightMazeApp::handleInteraction(bool cursorCaptured) {
 }
 
 bool NightMazeApp::mapShown() {
-    return showsMap(m_mode, {.keyHeld = input().isKeyDown(MINIMAP_KEY),
+    return showsMap(m_mode, {.keyHeld = actionDown(KeyAction::Map),
                              .pinned = m_minimapSettings.pinned,
                              .noteOpen = m_round.noteOpen,
                              .menuCamera = m_menuCamera.enabled});

@@ -656,3 +656,60 @@ body.open .curtain.drawn {
     text-transform: uppercase;
     color: #ffb854;
 }
+
+/* ---- the controls: a second panel of the settings screen, one row per action --------- */
+
+/* It stands to the right of the panel of the settings, which is full: nine more rows
+   do not fit under it in a window of any size. Narrow enough for a 16 : 10 screen. On
+   a screen that is less wide than that (4 : 3) its right edge is cut off. */
+.panel.controls {
+    left: 121vh;
+    top: 8vh;
+    width: 32vh;
+    padding: 3.4vh 3vh;
+}
+.key-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: 4.4vh;
+    margin-bottom: 0.6vh;
+    font-size: 2.6vh;
+}
+.key-name {
+    display: block;
+    width: 13vh;
+}
+/* The button of an action: a chip as wide as the longest name of a key. */
+button.chip.key {
+    width: 18vh;
+    margin-right: 0;
+    padding: 0.5vh 0;
+    font-size: 2.4vh;
+    text-align: center;
+}
+/* The button that waits for a key (the game sets the class "waiting"): amber, like
+   a hovered one, until a key is pressed or Escape ends the wait. */
+button.chip.key.waiting, button.chip.key.waiting:focus-visible {
+    color: #ffb854;
+    background-color: #4e3616;
+    border-color: #ffb854;
+}
+/* The line under the rows: room for two lines of text, so the button below it does
+   not jump when a long line comes. */
+#controls-note {
+    height: 5.6vh;
+    margin-top: 1.2vh;
+}
+.panel.controls .buttons {
+    margin: 0.8vh 0 1.4vh 0;
+}
+
+/* The way of the arrow keys between the two panels. "auto" looks for the nearest
+   element in the direction of the arrow, and the two panels are far apart: the switch
+   of the fullscreen is the door on the left side, the first key the door on the right
+   side. Tab walks through both panels by itself, in the order of the document. */
+#fullscreen { nav-right: #key_forward; }
+.key-row button.key { nav-left: #fullscreen; nav-right: none; }
+#key_restart { nav-down: #reset-controls; }
+#reset-controls { nav-up: #key_restart; nav-left: #fullscreen; nav-right: none; }

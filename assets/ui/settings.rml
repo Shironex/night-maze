@@ -54,5 +54,55 @@
     </div>
     <p class="keys">Left and right move a slider | Esc: back</p>
 </div>
+<!-- The part "Controls": one row per action of the player (game/KeyBindings.hpp), with
+     the key the action is on as a button. The id of a button is the name of its line in
+     the settings file. A click on it (or Enter) makes it wait for the next key press,
+     which becomes the key of the action. The names, the keys and the line under the
+     rows are written by the game (NightMazeApp::fillControls). -->
+<div class="panel controls">
+    <h2 class="panel-title">Controls</h2>
+    <div class="sep"></div>
+    <div class="key-row">
+        <span class="key-name" id="key_forward-name">Forward</span>
+        <button class="chip key" id="key_forward" data-action="key_forward">W</button>
+    </div>
+    <div class="key-row">
+        <span class="key-name" id="key_back-name">Back</span>
+        <button class="chip key" id="key_back" data-action="key_back">S</button>
+    </div>
+    <div class="key-row">
+        <span class="key-name" id="key_left-name">Left</span>
+        <button class="chip key" id="key_left" data-action="key_left">A</button>
+    </div>
+    <div class="key-row">
+        <span class="key-name" id="key_right-name">Right</span>
+        <button class="chip key" id="key_right" data-action="key_right">D</button>
+    </div>
+    <div class="key-row">
+        <span class="key-name" id="key_sprint-name">Sprint</span>
+        <button class="chip key" id="key_sprint" data-action="key_sprint">Left Shift</button>
+    </div>
+    <div class="key-row">
+        <span class="key-name" id="key_use-name">Use</span>
+        <button class="chip key" id="key_use" data-action="key_use">E</button>
+    </div>
+    <div class="key-row">
+        <span class="key-name" id="key_flashlight-name">Flashlight</span>
+        <button class="chip key" id="key_flashlight" data-action="key_flashlight">F</button>
+    </div>
+    <div class="key-row">
+        <span class="key-name" id="key_map-name">Map (hold)</span>
+        <button class="chip key" id="key_map" data-action="key_map">M</button>
+    </div>
+    <div class="key-row">
+        <span class="key-name" id="key_restart-name">Restart</span>
+        <button class="chip key" id="key_restart" data-action="key_restart">R</button>
+    </div>
+    <p class="keys amber" id="controls-note">A key already in use swaps the two.</p>
+    <div class="buttons">
+        <button class="btn" id="reset-controls" data-action="reset-controls">Reset controls</button>
+    </div>
+    <p class="keys">Enter: change a key | Esc: cancel</p>
+</div>
 </body>
 </rml>

@@ -46,6 +46,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -382,6 +383,10 @@ protected:
     /// a second time.
     bool& introRequest() { return m_introRequested; }
 
+    /// The key of every action of the player, as the settings hold them, for the HUD:
+    /// it names the keys in its prompts.
+    const KeyBindings& keyBindings() const { return m_settings.keys; }
+
 private:
     // Camera turn for one screen coordinate unit of mouse movement, in degrees. The mouse
     // is measured in the units of the window size, not in framebuffer pixels, so the same
@@ -432,6 +437,31 @@ private:
     /// or roll a new seed in the main menu, switch fullscreen, step the window size or
     /// reset the settings on the settings screen. False for a name it does not know.
     bool handleMenuCommand(const std::string& action);
+
+    /// The two questions every action of the player is read with, and the one place
+    /// that knows which key an action is on (m_settings.keys). actionDown: is its key
+    /// held? actionPressed: did its key go down in this frame? The second one is for
+    /// code that runs once per frame, like core::Input::wasKeyPressed.
+    bool actionDown(KeyAction action) {
+        return input().isKeyDown(boundKey(m_settings.keys, action));
+    }
+    bool actionPressed(KeyAction action) {
+        return input().wasKeyPressed(boundKey(m_settings.keys, action));
+    }
+
+    /// The part "Controls" of the settings screen while it waits for a key: takes the
+    /// key that was pressed (ui::UiLayer::takeCapturedKey). Escape leaves the action as
+    /// it is, a key that cannot be bound is refused with a line on the screen and the
+    /// wait goes on, every other key becomes the key of the action (game::bindKey).
+    /// Called once per frame.
+    void handleKeyCapture();
+
+    /// Ends the wait for a key, when there is one: the row shows its key again.
+    void stopKeyCapture();
+
+    /// Writes the part "Controls" of the settings screen: the name and the key of
+    /// every action ("Press a key" for the one that waits) and the line under them.
+    void fillControls();
 
     /// Takes the controls of the settings screen that were moved since the last frame
     /// (ui::UiLayer::takeChanges), writes their values into m_settings
@@ -912,6 +942,13 @@ private:
     // Seconds until the volume slider of the settings screen may play its next sample
     // click (handleControlChanges). 0: the next change is heard at once.
     double m_volumeSampleWait = 0.0;
+
+    // The action whose row of the settings screen waits for a key, or nothing
+    // (handleKeyCapture). While it is set the UI layer captures the keyboard.
+    std::optional<KeyAction> m_keyCaptureAction;
+    // The line under the rows of the part "Controls": what the last change did (a swap,
+    // a key that was refused). Empty: the line says the rule of the swap.
+    std::string m_controlsNote;
 };
 
 } // namespace game
