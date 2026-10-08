@@ -2,6 +2,27 @@
 
 Release notes for Night Maze, newest first.
 
+## 0.13.0 (2026-10-08)
+
+The story has a path now: five nights, a shadow that has to find you, and a screen with real instruments.
+
+### What's new
+
+- The campaign. The main menu starts with Begin, which becomes Continue once you are on your way. It takes you through five nights, each in a bigger maze with a shorter battery: First Frost (10 x 10), The Shepherds' Gates (13 x 13), Lamp's Back (16 x 16), What the Moon Misses (19 x 19) and The Last Lamp (22 x 22). The gate asks for 70 % of the crystals in the first three nights and 80 % in the last two.
+- The first night has no shadow, so you can learn the walk. The shadow comes from night 2.
+- "Nights" in the main menu lists the five nights with your best time for each. You can play a finished night again. A new night opens when you win the one before it.
+- Every night starts with a title card with its number and name. When you win, the result screen has "Next night" and one line of the story. After the fifth night an ending card closes the story. "New campaign" starts again from night 1 and asks first, because it clears your finished nights and best times.
+- Free play keeps the old menu: difficulty, calm night and seed. Calm night only changes free play.
+- The intro of five cards now plays when a campaign begins, no longer at the first start. The game opens with the main menu. Continue and the list of nights never play it.
+- The shadow works in a new way, and this replaces 0.12.0. It no longer always knows where you are. It wanders slowly through the maze. It hears you: a sprint from 14 metres, a lever from 10, a pickup from 8 and a walk from 6, counted along the corridors. It also sees you along a straight row or column of the maze, up to 12 metres. It walks to the place of a noise, runs at you when it sees you, and after 6 seconds without finding you it gives up and wanders again.
+- Hold the light on the shadow for 2.5 seconds and it burns away. That costs three times the usual battery, and the shadow is moved to a far cell, where it is quiet and deaf for 20 seconds. When it reaches you, the screen now fades to black before you are back at the start. The drawn shadow also sways as it walks.
+- A new HUD, in the corners. Bottom left: a ring for the lamp with the charge as a number. Top right: the crystals you hold against the number the gate needs, with a tick on the bar, and the time. At the bottom: the stamina line and, in a maze with a shadow, three ticks that show how loud you are. Short sentences appear for the tea, the open gate and an empty battery. The crosshair prompt names your key, and a night of the campaign shows its name for the first seconds. The HUD grows with the window, so it keeps its size on a large or dense screen.
+- The Lamplighter's Gate. The exit is now a gatehouse with three lanterns. They are cold and blue while the gate is shut, and they light up warm when it opens. A bell tolls every 6 seconds while the gate is open, louder the closer you are, and once when you walk through. On the map, a small tick points to the open gate and a lantern marks the exit cell. No grass grows in the exit cell or the cell before it.
+- More sound: wind in the maze, your footsteps, the steps of the shadow, a cold sound when it notices you, a soft breath when the light burns it away, and the bell of the gate. That makes 22 sounds. The settings screen has a volume for effects and one for ambient sound (the wind) under the main volume.
+- You can choose your own keys. The Controls part of the settings screen lists forward, back, left, right, sprint, use, flashlight, map and restart. Press Enter on one, then the new key. If the key is already used, the two actions swap keys. "Reset controls" brings the defaults back, and so does "Reset defaults". The keys are saved with your settings.
+- Your settings from 0.12.0 load as they were. The new volumes start at 100, the keys at their defaults, and the campaign at night 1 with no best times. Your place in the story is kept.
+- The video behind the main menu is recorded again, so it shows the gatehouse.
+
 ## 0.12.0 (2026-10-08)
 
 Something walks in the maze now, and the game opens with its story.
