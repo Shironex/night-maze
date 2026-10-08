@@ -13,8 +13,8 @@ class Page;
 ///
 /// It edits, through the context: the charge of the battery (the one thing of the round
 /// that can be changed), the numbers of the rules, the requests for a restart and for
-/// pulling every lever, and the settings of the minimap. The state of the round and
-/// the picture of the minimap are only shown.
+/// pulling every lever, the settings of the minimap and the request to play the intro
+/// again. The state of the round and the picture of the minimap are only shown.
 void drawGameplayCategory(Page& page, const DebugContext& context);
 
 } // namespace debug

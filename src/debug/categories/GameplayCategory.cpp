@@ -1,5 +1,5 @@
 // "Gameplay" category of the debug window: the state of the round, the battery, the
-// numbers of the rules, the shade and the minimap.
+// numbers of the rules, the shade, the minimap and the button that plays the intro again.
 // See docs/modules/game/gameplay.md
 #include "debug/categories/GameplayCategory.hpp"
 
@@ -114,6 +114,19 @@ void drawRound(Page& page, const DebugContext& context) {
         settings.pullAllLevers = true;
     }
 
+    page.endCard();
+}
+
+// The intro: one button that plays it again. The game shows it once, on its first
+// start, so this button and the switch --intro are the only ways to see it again.
+void drawIntro(Page& page, const DebugContext& context) {
+    page.beginCard("Intro");
+    if (page.buttons("Intro", "Play the intro", nullptr,
+                     "Plays the intro from its beginning, on whatever screen the game is. "
+                     "A round that is being played is given up. The intro ends in the main "
+                     "menu, and any key skips it.") == 1) {
+        context.playIntro = true;
+    }
     page.endCard();
 }
 
@@ -264,6 +277,7 @@ void drawGameplayCategory(Page& page, const DebugContext& context) {
     page.nextColumn();
     drawShade(page, context);
     drawMinimap(page, context);
+    drawIntro(page, context);
     page.endColumns();
 }
 
