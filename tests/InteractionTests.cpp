@@ -796,6 +796,17 @@ TEST_CASE("the models of the lever fit its pick box, and the rope ends in the gr
     }
 }
 
+TEST_CASE("every model of the lever has one material and no mirrored picture") {
+    for (const char* file : {"crook_post.obj", "crook_handle.obj", "crook_rope_slack.obj",
+                             "crook_rope_taut.obj", "slab_ring.obj"}) {
+        CAPTURE(file);
+        const assets::ObjModel model = loadModel(file);
+        CHECK(model.parts.size() == 1);
+        CHECK(model.mirroredTriangleCount == 0);
+        CHECK(model.indices.size() / 3 <= 320);
+    }
+}
+
 TEST_CASE("the chalk crook stays clear of the lever, on the same wall") {
     // Everything here is in the space of the lever model: x to the right along the wall,
     // z out of it.
