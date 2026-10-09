@@ -10,7 +10,7 @@ The scripts in `tools/blender/` run inside headless Blender. I use Blender 5.2.1
 |---|---|
 | `blender_common.py` | shared helpers: scene reset, boxes, UV projection, the material, the OBJ export with every option written out, review renders |
 | `make_textures.py` | the colour pictures and a normal map for each (name plus `_normal`), into `assets/textures/` |
-| the twelve `build_*.py` files | one model each (`build_lever.py` and `build_splinter.py` write two, `build_chalk.py` three, and `build_wall_straight.py` three: the plain wall, `wall_straight_crown` and `wall_straight_broken`), into `assets/models/`. `build_gate.py` is the door of the exit, `build_gate_arch.py` the gatehouse over it, `build_gate_lantern.py` its lantern, `build_gate_bell.py` the bell that swings beside the big lantern, `build_milestone.py` the stone in front of it and `build_chalk.py` the chalk marks on the walls. `build_splinter.py` is what the player collects: the game calls them crystals and draws them as splinters of the moon |
+| the thirteen `build_*.py` files | one model each (`build_lever.py`, `build_splinter.py` and `build_stile.py` write two, `build_chalk.py` three, and `build_wall_straight.py` three: the plain wall, `wall_straight_crown` and `wall_straight_broken`), into `assets/models/`. `build_gate.py` is the door of the exit, `build_gate_arch.py` the gatehouse over it, `build_gate_lantern.py` its lantern, `build_gate_bell.py` the bell that swings beside the big lantern, `build_milestone.py` the stone in front of it, `build_chalk.py` the chalk marks on the walls and `build_stile.py` the stile of the start cell. `build_splinter.py` is what the player collects: the game calls them crystals and draws them as splinters of the moon |
 | `make_skybox.py` | the six faces of the night sky, into `assets/skybox/` |
 | `make_heightmap.py` | `assets/textures/heightmap.png`, the heights of the terrain |
 | `make_all.py` | runs all of the above in one process, textures first, because a model script loads its PNG |
@@ -30,15 +30,19 @@ Everything after `--` goes to the script. `--shots` also writes review renders, 
 |---|---|
 | Axes | the game is Y up, -Z forward. The scripts are written in Blender space (Z up) and the exporter converts, so a Blender point (x, y, z) becomes (x, z, -y) |
 | Scale | 1 unit is 1 metre. A maze cell is 2 by 2 m and a wall is 3 m tall |
-| Origin | the middle of the base, the underside at height 0. The exceptions are `splinter_a` and `splinter_b`, whose origin is the lower point of their main sliver: they float and turn about it, and the two models the game turns, `lever_handle` and `gate_bell`, whose origin is the pivot |
+| Origin | the middle of the base, the underside at height 0. The exceptions are `splinter_a` and `splinter_b`, whose origin is the lower point of their main sliver: they float and turn about it, and the two models the game turns, `lever_handle` and `gate_bell`, whose origin is the pivot. `stile_post` has the origin of the wall segment it stands in front of, so the game draws it with the matrix of that wall |
 | Faces | triangles only, with one normal per face (flat shading). The renderer draws no back faces, so a model that is open, like the bell from below, needs faces that look inwards too |
-| Material | exactly one per model, with a colour picture and a normal map. A model may wear the picture of another: the bell has the brass of the lever handle |
-| UVs | one UV unit per 2 m on stone and the gate (`box_project_uvs`). Sloped models use `face_project_uvs` with their own density. The crowned and the broken wall use it with the 2 m of the stone. The flask, the lantern and the splinters write their UVs by hand |
+| Material | exactly one per model, with a colour picture and a normal map. A model may wear the picture of another: the bell has the brass of the lever handle, and the post of the stile is cut out of the picture of the gate |
+| UVs | one UV unit per 2 m on stone and the gate (`box_project_uvs`). Sloped models use `face_project_uvs` with their own density. The crowned wall, the broken wall and the stile use it with the 2 m of the stone. The flask, the lantern, the splinters and the post of the stile write their UVs by hand |
 | Texture paths in the `.mtl` | relative, so the file works on any computer |
 
 ### Chalk marks
 
 A note is chalk drawn on the stone, not an object: `chalk_lamp` for a line of the story, `chalk_arrow` for a hint, and `chalk_crook` beside every lever. `build_chalk.py` holds each mark as a list of lines on the wall. Every piece of a line becomes one flat strip 18 mm wide with square ends, 3 mm in front of the wall face, facing out of the wall only, because the renderer does not draw the back of a face. The origin is the point of the wall face behind the mark, like for the lever. The lamp and the arrow, in each of the four directions the game turns it to, must fit the pick box of a note (0.4 by 0.5 m), and the script stops if they do not. `chalk.png` is a plain pale picture: the loader reads no transparency, so the shape is all geometry. The glow is not in the files. It is `CHALK_GLOW` in `src/game/Interaction.hpp`.
+
+### The stile
+
+`stile` is one wall segment with a notch 0.7 m wide, where the wall is 2.4 m high, and four through-stones that climb to it. The game draws it in place of `wall_straight` on the north border wall of the start cell (`src/game/Stile.hpp`). The stones are boxes, each turned a few degrees by a fixed seed. Every piece of the wall is a closed box where it can be seen, so the notch shows stone and never the inside of the wall. `stile_post` is the oak post beside the steps, with an empty iron hook. It reuses `gate_wood.png` and needs no picture of its own: the post is the middle of one plank, the band at the height of the hook is one of the two iron bands of the gate, with its rivet, and the hook takes its iron from that band. Below the band 3 m of post share the 0.8 m of wood between the two bands, stretched along the grain only. The post stands 1 cm clear of where a wall across the end of the segment would be, because the start cell is a corner, and it reaches 0.15 m into the ground like the milestone. Neither model has transparency or a second material.
 
 ### Adding a model
 

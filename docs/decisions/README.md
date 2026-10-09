@@ -30,6 +30,7 @@ Status words: `accepted (date)` means the code does this today. `superseded by <
 - [collision-aabb-sliding](collision-aabb-sliding.md): own boxes, one axis at a time
 - [deterministic-random](deterministic-random.md): mt19937 and own range helper
 - [maze-on-terrain](maze-on-terrain.md): walls sunk onto gentle ground
+- [the-stile](the-stile.md): step stile in the north wall of the start cell, one box
 - [round-state](round-state.md): the round owns a maze copy
 - [picking](picking.md): ray from the eye, pulsing glow
 - [exit-cell](exit-cell.md): farthest cell by passages
