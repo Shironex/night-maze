@@ -154,7 +154,8 @@ struct MenuCameraPose {
 std::vector<MazeCell> menuCameraRoute(const Maze& maze, MazeCell start,
                                       std::span<const MazeCell> targets);
 
-/// The cells the corridor walk of a world goes to: the cell of every crystal and the
+/// The cells the corridor walk of a world goes to: the cell of every crystal of the seed
+/// (MazeWorld::seedCrystals, so the heartstone changed the walk of no seed) and the
 /// cell in front of the gate (the last one on the way from the start to the exit, the
 /// closed gate stands between it and the exit cell). A world without a gate, a maze of
 /// one cell, has no targets.

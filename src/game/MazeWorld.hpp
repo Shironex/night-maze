@@ -136,7 +136,8 @@ struct MazeWorld {
 
     /// The crystals as the seed alone gives them, before the heartstone took its dead
     /// end. The levers, the notes and the puddles are placed around THESE cells and not
-    /// around crystals: so the heartstone moved none of them in any seed. It differs from
+    /// around crystals, and the walk of the menu camera goes to them: so the heartstone
+    /// moved none of them in any seed. It differs from
     /// crystals by the one or two crystals that made room (buildMazeWorld).
     std::vector<CrystalSpawn> seedCrystals;
 

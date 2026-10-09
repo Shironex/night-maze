@@ -756,8 +756,12 @@ std::vector<MazeCell> menuCameraRoute(const Maze& maze, MazeCell start,
 
 std::vector<MazeCell> menuCameraTargets(const MazeWorld& world) {
     std::vector<MazeCell> targets;
-    targets.reserve(world.crystals.size() + 1);
-    for (const CrystalSpawn& crystal : world.crystals) {
+    // The crystals of the seed, from before the heartstone took its dead end
+    // (MazeWorld::seedCrystals): the walk of a seed stays the one the shots of the menu
+    // video and of the intro were picked in. Where a crystal made room, the walk now
+    // passes the heartstone in its place.
+    targets.reserve(world.seedCrystals.size() + 1);
+    for (const CrystalSpawn& crystal : world.seedCrystals) {
         targets.push_back(crystal.cell);
     }
 
