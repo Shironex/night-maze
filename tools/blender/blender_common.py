@@ -22,7 +22,7 @@ TEXTURES_DIR = os.path.join(REPO_ROOT, "assets", "textures")
 SKYBOX_DIR = os.path.join(REPO_ROOT, "assets", "skybox")
 
 # Texel density: one repeat of a texture covers 2 metres on every face of the models that
-# use box_project_uvs. The small crystals pass their own value to face_project_uvs.
+# use box_project_uvs. The lever passes its own value to face_project_uvs.
 METRES_PER_UV_UNIT = 2.0
 
 # Size of a review render in pixels.
