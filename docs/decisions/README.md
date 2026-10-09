@@ -39,6 +39,7 @@ Status words: `accepted (date)` means the code does this today. `superseded by <
 - [crystal-lights](crystal-lights.md): nearest crystals carry the lights
 - [moon-splinters](moon-splinters.md): crystals drawn as splinters, dark rind in one picture
 - [sprint-stamina-and-flasks](sprint-stamina-and-flasks.md): stamina and tea flasks
+- [heartstone](heartstone.md): one big splinter a maze, worth three, heavy for 30 s
 
 ## Enemy and story
 - [the-shade](the-shade.md): wanders, hunts by sound and sight, burned away by the lamp

@@ -3,6 +3,6 @@ Status: accepted (2026-10-06)
 Code: cmake/Dependencies.cmake, external/miniaudio/miniaudio.c, src/audio/AudioEngine.cpp, tools/make_sounds.py, assets/audio/README.md
 
 Context: the game was silent and I wanted it to be a portfolio piece. I needed a sound library, and sound files whose licence nobody can question.
-Decision: I chose miniaudio 0.11.25, fetched at a pinned tag. All 22 WAV files in assets/audio come from tools/make_sounds.py, which uses only the Python standard library.
+Decision: I chose miniaudio 0.11.25, fetched at a pinned tag. All 23 WAV files in assets/audio come from tools/make_sounds.py, which uses only the Python standard library.
 Why: a script leaves no one else with rights to the files, and the source is readable in history. Downloaded packs lost because every file would need its licence and author checked and listed.
 Cost and revisit: generated sound does not sound like a recording, and nobody has judged it by ear yet. I replace single files with recordings if it falls short, following assets/audio/README.md. Earlier: the first version had seven sounds.

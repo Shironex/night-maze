@@ -113,7 +113,7 @@ The switches are read before the window opens. A wrong one prints an `[error]` l
 | `--daily <YYYYMMDD>` | start the maze of that day ("Tonight's hedge") at once, with no title card. That day is also the day of the menu entry for the whole run. The saved best time of the day is read and never written |
 | `--start-cell <column>,<row>` | with `--play`: put the player in the middle of that cell in the first round. A cell that does not exist in the maze is refused |
 | `--start-yaw <degrees>` | the direction the player looks in at the start of the first round |
-| `--collect-all` | the first round starts with every crystal collected, so the gate is open |
+| `--collect-all` | the first round starts with every crystal and the heartstone collected, so the gate is open |
 | `--calm` | a calm night for this run: no shadow in any maze. Settings are untouched |
 | `--menu-camera` | start in the menu camera mode, where the game shows itself without HUD or menu (this skips the main menu too) |
 | `--menu-shot <walk\|glide>` | the shot of the menu camera: a walk through the corridors or a high glide. It does not switch the mode on by itself |

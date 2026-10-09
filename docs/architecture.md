@@ -172,7 +172,7 @@ flowchart TD
 The rules are in `game_logic`, as header and source pairs with tests:
 
 - Maze: `src/game/Maze.hpp`, `MazeGenerator.hpp`, `MazeLayout.hpp`, `Terrain.hpp`. `MazeWorld.hpp` puts them together.
-- Placement from the seed: `buildMazeWorld` calls the generator and then `Exit.hpp`, `Crystals.hpp`, `Interactables.hpp` (levers and notes) and `WallVariants.hpp`. Flasks (`Flasks.hpp`) are placed by `startRound`, because their count belongs to the difficulty. The same seed gives the same maze and objects on every system.
+- Placement from the seed: `buildMazeWorld` calls the generator and then `Exit.hpp`, `Crystals.hpp`, `Heartstone.hpp` (the one big splinter, in the farthest dead end), `Interactables.hpp` (levers and notes) and `WallVariants.hpp`. Flasks (`Flasks.hpp`) are placed by `startRound`, because their count belongs to the difficulty. The same seed gives the same maze and objects on every system.
 - Round: `src/game/Round.hpp` (`startRound`, `updateRound`), with `Interaction.hpp` for picking and `Discovery.hpp` for what the map shows.
 - Player and stamina: `src/game/Player.hpp`.
 - Enemy: `src/game/Shade.hpp`.
