@@ -311,6 +311,12 @@ void showCaughtLine(Round& round, int line);
 /// black (game::caughtBrightness).
 float roundBrightness(const Round& round);
 
+/// How bright the picture is drawn and how loud the wind of the maze is: while a catch
+/// runs (secondsSinceCatch is 0 or more, -1 when none) the fade to black
+/// (game::catchFadeBrightness), otherwise roundBrightness. The wind follows the picture
+/// down and, after the player is carried back, up again.
+float pictureBrightness(float secondsSinceCatch, const Round& round);
+
 /// True while the gate stands in the way: the maze has one and it has not opened yet.
 /// The box of the gate stops being an obstacle at the moment the gate opens, while the
 /// model is still at its full height: the gate opens when a crystal is collected

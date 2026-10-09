@@ -1587,6 +1587,24 @@ TEST_CASE("the caught line of a round shows for five seconds of play") {
     CHECK(game::roundBrightness(round) == 1.0F);
 }
 
+TEST_CASE("the picture, and with it the wind, follows the catch fade") {
+    const game::MazeWorld world = worldOf(game::Difficulty::Easy, 1U);
+    const game::GameplaySettings gameplay;
+    game::Round round = game::startRound(world, gameplay);
+    // No catch: full.
+    CHECK(game::pictureBrightness(-1.0F, round) == 1.0F);
+    // A catch: down with the fade, black at its end.
+    CHECK(game::pictureBrightness(0.0F, round) == 1.0F);
+    CHECK(game::pictureBrightness(game::CATCH_FADE_OUT_SECONDS * 0.5F, round) ==
+          doctest::Approx(0.5F));
+    CHECK(game::pictureBrightness(game::CATCH_FADE_OUT_SECONDS, round) == 0.0F);
+    // After the carry back: up again with the picture.
+    game::showCaughtLine(round, 1);
+    CHECK(game::pictureBrightness(-1.0F, round) == 0.0F);
+    round.caughtSeconds = game::CAUGHT_FADE_SECONDS;
+    CHECK(game::pictureBrightness(-1.0F, round) == 1.0F);
+}
+
 TEST_CASE("the picture comes back from black smoothly") {
     CHECK(game::caughtBrightness(0.0F) == 0.0F);
     CHECK(game::caughtBrightness(game::CAUGHT_FADE_SECONDS) == 1.0F);

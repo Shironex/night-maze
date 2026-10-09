@@ -288,6 +288,11 @@ float roundBrightness(const Round& round) {
     return round.caughtLine == NO_CAUGHT_LINE ? 1.0F : caughtBrightness(round.caughtSeconds);
 }
 
+float pictureBrightness(float secondsSinceCatch, const Round& round) {
+    return secondsSinceCatch >= 0.0F ? catchFadeBrightness(secondsSinceCatch)
+                                     : roundBrightness(round);
+}
+
 bool gateBlocks(const MazeWorld& world, const Round& round) {
     return world.hasGate && !round.gateOpen;
 }

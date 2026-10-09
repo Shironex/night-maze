@@ -654,6 +654,11 @@ void NightMazeApp::updateAmbience(bool windowFocused) {
     const float fadeIn = sample ? MAZE_WIND_SAMPLE_FADE_IN_SECONDS : MAZE_WIND_FADE_IN_SECONDS;
     m_audio.setLoop(soundCueIndex(SoundCue::MazeWind), wind,
                     wind ? fadeIn : MAZE_WIND_FADE_OUT_SECONDS);
+    // The wind follows the fade to black of a catch and the way back up from it. Only the
+    // ambient group is touched, so the other sounds keep their level.
+    m_audio.setGroupVolume(audio::SoundGroup::Ambient,
+                           masterVolumeGain(m_settings.ambientVolume) *
+                               pictureBrightness(m_catchSeconds, m_round));
 }
 
 void NightMazeApp::onEscapePressed() {
@@ -2497,8 +2502,7 @@ void NightMazeApp::onRender(double alpha) {
     }
     // Right after the shade carried the player back the picture comes up from black: the
     // exposure multiplies every colour, so a factor of 0 is a black picture.
-    compositeSettings.exposure *=
-        m_catchSeconds >= 0.0F ? catchFadeBrightness(m_catchSeconds) : roundBrightness(m_round);
+    compositeSettings.exposure *= pictureBrightness(m_catchSeconds, m_round);
 
     // The bloom: the bright parts of the finished scene, blurred in targets of half the
     // size. It is called in every frame, also with the bloom switched off: it then
