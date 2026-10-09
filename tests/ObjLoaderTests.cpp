@@ -975,8 +975,8 @@ TEST_CASE("loadObj: splinter_a.obj and splinter_b.obj") {
         std::string file;
         std::size_t triangles;
     };
-    for (const Splinter& splinter :
-         {Splinter{"splinter_a.obj", 40U}, Splinter{"splinter_b.obj", 120U}}) {
+    for (const Splinter& splinter : {Splinter{.file = "splinter_a.obj", .triangles = 40U},
+                                     Splinter{.file = "splinter_b.obj", .triangles = 120U}}) {
         CAPTURE(splinter.file);
         // Not through loadGameModel, for the same reason as the flask: slanted faces.
         assets::ObjModel model;
