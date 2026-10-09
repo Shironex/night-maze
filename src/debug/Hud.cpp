@@ -167,6 +167,16 @@ constexpr float TEA_HINT_SECONDS = 4.0F;
 constexpr float BATTERY_HINT_SECONDS = 6.0F;
 constexpr float HINT_FADE_SECONDS = 0.5F;
 
+// A soft dark plate behind a sentence, so it reads over bright stone too: low in
+// opacity, with no outline, and feathered by drawing it HINT_BACKING_LAYERS times, each
+// layer one step larger and fainter than the one before. Not a button: the pill of the
+// key prompt is the only boxed thing in the HUD.
+constexpr ImVec2 HINT_BACKING_PADDING{18.0F, 7.0F};
+constexpr float HINT_BACKING_ROUNDING = 14.0F;
+constexpr float HINT_BACKING_FEATHER = 4.0F;
+constexpr int HINT_BACKING_LAYERS = 3;
+constexpr float HINT_BACKING_OPACITY = 0.28F;
+
 // Room for a sentence with a number in it, and for a number alone.
 constexpr std::size_t HINT_TEXT_SIZE = 64;
 constexpr std::size_t NUMBER_TEXT_SIZE = 16;
@@ -680,6 +690,21 @@ void drawHintLine(Canvas canvas, const game::Round& round, const game::Player& p
 
     canvas.opacity *= opacity;
     const ImVec2 middle = windowPoint(HINT_PLACE);
+    // The plate first, under the letters. Each layer adds a little opacity on a larger
+    // area, so the middle is the darkest and the rim melts into the picture.
+    const float scale = canvas.scale;
+    const float halfWidth = textWidth(canvas, HUD_FONT_SIZE, text.data()) / 2.0F;
+    const float halfHeight = fontPixels(canvas, HUD_FONT_SIZE) / 2.0F;
+    for (int layer = 0; layer < HINT_BACKING_LAYERS; ++layer) {
+        const float grow =
+            static_cast<float>(HINT_BACKING_LAYERS - 1 - layer) * HINT_BACKING_FEATHER * scale;
+        const float x = HINT_BACKING_PADDING.x * scale + grow;
+        const float y = HINT_BACKING_PADDING.y * scale + grow;
+        canvas.list->AddRectFilled({middle.x - halfWidth - x, middle.y - halfHeight - y},
+                                   {middle.x + halfWidth + x, middle.y + halfHeight + y},
+                                   ink(canvas, HUD_SHADOW_COLOR, HINT_BACKING_OPACITY),
+                                   (HINT_BACKING_ROUNDING * scale) + grow);
+    }
     drawText(canvas,
              {middle.x - textWidth(canvas, HUD_FONT_SIZE, text.data()) / 2.0F,
               middle.y - fontPixels(canvas, HUD_FONT_SIZE) / 2.0F},
