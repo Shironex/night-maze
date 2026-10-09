@@ -134,13 +134,6 @@ scene::Aabb stoneSheepBox(const glm::vec3& position, Compass facing);
 /// The model matrix of a sheep: turned to where it looks and moved to its place.
 glm::mat4 stoneSheepMatrix(const StoneSheep& sheep);
 
-/// The dead ends that are farthest from start, counted in passages walked, the start and
-/// the exit cell left out: one cell, or several at the same distance. The exit itself is
-/// the farthest cell of all, so this is the far end of the maze that is not the gate.
-/// No sheep stands there: that dead end is kept free for something of its own.
-/// Throws std::out_of_range when start is not a cell of the maze.
-std::vector<MazeCell> farthestDeadEnds(const Maze& maze, MazeCell start, MazeCell exit);
-
 /// Takes up to count cells from candidates, in their order, so that they lie spread out:
 /// a cell is taken when it is more than STONE_SHEEP_MIN_PASSAGES_APART passages from
 /// every cell taken before it. When that leaves fewer than count, the cells that were
@@ -158,15 +151,16 @@ std::vector<MazeCell> chooseSpreadCells(const Maze& maze, std::span<const MazeCe
 ///   - it is a dead end or a corner (isCornerCell),
 ///   - it is not the start cell, the exit cell or the cell in front of the gate,
 ///   - it holds no crystal, no lever, no note and no slab ring (so no wall of it ever
-///     opens), no puddle at the usual share (game::DEFAULT_PUDDLE_SHARE), and none of the
-///     flasks of the three levels,
-///   - it is not one of the dead ends the flasks have reserved, and not one of
-///     farthestDeadEnds,
+///     opens), no puddle at the usual share (game::DEFAULT_PUDDLE_SHARE) and not the
+///     heartstone (MazeWorld::heartstone),
+///   - no flask can lie in it: the flasks are placed when a round starts, so the sheep
+///     are the ones that yield, to all the cells of game::flaskCells for
+///     game::MAX_FLASK_COUNT flasks,
 ///   - a sheep that looks from it towards the exit has a place in it (stoneSheepPlace).
 ///
 /// Those cells are shuffled by the seed, and stoneSheepCountFor of them are taken, spread
-/// out (chooseSpreadCells). The world needs its maze, seed, exit, gate, crystals and
-/// interactables: buildMazeWorld calls this after all of them.
+/// out (chooseSpreadCells). The world needs its maze, seed, exit, gate, crystals,
+/// heartstone and interactables: buildMazeWorld calls this after all of them.
 std::vector<StoneSheep> placeStoneSheep(const MazeWorld& world);
 
 /// True for a point of the ground under or right beside a sheep of the world, where no

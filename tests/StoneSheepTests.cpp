@@ -3,7 +3,9 @@
 #include "game/StoneSheep.hpp"
 
 #include "assets/ObjLoader.hpp"
+#include "game/Campaign.hpp"
 #include "game/Crystals.hpp"
+#include "game/Difficulty.hpp"
 #include "game/EnvironmentMapping.hpp"
 #include "game/Exit.hpp"
 #include "game/Flasks.hpp"
@@ -14,6 +16,7 @@
 #include "game/MazeWorld.hpp"
 #include "game/Player.hpp"
 #include "game/Puddles.hpp"
+#include "game/Round.hpp"
 #include "game/Shade.hpp"
 #include "game/Terrain.hpp"
 #include "scene/Collider.hpp"
@@ -531,11 +534,9 @@ TEST_CASE("the sheep of a maze stand in free dead ends and corners, one per cell
         const std::vector<MazeCell> flasks =
             game::placeFlasks(maze, world.seed, game::START_CELL, world.exitCell, world.crystals,
                               game::FLASK_RESERVED_DEAD_ENDS);
-        const std::vector<MazeCell> farthest =
-            game::farthestDeadEnds(maze, game::START_CELL, world.exitCell);
         const std::vector<game::PuddleSpawn> puddles =
-            game::placePuddles(maze, world.seed, game::START_CELL, world.exitCell, world.crystals,
-                               game::DEFAULT_PUDDLE_SHARE);
+            game::placePuddles(maze, world.seed, game::START_CELL, world.exitCell,
+                               world.seedCrystals, game::DEFAULT_PUDDLE_SHARE);
 
         for (std::size_t i = 0; i < world.sheep.size(); ++i) {
             const MazeCell cell = world.sheep[i].cell;
@@ -570,8 +571,8 @@ TEST_CASE("the sheep of a maze stand in free dead ends and corners, one per cell
             for (const game::PuddleSpawn& puddle : puddles) {
                 CHECK(puddle.cell != cell);
             }
-            // The flasks had the first choice of the dead ends, and the farthest dead
-            // end is left alone.
+            // The flasks had the first choice of the dead ends, and the dead end of the
+            // heartstone is left alone.
             for (std::size_t reserved = 0;
                  reserved < flaskDeadEnds.size() &&
                  reserved < static_cast<std::size_t>(game::FLASK_RESERVED_DEAD_ENDS);
@@ -579,9 +580,128 @@ TEST_CASE("the sheep of a maze stand in free dead ends and corners, one per cell
                 CHECK(flaskDeadEnds[reserved] != cell);
             }
             CHECK_FALSE(contains(flasks, cell));
-            CHECK_FALSE(contains(farthest, cell));
+            CHECK(world.heartstone != cell);
         }
     });
+}
+
+// One game the player can start: a level of free play or a night of the campaign.
+struct GameConfig {
+    int width;
+    int height;
+    int crystalCount;
+    int flaskCount;
+    game::InteractableSettings interactables;
+};
+
+// The three levels, then the five nights, with the notes and levers each one asks for.
+std::vector<GameConfig> everyGameConfig() {
+    std::vector<GameConfig> configs;
+    for (const game::Difficulty difficulty : game::ALL_DIFFICULTIES) {
+        const game::DifficultyLevel& level = game::difficultyLevel(difficulty);
+        configs.push_back({.width = level.mazeWidth,
+                           .height = level.mazeHeight,
+                           .crystalCount = level.crystalCount,
+                           .flaskCount = level.flaskCount,
+                           .interactables = {}});
+    }
+    for (int night = 1; night <= game::CAMPAIGN_NIGHT_COUNT; ++night) {
+        const game::CampaignNight& level = game::campaignNight(night);
+        configs.push_back({.width = level.mazeWidth,
+                           .height = level.mazeHeight,
+                           .crystalCount = level.crystalCount,
+                           .flaskCount = level.flaskCount,
+                           .interactables = game::campaignInteractables(night, {})});
+    }
+    return configs;
+}
+
+// The cells of the flasks of a round with this many flasks: asked of the round itself.
+std::vector<MazeCell> roundFlaskCells(const game::MazeWorld& world, int flaskCount) {
+    game::GameplaySettings settings;
+    settings.flaskCount = flaskCount;
+    std::vector<MazeCell> cells;
+    for (const game::RoundFlask& flask : game::startRound(world, settings).flasks) {
+        cells.push_back(flask.cell);
+    }
+    return cells;
+}
+
+TEST_CASE("no sheep shares a cell with anything a game puts into its maze") {
+    // Every level and every night, 300 seeds each. What is in a cell is asked of the
+    // functions the game itself calls (startRound, puddlesOnGround) and not worked out
+    // again the way placeStoneSheep does it.
+    constexpr std::uint32_t GAME_SEED_COUNT = 300;
+    std::vector<int> sizesSeen;
+    int flocks = 0;
+    for (const GameConfig& config : everyGameConfig()) {
+        if (std::ranges::find(sizesSeen, config.width) == sizesSeen.end()) {
+            sizesSeen.push_back(config.width);
+        }
+        for (std::uint32_t seed = 0; seed < GAME_SEED_COUNT; ++seed) {
+            CAPTURE(config.width);
+            CAPTURE(config.crystalCount);
+            CAPTURE(seed);
+            const game::MazeWorld world = game::buildMazeWorld(
+                config.width, config.height, seed, config.interactables, config.crystalCount);
+            flocks += world.sheep.empty() ? 0 : 1;
+
+            std::vector<MazeCell> held = {game::START_CELL, world.exitCell};
+            if (world.hasGate) {
+                held.push_back(game::approachCell(world));
+            }
+            REQUIRE(world.heartstone.has_value());
+            held.push_back(world.heartstone.value_or(MazeCell{}));
+            for (const game::CrystalSpawn& crystal : world.crystals) {
+                held.push_back(crystal.cell);
+            }
+            for (const game::Lever& lever : world.interactables.levers) {
+                held.push_back(lever.mount.cell);
+                for (const game::WallRef& ring : game::slabRingMounts(lever)) {
+                    held.push_back(ring.cell);
+                }
+            }
+            for (const game::Note& note : world.interactables.notes) {
+                held.push_back(note.mount.cell);
+            }
+            const std::vector<game::Puddle> puddles =
+                game::puddlesOnGround(world, game::DEFAULT_PUDDLE_SHARE);
+            for (const game::Puddle& puddle : puddles) {
+                held.push_back(game::cellAt(puddle.center));
+            }
+            // The flasks of this game, and the flasks of a round with as many as a
+            // round can have: the sheep are the ones that yield, to every one of them.
+            const std::vector<MazeCell> flasks = roundFlaskCells(world, config.flaskCount);
+            CHECK(static_cast<int>(flasks.size()) == config.flaskCount);
+            const std::vector<MazeCell> mostFlasks = roundFlaskCells(world, game::MAX_FLASK_COUNT);
+            held.insert(held.end(), mostFlasks.begin(), mostFlasks.end());
+            for (const MazeCell flask : flasks) {
+                CHECK(contains(mostFlasks, flask));
+            }
+
+            for (const game::StoneSheep& sheep : world.sheep) {
+                CAPTURE(sheep.cell.x);
+                CAPTURE(sheep.cell.z);
+                CHECK_FALSE(contains(held, sheep.cell));
+            }
+
+            // The sheep move nothing: the same world without them gives the same flasks
+            // and the same puddles. (Its crystals, heartstone, levers and notes are the
+            // very same objects: placeStoneSheep only reads them.)
+            game::MazeWorld bare = world;
+            bare.sheep.clear();
+            CHECK(roundFlaskCells(bare, game::MAX_FLASK_COUNT) == mostFlasks);
+            const std::vector<game::Puddle> barePuddles =
+                game::puddlesOnGround(bare, game::DEFAULT_PUDDLE_SHARE);
+            REQUIRE(barePuddles.size() == puddles.size());
+            for (std::size_t i = 0; i < puddles.size(); ++i) {
+                CHECK(barePuddles[i].center == puddles[i].center);
+            }
+        }
+    }
+    // All five sizes were in the sweep, and nearly every maze had sheep to check.
+    CHECK(sizesSeen.size() == GAME_SIZES.size());
+    CHECK(flocks > 0);
 }
 
 TEST_CASE("every maze of the game has its whole flock, and the same seed the same flock") {
@@ -637,12 +757,14 @@ TEST_CASE("the sheep change nothing else of a maze") {
                 game::flaskDeadEnds(maze, seed, game::START_CELL, world.exitCell);
             flaskCells.resize(std::min(flaskCells.size(),
                                        static_cast<std::size_t>(game::FLASK_RESERVED_DEAD_ENDS)));
+            // The crystals of the seed: the heartstone moves at most two of them
+            // afterwards (HeartstoneTests), the sheep none.
             const std::vector<game::CrystalSpawn> crystals =
                 game::placeCrystals(maze, seed, game::START_CELL, world.exitCell,
                                     game::CRYSTAL_COUNT_FROM_SIZE, flaskCells);
-            REQUIRE(crystals.size() == world.crystals.size());
+            REQUIRE(crystals.size() == world.seedCrystals.size());
             for (std::size_t i = 0; i < crystals.size(); ++i) {
-                CHECK(crystals[i].cell == world.crystals[i].cell);
+                CHECK(crystals[i].cell == world.seedCrystals[i].cell);
             }
             const game::Interactables interactables = game::placeInteractables(
                 maze, seed, game::START_CELL, world.exitCell, crystals, {});
@@ -704,42 +826,6 @@ TEST_CASE("cells for sheep are taken spread out, and close ones only when nothin
         },
         false);
     CHECK(spread * 10 >= worlds * 9);
-}
-
-TEST_CASE("the farthest dead end that is not the gate is found, with every tie") {
-    // A corridor: the start at one end, the exit at the other, no other dead end.
-    CHECK(game::farthestDeadEnds(corridor(5), {.x = 0, .z = 0}, {.x = 4, .z = 0}).empty());
-
-    // A cross: the start in the west arm, the exit in the east arm, and the north and
-    // the south arm end equally far away.
-    game::Maze cross(5, 5);
-    for (int step = 0; step < 4; ++step) {
-        cross.removeWall(step, 2, Direction::East);
-        cross.removeWall(2, step, Direction::South);
-    }
-    const std::vector<MazeCell> ends =
-        game::farthestDeadEnds(cross, {.x = 0, .z = 2}, {.x = 4, .z = 2});
-    REQUIRE(ends.size() == 2);
-    CHECK(ends[0] == MazeCell{.x = 2, .z = 0});
-    CHECK(ends[1] == MazeCell{.x = 2, .z = 4});
-
-    // In a generated maze it is a dead end, never the exit, and nothing is farther.
-    forEveryWorld([](const game::MazeWorld& world) {
-        const std::vector<int> ways = game::passageDistances(world.maze, game::START_CELL);
-        const auto wayTo = [&](MazeCell cell) {
-            const int index = cell.z * world.maze.width() + cell.x;
-            return ways[static_cast<std::size_t>(index)];
-        };
-        const std::vector<MazeCell> farthest =
-            game::farthestDeadEnds(world.maze, game::START_CELL, world.exitCell);
-        for (const MazeCell cell : farthest) {
-            CHECK(cell != world.exitCell);
-            CHECK(cell != game::START_CELL);
-            CHECK(game::isDeadEnd(world.maze, cell.x, cell.z));
-            CHECK(wayTo(cell) == wayTo(farthest.front()));
-            CHECK(wayTo(cell) <= wayTo(world.exitCell));
-        }
-    });
 }
 
 TEST_CASE("the box of a sheep is long along the way it looks, or a square on a diagonal") {

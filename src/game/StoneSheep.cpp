@@ -162,24 +162,18 @@ CellFlags takenCells(const MazeWorld& world) {
     for (const Note& note : world.interactables.notes) {
         taken.set(note.mount.cell);
     }
+    // The puddles are chosen around the crystals of the seed (puddlesOnGround).
     for (const PuddleSpawn& puddle : placePuddles(maze, world.seed, START_CELL, world.exitCell,
-                                                  world.crystals, DEFAULT_PUDDLE_SHARE)) {
+                                                  world.seedCrystals, DEFAULT_PUDDLE_SHARE)) {
         taken.set(puddle.cell);
     }
-
-    // The flasks come first: the dead ends they have reserved, and the cells the flasks
-    // of the three levels lie in (other cells only in a maze with too few dead ends).
-    const std::vector<MazeCell> reserved =
-        flaskDeadEnds(maze, world.seed, START_CELL, world.exitCell);
-    for (std::size_t i = 0;
-         i < reserved.size() && i < static_cast<std::size_t>(FLASK_RESERVED_DEAD_ENDS); ++i) {
-        taken.set(reserved[i]);
+    if (world.heartstone) {
+        taken.set(*world.heartstone);
     }
-    for (const MazeCell cell : placeFlasks(maze, world.seed, START_CELL, world.exitCell,
-                                           world.crystals, FLASK_RESERVED_DEAD_ENDS)) {
-        taken.set(cell);
-    }
-    for (const MazeCell cell : farthestDeadEnds(maze, START_CELL, world.exitCell)) {
+    // The flasks are placed when a round starts, after the sheep, so the sheep yield:
+    // they keep out of every cell a flask of this world can lie in, however many flasks
+    // the round has.
+    for (const MazeCell cell : flaskCells(world, MAX_FLASK_COUNT)) {
         taken.set(cell);
     }
     return taken;
@@ -244,29 +238,6 @@ glm::mat4 stoneSheepMatrix(const StoneSheep& sheep) {
     transform.position = sheep.position;
     transform.rotationDegrees.y = sheepYawDegrees(sheep.facing);
     return transform.matrix();
-}
-
-std::vector<MazeCell> farthestDeadEnds(const Maze& maze, MazeCell start, MazeCell exit) {
-    const std::vector<int> distances = passageDistances(maze, start);
-    std::vector<MazeCell> farthest;
-    int farthestDistance = 0;
-    for (int z = 0; z < maze.height(); ++z) {
-        for (int x = 0; x < maze.width(); ++x) {
-            const MazeCell cell{.x = x, .z = z};
-            const int index = z * maze.width() + x;
-            const int distance = distances[static_cast<std::size_t>(index)];
-            if (cell == start || cell == exit || distance == UNREACHABLE ||
-                !isDeadEnd(maze, x, z) || distance < farthestDistance) {
-                continue;
-            }
-            if (distance > farthestDistance) {
-                farthest.clear();
-                farthestDistance = distance;
-            }
-            farthest.push_back(cell);
-        }
-    }
-    return farthest;
 }
 
 std::vector<MazeCell> chooseSpreadCells(const Maze& maze, std::span<const MazeCell> candidates,
