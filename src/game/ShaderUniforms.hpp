@@ -219,6 +219,12 @@ constexpr const char* ENVIRONMENT_BACKGROUND_UNIFORM = "uBackground";
 /// shows it, in radians. 0 for everything except the hollow of the hood of the shade.
 constexpr const char* ENVIRONMENT_SKY_TURN_UNIFORM = "uSkyTurn";
 
+/// reflect.frag: how far the direction the sky is read in leans outwards, per metre
+/// between the fragment and a centre in world space, and that centre. 0 for everything
+/// except the face of the shade: the centre is not read then.
+constexpr const char* ENVIRONMENT_SKY_SPREAD_UNIFORM = "uSkySpread";
+constexpr const char* ENVIRONMENT_SKY_SPREAD_CENTRE_UNIFORM = "uSkySpreadCentre";
+
 /// reflect.frag: how many times more the stars of the sky are lifted above the sky
 /// around them. 0 for everything except the hood of a shade the beam is burning.
 constexpr const char* ENVIRONMENT_STAR_BOOST_UNIFORM = "uStarBoost";

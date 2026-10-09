@@ -384,7 +384,7 @@ constexpr float SHADE_SPECULAR_STRENGTH = 0.03F;
 // the refracted one (the uniform uReflectShare of reflect.frag).
 constexpr float MIRROR_ONLY = 1.0F;
 
-// The hollow of the hood of the shade is the opposite: all of its colour is the sky
+// The face of the shade is the opposite: all of its colour is the sky
 // (uEnvironmentStrength), all of that the picture seen through the surface
 // (uReflectShare), and the ray into it is not bent (uRefractionRatio), so the sky is read
 // along the look of the eye. That sky is turned by this angle around the vertical axis,
@@ -394,6 +394,12 @@ constexpr float SKY_ONLY = 1.0F;
 constexpr float SEEN_THROUGH_ONLY = 0.0F;
 constexpr float NO_REFRACTION = 1.0F;
 constexpr float SHADE_HOOD_SKY_TURN = 0.35F;
+// The face shows a wider piece of sky than it covers (uSkySpread, per metre from the
+// middle of the face, which is this point of the model shade_hollow.obj): the face is
+// 16 cm wide, and with a spread of 1 its rim reads the sky about 5 degrees further out
+// than the look of the eye alone would.
+constexpr float SHADE_HOOD_SKY_SPREAD = 1.0F;
+constexpr glm::vec3 SHADE_HOOD_CENTRE{0.0F, 1.81F, 0.15F};
 
 // Reads the heightmap picture. When it cannot be loaded the ground is flat: the error is
 // in the log and the game is still playable.
@@ -2976,7 +2982,7 @@ void NightMazeApp::drawGateAndCrystals(const gfx::Shader& shader) const {
     if (m_shadeDrawn) {
         shader.setFloat(SPECULAR_STRENGTH_UNIFORM, SHADE_SPECULAR_STRENGTH);
         m_gameplayRenderer.drawShade(shader, m_shadeMatrix);
-        // The hollow of its hood and its cuffs are drawn exactly once per frame, like the
+        // The night in its hood and its cuffs are drawn exactly once per frame, like the
         // crystals: here as dark cloth, or later by drawReflections as the night sky.
         if (!crystalsReflect()) {
             m_gameplayRenderer.drawShadeHollow(shader, m_shadeMatrix);
@@ -3059,7 +3065,7 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
     m_gameplayRenderer.drawCrystals(m_reflectShader, m_round,
                                     crystalEmissive() * m_environment.crystalGlowShare);
 
-    // The hollow of the hood of the shade and its cuffs: a piece of the night. All of
+    // The face in the hood of the shade and its cuffs: a piece of the night. All of
     // their colour is the sky (a strength of 1, so the beam of the flashlight does not
     // light them), read where the eye looks and not where a mirror would send the look:
     // the refracted picture alone, with a ratio that bends nothing. The sky is turned
@@ -3076,9 +3082,13 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
         m_reflectShader.setFloat(ENVIRONMENT_SKY_BRIGHTNESS_UNIFORM,
                                  m_skyboxSettings.brightness * m_shadeHoodBrightness);
         m_reflectShader.setFloat(ENVIRONMENT_STAR_BOOST_UNIFORM, m_shadeHoodStarBoost);
+        m_reflectShader.setFloat(ENVIRONMENT_SKY_SPREAD_UNIFORM, SHADE_HOOD_SKY_SPREAD);
+        m_reflectShader.setVec3(ENVIRONMENT_SKY_SPREAD_CENTRE_UNIFORM,
+                                glm::vec3{m_shadeMatrix * glm::vec4{SHADE_HOOD_CENTRE, 1.0F}});
         m_gameplayRenderer.drawShadeHollow(m_reflectShader, m_shadeMatrix);
         m_reflectShader.setFloat(ENVIRONMENT_SKY_TURN_UNIFORM, 0.0F);
         m_reflectShader.setFloat(ENVIRONMENT_STAR_BOOST_UNIFORM, 0.0F);
+        m_reflectShader.setFloat(ENVIRONMENT_SKY_SPREAD_UNIFORM, 0.0F);
         m_reflectShader.setFloat(ENVIRONMENT_SKY_BRIGHTNESS_UNIFORM, m_skyboxSettings.brightness);
     }
 

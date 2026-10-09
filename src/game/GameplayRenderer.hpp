@@ -86,9 +86,9 @@ public:
     /// Whether a frame has a shade at all is decided by the caller.
     void drawShade(const gfx::Shader& shader, const glm::mat4& modelMatrix) const;
 
-    /// Draws what drawShade leaves open, with the same matrix: the hollow of the hood and
-    /// the openings of the two cuffs. It is a call of its own because the scene draws
-    /// these faces with the reflect program, which shows the night sky on them, when it
+    /// Draws what drawShade leaves out, with the same matrix: the oval of night on the
+    /// front of the hood and the openings of the two cuffs. It is a call of its own because the
+    /// scene draws these faces with the reflect program, which shows the night sky on them, when it
     /// has one, and with the program of the walls when it has not (they are dark cloth
     /// then). The shadow passes call both. uEmissive is set to black.
     void drawShadeHollow(const gfx::Shader& shader, const glm::mat4& modelMatrix) const;

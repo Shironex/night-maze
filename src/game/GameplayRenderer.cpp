@@ -45,8 +45,8 @@ constexpr const char* FLASK_MODEL_FILE = "models/flask.obj";
 
 // The model of the shade: a hooded figure 2.1 m tall, in metres, upright, with its origin
 // on the ground under it and its front along +Z. It comes as two files that fit into each
-// other: the cloth, and the faces the cloth is wrapped around (the hollow of the hood and
-// the openings of the two cuffs), which show the night sky. These two names are all the
+// other: the cloth, and the faces the cloth is wrapped around (an oval where a face would
+// be and the openings of the two cuffs), which show the night sky. These two names are all the
 // code knows about its look.
 constexpr const char* SHADE_MODEL_FILE = "models/shade.obj";
 constexpr const char* SHADE_HOLLOW_MODEL_FILE = "models/shade_hollow.obj";

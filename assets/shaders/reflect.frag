@@ -1,5 +1,5 @@
 #version 410 core
-// Fragment shader of the surfaces that show the sky (crystals, puddles and the hollow of
+// Fragment shader of the surfaces that show the sky (crystals, puddles and the face in
 // the hood of the shade): the lit
 // colour of the surface, blended with the sky read from the cube map in the direction
 // of the mirrored ray and of the refracted ray (environment mapping).
@@ -47,6 +47,15 @@ uniform vec3 uBackground; // the clear colour, a linear colour
 // the stars behind the figure, as if the hood were a hole. Turned, it is a piece of the
 // night that was cut out and put back crooked.
 uniform float uSkyTurn;
+// How much wider the piece of sky is that a surface shows than the surface itself: the
+// direction the sky is read in leans outwards by this much for every metre between the
+// fragment and uSkySpreadCentre, a point of the world. 0 for the crystals and the puddles
+// (and the value after a reload): the direction as it is, and the centre is not read. The
+// face of the shade is a hand wide, and three steps away that is four degrees of sky,
+// seldom with a star in it. Spread, it shows a piece of sky several times as wide, with
+// its stars drawn closer together, and they keep their places on the face as it moves.
+uniform float uSkySpread;
+uniform vec3 uSkySpreadCentre;
 // How much the stars are lifted above the sky around them: what a texel is brighter
 // than STAR_FLOOR is added this many times more. 0 for the crystals and the puddles (and
 // the value after a reload): the sky as it is. The hood of the shade raises it while
@@ -84,6 +93,12 @@ const float PUDDLE_UV_RADIUS = 0.5;
 // The brightest the sky is where it has no star and no moon, as a linear colour value:
 // the horizon and the Milky Way of tools/blender/make_skybox.py together stay below it.
 const float STAR_FLOOR = 0.04;
+
+// How much wider a star of a spread sky is drawn on each side, as the tangent of an angle
+// (0.3 degrees, about the radius of a bright star of the cube map), and how many places
+// around a fragment are looked at for that. Only read while uSkySpread is above 0.
+const float STAR_GROW = 0.005;
+const int STAR_GROW_TAPS = 8;
 
 // The exponent of Schlick's formula. The same number as game::SCHLICK_EXPONENT in
 // src/game/EnvironmentMapping.hpp.
@@ -128,6 +143,9 @@ vec3 environmentColor(vec3 direction) {
     if (!uSkyVisible) {
         return uBackground;
     }
+    // The lean of uSkySpread. A cube map is read with a direction of any length, so the
+    // sum is not made a unit vector again.
+    direction += uSkySpread * (vWorldPosition - uSkySpreadCentre);
     // A turn around the y axis by uSkyTurn: x and z turn, the height of the direction
     // stays. With an angle of 0 this is the direction itself.
     float turnCos = cos(uSkyTurn);
@@ -135,6 +153,22 @@ vec3 environmentColor(vec3 direction) {
     vec3 turned = vec3(turnCos * direction.x + turnSin * direction.z, direction.y,
                        turnCos * direction.z - turnSin * direction.x);
     vec3 sky = texture(uEnvironmentMap, turned).rgb;
+    if (uSkySpread > 0.0) {
+        // A spread sky is drawn smaller, and its stars would be a pixel wide or less:
+        // from far away most of them would fall between the pixels. So each fragment
+        // takes the brightest of nine places, its own and eight on a small circle around
+        // it, which makes every star STAR_GROW wider on each side. `across` and `along`
+        // are two directions at right angles to the one the sky is read in. The tiny
+        // vector keeps the first from being zero for a look straight up or down.
+        vec3 across = normalize(cross(turned, vec3(0.0, 1.0, 0.0)) + vec3(0.00001, 0.0, 0.0));
+        vec3 along = normalize(cross(across, turned));
+        float reach = length(turned) * STAR_GROW;
+        for (int tap = 0; tap < STAR_GROW_TAPS; ++tap) {
+            float angle = float(tap) * (6.2831853 / float(STAR_GROW_TAPS));
+            vec3 beside = turned + (cos(angle) * across + sin(angle) * along) * reach;
+            sky = max(sky, texture(uEnvironmentMap, beside).rgb);
+        }
+    }
     // With a boost of 0 this adds nothing.
     sky += max(sky - STAR_FLOOR, 0.0) * uStarBoost;
     return sky * uSkyBrightness;
