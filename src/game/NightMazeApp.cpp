@@ -699,8 +699,8 @@ NightMazeApp::~NightMazeApp() {
 
 // A cue that was started plays to its end, also when the pause menu comes up or the
 // round is left in that moment (back to the main menu, a restart, a new maze). Nothing
-// stops it on purpose: every cue is a one shot of under two seconds, so the longest
-// thing that can be heard over a menu is the tail of the gate, and stopping sounds for
+// stops it on purpose: every cue of a round is a one shot of under three seconds, so the
+// longest thing that can be heard over a menu is the tail of the bell, and stopping sounds for
 // the pause would need a way to go on with them afterwards. No new cue OF THE ROUND
 // starts under a menu: those come from onUpdate, which returns early there, and the
 // keys of the round are not read (roundInput in onRender). The one cue a menu itself

@@ -459,8 +459,8 @@ TEST_CASE("the hum comes more often the nearer the shade is") {
         CHECK(now > before);
         before = now;
     }
-    // The sound of the hum is 0.62 s long: it must be over before the next one starts.
-    CHECK(game::SHADE_HUM_FAST_SECONDS > 0.62F);
+    // The sound of the hum is 0.69 s long: it must be over before the next one starts.
+    CHECK(game::SHADE_HUM_FAST_SECONDS > 0.69F);
 }
 
 TEST_CASE("the clock of the hum starts at once, waits its interval and is silent far away") {

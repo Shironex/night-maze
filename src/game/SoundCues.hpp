@@ -211,7 +211,7 @@ bool advanceWindedBreath(WindedBreath& breath, bool winded, float stepSeconds);
 /// a straight line: a shade behind the next wall with a long way round is not a danger
 /// yet, and one that is coming down the corridor is. Farther away there is silence. The two waits
 /// are the ones at that distance and at no distance at all. In between the wait shrinks evenly. The
-/// short one is a little longer than the sound of the hum (0.62 s, tools/make_sounds.py): a sound
+/// short one is a little longer than the sound of the hum (0.69 s, tools/make_sounds.py): a sound
 /// that starts again before it ended is cut off.
 constexpr float SHADE_HUM_DISTANCE = 14.0F;
 constexpr float SHADE_HUM_SLOW_SECONDS = 2.4F;
@@ -254,9 +254,14 @@ bool advanceShadeHum(ShadeHum& hum, const Round& round, float stepSeconds);
 /// which is the game people play in a maze anyway.
 ///
 /// GATE_BELL_FIRST_SECONDS: the wait before the first toll, counted from the moment the
-/// gate opens. The sound of the gate itself (1.7 s, tools/make_sounds.py) is over by then.
+/// gate opens. The gate itself has come to rest by then (its sound is 2.6 s long,
+/// tools/make_sounds.py: the slab settles at 1.36 s, and what is left after 2 s is the
+/// last of the room, 40 dB below the loudest moment of the file).
 /// The wait between two tolls is a setting (GateSettings::bellSeconds, 6 s): a little
-/// more than twice the sound of the bell (2.6 s), so there is silence between two tolls.
+/// more than twice the sound of the bell (2.95 s), so there is silence between two tolls.
+/// At the shortest wait (GATE_BELL_MIN_SECONDS) three tolls ring at once and the fourth
+/// starts as the first has ended: a sound has three voices (audio::AudioEngine::play), so
+/// a bell longer than three times that wait would be cut.
 /// GATE_BELL_FAR_PASSAGES: from this many passages away the bell is at its quietest.
 /// The two volumes are the ones at the exit and at that distance. In between the volume
 /// falls evenly with the passages.

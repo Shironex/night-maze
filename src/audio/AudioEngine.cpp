@@ -19,8 +19,9 @@ namespace {
 // How many copies of one sound can ring at the same moment. A sound that is played
 // again while it still rings is not cut off: the next voice starts and the one before
 // rings out. Cutting a ringing sound makes the loudspeaker jump, which is heard as
-// a click. Three are enough for the game: its longest sounds last under two seconds,
-// and nothing plays the same one four times within that.
+// a click. Three are enough for the game: the longest sound that repeats is the bell of
+// the gate (2.95 s, at least a second apart), and nothing plays one sound four times
+// within its own length.
 constexpr std::size_t VOICE_COUNT = 3;
 
 // The format of an engine without a device (AudioOutput::None), where no device says
