@@ -730,7 +730,7 @@ def ground_height(pattern, stone_rise, moss_rise, bump_depth, grain_depth):
 def metal_pattern(seed):
     """Returns what the colour picture and the normal map of one metal have in common.
 
-    The lever is made of two metals: dark iron for the plate and brass for the handle.
+    There are two metals: dark iron for the slab ring and brass for the bell of the gate.
     Neither has stones or planks: each is one surface with soft lighter and darker patches
     and a fine grain. Two different seeds give the two metals different patches.
 
@@ -1202,11 +1202,12 @@ def build_interactable_textures():
 
 
 def build_lever_textures():
-    """Writes the two textures of the lever, each with its normal map."""
-    # The plate of the lever: iron with a little blue in it. Unlike the other pictures
-    # this one is dark on purpose: the lever hangs on a stone wall that the flashlight
-    # lights up, and the picture of that wall is about 0.62. A light plate had the same
-    # colour as the wall and could not be told apart from it.
+    """Writes the two metal textures that carry the name of the lever, each with its normal map."""
+    # Iron with a little blue in it, for the ring at the foot of a wall that a lever
+    # opens (build_crook.py). Unlike the other pictures this one is dark on purpose: the
+    # ring hangs on a stone wall that the flashlight lights up, and the picture of that
+    # wall is about 0.62. Light iron had the same colour as the wall and could not be
+    # told apart from it.
     iron = metal_pattern(seed=LEVER_SEED)
     iron_picture = metal_color(iron, metal_color=(0.17, 0.18, 0.21), patch_strength=0.30)
     save_png(iron_picture, "lever_iron.png")
@@ -1215,8 +1216,7 @@ def build_lever_textures():
     iron_relief = metal_height(iron, bump_depth=5.0, grain_depth=0.6)
     save_png(normal_map(iron_relief), "lever_iron_normal.png")
 
-    # The handle of the lever: warm brass, light and yellow, so it stands out against
-    # both the dark plate and the grey wall. The patches are weaker than on the iron:
+    # Warm brass, light and yellow, which the bell of the gate wears (build_gate_bell.py). The patches are weaker than on the iron:
     # the red channel is already 0.86, and stronger patches would push it past 1, where
     # it is cut off and the colour of the light patches would change.
     brass = metal_pattern(seed=LEVER_BRASS_SEED)
@@ -1317,7 +1317,7 @@ def build_lantern_textures():
     (uEmissive in lit.frag). One value for the whole model then gives a bright pane, and
     a frame that stays a dark outline around it.
     """
-    # The iron of the frame: darker than the plate of the lever (0.17), because here the
+    # The iron of the frame: darker than the iron of the slab ring (0.17), because here the
     # dark is the point.
     iron = metal_pattern(seed=LANTERN_IRON_SEED)
     iron_picture = metal_color(iron, metal_color=(0.09, 0.09, 0.10), patch_strength=0.30)

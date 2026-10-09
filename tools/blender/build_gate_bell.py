@@ -63,7 +63,7 @@ CLAPPER_HALF = 0.028
 CLAPPER_TOP = -0.31
 CLAPPER_BOTTOM = -0.37
 
-# One repeat of the picture covers 0.5 m, as on the lever, whose brass the bell wears.
+# One repeat of the picture covers 0.5 m, the size the brass picture was made for.
 METRES_PER_UV_UNIT = 0.5
 
 
@@ -160,7 +160,7 @@ def build(shots):
     # Every face is projected onto its own plane: the wall of the bell is slanted
     # everywhere.
     common.face_project_uvs(model.data, METRES_PER_UV_UNIT)
-    # No picture of its own: the brass of the lever handle.
+    # No picture of its own: the brass the lever handle had before it became a crook.
     common.assign_textured_material(
         model, "lever_brass", "lever_brass.png", "lever_brass_normal.png"
     )
