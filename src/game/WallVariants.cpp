@@ -102,19 +102,18 @@ std::vector<WallVariant> chooseWallVariants(const Maze& maze, std::uint32_t seed
         const std::uint32_t chance =
             border ? BORDER_WALL_VARIANT_PERCENT : INNER_WALL_VARIANT_PERCENT;
 
-        if (isNearStart(maze, sides.first, start) || isNearStart(maze, sides.second, start) ||
-            carriesSomething(interactables, segment)) {
-            variants.push_back(WallVariant::Plain);
-        } else if (roll < chance) {
+        const bool staysPlain = isNearStart(maze, sides.first, start) ||
+                                isNearStart(maze, sides.second, start) ||
+                                carriesSomething(interactables, segment);
+        WallVariant variant = WallVariant::Plain;
+        if (!staysPlain && roll < chance) {
             // The painted looks have the numbers 1 to 3 in the enum, right after Plain.
-            variants.push_back(static_cast<WallVariant>(worn + 1));
-        } else if (shape >= CROWNED_WALL_PERCENT + BROKEN_WALL_PERCENT ||
-                   opensForALever(interactables, segment)) {
-            variants.push_back(WallVariant::Plain);
-        } else {
-            variants.push_back(shape < CROWNED_WALL_PERCENT ? WallVariant::Crowned
-                                                            : WallVariant::Broken);
+            variant = static_cast<WallVariant>(worn + 1);
+        } else if (!staysPlain && shape < CROWNED_WALL_PERCENT + BROKEN_WALL_PERCENT &&
+                   !opensForALever(interactables, segment)) {
+            variant = shape < CROWNED_WALL_PERCENT ? WallVariant::Crowned : WallVariant::Broken;
         }
+        variants.push_back(variant);
     }
     return variants;
 }
