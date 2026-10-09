@@ -208,6 +208,7 @@ TEST_CASE("the file is plain text a person can read and edit") {
           "master_volume = 100\n"
           "effects_volume = 100\n"
           "ambient_volume = 100\n"
+          "music_volume = 60\n"
           "story_line = 0\n"
           "calm_night = off\n"
           "intro_seen = off\n"
@@ -247,15 +248,16 @@ TEST_CASE("a file from before the intro means not seen, and nothing else changes
 
     // Marking the intro as seen changes that one field, and in the file that one line:
     // the lines of the old file are written again as they were, with the new line after
-    // them. (The two volumes that came later stand behind the master volume, at their
-    // default. The campaign and the keys follow, see the test of the whole text above.)
+    // them. (The three volumes that came later stand behind the master volume, at their
+    // defaults. The campaign and the keys follow, see the test of the whole text above.)
     GameSettings seen = settings;
     seen.introSeen = true;
     CHECK(game::parseSettings(old + "intro_seen = on\n") == seen);
     const std::string written = game::formatSettings(seen);
     const std::string masterLine = "master_volume = 42\n";
     const std::size_t afterMaster = old.find(masterLine) + masterLine.size();
-    CHECK(written.find(old.substr(0, afterMaster) + "effects_volume = 100\nambient_volume = 100\n" +
+    CHECK(written.find(old.substr(0, afterMaster) +
+                       "effects_volume = 100\nambient_volume = 100\nmusic_volume = 60\n" +
                        old.substr(afterMaster) + "intro_seen = on\n") != std::string::npos);
 }
 
@@ -288,6 +290,40 @@ TEST_CASE("the effects and the ambient volume are read and written like the mast
     CHECK(written.find("effects_volume = 70\n") != std::string::npos);
     CHECK(written.find("ambient_volume = 63\n") != std::string::npos);
     CHECK(game::parseSettings(written) == settings);
+}
+
+TEST_CASE("the music volume is read and written like the other volumes, and starts at 60") {
+    CHECK(game::DEFAULT_MUSIC_VOLUME == 60.0F);
+    CHECK(GameSettings{}.musicVolume == game::DEFAULT_MUSIC_VOLUME);
+    // A file that was written before there was music has no line for it: the default.
+    CHECK(game::parseSettings("master_volume = 42\neffects_volume = 70\nambient_volume = 25\n")
+              .musicVolume == game::DEFAULT_MUSIC_VOLUME);
+
+    GameSettings settings = game::parseSettings("music_volume = 35\n");
+    CHECK(settings.musicVolume == 35.0F);
+    // It is a setting of its own: the other three stay where they were.
+    CHECK(settings.masterVolume == game::DEFAULT_MASTER_VOLUME);
+    CHECK(settings.effectsVolume == game::DEFAULT_MASTER_VOLUME);
+    CHECK(settings.ambientVolume == game::DEFAULT_MASTER_VOLUME);
+
+    // The same limits and the same rounding as the master volume.
+    CHECK(game::applySetting(settings, "music_volume", "250"));
+    CHECK(settings.musicVolume == game::MAX_MASTER_VOLUME);
+    CHECK(game::applySetting(settings, "music_volume", "0"));
+    CHECK(settings.musicVolume == game::MIN_MASTER_VOLUME);
+    CHECK(game::applySetting(settings, "music_volume", "62.6"));
+    CHECK(settings.musicVolume == 63.0F);
+    // A value that cannot be read changes nothing.
+    CHECK_FALSE(game::applySetting(settings, "music_volume", "loud"));
+    CHECK_FALSE(game::applySetting(settings, "music_volume", "-10"));
+    CHECK(settings.musicVolume == 63.0F);
+
+    // Written and read back.
+    const std::string written = game::formatSettings(settings);
+    CHECK(written.find("ambient_volume = 100\nmusic_volume = 63\n") != std::string::npos);
+    CHECK(game::parseSettings(written) == settings);
+    // The engine is given the same curve as for the other volumes: 60 is 0.36.
+    CHECK(game::masterVolumeGain(game::DEFAULT_MUSIC_VOLUME) == doctest::Approx(0.36F));
 }
 
 TEST_CASE("the intro line reads on and off and nothing else") {
@@ -553,6 +589,7 @@ TEST_CASE("a file of game 0.12 loads with the default of everything that came la
     // The same, said field by field for what came after 0.12.0.
     CHECK(settings.effectsVolume == 100.0F);
     CHECK(settings.ambientVolume == 100.0F);
+    CHECK(settings.musicVolume == 60.0F);
     CHECK(settings.campaignNight == 1);
     CHECK(settings.campaignSeed == game::NO_CAMPAIGN_SEED);
     for (const int best : settings.campaignBestSeconds) {
@@ -579,6 +616,7 @@ TEST_CASE("reset defaults brings back the screen and the keys, and keeps the pro
     settings.masterVolume = 10.0F;
     settings.effectsVolume = 20.0F;
     settings.ambientVolume = 30.0F;
+    settings.musicVolume = 40.0F;
     CHECK(game::applySetting(settings, "key_sprint", "Q"));
     CHECK(settings.keys != game::defaultKeyBindings());
     // What is chosen or earned somewhere else.

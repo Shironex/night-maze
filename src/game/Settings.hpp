@@ -45,6 +45,11 @@ constexpr float DEFAULT_FIELD_OF_VIEW_DEGREES = 60.0F;
 constexpr float MIN_MASTER_VOLUME = 0.0F;
 constexpr float MAX_MASTER_VOLUME = 100.0F;
 constexpr float DEFAULT_MASTER_VOLUME = 100.0F;
+/// The music volume a game without a settings file starts with, on the same scale. Not
+/// the top of it: the theme of the menu lies under the sounds that tell the player
+/// something, and whoever wants more of it has room above (tools/make_music.py
+/// measures it against the click of a slider at this value).
+constexpr float DEFAULT_MUSIC_VOLUME = 60.0F;
 
 /// The size of the window, in screen coordinates (the units of core::Window::windowSize).
 struct WindowSize {
@@ -99,6 +104,11 @@ struct GameSettings {
     /// gain of the group (masterVolumeGain of each).
     float effectsVolume = DEFAULT_MASTER_VOLUME;
     float ambientVolume = DEFAULT_MASTER_VOLUME;
+
+    /// A third volume under the master volume, with the same limits and the same rules,
+    /// for the music: the theme of the menu. Its default is lower
+    /// (DEFAULT_MUSIC_VOLUME).
+    float musicVolume = DEFAULT_MUSIC_VOLUME;
 
     /// The "next unread line" of the story: the line the first story note of the next
     /// maze shows, from 0 to flavourLineCount() - 1. It moves on when a maze is finished
@@ -160,6 +170,7 @@ constexpr std::string_view DIFFICULTY_SETTING = "difficulty";
 constexpr std::string_view MASTER_VOLUME_SETTING = "master_volume";
 constexpr std::string_view EFFECTS_VOLUME_SETTING = "effects_volume";
 constexpr std::string_view AMBIENT_VOLUME_SETTING = "ambient_volume";
+constexpr std::string_view MUSIC_VOLUME_SETTING = "music_volume";
 constexpr std::string_view STORY_LINE_SETTING = "story_line";
 /// The lines of the story that were read, for the ledger (game::formatReadSet).
 constexpr std::string_view STORY_READ_SETTING = "story_read";
@@ -198,6 +209,7 @@ std::string campaignBestSetting(int night);
 ///     master_volume       a number from 0 to 100, "80" (rounded to a whole number)
 ///     effects_volume      the same
 ///     ambient_volume      the same
+///     music_volume        the same
 ///     story_line          a whole number, "5" (rounded; a number past the last story
 ///                         line is wrapped round to the start of the table)
 ///     story_read          the codes of the story lines that were read, "N01 N04 N22", or
@@ -263,7 +275,7 @@ std::string formatSettings(const GameSettings& settings);
 
 /// The settings after the button "Reset defaults" of the settings screen: everything
 /// that screen shows is back at its default (the mouse, the field of view, the window,
-/// the three volumes and the keys). What is chosen or earned somewhere else stays: the
+/// the four volumes and the keys). What is chosen or earned somewhere else stays: the
 /// difficulty and the calm night of free play, the story line counter, the ledger, that the intro
 /// was seen, the campaign (its next night, its seed and its best times) and the record
 /// of the maze of the day. A reset of the settings is no reset of the progress.
@@ -280,12 +292,12 @@ std::string mouseSensitivityLabel(float sensitivity);
 std::string fieldOfViewLabel(float degrees);
 
 /// The master volume as the settings screen shows it next to its slider and as the
-/// file holds it: a whole number, "80". The effects volume and the ambient volume are
-/// written the same way, with this function.
+/// file holds it: a whole number, "80". The effects volume, the ambient volume and the
+/// music volume are written the same way, with this function.
 std::string masterVolumeLabel(float volume);
 
 /// The loudness the audio engine is given for a master volume of the settings (and, with
-/// the same curve, for the effects volume and for the ambient volume): a factor
+/// the same curve, for the effects, the ambient and the music volume): a factor
 /// from 0 (silent) to 1 (the sound files as they are). Not a straight line but the
 /// square of volume / 100, so 50 gives 0.25. The ear hears loudness in ratios: with
 /// a straight line everything below the middle of the slider would sound almost equally
