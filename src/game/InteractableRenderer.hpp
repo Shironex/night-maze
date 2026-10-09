@@ -1,5 +1,5 @@
-// InteractableRenderer: draws the levers and the notes of a maze with their models, and
-// the chalk crook beside every lever.
+// InteractableRenderer: draws the levers and the notes of a maze with their models, the
+// chalk crook beside every lever and the iron ring on the wall every lever opens.
 #pragma once
 
 #include <glm/glm.hpp>
@@ -19,18 +19,22 @@ struct MazeWorld;
 struct PickState;
 struct Round;
 
-/// Draws what the player can point at: every lever (a plate on the wall and a handle
-/// that is up until the lever is pulled and swings down then) and every note (a chalk
-/// mark on the wall: a lamp for a line of the story, an arrow for a hint, turned towards
-/// what the hint names). The one the picking ray points at is drawn highlighted. Beside
-/// every lever it also draws a chalk crook, which is only a sign: it cannot be picked.
+/// Draws what the player can point at: every lever (an oak board on the wall, a shepherd's
+/// crook for a handle that is up until the lever is pulled and swings down then, and
+/// a rope into the turf that hangs slack and is pulled straight then) and every note
+/// (a chalk mark on the wall: a lamp for a line of the story, an arrow for a hint, turned
+/// towards what the hint names). The one the picking ray points at is drawn highlighted.
+/// Two things are only signs and cannot be picked: the chalk crook beside every lever,
+/// and the iron ring at the foot of the wall a lever opens, on both of its faces, which
+/// sinks with that wall.
 ///
 /// It owns nothing: the models belong to the asset cache, which must outlive this
 /// object, and all positions come from the MazeWorld and the Round given to draw.
 class InteractableRenderer {
 public:
-    /// Asks the cache for the model of the lever plate, of the lever handle and of the
-    /// three chalk marks. A model that fails to load is logged by the cache and simply not drawn.
+    /// Asks the cache for the models of the lever (board, crook and the two ropes), of
+    /// the slab ring and of the three chalk marks. A model that fails to load is logged
+    /// by the cache and simply not drawn.
     explicit InteractableRenderer(assets::AssetCache& assets);
 
     /// Draws the levers and the notes. shader is the textured program, one of the two
@@ -50,8 +54,11 @@ public:
 
 private:
     // Not owned. nullptr when the model could not be loaded.
-    const assets::LoadedModel* m_leverPlate;
+    const assets::LoadedModel* m_leverPost;
     const assets::LoadedModel* m_leverHandle;
+    const assets::LoadedModel* m_leverRopeSlack;
+    const assets::LoadedModel* m_leverRopeTaut;
+    const assets::LoadedModel* m_slabRing;
     const assets::LoadedModel* m_chalkLamp;
     const assets::LoadedModel* m_chalkArrow;
     const assets::LoadedModel* m_chalkCrook;

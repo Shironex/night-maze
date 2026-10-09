@@ -1,5 +1,5 @@
-// InteractableRenderer: draws the levers and the notes of a maze with their models, and
-// the chalk crook beside every lever.
+// InteractableRenderer: draws the levers and the notes of a maze with their models, the
+// chalk crook beside every lever and the iron ring on the wall every lever opens.
 #include "game/InteractableRenderer.hpp"
 
 #include "assets/AssetCache.hpp"
@@ -13,6 +13,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <array>
 #include <cstddef>
 #include <optional>
 #include <span>
@@ -25,9 +26,14 @@ namespace {
 // Model files, relative to the assets directory. All of them have their origin in the
 // middle of their back, the point fixed to the wall, and stand out along +Z (see
 // game/Interaction.hpp). The handle is a model of its own, because it is the one part
-// that moves: its origin is the pivot it turns around.
-constexpr const char* LEVER_PLATE_MODEL_FILE = "models/lever.obj";
-constexpr const char* LEVER_HANDLE_MODEL_FILE = "models/lever_handle.obj";
+// that moves: its origin is the pivot it turns around. The rope is two models, of which
+// one is drawn: it hangs slack until the handle is down and is pulled straight then.
+constexpr const char* LEVER_POST_MODEL_FILE = "models/crook_post.obj";
+constexpr const char* LEVER_HANDLE_MODEL_FILE = "models/crook_handle.obj";
+constexpr const char* LEVER_ROPE_SLACK_MODEL_FILE = "models/crook_rope_slack.obj";
+constexpr const char* LEVER_ROPE_TAUT_MODEL_FILE = "models/crook_rope_taut.obj";
+// The iron ring at the foot of a wall that a lever opens: the other end of the rope.
+constexpr const char* SLAB_RING_MODEL_FILE = "models/slab_ring.obj";
 // The chalk marks: flat strokes 3 mm in front of the wall (tools/blender/build_chalk.py).
 // A note is a lamp (a line of the story) or an arrow (a hint), the crook marks a lever.
 constexpr const char* CHALK_LAMP_MODEL_FILE = "models/chalk_lamp.obj";
@@ -43,8 +49,11 @@ void drawOne(const gfx::Shader& shader, const assets::LoadedModel* model, const 
 } // namespace
 
 InteractableRenderer::InteractableRenderer(assets::AssetCache& assets)
-    : m_leverPlate(assets.model(core::assetPath(LEVER_PLATE_MODEL_FILE))),
+    : m_leverPost(assets.model(core::assetPath(LEVER_POST_MODEL_FILE))),
       m_leverHandle(assets.model(core::assetPath(LEVER_HANDLE_MODEL_FILE))),
+      m_leverRopeSlack(assets.model(core::assetPath(LEVER_ROPE_SLACK_MODEL_FILE))),
+      m_leverRopeTaut(assets.model(core::assetPath(LEVER_ROPE_TAUT_MODEL_FILE))),
+      m_slabRing(assets.model(core::assetPath(SLAB_RING_MODEL_FILE))),
       m_chalkLamp(assets.model(core::assetPath(CHALK_LAMP_MODEL_FILE))),
       m_chalkArrow(assets.model(core::assetPath(CHALK_ARROW_MODEL_FILE))),
       m_chalkCrook(assets.model(core::assetPath(CHALK_CROOK_MODEL_FILE))) {}
@@ -54,7 +63,7 @@ void InteractableRenderer::draw(const gfx::Shader& shader, const MazeWorld& worl
                                 const glm::vec3& highlight) const {
     setModelSamplers(shader);
 
-    // Iron gives off no light. Only the picked lever glows: the highlight.
+    // Wood, rope and iron give off no light. Only the picked lever glows: the highlight.
     constexpr glm::vec3 NO_GLOW{0.0F};
 
     const std::vector<Lever>& levers = world.interactables.levers;
@@ -65,10 +74,21 @@ void InteractableRenderer::draw(const gfx::Shader& shader, const MazeWorld& worl
         const bool picked = pick.action == Interaction::PullLever && pick.picked.index == i;
         shader.setVec3(EMISSIVE_UNIFORM, picked ? highlight : NO_GLOW);
 
-        // The plate hangs still. The handle is the same lever seen through a matrix of
-        // its own, which tilts it by how far the pull has come.
-        drawOne(shader, m_leverPlate, mountModelMatrix(levers[i].position, levers[i].mount.side));
-        drawOne(shader, m_leverHandle, leverHandleMatrix(levers[i], leverHandleProgress(round, i)));
+        // The board hangs still, and the rope with it. The handle is the same lever
+        // seen through a matrix of its own, which tilts it by how far the pull has come.
+        const glm::mat4 onWall = mountModelMatrix(levers[i].position, levers[i].mount.side);
+        const float pulled = leverHandleProgress(round, i);
+        drawOne(shader, m_leverPost, onWall);
+        drawOne(shader, leverRopeTaut(pulled) ? m_leverRopeTaut : m_leverRopeSlack, onWall);
+        drawOne(shader, m_leverHandle, leverHandleMatrix(levers[i], pulled));
+    }
+
+    // The ring on both faces of the wall each lever opens. It is a sign and not a thing
+    // to use, so it never glows, and it goes down with its wall.
+    shader.setVec3(EMISSIVE_UNIFORM, NO_GLOW);
+    for (std::size_t i = 0; i < levers.size(); ++i) {
+        const std::array<glm::mat4, 2> rings = slabRingMatrices(world, round, i);
+        drawModel(shader, m_slabRing, std::span<const glm::mat4>(rings));
     }
 
     // The crook beside every lever: a sign, not a thing to use, so it is never the
