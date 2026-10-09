@@ -1693,6 +1693,7 @@ void NightMazeApp::beginRound() {
     // The bell of the gate is silent until the gate opens again, and every wall a lever
     // had opened is back, so the ways to the exit are counted anew.
     m_gateBell = {};
+    m_bellSwing = {};
     measureExitDistances();
     // A lever pulled in the round before is not a noise of this one.
     m_leverPulled = false;
@@ -1727,6 +1728,13 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // Remember where the player was before this step. It is done in every step, also
     // when the player does not move, so that onRender never blends with an old position.
     m_previousPlayerPosition = m_player.position;
+
+    // The bell of the gatehouse swings on wherever the picture moves, like the crystals
+    // bob: also behind the result screen, where the toll for walking through has just
+    // pushed it. The pause stops it.
+    if (animatesScene(m_mode)) {
+        advanceBellSwing(m_bellSwing, static_cast<float>(fixedDt));
+    }
 
     // The round runs only while it is played (game::updatesRound). Under a menu, and
     // while the menu camera runs, it stands still: the player does not move, the
@@ -1852,6 +1860,7 @@ void NightMazeApp::onUpdate(double fixedDt) {
     if (advanceGateBell(m_gateBell, m_round, m_gameplay.gate.bellSeconds,
                         static_cast<float>(fixedDt))) {
         playCue(SoundCue::GateBell, gateBellVolumeHere());
+        tollBellSwing(m_bellSwing);
     }
     // The gate has just opened (the only change a step can make here): its box leaves
     // the obstacle list, and the way into the exit cell is free.
@@ -1920,6 +1929,7 @@ void NightMazeApp::onUpdate(double fixedDt) {
     if (m_round.state == RoundState::Won) {
         // One full toll for walking through, whatever the clock of the bell says.
         playCue(SoundCue::GateBell, GATE_BELL_NEAR_VOLUME);
+        tollBellSwing(m_bellSwing);
         finishRound();
     }
 }
@@ -2741,7 +2751,7 @@ void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const 
     m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_wallMatrices,
                         m_mazeSettings.wallVariants);
     m_gameplayRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, crystalEmissive(),
-                            m_gateLampGlow);
+                            m_gateLampGlow, m_bellSwing.degrees);
     m_gameplayRenderer.drawFlasks(m_shadowDepthShader, m_mazeWorld, m_round);
     // The shade casts a shadow like everything that stands in the maze.
     if (m_shadeDrawn) {
@@ -2855,7 +2865,7 @@ bool NightMazeApp::crystalsReflect() const {
 }
 
 void NightMazeApp::drawGateAndCrystals(const gfx::Shader& shader) const {
-    m_gameplayRenderer.drawGate(shader, m_mazeWorld, m_round, m_gateLampGlow);
+    m_gameplayRenderer.drawGate(shader, m_mazeWorld, m_round, m_gateLampGlow, m_bellSwing.degrees);
     // The flasks, always with the program of the walls: they are brass, not glass, and
     // show no sky.
     m_gameplayRenderer.drawFlasks(shader, m_mazeWorld, m_round);

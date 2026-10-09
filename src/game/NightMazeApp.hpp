@@ -10,6 +10,7 @@
 #include "game/EnvironmentMapping.hpp"
 #include "game/GameState.hpp"
 #include "game/GameplayRenderer.hpp"
+#include "game/GateLamp.hpp"
 #include "game/Grass.hpp"
 #include "game/GrassRenderer.hpp"
 #include "game/InteractableRenderer.hpp"
@@ -1060,6 +1061,9 @@ private:
     ShadeHum m_shadeHum;
     // The clock of the bell of the open gate: the same kind of state.
     GateBell m_gateBell;
+    // Where the bell of the gatehouse is in its swing (game::advanceBellSwing): pushed by
+    // every toll, advanced in fixed steps wherever the picture moves, drawn by every pass.
+    BellSwing m_bellSwing;
     // For every cell of the maze, the passages from it to the exit cell
     // (game::passageDistances, row after row): how loud a toll of the bell is played.
     // Counted once per round and again when a lever opens a wall (measureExitDistances).

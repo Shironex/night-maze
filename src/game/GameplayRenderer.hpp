@@ -26,7 +26,7 @@ struct Round;
 /// Draws what changes during a round: every crystal that is not collected yet, floating,
 /// bobbing and turning, every flask that is not picked up yet, low over the ground, and
 /// the gate of the exit, sinking into the ground once it opens, under its gatehouse with
-/// the three lanterns, which never moves.
+/// the three lanterns, which never moves, and the bell in it, which swings when it tolls.
 /// The maze itself is drawn by MazeRenderer.
 ///
 /// It owns nothing: the models belong to the asset cache, which must outlive this
@@ -34,8 +34,8 @@ struct Round;
 class GameplayRenderer {
 public:
     /// Asks the cache for the two crystal models, the flask model, the shade model, the
-    /// gate model and the three models that stand around the gate (the gatehouse, its
-    /// lantern and the milestone).
+    /// gate model and the four models that stand around the gate (the gatehouse, its
+    /// lantern, its bell and the milestone).
     /// A model that fails to load is logged by the cache and simply not drawn.
     explicit GameplayRenderer(assets::AssetCache& assets);
 
@@ -48,9 +48,12 @@ public:
     /// crystalGlow is the light the crystals give off by themselves (game::crystalGlow)
     /// and lampGlow the one of the lanterns of the gate (the colour of the lamp times its
     /// strength, as a linear colour). The function sets uEmissive to them for the
-    /// crystals and the lanterns, and to black for the gate and the stone.
+    /// crystals and the lanterns, and to black for the gate, the stone and the bell.
+    /// bellSwingDegrees is how far the bell of the gatehouse is out of the middle at this
+    /// moment (game::BellSwing::degrees).
     void draw(const gfx::Shader& shader, const MazeWorld& world, const Round& round,
-              const glm::vec3& crystalGlow, const glm::vec3& lampGlow) const;
+              const glm::vec3& crystalGlow, const glm::vec3& lampGlow,
+              float bellSwingDegrees) const;
 
     /// The two halves of draw, for a frame that draws the gate with one program and
     /// the crystals with another (the reflect program, which shows the sky on them).
@@ -58,11 +61,12 @@ public:
     ///
     /// drawGate draws the door while some of it is above the ground, and always the
     /// gatehouse, the milestone and the three lanterns (game::gateScenery): those stand
-    /// still while the door sinks. It sets uEmissive to lampGlow for the lanterns and
-    /// leaves it black. A maze without a gate gets none of this. drawCrystals sets
-    /// uEmissive to crystalGlow.
+    /// still while the door sinks. The bell hangs in the gatehouse, turned by
+    /// bellSwingDegrees (game::gateBellMatrix). It sets uEmissive to lampGlow for the
+    /// lanterns and leaves it black. A maze without a gate gets none of this.
+    /// drawCrystals sets uEmissive to crystalGlow.
     void drawGate(const gfx::Shader& shader, const MazeWorld& world, const Round& round,
-                  const glm::vec3& lampGlow) const;
+                  const glm::vec3& lampGlow, float bellSwingDegrees) const;
     void drawCrystals(const gfx::Shader& shader, const Round& round,
                       const glm::vec3& crystalGlow) const;
 
@@ -92,6 +96,7 @@ private:
     const assets::LoadedModel* m_gate;
     const assets::LoadedModel* m_gateArch;
     const assets::LoadedModel* m_gateLantern;
+    const assets::LoadedModel* m_gateBell;
     const assets::LoadedModel* m_milestone;
 };
 

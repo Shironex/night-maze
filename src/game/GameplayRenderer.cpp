@@ -34,6 +34,9 @@ constexpr const char* GATE_MODEL_FILE = "models/gate.obj";
 // on the ground under it.
 constexpr const char* GATE_ARCH_MODEL_FILE = "models/gate_arch.obj";
 constexpr const char* GATE_LANTERN_MODEL_FILE = "models/gate_lantern.obj";
+// The bell of the gatehouse: 0.37 m tall, with its origin at its pivot, the top of its
+// yoke, and the same seen from both sides.
+constexpr const char* GATE_BELL_MODEL_FILE = "models/gate_bell.obj";
 constexpr const char* MILESTONE_MODEL_FILE = "models/milestone.obj";
 
 // The model of a flask of tea: in metres, upright, with its origin at its base, built like
@@ -55,16 +58,19 @@ GameplayRenderer::GameplayRenderer(assets::AssetCache& assets)
       m_gate(assets.model(core::assetPath(GATE_MODEL_FILE))),
       m_gateArch(assets.model(core::assetPath(GATE_ARCH_MODEL_FILE))),
       m_gateLantern(assets.model(core::assetPath(GATE_LANTERN_MODEL_FILE))),
+      m_gateBell(assets.model(core::assetPath(GATE_BELL_MODEL_FILE))),
       m_milestone(assets.model(core::assetPath(MILESTONE_MODEL_FILE))) {}
 
 void GameplayRenderer::draw(const gfx::Shader& shader, const MazeWorld& world, const Round& round,
-                            const glm::vec3& crystalGlow, const glm::vec3& lampGlow) const {
-    drawGate(shader, world, round, lampGlow);
+                            const glm::vec3& crystalGlow, const glm::vec3& lampGlow,
+                            float bellSwingDegrees) const {
+    drawGate(shader, world, round, lampGlow, bellSwingDegrees);
     drawCrystals(shader, round, crystalGlow);
 }
 
 void GameplayRenderer::drawGate(const gfx::Shader& shader, const MazeWorld& world,
-                                const Round& round, const glm::vec3& lampGlow) const {
+                                const Round& round, const glm::vec3& lampGlow,
+                                float bellSwingDegrees) const {
     // A maze of one cell has no gate, and so no gatehouse.
     if (!world.hasGate) {
         return;
@@ -81,6 +87,10 @@ void GameplayRenderer::drawGate(const gfx::Shader& shader, const MazeWorld& worl
     if (scenery.hasMilestone) {
         drawModel(shader, m_milestone, std::span<const glm::mat4>(&scenery.milestone, 1));
     }
+    // The bell, in its opening of the cote, as far out of the middle as it swings at
+    // this moment. Cold like the stone: a bell gives off no light.
+    const glm::mat4 bellMatrix = gateBellMatrix(scenery.arch, bellSwingDegrees);
+    drawModel(shader, m_gateBell, std::span<const glm::mat4>(&bellMatrix, 1));
     // The lanterns glow, all three alike. The glass is the pale part of their texture
     // and the iron the dark part, so one glow value lights the glass and not the frame.
     shader.setVec3(EMISSIVE_UNIFORM, lampGlow);
