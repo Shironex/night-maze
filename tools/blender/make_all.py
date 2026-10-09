@@ -22,6 +22,7 @@ import build_milestone
 import build_shade
 import build_splinter
 import build_stile
+import build_village
 import build_wall_pillar
 import build_wall_straight
 import make_heightmap
@@ -47,6 +48,7 @@ build_crook.build(shots)
 build_chalk.build(shots)
 build_flask.build(shots)
 build_shade.build(shots)
+build_village.build(shots)
 
 # The six faces of the sky. They depend on nothing above: no model uses them.
 make_skybox.build()
