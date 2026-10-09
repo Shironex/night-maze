@@ -61,7 +61,8 @@ int crystalCountFor(int cellCount) {
 
 std::vector<CrystalSpawn> placeCrystals(const Maze& maze, std::uint32_t seed, MazeCell start,
                                         MazeCell exit, int wantedCount,
-                                        std::span<const MazeCell> reserved) {
+                                        std::span<const MazeCell> reserved,
+                                        std::span<const MazeCell> keptFree) {
     if (!maze.contains(start.x, start.z) || !maze.contains(exit.x, exit.z)) {
         throw std::out_of_range("placeCrystals: the start or the exit is outside the maze");
     }
@@ -109,12 +110,21 @@ std::vector<CrystalSpawn> placeCrystals(const Maze& maze, std::uint32_t seed, Ma
                            : std::clamp(wantedCount, 0, MAX_CRYSTAL_COUNT);
     const std::size_t count = std::min(static_cast<std::size_t>(wanted), candidates.size());
 
+    // The candidates are walked in their order and every one of them draws a model, also
+    // a cell that is kept free and gets no crystal. So keeping a cell free moves only the
+    // crystal that would have floated there, to the first candidate that is left over:
+    // every other crystal keeps its cell and its model.
     std::vector<CrystalSpawn> crystals;
     crystals.reserve(count);
-    for (std::size_t i = 0; i < count; ++i) {
+    for (const MazeCell cell : candidates) {
+        if (crystals.size() == count) {
+            break;
+        }
         const auto variant = static_cast<int>(
             randomBelow(generator, static_cast<std::uint32_t>(CRYSTAL_VARIANT_COUNT)));
-        crystals.push_back({.cell = candidates[i], .variant = variant});
+        if (std::ranges::find(keptFree, cell) == keptFree.end()) {
+            crystals.push_back({.cell = cell, .variant = variant});
+        }
     }
     return crystals;
 }

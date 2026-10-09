@@ -112,10 +112,17 @@ void shuffleCells(std::vector<MazeCell>& cells, std::mt19937& generator);
 /// A larger wantedCount only adds crystals at the end of the list: the first ones are
 /// the same cells as with a smaller number.
 ///
+/// keptFree are cells that get no crystal at all, whatever the shuffle says: the dead end
+/// of the heartstone (game/Heartstone.hpp). Unlike a reserved cell, a cell kept free does
+/// not change the order of the others: the crystal that would have floated in it goes to
+/// the first candidate that is left over, and every other crystal keeps its cell and its
+/// model. A maze with fewer free cells than wanted crystals gets one crystal fewer for it.
+///
 /// Throws std::out_of_range when start or exit is not a cell of the maze.
 std::vector<CrystalSpawn> placeCrystals(const Maze& maze, std::uint32_t seed, MazeCell start,
                                         MazeCell exit, int wantedCount = CRYSTAL_COUNT_FROM_SIZE,
-                                        std::span<const MazeCell> reserved = {});
+                                        std::span<const MazeCell> reserved = {},
+                                        std::span<const MazeCell> keptFree = {});
 
 /// Where the base of a crystal rests: above the centre of its cell, CRYSTAL_FLOAT_HEIGHT
 /// over the ground. groundHeight is the height of the ground at the centre of the cell
