@@ -109,6 +109,16 @@ SPLINTER_CRATER_COUNT = 46
 SPLINTER_CRATER_RADIUS = (5.0, 20.0)
 SPLINTER_RIND_COLOR = (0.27, 0.265, 0.25)
 
+# How dark the water makes the stone of the mossy wall: the brightness of its wettest
+# streak, and how much brighter the driest one is. The numbers multiply sRGB values, so
+# they take away more light than they seem to: 0.6 leaves a third of it. They were 0.48
+# and 0.26 once, and with the dark moss on top the wall kept 30 percent of the light of
+# a plain one, which made every mossy segment a black patch in the maze.
+MOSSY_DAMP_SHADE = 0.90
+MOSSY_DAMP_STREAKS = 0.10
+# The moss of that wall. It was (0.17, 0.26, 0.11), a fifth of the light of the stone.
+MOSS_COLOR = (0.42, 0.49, 0.33)
+
 # The stones that are missing in the damaged wall, as (course, stone in the course).
 # Both lie in the courses that are seen once, at 1.0 m and at 1.5 m above the ground,
 # and they do not touch.
@@ -945,19 +955,49 @@ def build_cracked_wall_textures():
     save_png(normal_map(height), "wall_cracked_normal.png")
 
 
+def srgb_to_linear(color):
+    """Returns the amount of light of colour values from 0 to 1 (the sRGB curve).
+
+    The pictures hold sRGB values, and the game decodes them with this curve before it
+    multiplies them by a light. Half the value is about a fifth of the light.
+    """
+    return np.where(color <= 0.04045, color / 12.92, ((color + 0.055) / 1.055) ** 2.4)
+
+
+def linear_to_srgb(light):
+    """The inverse of srgb_to_linear."""
+    return np.where(light <= 0.0031308, light * 12.92, 1.055 * light ** (1.0 / 2.4) - 0.055)
+
+
+def with_brightness_of(color, reference):
+    """Returns color scaled so that it reflects as much light as reference on average.
+
+    Both are SIZE x SIZE x 3 arrays of colours from 0 to 1. The average is taken of the
+    light (srgb_to_linear), because that is what the game shades with and what the small
+    copies of a texture hold, which a far wall is drawn from. The three channels are
+    weighted the way the eye does (the Rec. 709 weights). One factor scales all three, so
+    no colour of the picture changes its hue.
+    """
+    weights = np.array((0.2126, 0.7152, 0.0722))
+    light = srgb_to_linear(color)
+    wanted = (srgb_to_linear(reference) @ weights).mean()
+    light = light * (wanted / (light @ weights).mean())
+    return linear_to_srgb(np.clip(light, 0.0, 1.0))
+
+
 def build_mossy_wall_textures():
-    """Writes wall_mossy.png and its normal map: a dark, damp wall overgrown with moss."""
+    """Writes wall_mossy.png and its normal map: a damp wall overgrown with moss."""
     wall = wall_stones()
     color = wall_picture(wall)
     height = wall_relief(wall)
     rng = np.random.default_rng(WALL_MOSSY_SEED)
 
-    # Water has run down the wall: the stone is darker everywhere, in long upright
-    # streaks (random pixels blurred far along y, like the grain of the gate). There is
-    # no "wetter at the bottom": the picture repeats above 2 m, and a ramp along the
-    # height would end in a hard line there.
+    # Water has run down the wall: the stone is darker in long upright streaks (random
+    # pixels blurred far along y, like the grain of the gate). There is no "wetter at
+    # the bottom": the picture repeats above 2 m, and a ramp along the height would end
+    # in a hard line there.
     streaks = stretch(blur_along(blur_along(rng.random((SIZE, SIZE)), 40, axis=0), 4, axis=1))
-    color = color * (0.48 + 0.26 * streaks)[..., None]
+    color = color * (MOSSY_DAMP_SHADE + MOSSY_DAMP_STREAKS * streaks)[..., None]
 
     # Moss grows in patches, like on the ground (see ground_pattern), and it grows first
     # where water stays: in the joints. So the joints are green also outside the patches.
@@ -970,13 +1010,19 @@ def build_mossy_wall_textures():
     moss = np.clip(patches + 0.8 * in_joints, 0.0, 1.0) * fray
 
     # Mix towards the moss colour: moss = 0 keeps the stone, moss = 1 replaces it.
-    moss_shade = (0.65 + 0.70 * wall["grain"])[..., None] * np.array((0.17, 0.26, 0.11))
+    moss_shade = (0.65 + 0.70 * wall["grain"])[..., None] * np.array(MOSS_COLOR)
     color = color + moss[..., None] * (moss_shade - color)
 
     # Moss is a soft cushion on the stone. It fills the joints and has a grain of its own.
     height = height + 3.0 * blur(moss, 2) + 1.2 * moss * (blur(wall["grain"], 1) - 0.5)
 
-    save_png(np.clip(color, 0.0, 1.0), "wall_mossy.png")
+    # The damp and the moss are detail. Seen from far away a wall is the average of its
+    # picture, and that average is brought back to the brightness of the plain wall: a
+    # mossy segment is then as bright as its neighbours. What is left of the green in the
+    # average is small, because the moss is pale.
+    color = with_brightness_of(np.clip(color, 0.0, 1.0), wall_picture(wall))
+
+    save_png(color, "wall_mossy.png")
     save_png(normal_map(height), "wall_mossy_normal.png")
 
 
