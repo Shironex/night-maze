@@ -965,3 +965,18 @@ button.gone, .row.gone {
     width: 0;
     height: 0;
 }
+
+/* ---- the result of a night of the campaign --------------------------------------------- */
+/* The camera rises over the gate and shows the village on the ridge in the left half of
+   the picture (game/Village.hpp). The card moves to the right, and the dim layer is clear
+   on the left and as dark as ever behind the card. */
+body.dim.reveal {
+    background-color: transparent;
+    decorator: linear-gradient(90deg, #090d1a00 0%, #090d1a1f 42%, #090d1a99 62%, #090d1a99 100%);
+}
+body.reveal .center {
+    justify-content: flex-end;
+}
+body.reveal .card {
+    margin-right: 5vh;
+}

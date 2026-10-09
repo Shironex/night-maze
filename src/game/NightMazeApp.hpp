@@ -681,6 +681,12 @@ private:
     /// its end it sends GameEvent::CardFinished, which leads to the ending card.
     void updateVillageBeat();
 
+    /// True while the camera of the reveal takes the picture (game::villageRevealPose):
+    /// on the result screen of a night of the campaign, and after the last night during
+    /// the look at the village and the ending card. Free play and the maze of the day
+    /// keep the eyes of the player.
+    bool villageRevealShown() const;
+
     /// Draws the village on the ridge and its lights into the scene, centred on the eye
     /// like the sky and with real depth. view and projection are the ones of the frame,
     /// farPlane the far plane of its camera. nightsLit and newestStrength are what
@@ -1029,6 +1035,11 @@ private:
 
     // Whether the village on the ridge is drawn and how high it stands.
     VillageSettings m_villageSettings;
+    // The camera of the player at the moment the result of a night came up, and the
+    // seconds since then: what the reveal of the village starts from
+    // (game::villageRevealPose). The clock follows the real time of the frames.
+    VillageRevealPose m_revealStart;
+    double m_revealSeconds = 0.0;
 
     // How the crystals and the puddles show the sky (edited by the debug UI). The
     // puddles themselves are not kept: they are placed, handed to m_puddleRenderer and

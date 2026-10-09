@@ -3,7 +3,10 @@
     <title>Round end</title>
     <link type="text/rcss" href="menu.rcss"/>
 </head>
-<body class="dim">
+<!-- After a night of the campaign the game sets the class "reveal" on the body: the camera
+     shows the village on the ridge in the left half of the picture, so the card stands on
+     the right and the dim layer leaves the left clear (menu.rcss). -->
+<body class="dim" id="round-end">
 <div class="center">
     <div class="card">
         <h2 class="card-title">Through the gate</h2>

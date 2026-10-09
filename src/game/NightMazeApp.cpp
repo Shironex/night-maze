@@ -237,6 +237,9 @@ constexpr const char* LOCKED_CLASS = "locked";
 // An element that is not shown at the moment, and a card of text on black.
 constexpr const char* GONE_CLASS = "gone";
 constexpr const char* MIDDLE_CLASS = "middle";
+// The body of the result screen, and the class it carries after a night of the campaign.
+constexpr const char* ROUND_END_BODY_ID = "round-end";
+constexpr const char* REVEAL_CLASS = "reveal";
 
 // The buttons that do not change the screen: their data-action names. A difficulty
 // button is named by the same prefix as its id.
@@ -768,6 +771,16 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
     }
     // After a film that ends in black the main menu comes in out of black.
     m_menuAfterIntro = before == GameMode::Intro || before == GameMode::EndingCard;
+    // A round was just won: the reveal of the village starts from the camera of the
+    // player as it is now (villageRevealShown decides whether it is shown).
+    if (before == GameMode::Playing &&
+        (m_mode == GameMode::RoundEnd || m_mode == GameMode::VillageBeat)) {
+        m_revealStart = {.eye = m_camera.position,
+                         .yawDegrees = m_camera.yawDegrees,
+                         .pitchDegrees = m_camera.pitchDegrees,
+                         .fovDegrees = m_camera.fovDegrees};
+        m_revealSeconds = 0.0;
+    }
     if (newGame) {
         // "New maze" on the result screen: the same difficulty, another seed. "Play"
         // in free play starts the seed its field shows (handleMenuActions has read
@@ -1276,6 +1289,12 @@ void NightMazeApp::updateVillageBeat() {
     }
 }
 
+bool NightMazeApp::villageRevealShown() const {
+    const bool won = m_mode == GameMode::RoundEnd || m_mode == GameMode::VillageBeat ||
+                     m_mode == GameMode::EndingCard;
+    return won && m_playedNight != 0 && m_mazeWorld.hasGate;
+}
+
 void NightMazeApp::updateIntro() {
     // Any key and any mouse button skip the whole intro. Escape is one of them, and it
     // also arrives as an event of its own before this function runs (onEscapePressed).
@@ -1646,6 +1665,9 @@ void NightMazeApp::fillRoundEndDocument() {
         level = dailyDateText(m_playedDaily);
     }
     m_ui.setText(m_roundEndDocument, NIGHT_LINE_ID, line);
+    // After a night the camera shows the village beside the card (villageRevealShown):
+    // the card stands on the right and the left of the picture is left clear.
+    m_ui.setClass(m_roundEndDocument, ROUND_END_BODY_ID, REVEAL_CLASS, villageRevealShown());
     m_ui.setText(m_roundEndDocument, LEVEL_NAME_ID, levelName);
     m_ui.setText(m_roundEndDocument, DIFFICULTY_ID, level);
     m_ui.setText(m_roundEndDocument, SEED_ID, std::to_string(m_mazeWorld.seed));
@@ -2495,6 +2517,25 @@ void NightMazeApp::onRender(double alpha) {
         frameCamera.yawDegrees = pose.yawDegrees;
         frameCamera.pitchDegrees = pose.pitchDegrees;
     }
+    // The reveal of the village: after a night of the campaign is won the camera leaves
+    // the eyes of the player, rises over the exit cell and turns to the ridge, with
+    // a longer lens. Like the menu camera it changes the copy only. The eyes of the
+    // player are kept: the flashlight stays in the hand down in the cell.
+    const glm::vec3 playerEye = eye;
+    const bool reveal = villageRevealShown() && !menuCamera;
+    if (reveal) {
+        m_revealSeconds += time().deltaSeconds();
+        // Beside the card of the result, or in the middle of a picture without one.
+        const float aside =
+            m_mode == GameMode::RoundEnd ? VILLAGE_REVEAL_BESIDE_CARD_DEGREES : 0.0F;
+        const VillageRevealPose pose =
+            villageRevealPose(m_revealStart, m_mazeWorld.exitPosition, villageSide(m_mazeWorld),
+                              aside, static_cast<float>(m_revealSeconds));
+        eye = pose.eye;
+        frameCamera.yawDegrees = pose.yawDegrees;
+        frameCamera.pitchDegrees = pose.pitchDegrees;
+        frameCamera.fovDegrees = pose.fovDegrees;
+    }
 
     // Width divided by height of the same pixels the viewport covers. The casts make it
     // a division of floats: 1280 / 720 as integers would be 1.
@@ -2630,8 +2671,11 @@ void NightMazeApp::onRender(double alpha) {
     // would trail behind the picture while the player moves. It is computed ONCE: the
     // shadow pass of the flashlight and the lights of the frame both get this result,
     // so the shadows always belong to the light that is drawn.
+    // During the reveal of the village the lamp stays where the player stands, aimed as
+    // it was: the camera has left the hand that holds it.
     const FlashlightPose flashlight =
-        flashlightPose(frameLighting, eye, frameCamera.forward(), frameCamera.right());
+        reveal ? flashlightPose(frameLighting, playerEye, m_camera.forward(), m_camera.right())
+               : flashlightPose(frameLighting, eye, frameCamera.forward(), frameCamera.right());
 
     // The shadow passes come first: the scene as the moon sees it and then as the
     // flashlight sees it, depths only, each into its own shadow map. The lit programs
@@ -2720,7 +2764,10 @@ void NightMazeApp::onRender(double alpha) {
     const int nightsLit = intro ? 0
                                 : villageNightsLit(ownNight ? m_playedNight : 0, nightWon,
                                                    m_settings.campaignNight, m_toolRun);
-    drawVillage(view, projection, frameCamera.farPlane, nightsLit, 1.0F);
+    // The lights of the night that was just won come on while the reveal looks at them.
+    const float newestLight =
+        reveal ? villageNewLightStrength(static_cast<float>(m_revealSeconds)) : 1.0F;
+    drawVillage(view, projection, frameCamera.farPlane, nightsLit, newestLight);
 
     // The sky comes LAST, after everything that writes depth. It is drawn at the largest
     // depth and passes the depth test only where nothing else was drawn. With the walls
