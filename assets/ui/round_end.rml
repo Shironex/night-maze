@@ -7,25 +7,29 @@
 <div class="center">
     <div class="card">
         <h2 class="card-title">Through the gate</h2>
-        <!-- One line of the story after a night of the campaign. Empty in free play, and
-             then it has no height. -->
+        <!-- One line of the story after a night of the campaign, and "New best" or the
+             time to beat after the maze of the day. Empty in free play, and then it has
+             no height. -->
         <p class="card-line" id="night-line"></p>
         <div class="sep"></div>
         <!-- The four values are written by the game when the screen comes up
              (NightMazeApp::fillRoundEndDocument). The seed and the difficulty together
              name the maze: a friend who enters both plays the same one. After a night
              of the campaign the third row names the night, and the seed is left out:
-             the maze of a night cannot be entered anywhere. -->
+             the maze of a night cannot be entered anywhere. After the maze of the day
+             the third row names the day, which is its seed. -->
         <div class="row"><span class="row-name">Time</span><span class="row-value" id="time">0:00</span></div>
         <div class="row"><span class="row-name">Crystals</span><span class="row-value" id="crystals">0 of 0</span></div>
         <div class="row"><span class="row-name" id="level-name">Difficulty</span><span class="row-value" id="difficulty">Normal</span></div>
-        <!-- Free play only: the game sets the class "gone" after a night. -->
+        <!-- Free play only: the game sets the class "gone" after a night and after the
+             maze of the day. -->
         <div class="row" id="seed-row"><span class="row-name">Seed</span><span class="row-value" id="seed">1</span></div>
         <!-- Free play shows "Play again" and "New maze". After a night of the campaign the
              game sets the class "gone" on both and takes it off ONE of the two buttons of
              the campaign: "Next night", or "Back to nights" after a replay of an earlier
              night (game::nightEndOffer). It also moves the keyboard there, because the
-             attribute autofocus is fixed. -->
+             attribute autofocus is fixed. The maze of the day keeps "Play again" and
+             loses "New maze": there is one maze a day. -->
         <div class="buttons">
             <button class="btn primary" id="play-again" data-action="restart" autofocus>Play again</button>
             <button class="btn primary gone" id="next-night" data-action="next-night">Next night</button>

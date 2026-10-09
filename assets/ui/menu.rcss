@@ -94,6 +94,7 @@ body.paused .column {
 .rise.d4 { transition: opacity transform 0.5s 0.29s cubic-out; }
 .rise.d5 { transition: opacity transform 0.5s 0.35s cubic-out; }
 .rise.d6 { transition: opacity transform 0.5s 0.41s cubic-out; }
+.rise.d7 { transition: opacity transform 0.5s 0.47s cubic-out; }
 body.open .rise {
     opacity: 1;
     transform: translateX(0vh);
@@ -715,7 +716,8 @@ button.chip.key.waiting, button.chip.key.waiting:focus-visible {
 
 /* ---- the campaign: the first entry of the main menu, free play, the list of nights ----- */
 
-/* The first entry of the main menu and the night beside it, on one line. */
+/* The first entry of the main menu and the night beside it, on one line. The entry
+   "Tonight's hedge" and its day stand the same way. */
 .entry {
     display: flex;
     flex-direction: row;
@@ -737,8 +739,9 @@ button.chip.key.waiting, button.chip.key.waiting:focus-visible {
 /* The way of the arrow keys through the main menu, named element by element like the
    one through free play above. */
 #campaign { nav-down: #open-nights; }
-#open-nights { nav-up: #campaign; nav-down: #open-free-play; }
-#open-free-play { nav-up: #open-nights; nav-down: #open-settings; }
+#open-nights { nav-up: #campaign; nav-down: #open-daily; }
+#open-daily { nav-up: #open-nights; nav-down: #open-free-play; }
+#open-free-play { nav-up: #open-daily; nav-down: #open-settings; }
 #open-settings { nav-up: #open-free-play; nav-down: #quit; }
 #quit { nav-up: #open-settings; }
 

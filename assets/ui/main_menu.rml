@@ -7,7 +7,7 @@
 <!-- A button names what it does with data-action: the game turns the name into an event
      (game::eventForAction) or into a command of this screen (NightMazeApp). The elements
      with an id are written by the game: the label of the first entry, the night beside
-     it and the numbers of the info block. -->
+     it, the day beside "Tonight's hedge" and the numbers of the info block. -->
 <!-- The black the menu comes out of when it follows the intro or the ending card. The
      game sets the class "drawn" on it then. -->
 <div class="curtain" id="curtain"></div>
@@ -33,19 +33,27 @@
         <div class="rise d2">
             <button class="item" id="open-nights" data-action="nights"><div class="bar"></div>Nights</button>
         </div>
+        <!-- The maze of the day, the same one for every player: its day stands beside
+             it, and the best time of the day once it has one. -->
         <div class="rise d3">
-            <button class="item" id="open-free-play" data-action="free-play"><div class="bar"></div>Free play</button>
+            <div class="entry">
+                <button class="item" id="open-daily" data-action="daily"><div class="bar"></div>Tonight's hedge</button>
+                <span class="beside" id="daily-date"></span>
+            </div>
         </div>
         <div class="rise d4">
-            <button class="item" id="open-settings" data-action="settings"><div class="bar"></div>Settings</button>
+            <button class="item" id="open-free-play" data-action="free-play"><div class="bar"></div>Free play</button>
         </div>
         <div class="rise d5">
+            <button class="item" id="open-settings" data-action="settings"><div class="bar"></div>Settings</button>
+        </div>
+        <div class="rise d6">
             <button class="item" id="quit" data-action="quit"><div class="bar"></div>Quit</button>
         </div>
     </div>
 </div>
 <!-- The numbers of the night the first entry starts. -->
-<div class="info rise d6">
+<div class="info rise d7">
     <div class="fact">
         <p class="fact-name">Maze</p>
         <p class="fact-value" id="info-maze">10 x 10</p>

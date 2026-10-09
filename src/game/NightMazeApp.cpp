@@ -21,7 +21,10 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
+#include <cstdint>
+#include <ctime>
 #include <filesystem>
 #include <optional>
 #include <random>
@@ -146,6 +149,8 @@ constexpr const char* SEED_ID = "seed";
 // has the three numbers named below, like the one of free play.
 constexpr const char* CAMPAIGN_LABEL_ID = "campaign-label";
 constexpr const char* CAMPAIGN_NIGHT_ID = "campaign-night";
+// What stands beside its entry "Tonight's hedge": the day, and the best time of the day.
+constexpr const char* DAILY_DATE_ID = "daily-date";
 // The list of nights: the id of a row is this prefix and the number of the night
 // ("night-2"), and its title and its state are that id with one of the two endings.
 constexpr const char* NIGHT_ID_PREFIX = "night-";
@@ -229,6 +234,8 @@ constexpr const char* CAMPAIGN_ACTION = "campaign";
 constexpr const char* NEW_CAMPAIGN_ACTION = "new-campaign";
 // The button "Next night" of the result screen.
 constexpr const char* NEXT_NIGHT_ACTION = "next-night";
+// The entry "Tonight's hedge" of the main menu: the maze of the day.
+constexpr const char* DAILY_ACTION = "daily";
 
 // What the first entry of the main menu reads (game::campaignStage).
 constexpr const char* BEGIN_LABEL = "Begin";
@@ -248,6 +255,10 @@ constexpr const char* ROUND_END_KEYS_TEXT =
     "Play again: the same maze | New maze: another seed | Esc: back to menu";
 constexpr const char* NEXT_NIGHT_KEYS_TEXT = "Enter: the next night | Esc: back to menu";
 constexpr const char* BACK_TO_NIGHTS_KEYS_TEXT = "Enter: the list of nights | Esc: back to menu";
+// The same two after the maze of the day: its third row names the day, and it has no
+// other maze to offer.
+constexpr const char* DATE_ROW_NAME = "Date";
+constexpr const char* DAILY_KEYS_TEXT = "Play again: the same maze | Esc: back to menu";
 
 // While the volume slider of the settings screen is moved, a short click lets the
 // player hear the new loudness: at most one in this many seconds. A dragged slider
@@ -280,6 +291,27 @@ constexpr std::uint32_t RANDOM_SEED_LIMIT = 1000000;
 std::uint32_t randomSeed() {
     std::random_device device;
     return 1 + static_cast<std::uint32_t>(device()) % (RANDOM_SEED_LIMIT - 1);
+}
+
+// The years of std::tm are counted from this one.
+constexpr int TM_FIRST_YEAR = 1900;
+
+// The day of the calendar at this moment, where the player is: the local time of the
+// system (game::dailyDate). This is the one place the game asks the clock for a day, and
+// a run a tool drives never comes here (game::fixedDailyDate).
+std::uint32_t todayLocal() {
+    const std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    // Not std::chrono::current_zone: the standard library of Apple clang does not have
+    // it yet. The two functions below are the ones that are safe with threads.
+    std::tm local{};
+#ifdef _WIN32
+    localtime_s(&local, &now);
+#else
+    localtime_r(&now, &local);
+#endif
+    return dailyDate(std::chrono::year{local.tm_year + TM_FIRST_YEAR} /
+                     std::chrono::month{static_cast<unsigned>(local.tm_mon + 1)} /
+                     std::chrono::day{static_cast<unsigned>(local.tm_mday)});
 }
 
 // Reads the settings file from the working directory. Without a file (the first start)
@@ -447,6 +479,7 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
       m_newGame{.difficulty = m_settings.difficulty, .seed = options.seed},
       m_startSeed(options.seed),
       m_campaignIntroPlays(campaignIntroPlays(options)),
+      m_fixedDailyDate(fixedDailyDate(options)),
       m_playedDifficultyName(difficultyLevel(m_settings.difficulty).name),
       m_ui(window()) {
     // The two lit programs and the grass program read the lights from the uniform buffer
@@ -479,6 +512,9 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
         // ponytail: a tool run builds two mazes at its start, the first one for nothing.
         // Build the night in the initializer list if that half second ever matters.
         startNight(options.night, options.seedGiven ? options.seed : TOOL_CAMPAIGN_SEED, false);
+    } else if (options.daily != NO_DAILY_DATE) {
+        // The maze of a day named on the command line (--daily), in the same way.
+        startNewGame({.difficulty = DAILY_DIFFICULTY, .seed = options.daily}, options.daily);
     } else {
         uploadGround();
         beginRound();
@@ -750,6 +786,11 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
     // a new campaign once the last night is won.
     if (action == CAMPAIGN_ACTION) {
         enterCampaign();
+        return true;
+    }
+    // "Tonight's hedge": the maze of the day.
+    if (action == DAILY_ACTION) {
+        beginDaily();
         return true;
     }
     // "Yes" to a new campaign: the finished one is forgotten, and the new one begins
@@ -1099,7 +1140,11 @@ void NightMazeApp::startStoryCard() {
         handleGameEvent(GameEvent::CardFinished);
         return;
     }
-    if (m_mode == GameMode::NightCard) {
+    if (m_mode == GameMode::NightCard && m_playedDaily != NO_DAILY_DATE) {
+        // The maze of the day: its name and its day.
+        const std::string day = dailyDateText(m_playedDaily);
+        writeCardLines({DAILY_NAME, day.c_str(), "", ""}, true);
+    } else if (m_mode == GameMode::NightCard) {
         // "Night 2" and the name of the night.
         const std::string label = campaignNightLabel(m_playedNight);
         writeCardLines({label.c_str(), campaignNight(m_playedNight).title, "", ""}, true);
@@ -1216,7 +1261,7 @@ void NightMazeApp::leaveIntro(bool intoNight) {
                   " ms");
 }
 
-void NightMazeApp::startNewGame(const NewGame& newGame) {
+void NightMazeApp::startNewGame(const NewGame& newGame, std::uint32_t daily) {
     // The numbers of the level: the size of the maze and its crystals go into the
     // request for the maze, the gate, the battery and the flasks into the rules of the
     // round. They
@@ -1231,15 +1276,16 @@ void NightMazeApp::startNewGame(const NewGame& newGame) {
     m_gameplay.batteryLifetimeSeconds = level.batteryLifetimeSeconds;
     m_gameplay.flaskCount = level.flaskCount;
     // The shade: in the game unless this is a calm night. Like the numbers above it
-    // overwrites what the debug UI may have switched.
-    m_gameplay.shade.enabled = shadeInGame();
+    // overwrites what the debug UI may have switched. The maze of the day does not ask
+    // the switch "Calm night": it is the same maze for every player.
+    m_gameplay.shade.enabled = shadeInMaze(daily);
 
     // The maze is always built again, also for the seed that is in play: the level may
     // be another one, and the numbers of levers and notes may have been changed.
     m_mazeSettings.seed = newGame.seed;
     m_mazeSettings.regenerate = false;
-    regenerateMaze();
-    m_playedDifficultyName = level.name;
+    regenerateMaze(0, daily);
+    m_playedDifficultyName = daily == NO_DAILY_DATE ? level.name : DAILY_NAME;
 
     // The difficulty that was just played is the one free play starts with next time,
     // so it is written to the settings file now.
@@ -1325,6 +1371,22 @@ void NightMazeApp::beginCampaignIntro() {
     handleGameEvent(GameEvent::BeginCampaign);
 }
 
+std::uint32_t NightMazeApp::dailyToday() const {
+    return m_fixedDailyDate == NO_DAILY_DATE ? todayLocal() : m_fixedDailyDate;
+}
+
+void NightMazeApp::beginDaily() {
+    // The day is asked once, now: a maze started before midnight stays the maze of that
+    // day, and its result belongs to that day (finishRound). A click that arrives on
+    // another screen builds nothing, and neither does a clock that names no day.
+    const std::uint32_t date = dailyToday();
+    if (m_mode != GameMode::MainMenu || date == NO_DAILY_DATE) {
+        return;
+    }
+    startNewGame({.difficulty = DAILY_DIFFICULTY, .seed = date}, date);
+    handleGameEvent(GameEvent::StartNight);
+}
+
 void NightMazeApp::forgetCampaign() {
     m_settings.campaignNight = 1;
     m_settings.campaignSeed = NO_CAMPAIGN_SEED;
@@ -1346,7 +1408,10 @@ void NightMazeApp::fillMainMenuDocument() {
                  stage == CampaignStage::Running ? campaignNightName(m_settings.campaignNight)
                                                  : std::string());
 
-    // The info block: the numbers of the night that entry starts.
+    // "Tonight's hedge": the day beside it, and the best time once the day has one.
+    m_ui.setText(m_mainMenuDocument, DAILY_DATE_ID, dailyMenuLine(m_settings.daily, dailyToday()));
+
+    // The info block: the numbers of the night the first entry starts.
     const CampaignNight& level = campaignNight(nightToOffer(m_settings.campaignNight));
     m_ui.setText(m_mainMenuDocument, INFO_MAZE_ID,
                  std::to_string(level.mazeWidth) + " x " + std::to_string(level.mazeHeight));
@@ -1419,13 +1484,25 @@ void NightMazeApp::fillRoundEndDocument() {
     // the same one. After a night of the campaign the row names the night ("Night 2",
     // "The Shepherds' Gates"), and the line of the story of that night stands under the
     // title. In free play that line is empty and takes no room.
+    // After the maze of the day the line says "New best" or names the time to beat, and
+    // the row names the day.
     const bool night = m_playedNight != 0;
-    m_ui.setText(m_roundEndDocument, NIGHT_LINE_ID,
-                 night ? campaignNight(m_playedNight).endLine : "");
-    m_ui.setText(m_roundEndDocument, LEVEL_NAME_ID,
-                 night ? campaignNightLabel(m_playedNight) : std::string(DIFFICULTY_ROW_NAME));
-    m_ui.setText(m_roundEndDocument, DIFFICULTY_ID,
-                 night ? std::string(campaignNight(m_playedNight).title) : m_playedDifficultyName);
+    const bool daily = m_playedDaily != NO_DAILY_DATE;
+    std::string line;
+    std::string levelName = DIFFICULTY_ROW_NAME;
+    std::string level = m_playedDifficultyName;
+    if (night) {
+        line = campaignNight(m_playedNight).endLine;
+        levelName = campaignNightLabel(m_playedNight);
+        level = campaignNight(m_playedNight).title;
+    } else if (daily) {
+        line = dailyResultLine(m_dailyWin);
+        levelName = DATE_ROW_NAME;
+        level = dailyDateText(m_playedDaily);
+    }
+    m_ui.setText(m_roundEndDocument, NIGHT_LINE_ID, line);
+    m_ui.setText(m_roundEndDocument, LEVEL_NAME_ID, levelName);
+    m_ui.setText(m_roundEndDocument, DIFFICULTY_ID, level);
     m_ui.setText(m_roundEndDocument, SEED_ID, std::to_string(m_mazeWorld.seed));
     // "Play again" and "New maze" belong to free play. A night is not played again from
     // here (a finished night is replayed from the list of nights), and its maze is
@@ -1433,14 +1510,19 @@ void NightMazeApp::fillRoundEndDocument() {
     // after a replay of an earlier night.
     const bool nextNight = night && nightEndOffer() == NightEndOffer::NextNight;
     m_ui.setClass(m_roundEndDocument, PLAY_AGAIN_ID, GONE_CLASS, night);
-    m_ui.setClass(m_roundEndDocument, NEW_MAZE_ID, GONE_CLASS, night);
+    // The maze of the day is played again from here, and there is no other one today.
+    m_ui.setClass(m_roundEndDocument, NEW_MAZE_ID, GONE_CLASS, night || daily);
     m_ui.setClass(m_roundEndDocument, NEXT_NIGHT_ID, GONE_CLASS, !nextNight);
     m_ui.setClass(m_roundEndDocument, BACK_TO_NIGHTS_ID, GONE_CLASS, !night || nextNight);
     // The seed names a maze of free play for a friend. The maze of a night cannot be
     // entered anywhere, so its row is left out.
-    m_ui.setClass(m_roundEndDocument, SEED_ROW_ID, GONE_CLASS, night);
-    const char* nightKeys = nextNight ? NEXT_NIGHT_KEYS_TEXT : BACK_TO_NIGHTS_KEYS_TEXT;
-    m_ui.setText(m_roundEndDocument, KEYS_ID, night ? nightKeys : ROUND_END_KEYS_TEXT);
+    // The seed of the maze of the day is its day, which the row above shows.
+    m_ui.setClass(m_roundEndDocument, SEED_ROW_ID, GONE_CLASS, night || daily);
+    const char* keys = daily ? DAILY_KEYS_TEXT : ROUND_END_KEYS_TEXT;
+    if (night) {
+        keys = nextNight ? NEXT_NIGHT_KEYS_TEXT : BACK_TO_NIGHTS_KEYS_TEXT;
+    }
+    m_ui.setText(m_roundEndDocument, KEYS_ID, keys);
 }
 
 NightEndOffer NightMazeApp::nightEndOffer() const {
@@ -1531,7 +1613,7 @@ void NightMazeApp::saveSettings() {
     }
 }
 
-void NightMazeApp::regenerateMaze(int night) {
+void NightMazeApp::regenerateMaze(int night, std::uint32_t daily) {
     // generateMaze throws for a size outside 1 to Maze::MAX_SIZE. The request comes from
     // a panel, where any number can be typed, so it is brought into the range here and
     // written back for the panel to show.
@@ -1546,11 +1628,12 @@ void NightMazeApp::regenerateMaze(int night) {
     // for the same seed (the counter only moves when a maze is finished).
     interactables.firstStoryLine = m_settings.nextStoryLine;
     // A maze without a shade does not talk about one.
-    interactables.shadeLines = shadeInGame();
+    interactables.shadeLines = shadeInMaze(daily);
     // A night of the campaign has a mix of notes and story lines of its own. They go
     // into a copy: the request above stays the one of free play, with its counter, so
     // a game of free play after a night is what it was before.
     m_playedNight = night;
+    m_playedDaily = daily;
     const InteractableSettings built =
         night == 0 ? interactables : campaignInteractables(night, interactables);
 
@@ -1951,6 +2034,15 @@ void NightMazeApp::finishRound() {
         m_settings.nextStoryLine = advanceStoryLine(m_mazeSettings.interactables.firstStoryLine,
                                                     storyNoteCount(m_mazeWorld.interactables),
                                                     m_mazeSettings.interactables.shadeLines);
+        // The maze of the day: its best time, for the result screen and for the settings
+        // file. A day that did not come from the clock (a tool run) was not played: its
+        // record is read and never written.
+        if (m_playedDaily != NO_DAILY_DATE) {
+            m_dailyWin = dailyAfterWin(m_settings.daily, m_playedDaily, m_round.elapsedSeconds);
+            if (m_fixedDailyDate == NO_DAILY_DATE) {
+                m_settings.daily = m_dailyWin.record;
+            }
+        }
         saveSettings();
         handleGameEvent(GameEvent::RoundWon);
         return;
