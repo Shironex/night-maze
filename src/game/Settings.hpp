@@ -3,6 +3,7 @@
 #pragma once
 
 #include "game/Campaign.hpp"
+#include "game/Daily.hpp"
 #include "game/Difficulty.hpp"
 #include "game/KeyBindings.hpp"
 
@@ -135,6 +136,11 @@ struct GameSettings {
     /// until the night is won.
     std::array<int, CAMPAIGN_NIGHT_COUNT> campaignBestSeconds{};
 
+    /// The maze of the day (game/Daily.hpp): the best time of one day, the day it belongs
+    /// to and on how many days such a maze was won. It changes only when a maze of the
+    /// day is won.
+    DailyRecord daily;
+
     bool operator==(const GameSettings& other) const = default;
 };
 
@@ -164,6 +170,12 @@ constexpr std::string_view CAMPAIGN_SEED_SETTING = "campaign_seed";
 /// "campaign_best_1" to "campaign_best_5".
 constexpr std::string_view CAMPAIGN_BEST_SETTING_PREFIX = "campaign_best_";
 
+/// The maze of the day: the day its best time belongs to, that time and the count of
+/// days (game::DailyRecord).
+constexpr std::string_view DAILY_DATE_SETTING = "daily_date";
+constexpr std::string_view DAILY_BEST_SETTING = "daily_best";
+constexpr std::string_view DAILY_DAYS_SETTING = "daily_days";
+
 /// The name of the best time of a night in the file: "campaign_best_3".
 std::string campaignBestSetting(int night);
 
@@ -187,6 +199,10 @@ std::string campaignBestSetting(int night);
 ///     campaign_seed       a seed, digits only, "482113" (game::parseSeed)
 ///     campaign_best_1 to campaign_best_5   the best time of a night in whole seconds,
 ///                         "95"
+///     daily_date          the day the best time of the maze of the day belongs to, eight
+///                         digits, "20261009" (game::parseDailyDate)
+///     daily_best          that best time in whole seconds, "252"
+///     daily_days          on how many days a maze of the day was won, "12"
 ///     key_forward, key_back, key_left, key_right, key_sprint, key_use, key_flashlight,
 ///     key_map, key_restart
 ///                         the name of a key, "W" or "Left Shift" (game::keyName). A key
@@ -216,23 +232,27 @@ bool applySetting(GameSettings& settings, std::string_view name, std::string_vie
 /// A file written before the campaign existed has none of its lines and loads as "no
 /// campaign yet": the first night is next, no seed, no best time.
 ///
+/// The maze of the day is tidied up the same way: a best time without the day it belongs
+/// to is dropped, and a day with a best time was won, so it counts as at least one day.
+/// A file written before the maze of the day existed loads with no best time of a day.
+///
 /// The text may come from any editor: a byte order mark at its start and the \r of
 /// Windows line ends are ignored.
 GameSettings parseSettings(std::string_view text);
 
 /// The text of a settings file with these settings: a comment line and one line per
-/// setting. The seed of the campaign and the best time of a night have a line only once
-/// they exist. parseSettings of the result gives the same settings back (the mouse
-/// sensitivity rounded to one decimal place, the field of view to whole degrees).
-/// Numbers are always written with a point, whatever the language of the system is.
+/// setting. The seed of the campaign, the best time of a night and the three lines of the
+/// maze of the day have a line only once they exist. parseSettings of the result gives the same
+/// settings back (the mouse sensitivity rounded to one decimal place, the field of view to whole
+/// degrees). Numbers are always written with a point, whatever the language of the system is.
 std::string formatSettings(const GameSettings& settings);
 
 /// The settings after the button "Reset defaults" of the settings screen: everything
 /// that screen shows is back at its default (the mouse, the field of view, the window,
 /// the three volumes and the keys). What is chosen or earned somewhere else stays: the
 /// difficulty and the calm night of free play, the story line counter, that the intro
-/// was seen, and the campaign (its next night, its seed and its best times). A reset of
-/// the settings is no reset of the progress.
+/// was seen, the campaign (its next night, its seed and its best times) and the record
+/// of the maze of the day. A reset of the settings is no reset of the progress.
 GameSettings resetSettings(const GameSettings& settings);
 
 /// How far the camera turns for one unit of mouse movement at this sensitivity, in

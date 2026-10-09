@@ -243,6 +243,22 @@ bool applySetting(GameSettings& settings, std::string_view name, std::string_vie
                                         static_cast<float>(MAX_BEST_SECONDS)));
         return true;
     }
+    if (name == DAILY_DATE_SETTING) {
+        return parseDailyDate(value, settings.daily.date);
+    }
+    if (name == DAILY_BEST_SETTING || name == DAILY_DAYS_SETTING) {
+        float number = 0.0F;
+        if (!parseNumber(value, number)) {
+            return false;
+        }
+        // Both are whole numbers from 0 up, each with a limit of its own.
+        const bool best = name == DAILY_BEST_SETTING;
+        int& target = best ? settings.daily.bestSeconds : settings.daily.daysPlayed;
+        target = static_cast<int>(
+            std::clamp(std::round(number), 0.0F,
+                       static_cast<float>(best ? MAX_BEST_SECONDS : MAX_DAILY_DAYS)));
+        return true;
+    }
     if (name.starts_with(KEY_SETTING_PREFIX)) {
         // False for a name that is no action, for a text that is no key and for a key
         // with a fixed meaning: the action keeps the key it has.
@@ -298,6 +314,13 @@ GameSettings parseSettings(std::string_view text) {
             settings.campaignBestSeconds.at(static_cast<std::size_t>(night - 1)) = NO_BEST_TIME;
         }
     }
+    // The maze of the day: a best time belongs to a day, and a day with a best time was
+    // won. The count of days alone says nothing wrong, so it stays.
+    if (settings.daily.date == NO_DAILY_DATE) {
+        settings.daily.bestSeconds = NO_BEST_TIME;
+    } else if (settings.daily.bestSeconds != NO_BEST_TIME) {
+        settings.daily.daysPlayed = std::max(settings.daily.daysPlayed, 1);
+    }
     return settings;
 }
 
@@ -329,6 +352,14 @@ std::string formatSettings(const GameSettings& settings) {
             text += settingLine(campaignBestSetting(night), std::to_string(best));
         }
     }
+    // The maze of the day: its lines only once a day has a best time.
+    if (settings.daily.date != NO_DAILY_DATE) {
+        text += settingLine(DAILY_DATE_SETTING, std::to_string(settings.daily.date));
+        text += settingLine(DAILY_BEST_SETTING, std::to_string(settings.daily.bestSeconds));
+    }
+    if (settings.daily.daysPlayed != 0) {
+        text += settingLine(DAILY_DAYS_SETTING, std::to_string(settings.daily.daysPlayed));
+    }
     // The keys, by their names: one line per action, in the order of the settings screen.
     for (const KeyActionInfo& info : keyActions()) {
         text += settingLine(info.settingName, boundKeyName(settings.keys, info.action));
@@ -345,6 +376,7 @@ GameSettings resetSettings(const GameSettings& settings) {
     reset.campaignNight = settings.campaignNight;
     reset.campaignSeed = settings.campaignSeed;
     reset.campaignBestSeconds = settings.campaignBestSeconds;
+    reset.daily = settings.daily;
     return reset;
 }
 

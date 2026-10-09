@@ -557,6 +557,9 @@ TEST_CASE("a file of game 0.12 loads with the default of everything that came la
     }
     CHECK(game::campaignStage(settings.campaignNight) == game::CampaignStage::NotStarted);
     CHECK(settings.keys == game::defaultKeyBindings());
+    // No maze of the day was won: no day, no best time, no days.
+    CHECK(settings.daily == game::DailyRecord{});
+    CHECK(game::dailyBestOn(settings.daily, 20261009) == game::NO_BEST_TIME);
 
     // Written again and read back, nothing is lost. (The order of the lines is the matter
     // of the test of the whole text above.)
@@ -583,6 +586,7 @@ TEST_CASE("reset defaults brings back the screen and the keys, and keeps the pro
     settings.campaignNight = 3;
     settings.campaignSeed = 482113;
     settings.campaignBestSeconds = {95, 140, 0, 0, 0};
+    settings.daily = {.date = 20261009, .bestSeconds = 252, .daysPlayed = 12};
 
     GameSettings expected;
     expected.difficulty = game::Difficulty::Hard;
@@ -592,6 +596,7 @@ TEST_CASE("reset defaults brings back the screen and the keys, and keeps the pro
     expected.campaignNight = 3;
     expected.campaignSeed = 482113;
     expected.campaignBestSeconds = {95, 140, 0, 0, 0};
+    expected.daily = {.date = 20261009, .bestSeconds = 252, .daysPlayed = 12};
     // Every other field is the default one, the keys too.
     CHECK(game::resetSettings(settings) == expected);
     CHECK(game::resetSettings(settings).keys == game::defaultKeyBindings());
@@ -684,4 +689,69 @@ TEST_CASE("progress without a seed still loads, and the nights that were won sta
     CHECK(game::nightStatus(noSeed.campaignNight, 2) == game::NightStatus::Finished);
     // And it is written back in a form that reads the same.
     CHECK(game::parseSettings(game::formatSettings(noSeed)) == noSeed);
+}
+
+TEST_CASE("the maze of the day is written and read back: day, best time and days") {
+    // Nothing of it is in the file until a maze of the day is won.
+    CHECK(game::formatSettings(GameSettings{}).find("daily_") == std::string::npos);
+
+    GameSettings settings;
+    settings.daily = {.date = 20261009, .bestSeconds = 252, .daysPlayed = 12};
+    const std::string text = game::formatSettings(settings);
+    // Its three lines stand together, after the campaign and before the keys.
+    CHECK(text.find("campaign_night = 1\n"
+                    "daily_date = 20261009\n"
+                    "daily_best = 252\n"
+                    "daily_days = 12\n"
+                    "key_forward = W\n") != std::string::npos);
+    CHECK(game::parseSettings(text) == settings);
+    CHECK(game::parseSettings(text).daily.date == 20261009);
+    CHECK(game::parseSettings(text).daily.bestSeconds == 252);
+    CHECK(game::parseSettings(text).daily.daysPlayed == 12);
+
+    // A leap day, the longest time and the largest count.
+    settings.daily = {.date = 20280229,
+                      .bestSeconds = game::MAX_BEST_SECONDS,
+                      .daysPlayed = game::MAX_DAILY_DAYS};
+    CHECK(game::parseSettings(game::formatSettings(settings)) == settings);
+
+    // What a win writes is what the next start reads.
+    settings.daily = game::dailyAfterWin(settings.daily, 20280301, 95.4F).record;
+    const GameSettings readBack = game::parseSettings(game::formatSettings(settings));
+    CHECK(readBack.daily == game::DailyRecord{.date = 20280301,
+                                              .bestSeconds = 95,
+                                              .daysPlayed = game::MAX_DAILY_DAYS});
+    CHECK(game::dailyMenuLine(readBack.daily, 20280301) == "1 March | best 1:35");
+}
+
+TEST_CASE("broken lines of the maze of the day fall back to no best time") {
+    // A day the calendar does not have, or one that is not eight digits, is no day, and
+    // a best time without its day is dropped: it could not be the time to beat.
+    for (const char* date : {"20260229", "20261332", "2026109", "202610091", "tomorrow", "0"}) {
+        CAPTURE(date);
+        const GameSettings settings = game::parseSettings(std::string("daily_date = ") + date +
+                                                          "\ndaily_best = 95\ndaily_days = 3\n");
+        CHECK(settings.daily.date == game::NO_DAILY_DATE);
+        CHECK(settings.daily.bestSeconds == game::NO_BEST_TIME);
+        // The count of days says nothing wrong by itself, so it stays.
+        CHECK(settings.daily.daysPlayed == 3);
+    }
+    CHECK(game::parseSettings("daily_best = 95\n").daily == game::DailyRecord{});
+
+    // Numbers outside their limits are brought to the nearest limit.
+    const GameSettings large =
+        game::parseSettings("daily_date = 20261009\ndaily_best = 999999\ndaily_days = 99999999\n");
+    CHECK(large.daily.bestSeconds == game::MAX_BEST_SECONDS);
+    CHECK(large.daily.daysPlayed == game::MAX_DAILY_DAYS);
+    // A number that cannot be read leaves the default.
+    const GameSettings broken =
+        game::parseSettings("daily_date = 20261009\ndaily_best = fast\ndaily_days = -2\n");
+    CHECK(broken.daily == game::DailyRecord{.date = 20261009, .bestSeconds = 0, .daysPlayed = 0});
+
+    // A day with a best time was won, so it counts as a day, whatever the file says.
+    CHECK(game::parseSettings("daily_date = 20261009\ndaily_best = 95\n").daily ==
+          game::DailyRecord{.date = 20261009, .bestSeconds = 95, .daysPlayed = 1});
+    // The lines in any order.
+    CHECK(game::parseSettings("daily_days = 4\ndaily_best = 95\ndaily_date = 20261009\n").daily ==
+          game::DailyRecord{.date = 20261009, .bestSeconds = 95, .daysPlayed = 4});
 }
