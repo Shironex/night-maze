@@ -2,8 +2,8 @@
 # the maze whenever the flashlight is not on it. shade is the cloth: a cloak from the ground
 # to the shoulders whose hem is torn into tongues, two sleeves that hang to the knees with
 # nothing in them, and a pointed hood. shade_hollow is what the cloth is wrapped around:
-# the hollow of the hood, where a face would be, and the two openings of the cuffs. The game
-# draws those faces as a piece of the night sky and not as cloth.
+# an oval where a face would be, and the two openings of the cuffs. The game draws those
+# faces as a piece of the night sky and not as cloth.
 # Output: assets/models/shade.obj, shade.mtl, shade_hollow.obj and shade_hollow.mtl.
 #
 # Run from the repository root:
@@ -81,14 +81,27 @@ HEM_PULL_IN = 0.25
 # once looking in (add_inward_band). This many bands, counted from the ground.
 INWARD_BANDS = 2
 
-# The hollow of the hood. The corners of the hood rings that look forwards (within this
-# angle of the front) are pulled in to this share of their radius, so the hood has an
-# opening and no face. The rings between the two heights have it. A face between four
-# such corners is the back of the hollow and goes into the model shade_hollow.
+# The front of the hood. The corners of the hood rings that look forwards (within
+# FACE_HALF_ANGLE of the front) do not lie on the round outline: they are pulled back onto
+# the straight line between the two corners beside them, FACE_RIM_ANGLE from the front. So
+# the hood is cut off flat where a face would be, under its brow and over its cowl. The
+# rings between the two heights have it.
 FACE_LOW = 1.66
 FACE_HIGH = 1.95
 FACE_HALF_ANGLE = 50.0
-FACE_INSET = 0.3
+FACE_RIM_ANGLE = 67.5
+
+# The night in the hood: an oval on that flat front, this far in front of the cloth (like
+# a chalk mark on a wall), with its middle at this height and with this many corners. It
+# is the size of a face, and its edge is the only border the night has: no cloth frames
+# it. The middle lies at the height of a ring, where the flat front has a ridge, and no
+# triangle crosses that height, so every triangle lies flat on the cloth behind it. It
+# belongs to the model shade_hollow.
+NIGHT_HEIGHT = 1.81
+NIGHT_HALF_WIDTH = 0.08
+NIGHT_HALF_HEIGHT = 0.1
+NIGHT_SIDES = 16
+NIGHT_GAP = 0.004
 
 # The front of the figure, as an angle around Z: -Y.
 FRONT_ANGLE = 270.0
@@ -113,7 +126,7 @@ CUFF_INSET = 0.03
 # the sleeves and of the cuffs are projected onto their own plane instead, with this many
 # units of u and v per metre: the density the body has along its height.
 UV_UNITS_PER_METRE = 1.0 / (HEIGHT + HEM_DEPTH)
-# Where the picture is dark: the middle of the hollow of the hood (make_textures.py,
+# Where the picture is dark: the middle of the front of the hood (make_textures.py,
 # SHADE_FACE_ROWS and SHADE_FACE_COLUMN). The cuffs take their piece from there.
 DARK_UV = (0.75, 0.86)
 
@@ -121,12 +134,11 @@ DARK_UV = (0.75, 0.86)
 def add_ring(vertices, number):
     """Appends the SIDES corners of ring `number` of the outline.
 
-    Returns the index of its first corner and, for every corner, whether it belongs to
-    the hollow of the hood. The corners go counter clockwise as seen from above.
+    Returns the index of its first corner. The corners go counter clockwise as seen from
+    above.
     """
     height, radius, narrow, forward = RINGS[number]
     first = len(vertices)
-    hollow = []
     for corner in range(SIDES):
         degrees = corner * 360.0 / SIDES
         angle = math.radians(degrees)
@@ -138,23 +150,27 @@ def add_ring(vertices, number):
             fade = 1.0 - max(height, 0.0) / FOLD_TOP
             reach *= 1.0 + FOLD_DEPTH * fade * math.cos(FOLD_COUNT * angle + 0.6 * number)
 
-        # The hollow of the hood.
+        # The flat front of the hood: as far forward as the corners at its rim.
+        depth = reach * narrow * math.sin(angle)
         from_front = abs((degrees - FRONT_ANGLE + 180.0) % 360.0 - 180.0)
-        in_hollow = FACE_LOW <= height <= FACE_HIGH and from_front <= FACE_HALF_ANGLE
-        if in_hollow:
-            reach *= FACE_INSET
-        hollow.append(in_hollow)
+        if FACE_LOW <= height <= FACE_HIGH and from_front <= FACE_HALF_ANGLE:
+            depth = front_depth(number) - forward
 
         # The torn hem: after the folds, which are measured at the height of the outline.
         lifted = height
         if number < HEM_LIFT_RINGS:
             lifted += HEM_LIFT[corner]
             reach *= 1.0 - HEM_LIFT[corner] * HEM_PULL_IN
+            depth *= 1.0 - HEM_LIFT[corner] * HEM_PULL_IN
 
-        vertices.append(
-            (reach * math.cos(angle), forward + reach * narrow * math.sin(angle), lifted)
-        )
-    return first, hollow
+        vertices.append((reach * math.cos(angle), forward + depth, lifted))
+    return first
+
+
+def front_depth(number):
+    """The y of the flat front of the hood at ring `number`: that of its rim corners."""
+    _, radius, narrow, forward = RINGS[number]
+    return forward - radius * narrow * math.cos(math.radians(FACE_RIM_ANGLE))
 
 
 def picture_height(height):
@@ -162,26 +178,23 @@ def picture_height(height):
     return (height + HEM_DEPTH) / (HEIGHT + HEM_DEPTH)
 
 
-def add_band(cloth, hollow, rings, number):
+def add_band(cloth, rings, number):
     """Appends the SIDES faces between ring `number` and the ring above it.
 
-    cloth and hollow are the two models, each a pair of lists (faces, uvs). A face whose
-    four corners all belong to the hollow of the hood goes to hollow, every other one to
-    cloth. The picture goes once around the figure: u is the number of the corner divided
-    by SIDES, and the last face ends at u = 1 and not at u = 0. v is the height of the
-    outline, also where the hem is lifted: the picture is stretched there, not cut.
+    cloth is a pair of lists (faces, uvs). The picture goes once around the figure: u is
+    the number of the corner divided by SIDES, and the last face ends at u = 1 and not at
+    u = 0. v is the height of the outline, also where the hem is lifted: the picture is
+    stretched there, not cut.
     """
-    lower, lower_hollow = rings[number]
-    upper, upper_hollow = rings[number + 1]
+    faces, uvs = cloth
+    lower = rings[number]
+    upper = rings[number + 1]
     low = picture_height(RINGS[number][0])
     high = picture_height(RINGS[number + 1][0])
     for corner in range(SIDES):
         following = (corner + 1) % SIDES
         left = corner / SIDES
         right = (corner + 1) / SIDES
-        all_hollow = (lower_hollow[corner] and lower_hollow[following]
-                      and upper_hollow[corner] and upper_hollow[following])
-        faces, uvs = hollow if all_hollow else cloth
         # Counter clockwise as seen from outside, so the normal points outwards.
         faces.append((lower + corner, lower + following, upper + following, upper + corner))
         uvs.append(((left, low), (right, low), (right, high), (left, high)))
@@ -196,8 +209,8 @@ def add_inward_band(cloth, rings, number):
     a mirror image for the normal map.
     """
     faces, uvs = cloth
-    lower = rings[number][0]
-    upper = rings[number + 1][0]
+    lower = rings[number]
+    upper = rings[number + 1]
     low = picture_height(RINGS[number][0])
     high = picture_height(RINGS[number + 1][0])
     for corner in range(SIDES):
@@ -206,6 +219,46 @@ def add_inward_band(cloth, rings, number):
         right = (corner + 1) / SIDES
         faces.append((lower + following, lower + corner, upper + corner, upper + following))
         uvs.append(((left, low), (right, low), (right, high), (left, high)))
+
+
+def add_night(vertices, hollow):
+    """Appends the oval of night on the flat front of the hood to hollow.
+
+    A fan of NIGHT_SIDES triangles around its middle, looking forwards.
+    """
+    faces, uvs = hollow
+    # The flat front, from its lower ring to its upper one: the height and the y of each.
+    front = [(RINGS[number][0], front_depth(number)) for number in range(len(RINGS))
+             if FACE_LOW <= RINGS[number][0] <= FACE_HIGH]
+
+    def depth_at(height):
+        # The y of the cloth at a height: a straight line from ring to ring.
+        for (low, low_depth), (high, high_depth) in zip(front, front[1:]):
+            if low <= height <= high:
+                share = (height - low) / (high - low)
+                return low_depth + share * (high_depth - low_depth)
+        raise ValueError(f"the night in the hood leaves the flat front at {height} m")
+
+    def add_corner(x, height):
+        vertices.append((x, depth_at(height) - NIGHT_GAP, height))
+        # Its place in the picture: around the middle of the dark, to the right and up as
+        # someone sees it who looks at the face.
+        uv = (DARK_UV[0] + x * UV_UNITS_PER_METRE,
+              DARK_UV[1] + (height - NIGHT_HEIGHT) * UV_UNITS_PER_METRE)
+        return len(vertices) - 1, uv
+
+    middle = add_corner(0.0, NIGHT_HEIGHT)
+    rim = []
+    for corner in range(NIGHT_SIDES):
+        angle = corner / NIGHT_SIDES * 2.0 * math.pi
+        # Rounded, so the two corners at the height of the middle lie exactly on it.
+        rim.append(add_corner(NIGHT_HALF_WIDTH * math.cos(angle),
+                              round(NIGHT_HEIGHT + NIGHT_HALF_HEIGHT * math.sin(angle), 6)))
+    for corner in range(NIGHT_SIDES):
+        # Counter clockwise as seen from the front, where +X is to the right.
+        triangle = (middle, rim[corner], rim[(corner + 1) % NIGHT_SIDES])
+        faces.append(tuple(index for index, _ in triangle))
+        uvs.append(tuple(uv for _, uv in triangle))
 
 
 def add_projected_face(vertices, model, corners, inside, uv_centre):
@@ -349,11 +402,11 @@ def build(shots):
 
     rings = [add_ring(vertices, number) for number in range(len(RINGS))]
     for number in range(len(RINGS) - 1):
-        add_band(cloth, hollow, rings, number)
+        add_band(cloth, rings, number)
 
     # The tip of the hood is closed by one small face. Its piece of the picture is a
     # point at the top edge: the face is two centimetres wide.
-    top = tuple(rings[-1][0] + corner for corner in range(SIDES))
+    top = tuple(rings[-1] + corner for corner in range(SIDES))
     cloth[0].append(top)
     cloth[1].append(tuple((corner / SIDES, 1.0) for corner in range(SIDES)))
     # The hem has no face under it: it is in the ground.
@@ -362,6 +415,8 @@ def build(shots):
     inner_rings = [add_ring(vertices, number) for number in range(INWARD_BANDS + 1)]
     for number in range(INWARD_BANDS):
         add_inward_band(cloth, inner_rings, number)
+
+    add_night(vertices, hollow)
 
     add_sleeve(vertices, cloth, hollow, 1.0)
     add_sleeve(vertices, cloth, hollow, -1.0)

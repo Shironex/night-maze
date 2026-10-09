@@ -1020,14 +1020,14 @@ TEST_CASE("loadObj: splinter_a.obj and splinter_b.obj") {
 
 TEST_CASE("loadObj: shade.obj and shade_hollow.obj") {
     // The two models the shade is drawn with: the cloth, and the faces that show the night
-    // (the hollow of the hood and the two cuffs). The cloth: 12 bands of 16 sides without
-    // the 8 of the hollow, the tip of the hood, the two lowest bands once more from inside,
-    // and two sleeves of 12 sides with a lid. The hollow: those 8 sides and two cuffs.
+    // (an oval where a face would be, and the two cuffs). The cloth: 12 bands of 16 sides,
+    // the tip of the hood, the two lowest bands once more from inside, and two sleeves of
+    // 12 sides with a lid. The hollow: an oval of 16 triangles and two cuffs.
     struct Part {
         std::string file;
         std::size_t triangles;
     };
-    for (const Part& part : {Part{.file = "shade.obj", .triangles = 502U},
+    for (const Part& part : {Part{.file = "shade.obj", .triangles = 518U},
                              Part{.file = "shade_hollow.obj", .triangles = 24U}}) {
         CAPTURE(part.file);
         // Not through loadGameModel, for the same reason as the flask: slanted faces.
@@ -1068,15 +1068,26 @@ TEST_CASE("loadObj: shade.obj and shade_hollow.obj") {
     CHECK(clothBounds.min.x > -0.55F);
     CHECK(clothBounds.max.x < 0.55F);
 
-    // The hollow lies inside the outline of the cloth: the back of the hood between 1.69
-    // and 1.92 m, and the cuffs at the knees.
+    // The hollow lies inside the outline of the cloth: the oval on the front of the hood,
+    // 16 cm wide and from 1.71 to 1.91 m, and the cuffs at the knees.
     assets::ObjModel hollow;
     REQUIRE(assets::loadObj(modelsDirectory() / "shade_hollow.obj", hollow, error));
     const Bounds hollowBounds = boundsOf(hollow);
-    CHECK(hollowBounds.max.y == doctest::Approx(1.92F));
+    CHECK(hollowBounds.max.y == doctest::Approx(1.91F));
     CHECK(hollowBounds.min.y > 0.6F);
     CHECK(hollowBounds.min.x > clothBounds.min.x);
     CHECK(hollowBounds.max.x < clothBounds.max.x);
+
+    // The night looks out of the front of the hood only (the front of the model is +Z):
+    // no face of it above the cuffs looks to a side, back or up, so from the side and
+    // from behind the hood is cloth.
+    for (std::size_t i = 0; i < hollow.indices.size(); ++i) {
+        const gfx::Vertex& vertex = hollow.vertices[hollow.indices[i]];
+        if (vertex.position.y > 1.5F) {
+            CHECK(vertex.normal.z > 0.95F);
+            CHECK(std::abs(vertex.position.x) <= 0.0801F);
+        }
+    }
 }
 
 TEST_CASE("loadObj: material libraries and texture paths of files written by the test") {
