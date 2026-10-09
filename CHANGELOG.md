@@ -2,6 +2,32 @@
 
 Release notes for Night Maze, newest first.
 
+## 0.14.0 (2026-10-09)
+
+The maze looks and sounds like the story now, and it has a theme, a ledger, a daily hedge and a village to light.
+
+### What's new
+
+- The crystals are drawn as splinters of the moon: a pale, bright fracture inside a dark rind, in one piece or in three. The game still calls them crystals in its words, and nothing about how many you need has changed.
+- One heartstone in every maze that has a dead end to spare. It is a larger splinter in the dead end farthest from the start. It counts as three crystals and fills the battery. It is heavy, so you cannot sprint for 30 seconds after you take it, and the tea waits until the weight is gone. The gate still asks for the same number of ordinary crystals, so the heartstone is a shortcut and you never need it. The stamina line shows the weight, and one sentence tells you when it opens the gate.
+- The notes are chalk marks on the wall now, no longer sheets of paper. A line of story is a small lamp. A hint is an arrow that leans the way it points: up, down, left or right as you face the wall. When no crystal is left to point at, the hint shows the lamp.
+- A brass bell hangs in the roof of the gatehouse and swings with every toll.
+- Some walls are crowned with twigs of stone and some are broken, with a coping stone gone. They are the top edge only: a wall that looks broken still blocks you. Walls near the start, walls with a lever or a note and walls a lever opens stay whole.
+- Every night starts at a stile in the wall of the start cell: stone steps up to a notch and an oak post with an empty iron hook. You cannot climb it, but it is something to recognise when the shadow has carried you back.
+- A lever is a shepherd's crook on a board with a rope into the turf, and it swings when you pull it. The wall it opens now has an iron ring low on both sides, so you can tell it from the other walls.
+- The shadow has the night sky in its hood, and the stars there flare brighter while the light burns it. Its sleeves hang empty now and its hem is torn.
+- Stone sheep stand in dead ends and corners of the maze, all of them looking towards the gate: 3 in a small maze, 4 from 16 x 16 and 5 from 22 x 22. They only stand there, and the map does not show them.
+- "Tonight's hedge" in the main menu is one maze a day, the same for every player. It is free play on Normal with the shadow, and the date is the seed. The game keeps your best time of the day and on how many days you won.
+- "Ledger" in the main menu and the pause menu lists the 24 lines of the story under the night that tells them. The lines whose note you opened are written out and the others are blanks. The lines you read are kept with your settings.
+- A village stands on the ridge behind the gate, far away. Every night you win lights more of it. When you win a night, the camera now rises over the gate and turns to the village before you go on. After the fifth night it stays on the village a little longer, with the last window brightest, and then the ending card comes.
+- The main menu has a theme now, a quiet piece of music of about 73 seconds that loops. It plays on the main menu and its pages and nowhere else. The settings screen has a new slider for the music, which starts at 60.
+- The sounds are made again: the bells, the wind, the steps, the lever, the gate and the sounds of the shadow have more body, and most of them sound in a stone room. There is one new sound, for the heartstone, which makes 23 sounds.
+- Three small fixes. The wind of the maze now goes quiet with the fade when the shadow catches you. The small tick on the map that points to the gate goes away once the exit cell is on the map. The short sentences on the screen have a soft dark backing, so you can read them over a bright wall.
+- The mossy wall was much darker than the other stone and looked like a black patch from above. It is as bright as the plain wall now.
+- Your settings and progress from 0.13.0 load as they were. The music volume starts at 60. The ledger starts from your old progress: it holds the lines before your place in the story that are not about the shadow, and every line of the nights you have won. The lines can be wrong for a note you never opened, and they are right from now on. Tonight's hedge starts with no best time.
+- The same seed no longer gives exactly the same maze contents as in 0.13.0. The walls, levers and notes are where they were, but the heartstone takes a dead end, so in almost every maze one crystal moves to another cell, and in about one round of twenty one flask moves to the next dead end. Stone sheep are new, and some walls gain a crowned or broken look.
+- The video behind the main menu is recorded again, so it shows the new look.
+
 ## 0.13.0 (2026-10-08)
 
 The story has a path now: five nights, a shadow that has to find you, and a screen with real instruments.
