@@ -3,10 +3,12 @@
 #include "game/Stile.hpp"
 
 #include "assets/ObjLoader.hpp"
+#include "game/Daily.hpp"
 #include "game/Difficulty.hpp"
 #include "game/Flasks.hpp"
 #include "game/GateLamp.hpp"
 #include "game/Grass.hpp"
+#include "game/Interactables.hpp"
 #include "game/MazeLayout.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/Player.hpp"
@@ -81,6 +83,33 @@ scene::Aabb stileBoxOf(const game::MazeWorld& world) {
     REQUIRE(world.stileWall.has_value());
     REQUIRE(world.colliders.size() == world.walls.size() + world.pillars.size() + 1U);
     return world.colliders.back();
+}
+
+// Checks that nothing a player can use, and no slab ring, is on the wall of the stile or
+// reaches into its box. Levers and notes never get the start cell at all.
+void checkStileKeepsClearOfInteractables(const game::MazeWorld& world) {
+    // Half of the room a slab ring is given around the point it hangs at: more than the
+    // ring is wide.
+    constexpr float RING_ROOM = 0.15F;
+    const scene::Aabb box = inside(stileBoxOf(world));
+    const game::WallRef stileWall{.cell = game::START_CELL, .side = game::STILE_SIDE};
+
+    for (const game::Lever& lever : world.interactables.levers) {
+        CHECK(lever.mount.cell != game::START_CELL);
+        CHECK_FALSE(scene::overlaps(lever.box, box));
+        // The wall a lever opens is a wall between two cells, so never the border wall
+        // of the stile. Its rings hang on both faces, and one may be in the start cell.
+        for (const game::WallRef& mount : game::slabRingMounts(lever)) {
+            CHECK_FALSE(mount == stileWall);
+            const scene::Aabb ring =
+                scene::Aabb::fromCenter(game::slabRingPosition(mount, 0.0F), glm::vec3{RING_ROOM});
+            CHECK_FALSE(scene::overlaps(ring, box));
+        }
+    }
+    for (const game::Note& note : world.interactables.notes) {
+        CHECK(note.mount.cell != game::START_CELL);
+        CHECK_FALSE(scene::overlaps(note.box, box));
+    }
 }
 
 // A heightmap that is not flat: 8 by 8 values from 0 to 1 made by a formula.
@@ -207,6 +236,27 @@ TEST_CASE("nothing of a maze is placed where the stile stands") {
             CHECK(game::cellAt(stone) != game::START_CELL);
         }
     });
+}
+
+TEST_CASE("no lever, note or slab ring is on the wall of the stile or in its box") {
+    forEveryWorld(checkStileKeepsClearOfInteractables);
+}
+
+TEST_CASE("the maze of a day has the stile, and its start cell is clear") {
+    const game::DifficultyLevel& level = game::difficultyLevel(game::DAILY_DIFFICULTY);
+    // The day is the seed. The numbers after the last day of a month are no days.
+    constexpr std::uint32_t DAYS = 400;
+    for (std::uint32_t date = game::TOOL_DAILY_DATE; date < game::TOOL_DAILY_DATE + DAYS; ++date) {
+        if (!game::isDailyDate(date)) {
+            continue;
+        }
+        CAPTURE(date);
+        const game::MazeWorld world = game::buildMazeWorld(level.mazeWidth, level.mazeHeight, date);
+        for (const game::CrystalSpawn& crystal : world.crystals) {
+            CHECK(crystal.cell != game::START_CELL);
+        }
+        checkStileKeepsClearOfInteractables(world);
+    }
 }
 
 TEST_CASE("the player starts clear of the stile, and so does whoever the shade carries back") {
