@@ -878,7 +878,7 @@ TEST_CASE("the wind of the maze is heard while a round is played and nowhere els
           GameMode::SettingsFromMenu, GameMode::SettingsFromPause, GameMode::Intro,
           GameMode::FreePlay, GameMode::Nights, GameMode::NewCampaign, GameMode::NightCard,
           GameMode::EndingCard, GameMode::CampaignIntro, GameMode::LedgerFromMenu,
-          GameMode::LedgerFromPause}) {
+          GameMode::LedgerFromPause, GameMode::VillageBeat}) {
         CHECK_FALSE(game::mazeWindPlays({.mode = mode}));
     }
     // The window is not the active one, or the menu camera shows the game.

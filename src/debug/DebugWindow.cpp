@@ -144,6 +144,8 @@ const char* screenName(game::GameMode mode) {
         return "night card";
     case game::GameMode::EndingCard:
         return "ending card";
+    case game::GameMode::VillageBeat:
+        return "village";
     case game::GameMode::Intro:
         return "Intro";
     case game::GameMode::CampaignIntro:

@@ -37,6 +37,7 @@
 #include "game/StartOptions.hpp"
 #include "game/Terrain.hpp"
 #include "game/TerrainRenderer.hpp"
+#include "game/Village.hpp"
 #include "gfx/Shader.hpp"
 #include "scene/Camera.hpp"
 #include "scene/Collider.hpp"
@@ -663,6 +664,17 @@ private:
     /// its moment is passed, and the card gets its opacities (game::nightCardFrame,
     /// game::endingCardFrame). At its end it sends GameEvent::CardFinished.
     void updateStoryCard();
+
+    /// Starts the look at the village after the last night (GameMode::VillageBeat): its
+    /// clock starts at 0 and the card document is made empty and clear, so the scene
+    /// shows.
+    void startVillageBeat();
+
+    /// One frame of that look, called once per frame while the game is on its screen.
+    /// A key or a mouse button ends it. Otherwise its clock moves on by the time of the
+    /// frame and the picture fades to black near its end (game::villageBeatBlack). At
+    /// its end it sends GameEvent::CardFinished, which leads to the ending card.
+    void updateVillageBeat();
 
     /// Does what the debug UI asked of the campaign (m_campaignRequest) and clears the
     /// request. Called once per frame.

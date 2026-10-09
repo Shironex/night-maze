@@ -58,6 +58,10 @@ enum class GameMode {
     /// it can be opened from: the main menu and the pause menu.
     LedgerFromMenu,
     LedgerFromPause,
+    /// The village on the ridge after the last night is won, for a few seconds before the
+    /// ending card: the camera rises over the gate and the last window lights
+    /// (game/Village.hpp). It ends by itself, and any key ends it earlier.
+    VillageBeat,
 };
 
 /// Something that can change the screen: a button of a menu, the Escape key, or the
@@ -132,7 +136,9 @@ struct NewGame {
 ///     Playing            Escape         Paused
 ///     Playing            FocusLost      Paused
 ///     Playing            RoundWon       RoundEnd
-///     Playing            CampaignWon    EndingCard
+///     Playing            CampaignWon    VillageBeat
+///     VillageBeat        CardFinished   EndingCard
+///     VillageBeat        Escape         EndingCard
 ///     EndingCard         CardFinished   MainMenu
 ///     EndingCard         Escape         MainMenu
 ///     Paused             Escape         Playing
@@ -171,9 +177,9 @@ struct NewGame {
 /// a night leads on to the next night ("Next night", StartNight) or to the list of
 /// nights ("Back to nights", OpenNights): which of the two it offers is a rule of the
 /// campaign (game::nightEndOffer). The last night ends
-/// with the ending card in the place of the result screen, and that card leads to the
-/// main menu. Like the intro, a card runs on a clock of its own and is not touched by
-/// a lost focus.
+/// with a look at the village and then the ending card in the place of the result screen,
+/// and that card leads to the main menu. Like the intro, a card runs on a clock of its own and is
+/// not touched by a lost focus.
 ///
 /// The intro belongs to the campaign: it plays when a campaign begins (BeginCampaign),
 /// and the title card of the first night follows it. It is left in one direction only,
@@ -248,9 +254,9 @@ bool isMenuOpen(GameMode mode);
 /// of a campaign (CampaignIntro).
 bool isIntro(GameMode mode);
 
-/// True for a screen that is a film: the intro, the title card of a night and the ending
-/// card. It has no cursor and no debug window in its picture, nothing can be clicked, and
-/// any key ends it.
+/// True for a screen that is a film: the intro, the title card of a night, the look at
+/// the village after the last night and the ending card. It has no cursor and no debug window in
+/// its picture, nothing can be clicked, and any key ends it.
 bool isFilm(GameMode mode);
 
 /// True while the HUD of the round is drawn (counter, battery, crosshair, cards): only

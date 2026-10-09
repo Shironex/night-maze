@@ -809,6 +809,9 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
     if (m_mode != before && (m_mode == GameMode::NightCard || m_mode == GameMode::EndingCard)) {
         startStoryCard();
     }
+    if (m_mode != before && m_mode == GameMode::VillageBeat) {
+        startVillageBeat();
+    }
 }
 
 void NightMazeApp::handleMenuActions() {
@@ -1240,6 +1243,34 @@ void NightMazeApp::updateStoryCard() {
     }
     // A card on black: the black and the card are all there, the lines come and go.
     showCardFrame(1.0F, 1.0F, frame.lineOpacity, frame.hintOpacity);
+}
+
+void NightMazeApp::startVillageBeat() {
+    m_cardSeconds = 0.0;
+    if (m_cardDocument == ui::NO_DOCUMENT) {
+        return;
+    }
+    // The document of the cards is on the screen (showScreen), with nothing of its
+    // black and nothing of its card: the picture is the scene.
+    writeCardLines({"", "", "", ""}, true);
+    showCardFrame(0.0F, 0.0F, {}, 0.0F);
+}
+
+void NightMazeApp::updateVillageBeat() {
+    // Any key and any mouse button end the look, but not in its first half second, like
+    // a card: the key the player walked through the gate with is still down then.
+    if (m_cardSeconds >= static_cast<double>(INTRO_SKIP_DELAY_SECONDS) && anyKeyPressed()) {
+        handleGameEvent(GameEvent::CardFinished);
+        return;
+    }
+    m_cardSeconds += time().deltaSeconds();
+    if (m_cardSeconds >= static_cast<double>(VILLAGE_BEAT_SECONDS)) {
+        handleGameEvent(GameEvent::CardFinished);
+        return;
+    }
+    if (m_cardDocument != ui::NO_DOCUMENT) {
+        showCardFrame(villageBeatBlack(static_cast<float>(m_cardSeconds)), 0.0F, {}, 0.0F);
+    }
 }
 
 void NightMazeApp::updateIntro() {
@@ -2236,6 +2267,8 @@ void NightMazeApp::onRender(double alpha) {
     handleCampaignRequest();
     if (m_mode == GameMode::NightCard || m_mode == GameMode::EndingCard) {
         updateStoryCard();
+    } else if (m_mode == GameMode::VillageBeat) {
+        updateVillageBeat();
     }
 
     // A player who switches to another program does not want the round to go on: the

@@ -60,9 +60,10 @@ GameMode nextMode(GameMode mode, GameEvent event) {
         if (event == GameEvent::RoundWon) {
             return GameMode::RoundEnd;
         }
-        // The last night of the campaign: its ending card in the place of the result.
+        // The last night of the campaign: the village with its last window, and then the
+        // ending card, in the place of the result.
         if (event == GameEvent::CampaignWon) {
-            return GameMode::EndingCard;
+            return GameMode::VillageBeat;
         }
         break;
     case GameMode::Paused:
@@ -150,6 +151,13 @@ GameMode nextMode(GameMode mode, GameEvent event) {
     case GameMode::EndingCard:
         if (event == GameEvent::CardFinished || event == GameEvent::Escape) {
             return GameMode::MainMenu;
+        }
+        break;
+    case GameMode::VillageBeat:
+        // On to the ending card, at its end or when it is skipped. Escape skips it like
+        // any key and does not jump over the card.
+        if (event == GameEvent::CardFinished || event == GameEvent::Escape) {
+            return GameMode::EndingCard;
         }
         break;
     case GameMode::CampaignIntro:
@@ -260,7 +268,8 @@ bool isIntro(GameMode mode) {
 }
 
 bool isFilm(GameMode mode) {
-    return isIntro(mode) || mode == GameMode::NightCard || mode == GameMode::EndingCard;
+    return isIntro(mode) || mode == GameMode::NightCard || mode == GameMode::EndingCard ||
+           mode == GameMode::VillageBeat;
 }
 
 bool showsHud(GameMode mode) {

@@ -13,7 +13,7 @@ using game::GameEvent;
 using game::GameMode;
 
 // Every screen and every event, for the tests that go through all of them.
-constexpr std::array<GameMode, 16> ALL_MODES = {GameMode::MainMenu,
+constexpr std::array<GameMode, 17> ALL_MODES = {GameMode::MainMenu,
                                                 GameMode::Playing,
                                                 GameMode::Paused,
                                                 GameMode::RoundEnd,
@@ -28,7 +28,8 @@ constexpr std::array<GameMode, 16> ALL_MODES = {GameMode::MainMenu,
                                                 GameMode::EndingCard,
                                                 GameMode::CampaignIntro,
                                                 GameMode::LedgerFromMenu,
-                                                GameMode::LedgerFromPause};
+                                                GameMode::LedgerFromPause,
+                                                GameMode::VillageBeat};
 constexpr std::array<GameEvent, 20> ALL_EVENTS = {
     GameEvent::Play,          GameEvent::Resume,       GameEvent::Restart,
     GameEvent::BackToMenu,    GameEvent::Quit,         GameEvent::Escape,
@@ -685,8 +686,19 @@ TEST_CASE("the title card leads into the round, at its end and when it is skippe
     CHECK_FALSE(game::startsNewGame(GameMode::NightCard, GameEvent::CardFinished));
 }
 
-TEST_CASE("the last night ends with the ending card, and the card with the main menu") {
-    CHECK(game::nextMode(GameMode::Playing, GameEvent::CampaignWon) == GameMode::EndingCard);
+TEST_CASE("the last night ends with the village, the ending card and then the main menu") {
+    CHECK(game::nextMode(GameMode::Playing, GameEvent::CampaignWon) == GameMode::VillageBeat);
+    // The look at the village ends by itself or by a key, and never skips the card.
+    CHECK(game::nextMode(GameMode::VillageBeat, GameEvent::CardFinished) == GameMode::EndingCard);
+    CHECK(game::nextMode(GameMode::VillageBeat, GameEvent::Escape) == GameMode::EndingCard);
+    for (const GameEvent event : ALL_EVENTS) {
+        if (event == GameEvent::CardFinished || event == GameEvent::Escape) {
+            continue;
+        }
+        CHECK(game::nextMode(GameMode::VillageBeat, event) == GameMode::VillageBeat);
+    }
+    // An ordinary night ends with its result screen and not with the village.
+    CHECK(game::nextMode(GameMode::Playing, GameEvent::RoundWon) == GameMode::RoundEnd);
     CHECK(game::nextMode(GameMode::EndingCard, GameEvent::CardFinished) == GameMode::MainMenu);
     CHECK(game::nextMode(GameMode::EndingCard, GameEvent::Escape) == GameMode::MainMenu);
     for (const GameEvent event : ALL_EVENTS) {
@@ -703,7 +715,8 @@ TEST_CASE("the last night ends with the ending card, and the card with the main 
     }
     // The end of a card means nothing on a screen that is no card.
     for (const GameMode mode : ALL_MODES) {
-        if (mode != GameMode::NightCard && mode != GameMode::EndingCard) {
+        if (mode != GameMode::NightCard && mode != GameMode::EndingCard &&
+            mode != GameMode::VillageBeat) {
             CHECK(game::nextMode(mode, GameEvent::CardFinished) == mode);
         }
     }
@@ -714,6 +727,7 @@ TEST_CASE("the intro and the two cards are films: no round, no menu, no HUD, no 
     CHECK(game::isFilm(GameMode::CampaignIntro));
     CHECK(game::isFilm(GameMode::NightCard));
     CHECK(game::isFilm(GameMode::EndingCard));
+    CHECK(game::isFilm(GameMode::VillageBeat));
     for (const GameMode mode : ALL_MODES) {
         if (!game::isFilm(mode)) {
             continue;
