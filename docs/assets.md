@@ -97,7 +97,7 @@ The colour space is decided in code, not in the file. `assets::AssetCache` loads
 
 ## Sounds
 
-`tools/make_sounds.py` computes all twenty-three sounds from sine waves and noise, `heartstone_pickup.wav` being the newest. It uses only the standard library, writes the same bytes every run, and writes into `assets/audio/`. `assets/audio/README.md` is the table of every file and the rules for replacing one with a recording.
+`tools/make_sounds.py` computes all twenty-three sounds from sine waves and noise, `heartstone_pickup.wav` being the newest. The ones that happen in the maze share one computed reverb, a stone room. It uses only the standard library, writes the same bytes every run, and writes into `assets/audio/`. `assets/audio/README.md` is the table of every file and the rules for replacing one with a recording.
 
 ```sh
 python tools/make_sounds.py
@@ -112,6 +112,24 @@ To add a sound and a cue:
 2. Run the script and then `--report`.
 3. Add a value to the `SoundCue` enum in `src/game/SoundCues.hpp`, raise `SOUND_CUE_COUNT`, and add the matching line to the table in `src/game/SoundCues.cpp`, in the order of the enum. A test (`tests/SoundCueTests.cpp`) fails if a cue has no table line.
 4. Add the code that plays the cue and a row to `assets/audio/README.md`. Set `.ambient = true` in the table for a wind.
+
+A sound that another piece of code times itself by has its length written there: the clocks of the hum, the breath and the bell in `src/game/SoundCues.hpp`, and the last card of the intro in `src/game/Intro.cpp`. Check them when a sound gets longer.
+
+## Music
+
+`tools/make_music.py` computes the theme of the main menu, `assets/audio/menu_theme.flac`: a piano, soft strings and a music box, 72.7 seconds that loop. The notes are written in the script. It is the one tool here that needs a package, numpy (I use 2.3), because the piece is 3.2 million samples per channel. It writes the same bytes every run with the same numpy, and it writes the FLAC format itself, so it needs no encoder.
+
+```sh
+python -m pip install numpy
+python tools/make_music.py
+python tools/make_music.py --report
+```
+
+`--report` computes the piece again and checks it: the peak, the seam of the loop on both channels, its level against the click of a volume slider, and that the file in `assets/audio/` is that very piece byte for byte. The decoder of the game is checked by `tests/AudioEngineTests.cpp`, which loads the file and listens across the seam.
+
+The script also holds the three sketches the theme was chosen from. `--sketches <folder>` writes them as WAV files, and `--route sampled --tools <folder>` plays them from recorded instruments that are not in the repository (the script lists them). Neither is part of a plain run, and the game uses none of it.
+
+To change the piece, edit its notes in `SKETCHES` and run the script and `--report` again. The level is `THEME_PEAK_DB`. Where the game plays it is `game::menuThemePlays` in `src/game/SoundCues.cpp`.
 
 ## Menu video and launcher loop
 

@@ -65,7 +65,8 @@ Status words: `accepted (date)` means the code does this today. `superseded by <
 - [key-bindings](key-bindings.md): action table, own key names
 
 ## Audio
-- [audio](audio.md): miniaudio and generated sounds
+- [audio](audio.md): miniaudio, computed sounds and music, one room
+- [menu-music](menu-music.md): FLAC loop, music group, where it plays
 - [audio-loops-and-groups](audio-loops-and-groups.md): loops, footsteps, volume groups
 
 ## Build and release

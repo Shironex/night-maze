@@ -11,7 +11,7 @@ This is how I build, run and check the game: a C++20 program on OpenGL 4.1 (core
 | Visual Studio 2022 or only the Build Tools for Visual Studio 2022, with the workload "Desktop development with C++" | the MSVC compiler, the Windows SDK, CMake, Ninja, clang-format and clang-tidy | I use the Build Tools without the IDE (17.14, MSVC 19.44). The workload brings CMake (3.31.6 on my PC), Ninja, and the LLVM tools in `VC\Tools\Llvm\x64\bin` |
 | git | CMake clones every library at configure time | must be on `PATH` of the same terminal |
 | GNU make | the `make` shortcuts below | optional for building, needed for `make check`. On my PC it comes from Scoop (`scoop install make`, GNU Make 4.4.1). It is not part of Visual Studio |
-| Python 3 | the scripts in `tools/` | only for assets, recordings and the README pictures. The standard library is enough, except where a script says otherwise. I use 3.13 |
+| Python 3 | the scripts in `tools/` | only for assets, recordings and the README pictures. The standard library is enough for every script but one: `tools/make_music.py`, which writes the menu theme, needs numpy (`python -m pip install numpy`, I use 2.3). Building, testing and `make check` need no Python. I use 3.13 |
 | Node 22 and pnpm 10 | the notices file and the README pictures | only for `tools/build-notices.mjs` and `pnpm showcase`. The versions are in CI and `package.json` |
 
 You need a driver with OpenGL 4.1. On an old driver, a remote desktop session or a virtual machine the log says `Failed to create a window with an OpenGL 4.1 Core context`.
