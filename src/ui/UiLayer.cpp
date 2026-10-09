@@ -350,6 +350,17 @@ void UiLayer::focus(DocumentId document, const std::string& elementId) {
     }
 }
 
+void UiLayer::scrollBy(DocumentId document, const std::string& elementId, float pages) {
+    Rml::ElementDocument* target = documentOf(document);
+    if (target == nullptr) {
+        return;
+    }
+    if (Rml::Element* element = target->GetElementById(elementId)) {
+        // SetScrollTop keeps the result between the two ends of the content.
+        element->SetScrollTop(element->GetScrollTop() + pages * element->GetClientHeight());
+    }
+}
+
 std::vector<std::string> UiLayer::takeActions() {
     // std::exchange hands out the list and leaves an empty one in its place.
     return std::exchange(m_actions, {});

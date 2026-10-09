@@ -121,6 +121,13 @@ public:
     /// it after show, which puts the focus on the autofocus element.
     void focus(DocumentId document, const std::string& elementId);
 
+    /// Scrolls the element with this id attribute of a document up or down, when its
+    /// style lets it scroll (overflow). pages is how far, in heights of the element:
+    /// 1 is one full page down, -0.5 half a page up. The ends of the content stop it, so
+    /// a large number is "to the end". RmlUi scrolls by the wheel of the mouse by itself,
+    /// and by no key.
+    void scrollBy(DocumentId document, const std::string& elementId, float pages);
+
     /// The data-action names of the elements that were clicked since the last call, in
     /// the order of the clicks. The list is empty again afterwards. Enter in a text
     /// field with the attribute data-submit="name" puts that name on the list too.
