@@ -1,19 +1,39 @@
-# Makes sketches of a theme for the main menu: three short, slow pieces for piano, each
-# with a second voice (soft strings, and a music box that doubles the melody in the last
-# third). They are SKETCHES for listening and choosing. Nothing here is shipped with the
-# game yet: the engine has no music group and reads only WAV files.
+# Makes the music of the main menu: one slow piece for piano with a second voice (soft
+# strings, and a music box that doubles the melody in the last third), written into
+# assets/audio/menu_theme.flac. The game plays it as a loop while the main menu or one
+# of its pages is shown (game::menuThemePlays).
 #
 # The notes are written down in this file (SKETCHES below), by hand, as an own piece:
-# no melody of any existing piece is quoted. The script turns the notes into sound in
-# one of two ways, and the same notes go through both, so the two can be compared:
+# no melody of any existing piece is quoted. Everything that is heard is computed, like
+# the sounds of tools/make_sounds.py: a soft piano from sine waves (see piano_note),
+# strings and a music box likewise, in the room of make_sounds.py (room_wash) made far
+# larger, because this music lives on its long echo. Nothing is recorded and nothing is
+# downloaded, so nobody else holds a right in the result.
 #
-#   --route synth     Everything is computed, like the sounds of tools/make_sounds.py:
-#                     a soft piano from sine waves (see piano_note), strings and a music
-#                     box likewise. Needs nothing but numpy. Nobody else holds a right in
-#                     the result.
-#   --route sampled   The piano is played by FluidSynth from recordings of a real upright
-#                     piano, the strings and the bells from recordings of real ones. The
-#                     recordings are not in this repository. They are public domain (CC0):
+# Run it from the repository root with a Python that has numpy. It is the one tool of
+# this repository that needs a package: the piece is 3.2 million samples per channel,
+# far too many for the plain loops make_sounds.py gets by with.
+#   python tools/make_music.py            writes assets/audio/menu_theme.flac
+#   python tools/make_music.py --report   computes the piece again, measures it, checks
+#                                         it and compares it with the file that is there
+# The same arguments write the same bytes every time: every random choice (the small
+# unevenness of a hand, the noise of a hammer) comes from a generator with a fixed seed.
+#
+# The piece is a LOOP: what still rings when it is over (the last notes and the room)
+# is added to its beginning, so the file can be played round and round.
+#
+# The file is a FLAC file and not a WAV file: FLAC stores the very same samples in
+# fewer bytes (nothing is lost, unlike MP3), here in about a fifth. This script writes
+# the format itself (flac_bytes), the way make_sounds.py writes its PNG pictures.
+#
+# THE SKETCHES. The theme was chosen by ear from three sketches, each made in two ways.
+# They are still here, to be listened to again or worked on, and are never part of
+# a run without --sketches:
+#   python tools/make_music.py --sketches some/folder
+#   python tools/make_music.py --sketches some/folder --route sampled --tools some/tools
+# writes every sketch as a WAV file. --route synth is the computed way described above.
+# --route sampled plays the same notes from recordings of real instruments, which are
+# NOT in this repository and which the game does not use:
 #                       - FluidSynth 2.6.1 (the player, LGPL, only run, not shipped):
 #                         https://github.com/FluidSynth/fluidsynth/releases/tag/v2.6.1
 #                       - FreePats "Upright Piano KW", SF2, version 2022-02-21, CC0:
@@ -23,18 +43,6 @@
 #                         the set has none): https://github.com/sgossner/VSCO-2-CE
 #                     --tools DIR is the folder that holds them (see find_tools for the
 #                     names it looks for).
-#
-# Both routes end in the same room: the reverb of tools/make_sounds.py (room_wash), made
-# far larger, because this music lives on its long echo.
-#
-# Run it with a Python that has numpy (the sounds of the game need none, this does):
-#   python tools/make_music.py --out-dir some/folder
-#   python tools/make_music.py --out-dir some/folder --route sampled --tools some/tools
-# The same arguments write the same bytes every time: every random choice (the small
-# unevenness of a hand, the noise of a hammer) comes from a generator with a fixed seed.
-#
-# Every piece is a LOOP: what still rings when the piece is over (the last notes and the
-# room) is added to its beginning, so the file can be played round and round.
 import argparse
 import glob
 import hashlib
@@ -62,8 +70,27 @@ ROOM_SEND = {"piano": 0.5, "strings": 0.75, "bells": 0.8}
 # The loudest sample of each voice before the mix: the piano leads, the strings lie far
 # under it, the bells between.
 VOICE_PEAK = {"piano": 1.0, "strings": 0.13, "bells": 0.26}
-# The loudest sample of a finished file, in dBFS.
+# The loudest sample of a sketch, in dBFS.
 PEAK_DB = -3.0
+
+# The sketch that became the theme of the menu, and the file the game loads.
+THEME = "sketch1_a-minor_60bpm"
+THEME_FILE = os.path.join("assets", "audio", "menu_theme.flac")
+# The loudest sample of the theme, in dBFS: 7 dB below the sketch it was chosen from.
+# Music lies under the sounds that tell the player something. The one sound a menu makes
+# is the click that is heard when a volume slider is moved (flashlight_on.wav), so the
+# theme is measured against it, with the measure of make_sounds.py: the loudest tenth
+# of a second, weighed the way the ear weighs frequencies. At -10 dBFS and the music
+# volume the game starts with (THEME_DEFAULT_VOLUME of 100, which the game turns into
+# a factor of 0.36) the loudest moment of the theme lies about 6 dB below the click.
+# With the slider at 100 it lies about 3 dB above it: whoever wants the music in front
+# can have it. --report prints the numbers.
+THEME_PEAK_DB = -10.0
+THEME_DEFAULT_VOLUME = 60.0
+CLICK_FILE = os.path.join("assets", "audio", "flashlight_on.wav")
+# The file begins at most this long before the first note, at the sample where both
+# channels are nearest to 0 (theme_samples).
+THEME_START_SEARCH_SECONDS = 0.3
 
 # ---- the notes -------------------------------------------------------------------------------
 
@@ -650,6 +677,274 @@ def write_file(path, sound):
           f"{hashlib.sha1(data.tobytes()).hexdigest()[:12]}")
 
 
+# ---- the theme of the menu -------------------------------------------------------------------
+
+
+def theme_samples():
+    # The theme as whole 16 bit numbers, one row per moment, left and right: the
+    # sketch THEME on the computed route, at THEME_PEAK_DB.
+    #
+    # Where the file BEGINS is chosen: a loop has no beginning of its own. The game
+    # converts the file to the sample rate of the sound device when it loads it, and
+    # that conversion starts from silence, so the first few samples it gives are pulled
+    # towards 0. A file that began at a loud sample would tick there on every round
+    # (src/audio/AudioEngine.cpp). So the piece is turned until it begins at the sample
+    # of its last THEME_START_SEARCH_SECONDS where both channels together are nearest
+    # to 0: a moment before the first note, under the echo of the last one.
+    sketch = SKETCHES[THEME]
+    events, total = events_of(sketch)
+    key_notes = {midi % 12 for _, midi, _, _ in events["piano"]}
+    sound = mixed(synth_voices(events, total, key_notes, sketch["seed"]))
+    data = np.round(sound.T * 10.0 ** ((THEME_PEAK_DB - PEAK_DB) / 20.0) * 32767.0)
+    data = data.astype(np.int64)
+    search = int(THEME_START_SEARCH_SECONDS * RATE)
+    start = len(data) - search + int(np.argmin(np.abs(data[-search:]).sum(axis=1)))
+    return np.roll(data, -start, axis=0)
+
+
+# ---- the FLAC file ---------------------------------------------------------------------------
+
+# How many samples one frame of the file holds. Every frame can be decoded by itself.
+FLAC_BLOCK = 4096
+
+
+def checksum_table(polynomial, bits):
+    # The table of a CRC checksum: what one byte does to the sum, for each of the 256
+    # bytes. FLAC uses two, of 8 bits for the head of a frame and of 16 for all of it.
+    top, mask = 1 << (bits - 1), (1 << bits) - 1
+    table = []
+    for byte in range(256):
+        value = byte << (bits - 8)
+        for _ in range(8):
+            value = ((value << 1) ^ polynomial) & mask if value & top else (value << 1) & mask
+        table.append(value)
+    return table
+
+
+CRC8 = checksum_table(0x07, 8)
+CRC16 = checksum_table(0x8005, 16)
+
+
+def crc8(data):
+    value = 0
+    for byte in data:
+        value = CRC8[value ^ byte]
+    return value
+
+
+def crc16(data):
+    value = 0
+    for byte in data:
+        value = ((value << 8) & 0xFFFF) ^ CRC16[(value >> 8) ^ byte]
+    return value
+
+
+def bits_of(value, count):
+    # A whole number as count bits, the highest first. A negative number is written
+    # the way a computer holds it (two's complement).
+    return [(int(value) >> (count - 1 - place)) & 1 for place in range(count)]
+
+
+def flac_channel(block):
+    # One channel of one frame as a list of bits (a SUBFRAME).
+    #
+    # FLAC does not store the samples. It GUESSES each one from the ones before it and
+    # stores how far off the guess was (the RESIDUAL), which for music is a far smaller
+    # number than the sample. The five fixed guesses of the format are tried: "0", "the
+    # one before", "the line through the two before" and so on, which are the
+    # differences of the samples taken 0 to 4 times. The one with the smallest
+    # residuals wins, and the first samples (as many as the guess looks back) are
+    # stored as they are.
+    #
+    # The residuals are written in the RICE CODE, which is short for small numbers: the
+    # number is split into its lowest k bits, written plainly, and the rest, written as
+    # that many zeros and a one. The sign is folded in first (0, -1, 1, -2 become 0, 1,
+    # 2, 3). The block is cut into eight parts and each part gets the k that makes it
+    # shortest: loud and quiet moments of one block need different ones.
+    size = len(block)
+    order = min(range(min(5, size)), key=lambda n: int(np.abs(np.diff(block, n)).sum()))
+    residual = np.diff(block, order)
+    folded = (residual << 1) ^ (residual >> 63)
+    parts = 8 if size == FLAC_BLOCK else 1
+    # Zeros in the place of the first samples make every part the same length. A zero
+    # adds nothing to the sums below.
+    table = np.concatenate([np.zeros(order, dtype=np.int64), folded]).reshape(parts, -1)
+    counts = np.full(parts, table.shape[1])
+    counts[0] -= order
+    # k from 0 to 14: 15 is a code of its own in the format (samples written plainly).
+    costs = np.array([(table >> k).sum(axis=1) + counts * (k + 1) for k in range(15)])
+    best = costs.argmin(axis=0)
+
+    k = np.repeat(best, table.shape[1])[order:]
+    rest = folded >> k
+    # Every part starts with its k in four bits.
+    head = np.zeros(len(folded), dtype=np.int64)
+    head[np.cumsum(counts)[:-1]] = 4
+    head[0] = 4
+    lengths = head + rest + 1 + k
+    starts = np.cumsum(lengths) - lengths + head
+    bits = np.zeros(int(lengths.sum()), dtype=np.uint8)
+    first = head == 4
+    for place in range(4):
+        bits[starts[first] - 4 + place] = (k[first] >> (3 - place)) & 1
+    # The zeros are there already: the one that ends them, then the lowest k bits.
+    bits[starts + rest] = 1
+    for place in range(int(k.max())):
+        has = k > place
+        bits[(starts + rest + 1 + place)[has]] = (folded[has] >> (k[has] - 1 - place)) & 1
+
+    # In front: one 0, "a fixed guess that looks back order samples" (001 and the
+    # order in three bits), one 0. Then the first samples, 16 bits each. Then "Rice
+    # code with k in four bits" (00) and how often the block was halved into parts.
+    front = bits_of(0b0010000 | (order << 1), 8)
+    for sample in block[:order]:
+        front += bits_of(sample, 16)
+    front += bits_of(0, 2) + bits_of(parts.bit_length() - 1, 4)
+    return np.concatenate([np.array(front, dtype=np.uint8), bits])
+
+
+def flac_bytes(data):
+    # 16 bit stereo samples (one row per moment) as the bytes of a FLAC file: the four
+    # letters "fLaC", one block that describes the stream, then the frames.
+    assert data.shape[1] == 2 and RATE == 44100 and np.abs(data).max() < 32768
+    frames = []
+    for number, start in enumerate(range(0, len(data), FLAC_BLOCK)):
+        block = data[start:start + FLAC_BLOCK]
+        # The head of a frame: 14 ones and "every frame has the same size" (FF F8), the
+        # size of this block (1100: 4096 samples, 0111: written out below, for the last
+        # one) and the sample rate (1001: 44 100), two channels stored each by itself
+        # (0001) and 16 bits (100). Then the number of the frame, written the way UTF-8
+        # writes a character, the size where it was promised, and a checksum.
+        whole = len(block) == FLAC_BLOCK
+        head = bytes((0xFF, 0xF8, (0xC0 if whole else 0x70) | 0x09, 0x18))
+        head += chr(number).encode("utf-8")
+        if not whole:
+            head += struct.pack(">H", len(block) - 1)
+        head += bytes((crc8(head),))
+        # np.packbits fills the last byte with zeros, as the format asks.
+        body = np.packbits(np.concatenate([flac_channel(block[:, side]) for side in range(2)]))
+        frame = head + body.tobytes()
+        frames.append(frame + struct.pack(">H", crc16(frame)))
+    # The description of the stream (STREAMINFO, 34 bytes): the smallest and largest
+    # block and frame, then in 64 bits the sample rate (20), the channels less one (3),
+    # the bits of a sample less one (5) and the number of samples (36), and the MD5 sum
+    # of the samples as a WAV file would hold them, by which a decoder can tell that it
+    # got back exactly what went in.
+    sizes = [len(frame) for frame in frames]
+    info = struct.pack(">HH", FLAC_BLOCK, FLAC_BLOCK)
+    info += min(sizes).to_bytes(3, "big") + max(sizes).to_bytes(3, "big")
+    info += ((RATE << 44) | (1 << 41) | (15 << 36) | len(data)).to_bytes(8, "big")
+    info += hashlib.md5(data.astype("<i2").tobytes()).digest()
+    # 0x80: this is the last block before the sound. 0: it is the description.
+    return b"fLaC" + bytes((0x80,)) + len(info).to_bytes(3, "big") + info + b"".join(frames)
+
+
+# ---- measuring the theme (--report) ----------------------------------------------------------
+
+
+def loudest_tenth(mono):
+    # The loudest tenth of a second of a sound (numbers between -1 and 1) in dB, weighed
+    # the way the ear weighs frequencies: the measure "loudest dBA" of make_sounds.py
+    # (see measure there), computed with numpy.
+    window = make_sounds.FRAME
+    weights = np.array([make_sounds.a_weight(k * RATE / window) for k in range(window // 2)])
+    hann = 0.5 - 0.5 * np.cos(2.0 * np.pi * np.arange(window) / window)
+    padded = np.concatenate([np.zeros(window // 2), mono, np.zeros(window)])
+    loudest = 0.0
+    for start in range(0, len(mono), 512):
+        power = np.abs(np.fft.rfft(padded[start:start + window] * hann)[:window // 2]) ** 2
+        loudest = max(loudest, float((2.0 * power * weights)[1:].sum()))
+    return 10.0 * math.log10(max(loudest / 0.375 / window ** 2, 1e-18))
+
+
+def bright_energy(piece):
+    # How much of a piece of sound lies above 4 kHz. The theme has next to nothing
+    # there, and a tick has most of its energy there.
+    spectrum = np.abs(np.fft.rfft(piece * np.hanning(len(piece)))) ** 2
+    return float(spectrum[np.fft.rfftfreq(len(piece), 1.0 / RATE) > 4000.0].sum())
+
+
+def report():
+    # Computes the theme again and says what can be said about it without ears. Returns
+    # the number of checks that missed.
+    data = theme_samples()
+    written = flac_bytes(data)
+    values = data / 32768.0
+    mono = values.mean(axis=1)
+    seconds = len(data) / RATE
+    peak = 20.0 * math.log10(np.abs(values).max())
+    print(f"{THEME_FILE}: {seconds:.2f} s, stereo, {RATE} samples per second, 16 bit, "
+          f"{len(written)} bytes ({len(written) / (len(data) * 4):.0%} of the same sound as WAV)")
+    print(f"peak {peak:.2f} dBFS, RMS {10.0 * math.log10((values ** 2).mean()):.2f} dBFS, "
+          f"DC {values.mean():+.6f}, first sample {data[0].tolist()}, last {data[-1].tolist()}")
+    # What the two channels share (their half sum) and what they differ in.
+    shared = 10.0 * math.log10((mono ** 2).mean())
+    side = 10.0 * math.log10(((values[:, 0] - values[:, 1]) ** 2).mean() / 4.0)
+    print(f"left and right: the part they share {shared:.2f} dBFS, the part they differ in "
+          f"{side:.2f} dBFS")
+
+    # The seam: the step from the last sample to the first one and the bend there, next
+    # to what is ordinary inside the file, like make_sounds.py does it for its loop.
+    seams = []
+    for name, channel in zip(("left", "right"), data.T):
+        steps = np.diff(channel)
+        over = channel[0] - channel[-1]
+        seams.append((abs(int(over)), math.sqrt(float((steps ** 2).mean())),
+                      max(abs(int(over - steps[-1])), abs(int(steps[0] - over))),
+                      math.sqrt(float((np.diff(steps) ** 2).mean()))))
+        print(f"seam, {name}: step {seams[-1][0]} (ordinary {seams[-1][1]:.0f}), bend "
+              f"{seams[-1][2]} (ordinary {seams[-1][3]:.0f}), in steps of a 16 bit sample")
+    # The same seam as the ear meets it: the third of a second before it, the one after
+    # it and the one that lies across it, each by its loudness and by what it holds
+    # above 4 kHz.
+    piece = 16384
+    turned = np.roll(mono, piece)
+    before, across, after = (turned[start:start + piece] for start in (0, piece // 2, piece))
+    levels = [10.0 * math.log10((part ** 2).mean()) for part in (before, across, after)]
+    bright = [bright_energy(part) for part in (before, across, after)]
+    print(f"around the seam: {levels[0]:.1f} dBFS before, {levels[1]:.1f} across, "
+          f"{levels[2]:.1f} after. Above 4 kHz: "
+          + ", ".join(f"{10.0 * math.log10(max(value, 1e-30)):.1f}" for value in bright) + " dB")
+
+    click_channels, _ = make_sounds.read_wav(CLICK_FILE)
+    click = loudest_tenth(np.array(click_channels[0]))
+    theme = loudest_tenth(mono)
+    gain = 20.0 * math.log10((THEME_DEFAULT_VOLUME / 100.0) ** 2)
+    print(f"loudest tenth of a second to the ear: the click of a slider {click:.2f} dBA, the "
+          f"theme {theme:.2f} dBA as the file is (music volume 100) and {theme + gain:.2f} dBA "
+          f"at the music volume {THEME_DEFAULT_VOLUME:.0f} the game starts with")
+    print()
+
+    there = None
+    if os.path.exists(THEME_FILE):
+        with open(THEME_FILE, "rb") as file:
+            there = file.read()
+    found = [
+        ("a loop of 60 to 90 seconds", 60.0 <= seconds <= 90.0),
+        (f"peak at {THEME_PEAK_DB} dBFS", abs(peak - THEME_PEAK_DB) < 0.01),
+        ("no DC offset (below 0.0001)", abs(values.mean()) < 0.0001),
+        ("it begins near 0 on both channels (within 16 steps of a 16 bit sample)",
+         int(np.abs(data[0]).sum()) <= 16),
+        ("no step at the seam (at most 3 times the ordinary one)",
+         all(step <= 3.0 * ordinary for step, ordinary, _, _ in seams)),
+        ("no bend at the seam (at most 3 times the ordinary one)",
+         all(bend <= 3.0 * ordinary for _, _, bend, ordinary in seams)),
+        ("as loud before the seam as after it (within 4 dB)", abs(levels[0] - levels[2]) < 4.0),
+        ("no tick at the seam: nothing more above 4 kHz across it than beside it (within 3 dB)",
+         bright[1] <= 2.0 * max(bright[0], bright[2])),
+        ("real stereo: what the channels differ in is within 12 dB of what they share",
+         side > shared - 12.0),
+        (f"under the click at the music volume {THEME_DEFAULT_VOLUME:.0f}, by at least 3 dB",
+         theme + gain <= click - 3.0),
+        ("the file in assets/audio is this very piece, byte for byte", there == written),
+    ]
+    for text, passed in found:
+        print(f"  {'ok  ' if passed else 'MISS'}  {text}")
+    missed = sum(not passed for _, passed in found)
+    print(f"\n{missed} checks missed")
+    return missed
+
+
 def self_check():
     # The smallest things that must hold: note names, a bar that does not add up is
     # refused, and a note laid over the end of a loop comes back at its beginning.
@@ -658,6 +953,9 @@ def self_check():
     track = np.zeros((2, 10))
     lay(track, 8.0 / RATE, np.ones((2, 4)))
     assert track[0].tolist() == [1.0, 1.0, 0, 0, 0, 0, 0, 0, 1.0, 1.0]
+    # The two checksums of FLAC, on the nine digits every such sum is quoted for.
+    assert crc8(b"123456789") == 0xF4 and crc16(b"123456789") == 0xFEE8
+    assert bits_of(-2, 4) == [1, 1, 1, 0]
     for name, sketch in SKETCHES.items():
         events, total = events_of(sketch)
         assert 60.0 <= total <= 90.0, (name, total)
@@ -665,20 +963,33 @@ def self_check():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Makes sketches of a menu theme.")
-    parser.add_argument("--out-dir", required=True)
+    parser = argparse.ArgumentParser(description="Makes the music of the main menu.")
+    parser.add_argument("--report", action="store_true",
+                        help="measure and check the theme instead of writing it")
+    parser.add_argument("--sketches", metavar="DIR",
+                        help="write the sketches the theme was chosen from as WAV files")
     parser.add_argument("--route", choices=("synth", "sampled"), default="synth")
     parser.add_argument("--tools", help="folder with FluidSynth and the recordings")
     parser.add_argument("--only", help="make only the sketches whose name contains this")
     arguments = parser.parse_args()
 
     self_check()
+    if arguments.report:
+        raise SystemExit(1 if report() else 0)
+    if not arguments.sketches:
+        data = theme_samples()
+        written = flac_bytes(data)
+        with open(THEME_FILE, "wb") as file:
+            file.write(written)
+        print(f"wrote {THEME_FILE} ({len(data) / RATE:.2f} s, 2 ch, {len(written)} bytes)")
+        return
+
     tools = None
     if arguments.route == "sampled":
         if not arguments.tools:
             raise SystemExit("--route sampled needs --tools DIR")
         tools = find_tools(arguments.tools)
-    os.makedirs(arguments.out_dir, exist_ok=True)
+    os.makedirs(arguments.sketches, exist_ok=True)
     for name, sketch in SKETCHES.items():
         if arguments.only and arguments.only not in name:
             continue
@@ -688,7 +999,8 @@ def main():
         else:
             key_notes = {midi % 12 for _, midi, _, _ in events["piano"]}
             voices = synth_voices(events, total, key_notes, sketch["seed"])
-        write_file(os.path.join(arguments.out_dir, f"{name}_{arguments.route}.wav"), mixed(voices))
+        write_file(os.path.join(arguments.sketches, f"{name}_{arguments.route}.wav"),
+                   mixed(voices))
 
 
 if __name__ == "__main__":
