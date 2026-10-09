@@ -33,6 +33,7 @@ Status words: `accepted (date)` means the code does this today. `superseded by <
 - [the-stile](the-stile.md): step stile in the north wall of the start cell, one box
 - [round-state](round-state.md): the round owns a maze copy
 - [picking](picking.md): ray from the eye, pulsing glow
+- [crook-lever](crook-lever.md): crook on a board, rope, ring on the wall it opens
 - [exit-cell](exit-cell.md): farthest cell by passages
 - [crystals-and-gate](crystals-and-gate.md): crystal count, gate share, darkness
 - [crystal-lights](crystal-lights.md): nearest crystals carry the lights

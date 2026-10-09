@@ -10,7 +10,7 @@ The scripts in `tools/blender/` run inside headless Blender. I use Blender 5.2.1
 |---|---|
 | `blender_common.py` | shared helpers: scene reset, boxes, UV projection, the material, the OBJ export with every option written out, review renders |
 | `make_textures.py` | the colour pictures and a normal map for each (name plus `_normal`), into `assets/textures/` |
-| the thirteen `build_*.py` files | one model each (`build_lever.py`, `build_splinter.py` and `build_stile.py` write two, `build_chalk.py` three, and `build_wall_straight.py` three: the plain wall, `wall_straight_crown` and `wall_straight_broken`), into `assets/models/`. `build_gate.py` is the door of the exit, `build_gate_arch.py` the gatehouse over it, `build_gate_lantern.py` its lantern, `build_gate_bell.py` the bell that swings beside the big lantern, `build_milestone.py` the stone in front of it, `build_chalk.py` the chalk marks on the walls and `build_stile.py` the stile of the start cell. `build_splinter.py` is what the player collects: the game calls them crystals and draws them as splinters of the moon |
+| the thirteen `build_*.py` files | one model each (`build_splinter.py` and `build_stile.py` write two, `build_chalk.py` three, `build_crook.py` the five of the lever, and `build_wall_straight.py` three: the plain wall, `wall_straight_crown` and `wall_straight_broken`), into `assets/models/`. `build_gate.py` is the door of the exit, `build_gate_arch.py` the gatehouse over it, `build_gate_lantern.py` its lantern, `build_gate_bell.py` the bell that swings beside the big lantern, `build_milestone.py` the stone in front of it, `build_chalk.py` the chalk marks on the walls and `build_stile.py` the stile of the start cell. `build_splinter.py` is what the player collects: the game calls them crystals and draws them as splinters of the moon |
 | `make_skybox.py` | the six faces of the night sky, into `assets/skybox/` |
 | `make_heightmap.py` | `assets/textures/heightmap.png`, the heights of the terrain |
 | `make_all.py` | runs all of the above in one process, textures first, because a model script loads its PNG |
@@ -30,10 +30,10 @@ Everything after `--` goes to the script. `--shots` also writes review renders, 
 |---|---|
 | Axes | the game is Y up, -Z forward. The scripts are written in Blender space (Z up) and the exporter converts, so a Blender point (x, y, z) becomes (x, z, -y) |
 | Scale | 1 unit is 1 metre. A maze cell is 2 by 2 m and a wall is 3 m tall |
-| Origin | the middle of the base, the underside at height 0. The exceptions are `splinter_a` and `splinter_b`, whose origin is the lower point of their main sliver: they float and turn about it, and the two models the game turns, `lever_handle` and `gate_bell`, whose origin is the pivot. `stile_post` has the origin of the wall segment it stands in front of, so the game draws it with the matrix of that wall |
+| Origin | the middle of the base, the underside at height 0. The exceptions are `splinter_a` and `splinter_b`, whose origin is the lower point of their main sliver: they float and turn about it, and the two models the game turns, `crook_handle` and `gate_bell`, whose origin is the pivot. `stile_post` has the origin of the wall segment it stands in front of, so the game draws it with the matrix of that wall |
 | Faces | triangles only, with one normal per face (flat shading). The renderer draws no back faces, so a model that is open, like the bell from below, needs faces that look inwards too |
-| Material | exactly one per model, with a colour picture and a normal map. A model may wear the picture of another: the bell has the brass of the lever handle, and the post of the stile is cut out of the picture of the gate |
-| UVs | one UV unit per 2 m on stone and the gate (`box_project_uvs`). Sloped models use `face_project_uvs` with their own density. The crowned wall, the broken wall and the stile use it with the 2 m of the stone. The flask, the lantern, the splinters and the post of the stile write their UVs by hand |
+| Material | exactly one per model, with a colour picture and a normal map. A model may wear the picture of another, or a part of it: the bell has `lever_brass.png`, the post of the stile is cut out of the picture of the gate, and the lever has no picture of its own (see The lever) |
+| UVs | one UV unit per 2 m on stone and the gate (`box_project_uvs`). Sloped models use `face_project_uvs` with their own density. The crowned wall, the broken wall and the stile use it with the 2 m of the stone. The flask, the lantern, the splinters, the post of the stile and the models of the lever write their UVs by hand |
 | Texture paths in the `.mtl` | relative, so the file works on any computer |
 
 ### Chalk marks
@@ -43,6 +43,14 @@ A note is chalk drawn on the stone, not an object: `chalk_lamp` for a line of th
 ### The stile
 
 `stile` is one wall segment with a notch 0.7 m wide, where the wall is 2.4 m high, and four through-stones that climb to it. The game draws it in place of `wall_straight` on the north border wall of the start cell (`src/game/Stile.hpp`). The stones are boxes, each turned a few degrees by a fixed seed. Every piece of the wall is a closed box where it can be seen, so the notch shows stone and never the inside of the wall. `stile_post` is the oak post beside the steps, with an empty iron hook. It reuses `gate_wood.png` and needs no picture of its own: the post is the middle of one plank, the band at the height of the hook is one of the two iron bands of the gate, with its rivet, and the hook takes its iron from that band. Below the band 3 m of post share the 0.8 m of wood between the two bands, stretched along the grain only. The post stands 1 cm clear of where a wall across the end of the segment would be, because the start cell is a corner, and it reaches 0.15 m into the ground like the milestone. Neither model has transparency or a second material.
+
+### The lever
+
+A lever is a shepherd's crook on a wall, and `build_crook.py` writes its five models. `crook_post` is the oak board with two iron straps, the pin and a ring under it. `crook_handle` is the crook: a tube of six sides swept ring by ring along a shaft and a hook of 250 degrees, with its origin in the pin, 0.05 m in front of the wall. `crook_rope_slack` and `crook_rope_taut` are the rope from the pin through the ring into the turf, and the game draws one of them. `slab_ring` is the iron ring the game hangs at the foot of the wall a lever opens, on both faces.
+
+None of them has a picture of its own. A model has one material, so the oak and the iron of the post both come from `gate_wood.png`: the wood faces lie on one plank between its iron bands, the iron faces on a piece of a band between two rivets. The ropes lie on the wound cord of `flask.png`, and the slab ring wears `lever_iron.png`. `UV_RULES` in the script holds those places in pixels, and the script stops if a face leaves its part or would show its picture mirrored.
+
+The script also stops if the board or the crook, turned up, straight out or down, leaves the pick box of a lever (0.3 by 0.64 by 0.26 m, `LEVER_BOX_*` in `src/game/Interactables.hpp`). The ring under the board hangs 2 cm below the box and the rope runs to the ground: both are left out on purpose. The rope ends 4 cm under the ground 1.2 m below the board, so `MOUNT_HEIGHT` in the script must follow `LEVER_MOUNT_HEIGHT`.
 
 ### Adding a model
 
