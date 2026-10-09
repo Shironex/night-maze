@@ -551,6 +551,16 @@ TEST_CASE("the tick is drawn once the gate is open, and never before") {
     }
     CHECK(tip == doctest::Approx(eastEdge));
 
+    // Once the exit cell is on the map its lantern says it: the tick goes away. The same
+    // when the whole map is revealed.
+    round.discovery.discover(2, 0);
+    vertices = game::buildMinimapVertices(world, round, false, PLAYER, FINE);
+    CHECK(countColor(vertices, game::MINIMAP_EXIT_TICK_COLOR) == 0);
+    CHECK(countColor(vertices, game::MINIMAP_LANTERN_LIT_COLOR) > 0);
+    round.discovery = {};
+    vertices = game::buildMinimapVertices(world, round, true, PLAYER, FINE);
+    CHECK(countColor(vertices, game::MINIMAP_EXIT_TICK_COLOR) == 0);
+
     // A maze without a gate has no tick, also with its way out open from the start.
     world.hasGate = false;
     vertices = game::buildMinimapVertices(world, round, false, PLAYER, FINE);

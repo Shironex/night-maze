@@ -382,9 +382,10 @@ std::vector<MinimapVertex> buildMinimapVertices(const MazeWorld& world, const Ro
     }
 
     // 7. The tick towards the open gate, on the edge of the map: a triangle whose tip
-    // touches the edge and points along the line from the player to the exit.
+    // touches the edge and points along the line from the player to the exit. Only while
+    // the exit cell is not on the map: once its lantern is there, the lantern says it.
     const glm::vec2 place = mapPoint(player.position);
-    if (world.hasGate && round.gateOpen) {
+    if (world.hasGate && round.gateOpen && !shown(world.exitCell.x, world.exitCell.z)) {
         const glm::vec2 exit = mapPoint(cellCenter(world.exitCell.x, world.exitCell.z));
         if (const std::optional<glm::vec2> edgePoint = minimapExitTick(maze, place, exit)) {
             const glm::vec2 towards = glm::normalize(exit - place);

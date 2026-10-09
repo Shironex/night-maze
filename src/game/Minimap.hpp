@@ -211,9 +211,9 @@ struct MinimapPlayer {
 ///      it hangs on: a lever in one colour until it is pulled and in a dim one after,
 ///   7. once the gate is open (Round::gateOpen) and the maze has one: a small amber
 ///      tick on the edge of the map, on the straight line from the player to the exit
-///      (minimapExitTick). It is there whether or not the exit cell is discovered, and
-///      never before the gate opens: until then the map says nothing about a cell the
-///      player has not seen,
+///      (minimapExitTick). It is there only while the exit cell is not shown (its
+///      lantern replaces it once it is), and never before the gate opens: until then
+///      the map says nothing about a cell the player has not seen,
 ///   8. the player: a triangle that points where the camera looks. It is always drawn,
 ///      also outside the maze (where the picture may cut it off).
 ///
