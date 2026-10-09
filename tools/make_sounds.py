@@ -1,4 +1,4 @@
-# Makes the sounds of the game: twenty-two WAV files in assets/audio, one per sound cue
+# Makes the sounds of the game: twenty-three WAV files in assets/audio, one per sound cue
 # (the table of the cues is in src/game/SoundCues.cpp, and the file names there and here
 # must stay the same).
 #
@@ -127,6 +127,9 @@ PEAK_DB = {
     # softer than the one bell of the intro, and the game turns it down further with
     # the distance (gateBellVolume in src/game/SoundCues.hpp).
     "gate_bell.wav": -12.0,
+    # The heartstone is heard once in a maze. It stands just behind the crystal: it is
+    # the same glass, and its low ring carries more than its peak says.
+    "heartstone_pickup.wav": -5.0,
 }
 
 # ---- building blocks: time, envelopes, mixing ------------------------------------------------
@@ -466,7 +469,7 @@ def low_battery_pulse():
 BAR_RATIOS = [1.0, 2.756, 5.404, 8.933]
 
 
-def crystal_strike(seconds, lowest_frequency, detune, lean):
+def crystal_strike(seconds, lowest_frequency, detune, lean, ring=1.0):
     # One splinter ringing, for one channel. Every mode of the bar is played as a PAIR
     # of sines a few Hz apart. Two tones that close drift in and out of step, so their
     # sum slowly swells and thins: a shimmer, as in a real glass, which is never
@@ -475,12 +478,13 @@ def crystal_strike(seconds, lowest_frequency, detune, lean):
     # between left and right.
     #
     # The higher a mode, the weaker it is and the faster it dies: the sound starts
-    # bright and ends as one soft tone.
+    # bright and ends as one soft tone. ring makes every mode last that many times as
+    # long: a larger piece rings longer.
     partials = []
     for number, ratio in enumerate(BAR_RATIOS):
         frequency = lowest_frequency * ratio
         strength = 0.5 ** number
-        decay_seconds = 0.36 / (1.0 + 1.1 * number)
+        decay_seconds = ring * 0.36 / (1.0 + 1.1 * number)
         apart = detune * (1.0 + 0.6 * number)
         partials.append((frequency, strength * (1.0 - 0.45 * lean), decay_seconds))
         partials.append((frequency + apart, strength * (0.55 + 0.45 * lean), decay_seconds * 0.9))
@@ -519,6 +523,35 @@ def crystal_pickup():
         channels.append(biquad(sound, "high", 700.0))
     # The lowest mode still rings faintly after 1.25 s, so the end is a slow fade.
     return finish(channels, out_seconds=0.12)
+
+
+def heartstone_pickup():
+    # The heartstone: the big splinter of a maze. The sound of a crystal, made as much
+    # larger as the stone is, so the player knows the glass and hears that this piece
+    # is another size.
+    #
+    #   - The main strike: the same bar with the same inharmonic modes, at 524 Hz in
+    #     place of 1397 Hz (a little more than an octave lower), ringing two and a half
+    #     times as long.
+    #   - The answer: a quieter strike 80 ms later, 1.6 times as high, as in the crystal
+    #     and for the same reason (no simple interval, so it is no tune).
+    #   - The weight: a soft thump that falls from 210 to 135 Hz, the stone landing in
+    #     the hand. It stays above the heartbeat of the low battery (below 120 Hz).
+    #
+    # Stereo like the crystal: the pairs lean left in one channel and right in the
+    # other. It uses no noise, so it needs no random generator.
+    length = 2.2
+    weight = falling_thump(0.4, 210.0, 135.0, 0.05, 0.11)
+    channels = []
+    for detune, lean in ((1.3, 0.0), (1.8, 1.0)):
+        sound = silence(length)
+        place(sound, crystal_strike(length, 524.0, detune, lean, ring=2.5), 0.0, 1.0)
+        place(sound, crystal_strike(length - 0.08, 838.0, detune * 1.3, 1.0 - lean, ring=2.5),
+              0.08, 0.3)
+        place(sound, weight, 0.0, 0.45)
+        channels.append(biquad(sound, "high", 110.0))
+    # The lowest mode still rings faintly at the end, so the end is a slow fade.
+    return finish(channels, out_seconds=0.25)
 
 
 # ---- the lever -------------------------------------------------------------------------------
@@ -1088,6 +1121,7 @@ SOUNDS = [
     ("shade_alert.wav", shade_alert),
     ("shade_banish.wav", shade_banish),
     ("gate_bell.wav", gate_bell),
+    ("heartstone_pickup.wav", heartstone_pickup),
 ]
 
 
@@ -1325,7 +1359,7 @@ def together_peak(directory, names):
     return decibels(loudest)
 
 
-def checks(m, together):
+def checks(m, together, heart_together):
     # What every sound is meant to be, as numbers: (what is checked, true or false).
     on, off, dead = m["flashlight_on.wav"], m["flashlight_off.wav"], m["flashlight_dead.wav"]
     pulse, crystal = m["low_battery_pulse.wav"], m["crystal_pickup.wav"]
@@ -1345,6 +1379,7 @@ def checks(m, together):
     maze = m["maze_wind.wav"]
     alert, banish = m["shade_alert.wav"], m["shade_banish.wav"]
     toll = m["gate_bell.wav"]
+    heart = m["heartstone_pickup.wav"]
     constant = ("footstep_1.wav", "footstep_2.wav", "footstep_3.wav", "shade_step_1.wav",
                 "shade_step_2.wav", "maze_wind.wav")
     intro = intro + constant
@@ -1449,6 +1484,17 @@ def checks(m, together):
          0.01 < toll["loud_at"] < 0.25),
         ("gate bell: quieter to the ear than the crystal and the gate",
          toll["dba"] < min(crystal["dba"], gate["dba"])),
+        ("heartstone: the crystal made larger, its centroid under half of the crystal's",
+         heart["centroid"] < 0.5 * crystal["centroid"]),
+        ("heartstone: glass and no note, its strongest frequencies are inharmonic",
+         inharmonic(heart["peaks"])),
+        ("heartstone: rings longer than the crystal", heart["seconds"] > crystal["seconds"]),
+        ("heartstone: loudest within the first 40 ms, like the crystal", heart["loud_at"] < 0.04),
+        ("heartstone: not the heartbeat of the battery, under 5 % of its energy below 120 Hz",
+         heart["below120"] < 0.05),
+        ("heartstone: no louder to the ear than the crystal", heart["dba"] <= crystal["dba"]),
+        (f"heartstone and gate started together: peak {heart_together:.2f} dBFS, at or below -1",
+         heart_together <= -1.0),
     ]
 
     # The steps of the player, the steps of the shade and the wind of the maze. What
@@ -1535,7 +1581,8 @@ def report(directory):
     print()
     missed = 0
     together = together_peak(directory, ["crystal_pickup.wav", "gate_open.wav"])
-    for text, passed in checks(measured, together):
+    heart_together = together_peak(directory, ["heartstone_pickup.wav", "gate_open.wav"])
+    for text, passed in checks(measured, together, heart_together):
         missed += not passed
         print(f"  {'ok  ' if passed else 'MISS'}  {text}")
     total = sum(m["bytes"] for m in measured.values())
