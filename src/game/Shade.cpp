@@ -529,7 +529,8 @@ float shadeHoodBrightness(float burnProgress) {
 
 float shadeHoodStarBoost(float burnProgress) {
     const float progress = std::clamp(burnProgress, 0.0F, 1.0F);
-    return SHADE_HOOD_BURNED_STAR_BOOST * progress * progress;
+    return SHADE_HOOD_REST_STAR_BOOST +
+           (SHADE_HOOD_BURNED_STAR_BOOST - SHADE_HOOD_REST_STAR_BOOST) * progress;
 }
 
 ShadeState shadeState(const Shade& shade) {

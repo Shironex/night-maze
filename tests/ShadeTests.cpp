@@ -790,15 +790,22 @@ TEST_CASE("the hood is dim at rest and flares up at the end of the burn") {
     CHECK(game::shadeHoodBrightness(2.0F) == doctest::Approx(game::SHADE_HOOD_BURNED_BRIGHTNESS));
 }
 
-TEST_CASE("the stars in the hood flare on the same curve, from nothing") {
-    CHECK(game::shadeHoodStarBoost(0.0F) == 0.0F);
-    CHECK(game::shadeHoodStarBoost(0.5F) ==
-          doctest::Approx(game::SHADE_HOOD_BURNED_STAR_BOOST / 4.0F));
+TEST_CASE("the stars in the hood brighten from the first moment of the burn") {
+    CHECK(game::shadeHoodStarBoost(0.0F) == game::SHADE_HOOD_REST_STAR_BOOST);
     CHECK(game::shadeHoodStarBoost(1.0F) == doctest::Approx(game::SHADE_HOOD_BURNED_STAR_BOOST));
-    CHECK(game::shadeHoodStarBoost(-1.0F) == 0.0F);
+    CHECK(game::shadeHoodStarBoost(-1.0F) == game::SHADE_HOOD_REST_STAR_BOOST);
     CHECK(game::shadeHoodStarBoost(2.0F) == doctest::Approx(game::SHADE_HOOD_BURNED_STAR_BOOST));
-    // The stars gain more than the sky between them: that is what reads as stars.
-    CHECK(game::SHADE_HOOD_BURNED_STAR_BOOST > game::SHADE_HOOD_BURNED_BRIGHTNESS);
+    // At rest the stars are lifted a little, so they show in a sky that is almost black.
+    CHECK(game::SHADE_HOOD_REST_STAR_BOOST > 0.0F);
+    CHECK(game::SHADE_HOOD_BURNED_STAR_BOOST > game::SHADE_HOOD_REST_STAR_BOOST);
+
+    // A straight line: half way through the burn the stars have half of their rise, while
+    // the sky between them has a quarter of its own (shadeHoodBrightness).
+    const float starRise = game::SHADE_HOOD_BURNED_STAR_BOOST - game::SHADE_HOOD_REST_STAR_BOOST;
+    CHECK(game::shadeHoodStarBoost(0.5F) - game::SHADE_HOOD_REST_STAR_BOOST ==
+          doctest::Approx(starRise / 2.0F));
+    // The sky between the stars never gets as bright as the sky behind the figure.
+    CHECK(game::SHADE_HOOD_BURNED_BRIGHTNESS < 1.0F);
 }
 
 TEST_CASE("the beam burns the shade away: it reappears far from the player and is quiet") {
