@@ -79,7 +79,8 @@ const char* soundCueName(SoundCue cue);
 
 /// True for a cue that is part of the air of a place and tells the player nothing: the
 /// two winds. Such a cue follows the ambient volume of the settings
-/// (GameSettings::ambientVolume), every other cue the effects volume.
+/// (GameSettings::ambientVolume), every other cue the effects volume. (The music is no
+/// cue: see MENU_THEME_FILE.)
 bool soundCueIsAmbient(SoundCue cue);
 
 /// The cue of one press of the flashlight key. battery is the charge at the moment of
@@ -452,5 +453,69 @@ struct MazeWindRequest {
 ///     back with the round.
 ///   - On every other screen only while a sample runs.
 bool mazeWindPlays(const MazeWindRequest& request);
+
+/// The theme of the main menu: music, the one piece the game has. It is no cue: it is
+/// not a short sound that says something happened, it has a volume of its own
+/// (GameSettings::musicVolume) and its file is not a WAV file. It is a loop like the
+/// wind of the maze, switched on and off (menuThemePlays), and its file ends where it
+/// begins (tools/make_music.py). The path is relative to the assets directory.
+constexpr const char* MENU_THEME_FILE = "audio/menu_theme.flac";
+
+/// The place of the theme in the list of sounds the audio layer loads: right after the
+/// cues, whose places are their numbers.
+constexpr std::size_t MENU_THEME_SOUND = SOUND_CUE_COUNT;
+
+/// How long the theme takes to come and to go, in seconds. It comes slowly, the way the
+/// menu itself comes out of the dark, and goes faster: a night or the intro that starts
+/// has sounds of its own, and they should not begin under the end of a piano.
+constexpr float MENU_THEME_FADE_IN_SECONDS = 2.5F;
+constexpr float MENU_THEME_FADE_OUT_SECONDS = 1.5F;
+
+/// What decides whether the theme of the menu is heard.
+struct MenuThemeRequest {
+    /// The screen the game is on.
+    GameMode mode = GameMode::MainMenu;
+    /// The window of the game is the active one.
+    bool windowFocused = true;
+    /// The game has shown a picture: false only in the very first frame of the program,
+    /// which is drawn after the sound is asked for.
+    bool pictureShown = true;
+};
+
+/// True while the theme of the menu is heard. Like mazeWindPlays, the application asks
+/// once per frame and tells the audio layer the answer, which fades the loop in or out
+/// when it changes. The loop is never started again from its beginning: it goes on from
+/// where it stopped, and while the answer stays true (from the main menu to one of its
+/// pages and back) nothing happens to it at all.
+///
+/// The theme belongs to the main menu and to the screens that are pages of it:
+///
+///     MainMenu            yes
+///     FreePlay            yes
+///     Nights              yes
+///     NewCampaign         yes
+///     SettingsFromMenu    yes
+///     LedgerFromMenu      yes
+///     Intro               no: the intro has its wind and its bell
+///     CampaignIntro       no
+///     NightCard           no: a card is text on black before a round
+///     Playing             no: a night has the wind of the maze and its own sounds
+///     Paused              no: the pause is a stop in the night, not the menu
+///     SettingsFromPause   no, for the same reason
+///     LedgerFromPause     no
+///     RoundEnd            no: the result belongs to the night that was just won
+///     VillageBeat         no
+///     EndingCard          no: it has its bell
+///     Quitting            no: the program is closing
+///
+/// And on every screen:
+///
+///   - Never while the window is not the active one, like the wind.
+///   - Not before the first picture is shown: the theme comes in with the menu, not
+///     ahead of it.
+///
+/// Every screen is named in the code. A screen that is added to GameMode without a line
+/// there does not compile (SoundCues.cpp), so somebody has to decide.
+bool menuThemePlays(const MenuThemeRequest& request);
 
 } // namespace game

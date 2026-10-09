@@ -15,6 +15,7 @@
 
 #include <doctest/doctest.h>
 
+#include <array>
 #include <cstddef>
 #include <set>
 #include <string>
@@ -1062,4 +1063,87 @@ TEST_CASE("in a real round the bell starts with the gate and is louder next to t
     game::updateRound(round, world, settings, world.exitPosition, flashlightOn, STEP);
     REQUIRE(round.state == game::RoundState::Won);
     CHECK_FALSE(game::advanceGateBell(bell, round, settings.gate.bellSeconds, 100.0F));
+}
+
+TEST_CASE("the theme of the menu plays on the main menu and its pages and nowhere else") {
+    using game::GameMode;
+    // Every screen with its answer. The numbers of the screens are their places here,
+    // so none is left out and none is there twice.
+    struct Row {
+        GameMode mode;
+        bool plays;
+    };
+    constexpr std::array<Row, 17> ROWS = {{
+        {.mode = GameMode::MainMenu, .plays = true},
+        {.mode = GameMode::Playing, .plays = false},
+        {.mode = GameMode::Paused, .plays = false},
+        {.mode = GameMode::RoundEnd, .plays = false},
+        {.mode = GameMode::Quitting, .plays = false},
+        {.mode = GameMode::SettingsFromMenu, .plays = true},
+        {.mode = GameMode::SettingsFromPause, .plays = false},
+        {.mode = GameMode::Intro, .plays = false},
+        {.mode = GameMode::FreePlay, .plays = true},
+        {.mode = GameMode::Nights, .plays = true},
+        {.mode = GameMode::NewCampaign, .plays = true},
+        {.mode = GameMode::NightCard, .plays = false},
+        {.mode = GameMode::EndingCard, .plays = false},
+        {.mode = GameMode::CampaignIntro, .plays = false},
+        {.mode = GameMode::LedgerFromMenu, .plays = true},
+        {.mode = GameMode::LedgerFromPause, .plays = false},
+        {.mode = GameMode::VillageBeat, .plays = false},
+    }};
+    for (std::size_t i = 0; i < ROWS.size(); ++i) {
+        const Row& row = ROWS.at(i);
+        CAPTURE(i);
+        CHECK(static_cast<std::size_t>(row.mode) == i);
+        CHECK(game::menuThemePlays({.mode = row.mode}) == row.plays);
+        // Never while another program is the active one, and not before the first
+        // picture of the game is shown.
+        CHECK_FALSE(game::menuThemePlays({.mode = row.mode, .windowFocused = false}));
+        CHECK_FALSE(game::menuThemePlays({.mode = row.mode, .pictureShown = false}));
+        // The theme and the wind of the maze are never heard together.
+        CHECK_FALSE((row.plays && game::mazeWindPlays({.mode = row.mode})));
+    }
+    // A number that is no screen has no music.
+    CHECK_FALSE(game::menuThemePlays({.mode = static_cast<GameMode>(99)}));
+
+    // The theme is the sound after the last cue, and it comes slower than it goes.
+    CHECK(game::MENU_THEME_SOUND == game::SOUND_CUE_COUNT);
+    CHECK(std::string(game::MENU_THEME_FILE) == "audio/menu_theme.flac");
+    CHECK(game::MENU_THEME_FADE_IN_SECONDS == 2.5F);
+    CHECK(game::MENU_THEME_FADE_OUT_SECONDS == 1.5F);
+}
+
+TEST_CASE("the theme goes on through the pages of the main menu and stops for a night") {
+    using game::GameEvent;
+    using game::GameMode;
+    const auto plays = [](GameMode mode) { return game::menuThemePlays({.mode = mode}); };
+    // From the main menu into each of its pages and back: the answer never changes, so
+    // the loop is never touched and the piece does not start again.
+    for (const GameEvent open :
+         {GameEvent::OpenFreePlay, GameEvent::OpenNights, GameEvent::AskNewCampaign,
+          GameEvent::OpenSettings, GameEvent::OpenLedger}) {
+        const GameMode page = game::nextMode(GameMode::MainMenu, open);
+        REQUIRE(page != GameMode::MainMenu);
+        CHECK(plays(page));
+        CHECK(plays(game::nextMode(page, GameEvent::Escape)));
+    }
+    // A night, a game of free play and the intro of a campaign end it.
+    CHECK_FALSE(plays(game::nextMode(GameMode::MainMenu, GameEvent::StartNight)));
+    CHECK_FALSE(plays(game::nextMode(GameMode::FreePlay, GameEvent::Play)));
+    CHECK_FALSE(plays(game::nextMode(GameMode::MainMenu, GameEvent::BeginCampaign)));
+    // The pause menu and what is opened from it are part of the night.
+    GameMode mode = game::nextMode(GameMode::Playing, GameEvent::Escape);
+    CHECK(mode == GameMode::Paused);
+    CHECK_FALSE(plays(mode));
+    CHECK_FALSE(plays(game::nextMode(mode, GameEvent::OpenSettings)));
+    CHECK_FALSE(plays(game::nextMode(mode, GameEvent::OpenLedger)));
+    // Back in the main menu it is heard again: from the pause menu, from the result
+    // screen and after the ending card.
+    CHECK(plays(game::nextMode(GameMode::Paused, GameEvent::BackToMenu)));
+    CHECK_FALSE(plays(GameMode::RoundEnd));
+    CHECK(plays(game::nextMode(GameMode::RoundEnd, GameEvent::BackToMenu)));
+    CHECK(plays(game::nextMode(GameMode::RoundEnd, GameEvent::OpenNights)));
+    CHECK(plays(game::nextMode(GameMode::EndingCard, GameEvent::CardFinished)));
+    CHECK(plays(game::nextMode(GameMode::Intro, GameEvent::IntroFinished)));
 }

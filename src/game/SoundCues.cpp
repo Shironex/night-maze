@@ -336,4 +336,56 @@ bool mazeWindPlays(const MazeWindRequest& request) {
     return request.sample || (updatesRound(request.mode) && !request.menuCamera);
 }
 
+namespace {
+
+// A switch over GameMode that leaves a screen out is only a warning everywhere else
+// (CMakeLists.txt). For the function below it is an error: whether a new screen has
+// music is a decision, and the answer "no" must not be given by forgetting.
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma warning(push)
+#pragma warning(error : 4062)
+#else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic error "-Wswitch"
+#endif
+
+// True for the main menu and the screens that are pages of it.
+bool menuThemeScreen(GameMode mode) {
+    switch (mode) {
+    case GameMode::MainMenu:
+    case GameMode::FreePlay:
+    case GameMode::Nights:
+    case GameMode::NewCampaign:
+    case GameMode::SettingsFromMenu:
+    case GameMode::LedgerFromMenu:
+        return true;
+    case GameMode::Intro:
+    case GameMode::CampaignIntro:
+    case GameMode::NightCard:
+    case GameMode::Playing:
+    case GameMode::Paused:
+    case GameMode::SettingsFromPause:
+    case GameMode::LedgerFromPause:
+    case GameMode::RoundEnd:
+    case GameMode::VillageBeat:
+    case GameMode::EndingCard:
+    case GameMode::Quitting:
+        return false;
+    }
+    // A number that is no screen at all.
+    return false;
+}
+
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma warning(pop)
+#else
+#pragma GCC diagnostic pop
+#endif
+
+} // namespace
+
+bool menuThemePlays(const MenuThemeRequest& request) {
+    return request.windowFocused && request.pictureShown && menuThemeScreen(request.mode);
+}
+
 } // namespace game
