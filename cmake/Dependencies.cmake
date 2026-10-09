@@ -228,9 +228,10 @@ target_include_directories(miniaudio SYSTEM PUBLIC ${miniaudio_SOURCE_DIR})
 target_compile_definitions(miniaudio PUBLIC
     # No writing of sound files: the game only plays.
     MA_NO_ENCODING
-    # No built-in decoders for FLAC and MP3: every sound of the game is a WAV file. The
-    # WAV decoder stays.
-    MA_NO_FLAC
+    # No built-in decoder for MP3. The decoders for WAV and FLAC stay: the short sounds
+    # of the game are WAV files, and the theme of the menu is a FLAC file, which holds
+    # the same samples in a quarter of the bytes (assets/audio/README.md). The FLAC
+    # decoder is plain C inside miniaudio.h and needs no library.
     MA_NO_MP3
     # No generators of sine waves and noise: the sounds come from files.
     MA_NO_GENERATION
