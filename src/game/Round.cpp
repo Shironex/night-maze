@@ -403,13 +403,9 @@ void closeNote(Round& round) {
     round.noteOpen = false;
 }
 
-std::string openNoteText(const MazeWorld& world, const Round& round) {
-    if (!round.noteOpen || round.noteIndex >= world.interactables.notes.size()) {
-        return {};
-    }
-
-    // The cells of the crystals that are still there. The crystals of a round are in
-    // the order of MazeWorld::crystals, which knows their cells.
+std::vector<MazeCell> remainingCrystalCells(const MazeWorld& world, const Round& round) {
+    // The crystals of a round are in the order of MazeWorld::crystals, which knows
+    // their cells.
     std::vector<MazeCell> crystalCells;
     const std::size_t crystalCount = std::min(round.crystals.size(), world.crystals.size());
     for (std::size_t i = 0; i < crystalCount; ++i) {
@@ -417,7 +413,15 @@ std::string openNoteText(const MazeWorld& world, const Round& round) {
             crystalCells.push_back(world.crystals[i].cell);
         }
     }
-    return noteText(world.interactables.notes[round.noteIndex], world.exitCell, crystalCells);
+    return crystalCells;
+}
+
+std::string openNoteText(const MazeWorld& world, const Round& round) {
+    if (!round.noteOpen || round.noteIndex >= world.interactables.notes.size()) {
+        return {};
+    }
+    return noteText(world.interactables.notes[round.noteIndex], world.exitCell,
+                    remainingCrystalCells(world, round));
 }
 
 std::vector<scene::Aabb> roundObstacles(const MazeWorld& world, const Round& round) {

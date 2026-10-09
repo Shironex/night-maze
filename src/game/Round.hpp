@@ -388,6 +388,10 @@ float leverHandleProgress(const Round& round, std::size_t index);
 void readNote(Round& round, const MazeWorld& world, std::size_t index);
 void closeNote(Round& round);
 
+/// The cells of the crystals that are not collected yet, in the order of
+/// MazeWorld::crystals: what a hint towards a crystal counts (game::noteLean).
+std::vector<MazeCell> remainingCrystalCells(const MazeWorld& world, const Round& round);
+
 /// The text of the note that is open (game::noteText), or an empty text when none is.
 /// It is computed when it is asked for: a hint towards a crystal counts only the
 /// crystals that are not collected yet, so it changes while the card is open.

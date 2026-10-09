@@ -690,16 +690,27 @@ int storyLineFromOldTable(int oldLine) {
     return storyLineFor(0, wrapped(oldLine, oldStoryLineCount()), false);
 }
 
-std::string noteText(const Note& note, MazeCell exit, std::span<const MazeCell> crystalCells) {
+std::optional<Compass> noteLean(const Note& note, MazeCell exit,
+                                std::span<const MazeCell> crystalCells) {
     if (note.kind == NoteKind::ExitHint) {
-        return hintSentence("The gate", "waits", compassTowards(note.mount.cell, exit));
+        return compassTowards(note.mount.cell, exit);
+    }
+    if (note.kind == NoteKind::CrystalHint && !crystalCells.empty()) {
+        return compassTowards(note.mount.cell, nearestCell(note.mount.cell, crystalCells));
+    }
+    return std::nullopt;
+}
+
+std::string noteText(const Note& note, MazeCell exit, std::span<const MazeCell> crystalCells) {
+    const std::optional<Compass> lean = noteLean(note, exit, crystalCells);
+    if (note.kind == NoteKind::ExitHint) {
+        return hintSentence("The gate", "waits", lean.value());
     }
     if (note.kind == NoteKind::CrystalHint) {
-        if (crystalCells.empty()) {
+        if (!lean) {
             return "You took every one. The moon will look harder.";
         }
-        const MazeCell nearest = nearestCell(note.mount.cell, crystalCells);
-        return hintSentence("A splinter", "glows", compassTowards(note.mount.cell, nearest));
+        return hintSentence("A splinter", "glows", *lean);
     }
     // Flavour is what is left.
     return std::string{flavourLine(note.flavourIndex)};

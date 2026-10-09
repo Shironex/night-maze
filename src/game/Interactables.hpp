@@ -12,6 +12,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -61,7 +62,7 @@ constexpr float LEVER_BOX_WIDTH = 0.3F;
 constexpr float LEVER_BOX_HEIGHT = 0.4F;
 constexpr float LEVER_BOX_DEPTH = 0.25F;
 
-/// The box a note is picked with. A sheet of paper is flat, but its box is 15 cm deep on
+/// The box a note is picked with. A chalk mark is flat, but its box is 15 cm deep on
 /// purpose: see MOUNT_BOX_MIN_DEPTH.
 constexpr float NOTE_BOX_WIDTH = 0.4F;
 constexpr float NOTE_BOX_HEIGHT = 0.5F;
@@ -418,6 +419,14 @@ int oldStoryLineCount();
 /// (oldStoryLineCount lines: the same lines in the same order, without the ones about
 /// the shadow). oldLine can be any whole number: it is wrapped into the old table first.
 int storyLineFromOldTable(int oldLine);
+
+/// Where a hint points: from the cell of the note towards the exit (ExitHint) or towards
+/// the nearest crystal of crystalCells (CrystalHint, see noteText for "nearest"). Nothing
+/// for a note that points nowhere: a note of the kind Flavour, and a crystal hint when
+/// crystalCells is empty. The text of the note (noteText) and the chalk mark that is
+/// drawn for it both ask here, so they never disagree.
+std::optional<Compass> noteLean(const Note& note, MazeCell exit,
+                                std::span<const MazeCell> crystalCells);
 
 /// The text of a note, in English like the rest of the HUD.
 ///
