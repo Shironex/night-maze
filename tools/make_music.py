@@ -23,7 +23,7 @@
 # is added to its beginning, so the file can be played round and round.
 #
 # The file is a FLAC file and not a WAV file: FLAC stores the very same samples in
-# fewer bytes (nothing is lost, unlike MP3), here in about a fifth. This script writes
+# fewer bytes (nothing is lost, unlike MP3), here in under a quarter. This script writes
 # the format itself (flac_bytes), the way make_sounds.py writes its PNG pictures.
 #
 # THE SKETCHES. The theme was chosen by ear from three sketches, each made in two ways.
@@ -81,7 +81,7 @@ THEME_FILE = os.path.join("assets", "audio", "menu_theme.flac")
 # is the click that is heard when a volume slider is moved (flashlight_on.wav), so the
 # theme is measured against it, with the measure of make_sounds.py: the loudest tenth
 # of a second, weighed the way the ear weighs frequencies. At -10 dBFS and the music
-# volume the game starts with (THEME_DEFAULT_VOLUME of 100, which the game turns into
+# volume the game starts with (THEME_DEFAULT_VOLUME, 60 of 100, which the game turns into
 # a factor of 0.36) the loudest moment of the theme lies about 6 dB below the click.
 # With the slider at 100 it lies about 3 dB above it: whoever wants the music in front
 # can have it. --report prints the numbers.

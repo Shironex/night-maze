@@ -230,7 +230,7 @@ target_compile_definitions(miniaudio PUBLIC
     MA_NO_ENCODING
     # No built-in decoder for MP3. The decoders for WAV and FLAC stay: the short sounds
     # of the game are WAV files, and the theme of the menu is a FLAC file, which holds
-    # the same samples in a quarter of the bytes (assets/audio/README.md). The FLAC
+    # the same samples in under a quarter of the bytes (assets/audio/README.md). The FLAC
     # decoder is plain C inside miniaudio.h and needs no library.
     MA_NO_MP3
     # No generators of sine waves and noise: the sounds come from files.
