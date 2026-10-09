@@ -21,6 +21,7 @@ import build_lever
 import build_milestone
 import build_shade
 import build_splinter
+import build_stile
 import build_wall_pillar
 import build_wall_straight
 import make_heightmap
@@ -35,6 +36,7 @@ make_textures.build()
 
 build_wall_straight.build(shots)
 build_wall_pillar.build(shots)
+build_stile.build(shots)
 build_splinter.build(shots)
 build_gate.build(shots)
 build_gate_arch.build(shots)
