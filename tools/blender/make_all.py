@@ -22,6 +22,7 @@ import build_milestone
 import build_shade
 import build_splinter
 import build_stile
+import build_stone_sheep
 import build_village
 import build_wall_pillar
 import build_wall_straight
@@ -49,6 +50,7 @@ build_chalk.build(shots)
 build_flask.build(shots)
 build_shade.build(shots)
 build_village.build(shots)
+build_stone_sheep.build(shots)
 
 # The six faces of the sky. They depend on nothing above: no model uses them.
 make_skybox.build()

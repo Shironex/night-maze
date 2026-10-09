@@ -1,8 +1,9 @@
 # Generates the textures of the game into assets/textures: the colour pictures
 # wall_stone.png, wall_cracked.png, wall_mossy.png, wall_damaged.png, ground.png,
 # gate_wood.png, splinter.png, lever_iron.png, lever_brass.png, chalk.png,
-# flask.png, shade.png and lantern.png, and one normal map for each of them (the same
-# name with _normal). All twenty-six are 512 x 512 pixels, 8 bits per channel, RGB.
+# flask.png, shade.png, lantern.png and stone_sheep.png, and one normal map for each of
+# them (the same name with _normal). All twenty-eight are 512 x 512 pixels, 8 bits per
+# channel, RGB.
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/make_textures.py
@@ -70,6 +71,7 @@ CHALK_SEED = 113
 # The fracture of a splinter is the pattern of CRYSTAL_SEED. This seed places the craters
 # of its rind.
 SPLINTER_RIND_SEED = 127
+STONE_SHEEP_SEED = 131
 
 # The wall model is 3 m high and one repeat of the texture is 2 m, so the lower 1 m of
 # the picture (courses 0 to 3) is seen twice on a wall: at the bottom and again at the
@@ -1184,6 +1186,49 @@ def build():
 
     # The two pictures of the lantern of the exit gate, in a function of their own too.
     build_lantern_textures()
+
+    # The two pictures of the stone sheep, in a function of their own too.
+    build_stone_sheep_textures()
+
+
+def build_stone_sheep_textures():
+    """Writes stone_sheep.png and its normal map: wool that went to stone, moss in its folds.
+
+    The picture of the wall would draw the joints of its blocks across the animal. Here
+    the picture is divided into round curls instead (the cells of crystal_pattern), in
+    a stone paler than the walls, so the animal stands out in front of one in the beam of
+    the lamp and in the light of the moon. Between two curls is a fold, and moss grows
+    where water stays: in the folds of the damper half of the picture, and in a few
+    patches over whole curls. The picture tiles, and the model (build_stone_sheep.py)
+    repeats it once per metre, so a curl is about 5 cm across.
+    """
+    wool = crystal_pattern(seed=STONE_SHEEP_SEED, cell_count=340)
+    rng = wool["rng"]
+    fold_distance = wool["border_distance"]
+
+    # A curl is lightest in its middle and darker towards the fold around it.
+    rounded = smooth_step(np.clip(fold_distance / 9.0, 0.0, 1.0))
+    shade = wool["cell_brightness"] * (0.80 + 0.20 * rounded)
+    shade = shade * (0.90 + 0.10 * wool["patches"]) * (0.96 + 0.08 * wool["grain"])
+    color = shade[..., None] * np.array((0.86, 0.85, 0.80))
+
+    # The moss: in the folds where the noise says the wool is damp, and in soft patches
+    # that cover whole curls where it is dampest. Fine noise frays every edge.
+    moss_noise = stretch(blur(smooth_noise(rng, 24), 16))
+    patches = smooth_step(np.clip((moss_noise - 0.62) / 0.18, 0.0, 1.0))
+    in_folds = smooth_step(np.clip(1.0 - fold_distance / 4.0, 0.0, 1.0))
+    in_folds = in_folds * smooth_step(np.clip((moss_noise - 0.35) / 0.25, 0.0, 1.0))
+    fray = 0.55 + 0.45 * smooth_noise(rng, 2)
+    moss = np.clip(0.7 * patches + 0.8 * in_folds, 0.0, 1.0) * fray
+    moss_shade = (0.65 + 0.70 * wool["grain"])[..., None] * np.array((0.22, 0.33, 0.14))
+    color = color + moss[..., None] * (moss_shade - color)
+
+    # The relief: every curl is a low dome, the moss a soft cushion in the fold.
+    height = 2.5 * rounded + 4.0 * (blur(wool["patches"], BUMP_BLUR_RADIUS) - 0.5)
+    height = height + 1.5 * blur(moss, 2) + 0.5 * (blur(wool["grain"], GRAIN_BLUR_RADIUS) - 0.5)
+
+    save_png(np.clip(color, 0.0, 1.0), "stone_sheep.png")
+    save_png(normal_map(height), "stone_sheep_normal.png")
 
 
 def build_interactable_textures():
