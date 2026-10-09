@@ -110,6 +110,7 @@ The switches are read before the window opens. A wrong one prints an `[error]` l
 | `--play` | skip the main menu and start straight in a round |
 | `--seed <number>` | the seed of the first maze, a whole number from 0 to 4294967295 (digits only) |
 | `--night <1..5>` | start that night of the campaign at once, with no title card. The campaign of such a run is its own, seeded from `--seed`, and your settings file is neither read nor changed |
+| `--daily <YYYYMMDD>` | start the maze of that day ("Tonight's hedge") at once, with no title card. That day is also the day of the menu entry for the whole run. The saved best time of the day is read and never written |
 | `--start-cell <column>,<row>` | with `--play`: put the player in the middle of that cell in the first round. A cell that does not exist in the maze is refused |
 | `--start-yaw <degrees>` | the direction the player looks in at the start of the first round |
 | `--collect-all` | the first round starts with every crystal collected, so the gate is open |
@@ -121,7 +122,7 @@ The switches are read before the window opens. A wrong one prints an `[error]` l
 | `--skip-intro` | never play the intro in this run |
 | `--intro` | play the intro now, even if it was seen. `--skip-intro` wins if both are given |
 
-Any switch except the two intro ones counts as a tool switch. A run with a tool switch never opens with the intro, because the scripts start the game in fresh folders where the intro would count as unseen. Example, a round of the second night in a fixed maze without the shadow:
+Any switch except the two intro ones counts as a tool switch. A run with a tool switch never opens with the intro, because the scripts start the game in fresh folders where the intro would count as unseen. It also never asks the clock for the day of "Tonight's hedge": the day is the one of `--daily`, or 8 October 2026, so a picture of the menu does not change from day to day. Example, a round of the second night in a fixed maze without the shadow:
 
 ```sh
 build/release/Release/night_maze.exe --night 2 --seed 7 --calm

@@ -22,7 +22,7 @@ Inside `engine`, `src/core` includes only itself, `src/gfx` uses `src/core`, `sr
 
 `src/game` is split between two targets. The files that need no window are in `game_logic`. The files that draw (`NightMazeApp`, the `*Renderer` classes, `PostProcess`, `ShadowMap`, `Skybox`, `LightRig`) are in the executable.
 
-What runs without a window or an OpenGL context: all of `game_logic`, the math in `src/scene`, the file loaders and shader text functions in `engine`, and the audio engine when it is made with `audio::AudioOutput::None`. The 49 test files in `tests` cover that.
+What runs without a window or an OpenGL context: all of `game_logic`, the math in `src/scene`, the file loaders and shader text functions in `engine`, and the audio engine when it is made with `audio::AudioOutput::None`. The 50 test files in `tests` cover that.
 
 | Library | Version | Used by |
 |---|---|---|
@@ -151,17 +151,19 @@ flowchart TD
 | Mode | What it is | Leaves on |
 |---|---|---|
 | `CampaignIntro` | five cards over live pictures, when a campaign begins | `IntroFinished`, `Escape` to `NightCard` |
-| `MainMenu` | the hub | `StartNight`, `AskNewCampaign`, `OpenNights`, `OpenFreePlay`, `OpenSettings`, `Quit` |
+| `MainMenu` | the hub: the campaign, the list of nights, "Tonight's hedge", free play, settings | `StartNight` (a night, or the maze of the day), `AskNewCampaign`, `OpenNights`, `OpenFreePlay`, `OpenSettings`, `Quit` |
 | `FreePlay` | one maze: difficulty, calm night, seed | `Play` to `Playing`; `BackToMenu`, `Escape` |
 | `Nights` | list of the five nights | `StartNight` to `NightCard`; `BackToMenu`, `Escape` |
 | `NewCampaign` | question before a finished campaign is replaced | `BeginCampaign` to `CampaignIntro`; `StartNight`; `BackToMenu`, `Escape` |
-| `NightCard` | title card of a night | `CardFinished`, `Escape` to `Playing` |
+| `NightCard` | title card of a night or of the maze of the day | `CardFinished`, `Escape` to `Playing` |
 | `Playing` | the round runs | `Escape`, `FocusLost` to `Paused`; `RoundWon` to `RoundEnd`; `CampaignWon` to `EndingCard` |
 | `Paused` | pause menu over the round | `Resume`, `Restart`, `Escape` to `Playing`; `OpenSettings`; `BackToMenu` |
 | `RoundEnd` | result of a won round | `Restart`, `NewMaze` to `Playing`; `BackToMenu`, `Escape` |
 | `EndingCard` | four lines after the last night | `CardFinished`, `Escape` to `MainMenu` |
 | `SettingsFromMenu`, `SettingsFromPause` | the same document, remembering where back leads | `CloseSettings`, `Escape` |
 | `Quitting` | the window closes | nothing |
+
+"Tonight's hedge" is no mode of its own. The entry builds a maze of free play on Normal whose seed is the date and sends `StartNight`, so it gets the title card of a night and the result screen of free play.
 
 ## 6. The rules layer
 
@@ -173,6 +175,7 @@ The rules are in `game_logic`, as header and source pairs with tests:
 - Player and stamina: `src/game/Player.hpp`.
 - Enemy: `src/game/Shade.hpp`.
 - Campaign, intro and difficulty: `Campaign.hpp`, `Intro.hpp`, `Difficulty.hpp`.
+- The maze of the day: `Daily.hpp` (the date as a seed and as text, the best time of a day, the line beside the menu entry). The date comes in as a parameter. Only the application asks the clock.
 - Settings and input: `Settings.hpp`, `KeyBindings.hpp`, `StartOptions.hpp` (the command line).
 - Sound: `SoundCues.hpp` decides which sound belongs to what happened.
 - Look: `Lighting.hpp`, `Shadows.hpp`, `Bloom.hpp`, `Fog.hpp`, `Minimap.hpp`: settings and math for the renderers.
@@ -200,7 +203,7 @@ Input routing:
 
 The game finds `assets` next to its own executable (`core::assetPath`): the build copies the folder there on Windows and links it on macOS.
 
-Player settings are a `game::GameSettings` struct: view, window, difficulty, three volumes, key bindings, the calm night switch, and the campaign progress. `parseSettings` and `formatSettings` turn it into text and back. The application reads and writes the file `night-maze-settings.txt`, one `name = value` per line in the working directory. Lines it cannot read are skipped and the setting keeps its default. Dear ImGui keeps its `imgui.ini` in the same place.
+Player settings are a `game::GameSettings` struct: view, window, difficulty, three volumes, key bindings, the calm night switch, the campaign progress, and the best time of the maze of the day. `parseSettings` and `formatSettings` turn it into text and back. The application reads and writes the file `night-maze-settings.txt`, one `name = value` per line in the working directory. Lines it cannot read are skipped and the setting keeps its default. Dear ImGui keeps its `imgui.ini` in the same place.
 
 What the launcher expects from a game build is what `.github/workflows/release.yml` produces: a Windows x64 Release build with the static MSVC runtime, zipped with `assets` and `THIRD-PARTY-NOTICES.txt`, with a version taken from `project(NightMaze VERSION ...)` that matches the tag. The launcher starts the game in its own data folder, so the relative settings file survives when the game is replaced.
 
