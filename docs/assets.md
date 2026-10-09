@@ -10,7 +10,7 @@ The scripts in `tools/blender/` run inside headless Blender. I use Blender 5.2.1
 |---|---|
 | `blender_common.py` | shared helpers: scene reset, boxes, UV projection, the material, the OBJ export with every option written out, review renders |
 | `make_textures.py` | the colour pictures and a normal map for each (name plus `_normal`), into `assets/textures/` |
-| the twelve `build_*.py` files | one model each (`build_lever.py` and `build_splinter.py` write two, `build_chalk.py` three), into `assets/models/`. `build_gate.py` is the door of the exit, `build_gate_arch.py` the gatehouse over it, `build_gate_lantern.py` its lantern, `build_gate_bell.py` the bell that swings beside the big lantern, `build_milestone.py` the stone in front of it and `build_chalk.py` the chalk marks on the walls. `build_splinter.py` is what the player collects: the game calls them crystals and draws them as splinters of the moon |
+| the twelve `build_*.py` files | one model each (`build_lever.py` and `build_splinter.py` write two, `build_chalk.py` three, and `build_wall_straight.py` three: the plain wall, `wall_straight_crown` and `wall_straight_broken`), into `assets/models/`. `build_gate.py` is the door of the exit, `build_gate_arch.py` the gatehouse over it, `build_gate_lantern.py` its lantern, `build_gate_bell.py` the bell that swings beside the big lantern, `build_milestone.py` the stone in front of it and `build_chalk.py` the chalk marks on the walls. `build_splinter.py` is what the player collects: the game calls them crystals and draws them as splinters of the moon |
 | `make_skybox.py` | the six faces of the night sky, into `assets/skybox/` |
 | `make_heightmap.py` | `assets/textures/heightmap.png`, the heights of the terrain |
 | `make_all.py` | runs all of the above in one process, textures first, because a model script loads its PNG |
@@ -33,7 +33,7 @@ Everything after `--` goes to the script. `--shots` also writes review renders, 
 | Origin | the middle of the base, the underside at height 0. The exceptions are `splinter_a` and `splinter_b`, whose origin is the lower point of their main sliver: they float and turn about it, and the two models the game turns, `lever_handle` and `gate_bell`, whose origin is the pivot |
 | Faces | triangles only, with one normal per face (flat shading). The renderer draws no back faces, so a model that is open, like the bell from below, needs faces that look inwards too |
 | Material | exactly one per model, with a colour picture and a normal map. A model may wear the picture of another: the bell has the brass of the lever handle |
-| UVs | one UV unit per 2 m on stone and the gate (`box_project_uvs`). Sloped models use `face_project_uvs` with their own density. The flask, the lantern and the splinters write their UVs by hand |
+| UVs | one UV unit per 2 m on stone and the gate (`box_project_uvs`). Sloped models use `face_project_uvs` with their own density. The crowned and the broken wall use it with the 2 m of the stone. The flask, the lantern and the splinters write their UVs by hand |
 | Texture paths in the `.mtl` | relative, so the file works on any computer |
 
 ### Chalk marks

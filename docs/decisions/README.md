@@ -24,6 +24,7 @@ Status words: `accepted (date)` means the code does this today. `superseded by <
 - [painted-moon](painted-moon.md): moon painted into the sky
 - [darker-night-defaults](darker-night-defaults.md): darker values and the fog cap
 - [worn-walls-from-the-seed](worn-walls-from-the-seed.md): wall variants, painted niches
+- [crowned-and-broken-walls](crowned-and-broken-walls.md): two wall models, new top edge
 
 ## World and gameplay
 - [collision-aabb-sliding](collision-aabb-sliding.md): own boxes, one axis at a time
