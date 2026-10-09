@@ -34,8 +34,9 @@ constexpr float VILLAGE_FAR_SHARE = 0.9F;
 /// GATE_LAMP_GLOW_STRENGTH (5). A window is two pixels wide, so the bloom has to carry it.
 constexpr float VILLAGE_LIGHT_GLOW = 7.0F;
 
-/// The last window, the one of the player, burns this much brighter than the others.
-constexpr float VILLAGE_OWN_WINDOW_GLOW = 1.6F;
+/// The last window, the one of the player, burns this much brighter than the others: it
+/// is one light among 32, and its halo has to be the one that is seen coming on.
+constexpr float VILLAGE_OWN_WINDOW_GLOW = 3.0F;
 
 /// What can be changed about the village while the game runs. The debug UI edits the
 /// fields.
@@ -88,8 +89,9 @@ constexpr float VILLAGE_REVEAL_PITCH_DEGREES = 3.0F;
 constexpr float VILLAGE_REVEAL_BESIDE_CARD_DEGREES = 8.5F;
 
 /// The new lights come on over this many seconds, beginning this long after the result
-/// came up: when the camera has almost arrived.
-constexpr float VILLAGE_NEW_LIGHT_DELAY_SECONDS = 2.8F;
+/// came up: when the camera has almost arrived, so the village is first seen as the night
+/// before left it.
+constexpr float VILLAGE_NEW_LIGHT_DELAY_SECONDS = 3.2F;
 constexpr float VILLAGE_NEW_LIGHT_SECONDS = 1.6F;
 
 /// Where a camera stands and looks, and with which lens: the fields of scene::Camera
