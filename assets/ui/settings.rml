@@ -3,111 +3,116 @@
     <title>Settings</title>
     <link type="text/rcss" href="menu.rcss"/>
 </head>
-<body class="dim">
+<body class="dim settings">
 <!-- A control names its setting with data-setting: when it changes, the game gets the
      name and the new value (game::applySetting), uses the value at once and writes the
      settings file. The limits of the six sliders are the ones in game/Settings.hpp. The
      elements with an id are written by the game. -->
-<div class="panel">
-    <h2 class="panel-title">Settings</h2>
-    <div class="sep"></div>
-    <div class="field">
-        <span class="field-name">Mouse sensitivity</span>
-        <input type="range" id="mouse_sensitivity" data-setting="mouse_sensitivity" min="1" max="10" step="0.1" value="4" autofocus/>
-        <span class="field-value" id="mouse_sensitivity-text">4.0</span>
+<!-- The two panels stand side by side in one row, and the body puts that row in the
+     middle of the height of the window: the panels share their top edge and their
+     bottom edge (menu.rcss). -->
+<div class="pair">
+    <div class="panel">
+        <h2 class="panel-title">Settings</h2>
+        <div class="sep"></div>
+        <div class="field">
+            <span class="field-name">Mouse sensitivity</span>
+            <input type="range" id="mouse_sensitivity" data-setting="mouse_sensitivity" min="1" max="10" step="0.1" value="4" autofocus/>
+            <span class="field-value" id="mouse_sensitivity-text">4.0</span>
+        </div>
+        <div class="field">
+            <span class="field-name">Field of view</span>
+            <input type="range" id="field_of_view" data-setting="field_of_view" min="45" max="90" step="1" value="60"/>
+            <span class="field-value" id="field_of_view-text">60 deg</span>
+        </div>
+        <div class="field">
+            <span class="field-name">Volume</span>
+            <input type="range" id="master_volume" data-setting="master_volume" min="0" max="100" step="1" value="100"/>
+            <span class="field-value" id="master_volume-text">100</span>
+        </div>
+        <div class="field">
+            <span class="field-name">Effects volume</span>
+            <input type="range" id="effects_volume" data-setting="effects_volume" min="0" max="100" step="1" value="100"/>
+            <span class="field-value" id="effects_volume-text">100</span>
+        </div>
+        <div class="field">
+            <span class="field-name">Ambient volume</span>
+            <input type="range" id="ambient_volume" data-setting="ambient_volume" min="0" max="100" step="1" value="100"/>
+            <span class="field-value" id="ambient_volume-text">100</span>
+        </div>
+        <div class="field">
+            <span class="field-name">Music volume</span>
+            <input type="range" id="music_volume" data-setting="music_volume" min="0" max="100" step="1" value="60"/>
+            <span class="field-value" id="music_volume-text">60</span>
+        </div>
+        <div class="field">
+            <span class="field-name">Fullscreen</span>
+            <button class="toggle" id="fullscreen" data-action="toggle-fullscreen"><div class="knob"></div></button>
+            <span class="field-value" id="fullscreen-text">Off</span>
+        </div>
+        <div class="field" id="window-size-row">
+            <span class="field-name">Window size</span>
+            <button class="step" data-action="window-size-smaller">-</button>
+            <span class="field-value wide" id="window-size">1280 x 720</span>
+            <button class="step" data-action="window-size-larger">+</button>
+        </div>
+        <div class="buttons">
+            <button class="btn primary" data-action="back">Back</button>
+            <button class="btn" data-action="reset-settings">Reset defaults</button>
+            <span class="keys" id="saved"></span>
+        </div>
+        <p class="keys">Left and right move a slider | Esc: back</p>
     </div>
-    <div class="field">
-        <span class="field-name">Field of view</span>
-        <input type="range" id="field_of_view" data-setting="field_of_view" min="45" max="90" step="1" value="60"/>
-        <span class="field-value" id="field_of_view-text">60 deg</span>
+    <!-- The part "Controls": one row per action of the player (game/KeyBindings.hpp), with
+         the key the action is on as a button. The id of a button is the name of its line in
+         the settings file. A click on it (or Enter) makes it wait for the next key press,
+         which becomes the key of the action. The names, the keys and the line under the
+         rows are written by the game (NightMazeApp::fillControls). -->
+    <div class="panel controls">
+        <h2 class="panel-title">Controls</h2>
+        <div class="sep"></div>
+        <div class="key-row">
+            <span class="key-name" id="key_forward-name">Forward</span>
+            <button class="chip key" id="key_forward" data-action="key_forward">W</button>
+        </div>
+        <div class="key-row">
+            <span class="key-name" id="key_back-name">Back</span>
+            <button class="chip key" id="key_back" data-action="key_back">S</button>
+        </div>
+        <div class="key-row">
+            <span class="key-name" id="key_left-name">Left</span>
+            <button class="chip key" id="key_left" data-action="key_left">A</button>
+        </div>
+        <div class="key-row">
+            <span class="key-name" id="key_right-name">Right</span>
+            <button class="chip key" id="key_right" data-action="key_right">D</button>
+        </div>
+        <div class="key-row">
+            <span class="key-name" id="key_sprint-name">Sprint</span>
+            <button class="chip key" id="key_sprint" data-action="key_sprint">Left Shift</button>
+        </div>
+        <div class="key-row">
+            <span class="key-name" id="key_use-name">Use</span>
+            <button class="chip key" id="key_use" data-action="key_use">E</button>
+        </div>
+        <div class="key-row">
+            <span class="key-name" id="key_flashlight-name">Flashlight</span>
+            <button class="chip key" id="key_flashlight" data-action="key_flashlight">F</button>
+        </div>
+        <div class="key-row">
+            <span class="key-name" id="key_map-name">Map (hold)</span>
+            <button class="chip key" id="key_map" data-action="key_map">M</button>
+        </div>
+        <div class="key-row">
+            <span class="key-name" id="key_restart-name">Restart</span>
+            <button class="chip key" id="key_restart" data-action="key_restart">R</button>
+        </div>
+        <p class="keys amber" id="controls-note">A key already in use swaps the two.</p>
+        <div class="buttons">
+            <button class="btn" id="reset-controls" data-action="reset-controls">Reset controls</button>
+        </div>
+        <p class="keys">Enter: change a key | Esc: cancel</p>
     </div>
-    <div class="field">
-        <span class="field-name">Volume</span>
-        <input type="range" id="master_volume" data-setting="master_volume" min="0" max="100" step="1" value="100"/>
-        <span class="field-value" id="master_volume-text">100</span>
-    </div>
-    <div class="field">
-        <span class="field-name">Effects volume</span>
-        <input type="range" id="effects_volume" data-setting="effects_volume" min="0" max="100" step="1" value="100"/>
-        <span class="field-value" id="effects_volume-text">100</span>
-    </div>
-    <div class="field">
-        <span class="field-name">Ambient volume</span>
-        <input type="range" id="ambient_volume" data-setting="ambient_volume" min="0" max="100" step="1" value="100"/>
-        <span class="field-value" id="ambient_volume-text">100</span>
-    </div>
-    <div class="field">
-        <span class="field-name">Music volume</span>
-        <input type="range" id="music_volume" data-setting="music_volume" min="0" max="100" step="1" value="60"/>
-        <span class="field-value" id="music_volume-text">60</span>
-    </div>
-    <div class="field">
-        <span class="field-name">Fullscreen</span>
-        <button class="toggle" id="fullscreen" data-action="toggle-fullscreen"><div class="knob"></div></button>
-        <span class="field-value" id="fullscreen-text">Off</span>
-    </div>
-    <div class="field" id="window-size-row">
-        <span class="field-name">Window size</span>
-        <button class="step" data-action="window-size-smaller">-</button>
-        <span class="field-value wide" id="window-size">1280 x 720</span>
-        <button class="step" data-action="window-size-larger">+</button>
-    </div>
-    <div class="buttons">
-        <button class="btn primary" data-action="back">Back</button>
-        <button class="btn" data-action="reset-settings">Reset defaults</button>
-        <span class="keys" id="saved"></span>
-    </div>
-    <p class="keys">Left and right move a slider | Esc: back</p>
-</div>
-<!-- The part "Controls": one row per action of the player (game/KeyBindings.hpp), with
-     the key the action is on as a button. The id of a button is the name of its line in
-     the settings file. A click on it (or Enter) makes it wait for the next key press,
-     which becomes the key of the action. The names, the keys and the line under the
-     rows are written by the game (NightMazeApp::fillControls). -->
-<div class="panel controls">
-    <h2 class="panel-title">Controls</h2>
-    <div class="sep"></div>
-    <div class="key-row">
-        <span class="key-name" id="key_forward-name">Forward</span>
-        <button class="chip key" id="key_forward" data-action="key_forward">W</button>
-    </div>
-    <div class="key-row">
-        <span class="key-name" id="key_back-name">Back</span>
-        <button class="chip key" id="key_back" data-action="key_back">S</button>
-    </div>
-    <div class="key-row">
-        <span class="key-name" id="key_left-name">Left</span>
-        <button class="chip key" id="key_left" data-action="key_left">A</button>
-    </div>
-    <div class="key-row">
-        <span class="key-name" id="key_right-name">Right</span>
-        <button class="chip key" id="key_right" data-action="key_right">D</button>
-    </div>
-    <div class="key-row">
-        <span class="key-name" id="key_sprint-name">Sprint</span>
-        <button class="chip key" id="key_sprint" data-action="key_sprint">Left Shift</button>
-    </div>
-    <div class="key-row">
-        <span class="key-name" id="key_use-name">Use</span>
-        <button class="chip key" id="key_use" data-action="key_use">E</button>
-    </div>
-    <div class="key-row">
-        <span class="key-name" id="key_flashlight-name">Flashlight</span>
-        <button class="chip key" id="key_flashlight" data-action="key_flashlight">F</button>
-    </div>
-    <div class="key-row">
-        <span class="key-name" id="key_map-name">Map (hold)</span>
-        <button class="chip key" id="key_map" data-action="key_map">M</button>
-    </div>
-    <div class="key-row">
-        <span class="key-name" id="key_restart-name">Restart</span>
-        <button class="chip key" id="key_restart" data-action="key_restart">R</button>
-    </div>
-    <p class="keys amber" id="controls-note">A key already in use swaps the two.</p>
-    <div class="buttons">
-        <button class="btn" id="reset-controls" data-action="reset-controls">Reset controls</button>
-    </div>
-    <p class="keys">Enter: change a key | Esc: cancel</p>
 </div>
 </body>
 </rml>

@@ -431,8 +431,10 @@ body.open .card, body.open .panel {
     display: flex;
     flex-direction: row;
     align-items: center;
-    height: 6vh;
-    margin-bottom: 1vh;
+    /* Eight rows: as low as the buttons of the window size row allow, so the panel
+       keeps a margin above and below it in the window. */
+    height: 5.6vh;
+    margin-bottom: 0.5vh;
     font-size: 2.9vh;
 }
 .field-name {
@@ -660,14 +662,35 @@ body.open .curtain.drawn {
 
 /* ---- the controls: a second panel of the settings screen, one row per action --------- */
 
+/* The two panels are one row (.pair) that the body puts in the middle of the height of
+   the window, so they stay in the middle when a panel gains or loses a row. The row
+   starts where the column of the main menu starts. Its panels are stretched to one
+   height: they share their top edge and their bottom edge. They keep their widths in
+   a narrow window. */
+body.settings {
+    display: flex;
+    align-items: center;
+}
+.pair {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    margin-left: 12.4vh;
+}
+.pair .panel {
+    position: static;
+    flex-shrink: 0;
+}
+
 /* It stands to the right of the panel of the settings, which is full: nine more rows
    do not fit under it in a window of any size. Narrow enough for a 16 : 10 screen. On
    a screen that is less wide than that (4 : 3) its right edge is cut off. */
 .panel.controls {
-    left: 121vh;
-    top: 8vh;
+    margin-left: 2.3vh;
     width: 32vh;
-    padding: 3.4vh 3vh;
+    /* Above and below as much as the other panel has, so the two titles and the two
+       lines under them stand at one height. */
+    padding: 4.3vh 3vh;
 }
 .key-row {
     display: flex;
