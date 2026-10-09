@@ -148,6 +148,10 @@ const char* screenName(game::GameMode mode) {
         return "Intro";
     case game::GameMode::CampaignIntro:
         return "campaign intro";
+    case game::GameMode::LedgerFromMenu:
+        return "ledger (from menu)";
+    case game::GameMode::LedgerFromPause:
+        return "ledger (from pause)";
     }
     // Only reached with a number that is no screen at all.
     return "Unknown";

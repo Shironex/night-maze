@@ -1,5 +1,6 @@
 // GameState: which screen the game is on (menu, intro, free play, nights of the campaign,
-// playing, paused, round end, settings, cards) and the rules for going from one to the next.
+// playing, paused, round end, settings, ledger, cards) and the rules for going from one to the
+// next.
 #pragma once
 
 #include "game/Campaign.hpp"
@@ -52,6 +53,11 @@ enum class GameMode {
     /// of the first night follows. It is a screen of its own for the same reason as the
     /// two settings screens: the screen itself remembers where its end leads.
     CampaignIntro,
+    /// The lamplighter's ledger (game/Ledger.hpp): the page with every line of the story
+    /// the player has read. Like the settings it is a screen of its own for each place
+    /// it can be opened from: the main menu and the pause menu.
+    LedgerFromMenu,
+    LedgerFromPause,
 };
 
 /// Something that can change the screen: a button of a menu, the Escape key, or the
@@ -65,7 +71,7 @@ enum class GameEvent {
     Escape,        ///< the Escape key
     RoundWon,      ///< the player walked through the open gate (RoundState::Won)
     OpenSettings,  ///< button "Settings" of the main menu and of the pause menu
-    CloseSettings, ///< button "Back" of the settings screen
+    CloseSettings, ///< button "Back" of the settings screen and of the ledger
     NewMaze,       ///< button "New maze" of the result screen: a new game, another maze
     FocusLost,     ///< the window of the game stopped being the active window
     IntroFinished, ///< the intro reached its end, or a key or a mouse button skipped it
@@ -86,6 +92,7 @@ enum class GameEvent {
     /// "Begin" of the main menu, or the answer "yes" to a new campaign
     /// (campaignEntryEvent).
     BeginCampaign,
+    OpenLedger, ///< button "Ledger" of the main menu and of the pause menu
 };
 
 /// What the button "Play" asks for: the game that is started next.
@@ -108,6 +115,7 @@ struct NewGame {
 ///     MainMenu           OpenNights     Nights
 ///     MainMenu           OpenFreePlay   FreePlay
 ///     MainMenu           OpenSettings   SettingsFromMenu
+///     MainMenu           OpenLedger     LedgerFromMenu
 ///     MainMenu           Quit           Quitting
 ///     FreePlay           Play           Playing
 ///     FreePlay           BackToMenu     MainMenu
@@ -131,6 +139,7 @@ struct NewGame {
 ///     Paused             Resume         Playing
 ///     Paused             Restart        Playing
 ///     Paused             OpenSettings   SettingsFromPause
+///     Paused             OpenLedger     LedgerFromPause
 ///     Paused             BackToMenu     MainMenu
 ///     RoundEnd           Restart        Playing
 ///     RoundEnd           NewMaze        Playing
@@ -142,6 +151,10 @@ struct NewGame {
 ///     SettingsFromMenu   Escape         MainMenu
 ///     SettingsFromPause  CloseSettings  Paused
 ///     SettingsFromPause  Escape         Paused
+///     LedgerFromMenu     CloseSettings  MainMenu
+///     LedgerFromMenu     Escape         MainMenu
+///     LedgerFromPause    CloseSettings  Paused
+///     LedgerFromPause    Escape         Paused
 ///     Intro              IntroFinished  MainMenu
 ///     Intro              Escape         MainMenu
 ///     CampaignIntro      IntroFinished  NightCard
@@ -149,9 +162,9 @@ struct NewGame {
 ///
 /// Escape goes one screen back: out of the game into the pause menu, out of the pause
 /// menu back into the game, out of the result to the main menu, out of the settings to
-/// the screen they were opened from, out of free play, the list of nights and the
-/// question about a new campaign to the main menu. In the main menu there is nothing to
-/// go back to, and leaving the program is a button, not a key.
+/// the screen they were opened from, out of the ledger likewise, out of free play, the list of
+/// nights and the question about a new campaign to the main menu. In the main menu there is nothing
+/// to go back to, and leaving the program is a button, not a key.
 ///
 /// A night of the campaign begins with its title card, and the card leads into the
 /// round in one direction only: Escape skips it like any other key. The result screen of
@@ -214,8 +227,8 @@ bool startsNewGame(GameMode mode, GameEvent event);
 
 /// The event behind the name a menu button carries in its document (the attribute
 /// data-action): "play", "resume", "restart", "menu", "quit", "settings", "back",
-/// "new-maze", "free-play" or "nights". False for any other name: event is left as it was. The
-/// Escape key, the won round and the lost focus are not buttons and have no name.
+/// "new-maze", "free-play", "nights" or "ledger". False for any other name: event is left as it
+/// was. The Escape key, the won round and the lost focus are not buttons and have no name.
 bool eventForAction(std::string_view action, GameEvent& event);
 
 /// True while the rules of the round run: the player moves, the battery drains,
@@ -223,8 +236,8 @@ bool eventForAction(std::string_view action, GameEvent& event);
 bool updatesRound(GameMode mode);
 
 /// True while the things that move by themselves keep moving (bobbing crystals, pulsing
-/// lights). They stand still only in the pause menu and in the settings opened from it:
-/// a pause stops everything.
+/// lights). They stand still only in the pause menu and in the settings and the ledger
+/// opened from it: a pause stops everything.
 bool animatesScene(GameMode mode);
 
 /// True while a menu document is shown. The cursor is then free and the mouse and the
@@ -278,9 +291,9 @@ bool showsMap(GameMode mode, const MapRequest& request);
 
 /// True while the picture is taken by the menu camera and not from the eyes of the
 /// player: in the main menu, which has no round to show, and on the screens opened from
-/// it (the settings, free play, the list of nights, the question about a new campaign). The intro
-/// is not among them: it places the camera itself, shot by shot (game/Intro.hpp), and its scene is
-/// always drawn.
+/// it (the settings, the ledger, free play, the list of nights, the question about a new campaign).
+/// The intro is not among them: it places the camera itself, shot by shot (game/Intro.hpp), and its
+/// scene is always drawn.
 bool usesMenuCamera(GameMode mode);
 
 /// True when the scene has to be drawn. fullscreenBackground tells whether the menu

@@ -17,6 +17,7 @@ constexpr std::string_view BACK_ACTION = "back";
 constexpr std::string_view NEW_MAZE_ACTION = "new-maze";
 constexpr std::string_view FREE_PLAY_ACTION = "free-play";
 constexpr std::string_view NIGHTS_ACTION = "nights";
+constexpr std::string_view LEDGER_ACTION = "ledger";
 
 } // namespace
 
@@ -46,6 +47,9 @@ GameMode nextMode(GameMode mode, GameEvent event) {
         if (event == GameEvent::OpenSettings) {
             return GameMode::SettingsFromMenu;
         }
+        if (event == GameEvent::OpenLedger) {
+            return GameMode::LedgerFromMenu;
+        }
         break;
     case GameMode::Playing:
         // A player who switches to another program does not want the round to go on
@@ -72,6 +76,9 @@ GameMode nextMode(GameMode mode, GameEvent event) {
         if (event == GameEvent::OpenSettings) {
             return GameMode::SettingsFromPause;
         }
+        if (event == GameEvent::OpenLedger) {
+            return GameMode::LedgerFromPause;
+        }
         break;
     case GameMode::RoundEnd:
         if (event == GameEvent::Restart || event == GameEvent::NewMaze) {
@@ -89,11 +96,13 @@ GameMode nextMode(GameMode mode, GameEvent event) {
         }
         break;
     case GameMode::SettingsFromMenu:
+    case GameMode::LedgerFromMenu:
         if (event == GameEvent::CloseSettings || event == GameEvent::Escape) {
             return GameMode::MainMenu;
         }
         break;
     case GameMode::SettingsFromPause:
+    case GameMode::LedgerFromPause:
         if (event == GameEvent::CloseSettings || event == GameEvent::Escape) {
             return GameMode::Paused;
         }
@@ -221,6 +230,8 @@ bool eventForAction(std::string_view action, GameEvent& event) {
         event = GameEvent::OpenFreePlay;
     } else if (action == NIGHTS_ACTION) {
         event = GameEvent::OpenNights;
+    } else if (action == LEDGER_ACTION) {
+        event = GameEvent::OpenLedger;
     } else {
         return false;
     }
@@ -232,13 +243,16 @@ bool updatesRound(GameMode mode) {
 }
 
 bool animatesScene(GameMode mode) {
-    return mode != GameMode::Paused && mode != GameMode::SettingsFromPause;
+    return mode != GameMode::Paused && mode != GameMode::SettingsFromPause &&
+           mode != GameMode::LedgerFromPause;
 }
 
 bool isMenuOpen(GameMode mode) {
     return mode == GameMode::MainMenu || mode == GameMode::Paused || mode == GameMode::RoundEnd ||
            mode == GameMode::SettingsFromMenu || mode == GameMode::SettingsFromPause ||
-           mode == GameMode::FreePlay || mode == GameMode::Nights || mode == GameMode::NewCampaign;
+           mode == GameMode::FreePlay || mode == GameMode::Nights ||
+           mode == GameMode::NewCampaign || mode == GameMode::LedgerFromMenu ||
+           mode == GameMode::LedgerFromPause;
 }
 
 bool isIntro(GameMode mode) {
@@ -260,7 +274,8 @@ bool showsMap(GameMode mode, const MapRequest& request) {
 
 bool usesMenuCamera(GameMode mode) {
     return mode == GameMode::MainMenu || mode == GameMode::SettingsFromMenu ||
-           mode == GameMode::FreePlay || mode == GameMode::Nights || mode == GameMode::NewCampaign;
+           mode == GameMode::FreePlay || mode == GameMode::Nights ||
+           mode == GameMode::NewCampaign || mode == GameMode::LedgerFromMenu;
 }
 
 bool drawsScene(GameMode mode, bool fullscreenBackground) {

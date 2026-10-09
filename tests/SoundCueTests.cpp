@@ -877,7 +877,8 @@ TEST_CASE("the wind of the maze is heard while a round is played and nowhere els
          {GameMode::MainMenu, GameMode::Paused, GameMode::RoundEnd, GameMode::Quitting,
           GameMode::SettingsFromMenu, GameMode::SettingsFromPause, GameMode::Intro,
           GameMode::FreePlay, GameMode::Nights, GameMode::NewCampaign, GameMode::NightCard,
-          GameMode::EndingCard, GameMode::CampaignIntro}) {
+          GameMode::EndingCard, GameMode::CampaignIntro, GameMode::LedgerFromMenu,
+          GameMode::LedgerFromPause}) {
         CHECK_FALSE(game::mazeWindPlays({.mode = mode}));
     }
     // The window is not the active one, or the menu camera shows the game.
@@ -887,9 +888,10 @@ TEST_CASE("the wind of the maze is heard while a round is played and nowhere els
 
 TEST_CASE("a sample of the wind is heard on a menu, but never over the intro") {
     using game::GameMode;
-    for (const GameMode mode : {GameMode::MainMenu, GameMode::Paused, GameMode::RoundEnd,
-                                GameMode::SettingsFromMenu, GameMode::SettingsFromPause,
-                                GameMode::FreePlay, GameMode::Nights, GameMode::NewCampaign}) {
+    for (const GameMode mode :
+         {GameMode::MainMenu, GameMode::Paused, GameMode::RoundEnd, GameMode::SettingsFromMenu,
+          GameMode::SettingsFromPause, GameMode::FreePlay, GameMode::Nights, GameMode::NewCampaign,
+          GameMode::LedgerFromMenu, GameMode::LedgerFromPause}) {
         CHECK(game::mazeWindPlays({.mode = mode, .sample = true}));
     }
     // Also under the menu camera: the sample is asked for by a person at the window.

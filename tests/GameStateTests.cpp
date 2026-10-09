@@ -13,7 +13,7 @@ using game::GameEvent;
 using game::GameMode;
 
 // Every screen and every event, for the tests that go through all of them.
-constexpr std::array<GameMode, 14> ALL_MODES = {GameMode::MainMenu,
+constexpr std::array<GameMode, 16> ALL_MODES = {GameMode::MainMenu,
                                                 GameMode::Playing,
                                                 GameMode::Paused,
                                                 GameMode::RoundEnd,
@@ -26,15 +26,17 @@ constexpr std::array<GameMode, 14> ALL_MODES = {GameMode::MainMenu,
                                                 GameMode::NewCampaign,
                                                 GameMode::NightCard,
                                                 GameMode::EndingCard,
-                                                GameMode::CampaignIntro};
-constexpr std::array<GameEvent, 19> ALL_EVENTS = {
-    GameEvent::Play,         GameEvent::Resume,       GameEvent::Restart,
-    GameEvent::BackToMenu,   GameEvent::Quit,         GameEvent::Escape,
-    GameEvent::RoundWon,     GameEvent::OpenSettings, GameEvent::CloseSettings,
-    GameEvent::NewMaze,      GameEvent::FocusLost,    GameEvent::IntroFinished,
-    GameEvent::OpenFreePlay, GameEvent::OpenNights,   GameEvent::AskNewCampaign,
-    GameEvent::StartNight,   GameEvent::CardFinished, GameEvent::CampaignWon,
-    GameEvent::BeginCampaign};
+                                                GameMode::CampaignIntro,
+                                                GameMode::LedgerFromMenu,
+                                                GameMode::LedgerFromPause};
+constexpr std::array<GameEvent, 20> ALL_EVENTS = {
+    GameEvent::Play,          GameEvent::Resume,       GameEvent::Restart,
+    GameEvent::BackToMenu,    GameEvent::Quit,         GameEvent::Escape,
+    GameEvent::RoundWon,      GameEvent::OpenSettings, GameEvent::CloseSettings,
+    GameEvent::NewMaze,       GameEvent::FocusLost,    GameEvent::IntroFinished,
+    GameEvent::OpenFreePlay,  GameEvent::OpenNights,   GameEvent::AskNewCampaign,
+    GameEvent::StartNight,    GameEvent::CardFinished, GameEvent::CampaignWon,
+    GameEvent::BeginCampaign, GameEvent::OpenLedger};
 
 // The three screens that are opened from the main menu and lead back to it.
 constexpr std::array<GameMode, 3> MENU_PAGES = {GameMode::FreePlay, GameMode::Nights,
@@ -76,6 +78,50 @@ TEST_CASE("the settings open from the main menu and from the pause menu, and go 
     // Nowhere else: not from a running round and not from the result screen.
     CHECK(game::nextMode(GameMode::Playing, GameEvent::OpenSettings) == GameMode::Playing);
     CHECK(game::nextMode(GameMode::RoundEnd, GameEvent::OpenSettings) == GameMode::RoundEnd);
+}
+
+TEST_CASE("the ledger opens from the main menu and from the pause menu, and goes back there") {
+    const GameMode fromMenu = game::nextMode(GameMode::MainMenu, GameEvent::OpenLedger);
+    CHECK(fromMenu == GameMode::LedgerFromMenu);
+    CHECK(game::nextMode(fromMenu, GameEvent::CloseSettings) == GameMode::MainMenu);
+    CHECK(game::nextMode(fromMenu, GameEvent::Escape) == GameMode::MainMenu);
+
+    const GameMode fromPause = game::nextMode(GameMode::Paused, GameEvent::OpenLedger);
+    CHECK(fromPause == GameMode::LedgerFromPause);
+    CHECK(game::nextMode(fromPause, GameEvent::CloseSettings) == GameMode::Paused);
+    CHECK(game::nextMode(fromPause, GameEvent::Escape) == GameMode::Paused);
+
+    // Nowhere else, and on the page only Back and Escape do something.
+    for (const GameMode mode : ALL_MODES) {
+        if (mode != GameMode::MainMenu && mode != GameMode::Paused) {
+            CHECK(game::nextMode(mode, GameEvent::OpenLedger) == mode);
+        }
+    }
+    for (const GameMode ledger : {fromMenu, fromPause}) {
+        for (const GameEvent event : ALL_EVENTS) {
+            if (event != GameEvent::CloseSettings && event != GameEvent::Escape) {
+                CHECK(game::nextMode(ledger, event) == ledger);
+            }
+        }
+    }
+    GameEvent event = GameEvent::Escape;
+    CHECK(game::eventForAction("ledger", event));
+    CHECK(event == GameEvent::OpenLedger);
+}
+
+TEST_CASE("the ledger is a menu that keeps the picture of the screen it was opened from") {
+    const std::array<std::array<GameMode, 2>, 2> pairs = {
+        {{GameMode::MainMenu, GameMode::LedgerFromMenu},
+         {GameMode::Paused, GameMode::LedgerFromPause}}};
+    for (const std::array<GameMode, 2>& pair : pairs) {
+        CHECK(game::isMenuOpen(pair[1]));
+        CHECK_FALSE(game::updatesRound(pair[1]));
+        CHECK_FALSE(game::showsHud(pair[1]));
+        CHECK_FALSE(game::isFilm(pair[1]));
+        CHECK(game::usesMenuCamera(pair[0]) == game::usesMenuCamera(pair[1]));
+        CHECK(game::animatesScene(pair[0]) == game::animatesScene(pair[1]));
+        CHECK(game::drawsScene(pair[0], true) == game::drawsScene(pair[1], true));
+    }
 }
 
 TEST_CASE("on the settings screen only Back and Escape do something") {
