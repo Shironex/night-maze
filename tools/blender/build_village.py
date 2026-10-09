@@ -32,8 +32,8 @@ NIGHT_COUNT = 5
 # No face that looks away from the origin is built. And the top of the ridge, with the lane
 # on it, is never seen from below: the ridge is one slope, and the lamp posts mark the lane.
 #
-# The numbers the game has to agree with are VILLAGE_REACH and the two angles in
-# src/game/Village.hpp.
+# The numbers the game has to agree with are VILLAGE_REACH, the two of the lane and the two
+# of the foot of the ridge in src/game/Village.hpp.
 LANE_DISTANCE = 257.0
 LANE_HEIGHT = 27.0
 
@@ -126,16 +126,32 @@ LAMP_HEAD_WIDTH = 0.5
 LAMP_HEAD_HEIGHT = 0.6
 
 # The ridge: one slope that faces the hollow. Its upper edge is level under the village and
-# falls away to both sides, below the horizon, so the village stands on a hill and not on
-# a bar in the sky. Its lower edge lies below the horizon everywhere.
+# falls away to both sides, so the village stands on a hill and not on a bar in the sky.
 RIDGE_EDGE_Y = 1.0
 RIDGE_HALF_WIDTH = 100.0
 RIDGE_STEP = 10.0
 RIDGE_LEVEL_HALF = 30.0
 RIDGE_FALL = 45.0
 RIDGE_WAVE = 1.5
-RIDGE_FOOT_Z = -45.0
-RIDGE_FOOT_NEARER = 100.0
+
+# The rim: the ridge does not end beside the village. It runs on as the rim of the hollow,
+# the whole way round the eye, and the hill of the village rises out of it. An eye in the
+# corridors never sees the rim, the fog of the hollow hides it. A camera high above the
+# maze looks over that fog, and there the hill alone was a black shape with two ends and
+# a lower edge, afloat in the sky. So the upper edge of the rim lies a little above the
+# horizon everywhere (RIM_DEGREES, and RIM_WAVE_DEGREES up and down, RIM_WAVES times on
+# the way round), and the hill is the ridge where it is higher than that.
+RIM_DEGREES = 1.0
+RIM_WAVE_DEGREES = 0.4
+RIM_WAVES = 5
+RIM_STEPS = 32
+# The foot of the slope, all the way round: this far out and this far below the eye, which
+# is 45 degrees down. The game draws the model 0.31 times as large, so the foot lies 62 m
+# under the camera, deep in the fog for every camera up to VILLAGE_CLEAR_EYE_HEIGHT in
+# src/game/Village.hpp, and no lower edge is seen. The two numbers are
+# VILLAGE_FOOT_DISTANCE and VILLAGE_FOOT_DEPTH there.
+RIM_FOOT_DISTANCE = 200.0
+RIM_FOOT_Z = -200.0
 
 # What the game expects: how many lights each night adds.
 LIGHTS_PER_NIGHT = (5, 7, 8, 11, 1)
@@ -149,7 +165,9 @@ LIGHTS_PER_NIGHT = (5, 7, 8, 11, 1)
 PALE = (0.25, 0.5)
 DARK = (0.75, 0.5)
 # One metre of the model is this many units of u and v. The largest face, a piece of the
-# ridge, is under 80 m long, so it stays inside its half of the picture.
+# rim, is under 60 m wide, so it stays inside its half of the picture. It is over 200 m from
+# its foot to its upper edge, but the two halves lie side by side: its height cannot leave
+# its half.
 UV_UNITS_PER_METRE = 0.002
 
 
@@ -171,18 +189,39 @@ def add_part(vertices, faces, tones, tone, add, *arguments, **options):
     tones.extend([tone] * (len(faces) - before))
 
 
+def rim_top(x, y):
+    """The height of the upper edge of the rim over the point (x, y) of the ground plan."""
+    angle = RIM_DEGREES + RIM_WAVE_DEGREES * math.sin(RIM_WAVES * math.atan2(x, y))
+    return math.hypot(x, y) * math.tan(math.radians(angle))
+
+
 def add_ridge(vertices, faces, tones):
+    # The upper edge, once round the eye, to the right as seen from it. Under the village
+    # it is a straight line along the lane, with the height of the hill wherever the hill
+    # is higher than the rim. From its two ends it goes on as a circle around the eye.
+    edge = []
     steps = int(2.0 * RIDGE_HALF_WIDTH / RIDGE_STEP)
-    first = len(vertices)
     for step in range(steps + 1):
-        x = -RIDGE_HALF_WIDTH + step * RIDGE_STEP
-        foot = place(x, RIDGE_EDGE_Y - RIDGE_FOOT_NEARER, 0.0)
-        vertices.append((foot[0], foot[1], RIDGE_FOOT_Z))
-        vertices.append(place(x, RIDGE_EDGE_Y, ridge_top(x)))
-    for step in range(steps):
-        low = first + 2 * step
+        x, y, z = place(-RIDGE_HALF_WIDTH + step * RIDGE_STEP, RIDGE_EDGE_Y, 0.0)
+        edge.append((x, y, max(z + ridge_top(x), rim_top(x, y))))
+    end_x, end_y, _ = edge[-1]
+    radius = math.hypot(end_x, end_y)
+    end_angle = math.atan2(end_x, end_y)
+    for step in range(1, RIM_STEPS):
+        angle = end_angle + (2.0 * math.pi - 2.0 * end_angle) * step / RIM_STEPS
+        x, y = radius * math.sin(angle), radius * math.cos(angle)
+        edge.append((x, y, rim_top(x, y)))
+
+    first = len(vertices)
+    for x, y, z in edge:
+        nearer = RIM_FOOT_DISTANCE / math.hypot(x, y)
+        vertices.append((x * nearer, y * nearer, RIM_FOOT_Z))
+        vertices.append((x, y, z))
+    for index in range(len(edge)):
+        low = first + 2 * index
+        following = first + 2 * ((index + 1) % len(edge))
         # Counter clockwise as seen from the hollow.
-        faces.append((low, low + 2, low + 3, low + 1))
+        faces.append((low, following, following + 1, low + 1))
         tones.append(DARK)
 
 
