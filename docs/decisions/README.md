@@ -31,6 +31,7 @@ Status words: `accepted (date)` means the code does this today. `superseded by <
 - [deterministic-random](deterministic-random.md): mt19937 and own range helper
 - [maze-on-terrain](maze-on-terrain.md): walls sunk onto gentle ground
 - [the-stile](the-stile.md): step stile in the north wall of the start cell, one box
+- [stone-sheep](stone-sheep.md): a flock in free corners and dead ends that looks at the gate
 - [round-state](round-state.md): the round owns a maze copy
 - [picking](picking.md): ray from the eye, pulsing glow
 - [crook-lever](crook-lever.md): crook on a board, rope, ring on the wall it opens
