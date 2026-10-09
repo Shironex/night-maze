@@ -10,7 +10,7 @@ The scripts in `tools/blender/` run inside headless Blender. I use Blender 5.2.1
 |---|---|
 | `blender_common.py` | shared helpers: scene reset, boxes, UV projection, the material, the OBJ export with every option written out, review renders |
 | `make_textures.py` | the colour pictures and a normal map for each (name plus `_normal`), into `assets/textures/` |
-| the eleven `build_*.py` files | one model each (`build_crystal.py` and `build_lever.py` write two), into `assets/models/`. `build_gate.py` is the door of the exit, `build_gate_arch.py` the gatehouse over it, `build_gate_lantern.py` its lantern and `build_milestone.py` the stone in front of it |
+| the eleven `build_*.py` files | one model each (`build_lever.py` and `build_splinter.py` write two), into `assets/models/`. `build_gate.py` is the door of the exit, `build_gate_arch.py` the gatehouse over it, `build_gate_lantern.py` its lantern and `build_milestone.py` the stone in front of it. `build_splinter.py` is what the player collects: the game calls them crystals and draws them as splinters of the moon |
 | `make_skybox.py` | the six faces of the night sky, into `assets/skybox/` |
 | `make_heightmap.py` | `assets/textures/heightmap.png`, the heights of the terrain |
 | `make_all.py` | runs all of the above in one process, textures first, because a model script loads its PNG |
@@ -30,10 +30,10 @@ Everything after `--` goes to the script. `--shots` also writes review renders, 
 |---|---|
 | Axes | the game is Y up, -Z forward. The scripts are written in Blender space (Z up) and the exporter converts, so a Blender point (x, y, z) becomes (x, z, -y) |
 | Scale | 1 unit is 1 metre. A maze cell is 2 by 2 m and a wall is 3 m tall |
-| Origin | the middle of the base, the underside at height 0. The exception is `crystal_b`, whose origin is the base of its main shard |
+| Origin | the middle of the base, the underside at height 0. The exceptions are `splinter_a` and `splinter_b`, whose origin is the lower point of their main sliver: they float and turn about it |
 | Faces | triangles only, with one normal per face (flat shading) |
 | Material | exactly one per model, with a colour picture and a normal map |
-| UVs | one UV unit per 2 m on stone and the gate (`box_project_uvs`). Sloped models use `face_project_uvs` with their own density |
+| UVs | one UV unit per 2 m on stone and the gate (`box_project_uvs`). Sloped models use `face_project_uvs` with their own density. The flask, the lantern and the splinters write their UVs by hand |
 | Texture paths in the `.mtl` | relative, so the file works on any computer |
 
 ### Adding a model
@@ -59,7 +59,7 @@ A model that fails to load is not drawn. A texture that fails to load becomes wh
 
 ## Textures
 
-The pictures from `make_textures.py` are 512 by 512 PNG, 8 bits per channel, RGB. They tile, except the note, the flask and the shade, which wrap once around their models, and the lantern, whose left half is its pale glass and whose right half its dark iron. The six sky faces are 1024 by 1024 and the heightmap is 256 by 256. Decoding is stb_image, behind `src/assets/ImageLoader.cpp`.
+The pictures from `make_textures.py` are 512 by 512 PNG, 8 bits per channel, RGB. They tile, except the note, the flask and the shade, which wrap once around their models, the lantern, whose left half is its pale glass and whose right half its dark iron, and the splinter, whose left half is the dark rind of the moon and whose right half the pale fracture that glows. The six sky faces are 1024 by 1024 and the heightmap is 256 by 256. Decoding is stb_image, behind `src/assets/ImageLoader.cpp`.
 
 The colour space is decided in code, not in the file. `assets::AssetCache` loads the `map_Kd` picture as sRGB, so the GPU decodes it to linear values when sampling, and the normal map as linear data, because its bytes are directions. The sky and the ground are sRGB too (`src/game/Skybox.cpp`). Normal maps use the OpenGL convention (green is +Y).
 
