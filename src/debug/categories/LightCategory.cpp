@@ -228,8 +228,9 @@ void drawCrystalLights(Page& page, game::LightingSettings& lighting, const game:
     page.beginCard("Crystal lights");
     // A crystal that is not collected yet can carry a light, but only the nearest
     // MAX_POINT_LIGHTS of them do: a large maze has more crystals than lights.
-    const int crystalCount = static_cast<int>(round.crystals.size());
-    const int remaining = crystalCount - round.collectedCount;
+    // Counted, not subtracted: the heartstone raises the collected count by more than one.
+    const auto remaining = static_cast<int>(std::ranges::count_if(
+        round.crystals, [](const game::RoundCrystal& crystal) { return !crystal.collected; }));
     const int lit = remaining < scene::MAX_POINT_LIGHTS ? remaining : scene::MAX_POINT_LIGHTS;
     page.stat("Lit", "%d of %d crystals left (at most %d)", lit, remaining,
               scene::MAX_POINT_LIGHTS);

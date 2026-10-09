@@ -118,7 +118,11 @@ void drawRound(Page& page, const DebugContext& context) {
 
     page.stat("Round", "%s, %.1f s", stateName(round.state), round.elapsedSeconds);
     page.stat("Crystals", "%d collected, %d needed, %d in the maze", round.collectedCount,
-              round.requiredCount, static_cast<int>(round.crystals.size()));
+              round.requiredCount, game::crystalTotal(round));
+    if (round.hasHeartstone) {
+        page.stat("Heartstone", "%s, counts as %d", round.heartstoneTaken ? "taken" : "in the maze",
+                  game::HEARTSTONE_WORTH);
+    }
     if (!round.gateOpen) {
         page.stat("Gate", "closed");
     } else if (round.gateProgress < 1.0F) {

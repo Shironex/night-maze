@@ -135,6 +135,11 @@ void drawMazeInPlay(Page& page, const game::MazeWorld& world, game::MazeSettings
     // open the gate is a rule of the round (the Gameplay category).
     page.stat("Crystals, exit", "%d crystals, exit in cell (%d, %d)",
               static_cast<int>(world.crystals.size()), world.exitCell.x, world.exitCell.z);
+    if (world.heartstone) {
+        page.stat("Heartstone", "in cell (%d, %d)", world.heartstone->x, world.heartstone->z);
+    } else {
+        page.stat("Heartstone", "none: no dead end is left for it");
+    }
     // The levers and the notes the maze really got, which can be fewer than asked.
     page.stat("Levers, notes", "%d levers, %d notes",
               static_cast<int>(world.interactables.levers.size()),

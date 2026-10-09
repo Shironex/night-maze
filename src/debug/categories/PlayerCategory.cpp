@@ -183,8 +183,13 @@ void drawMovement(Page& page, const DebugContext& context) {
                 "%.2f",
                 "A player who ran the bar empty is winded and cannot sprint until the bar "
                 "is back at this part of it: 0.5 is half.");
-    page.stat("Stamina", "%.0f%% %s", player.stamina.level * PERCENT,
-              player.stamina.winded ? "(winded)" : "(can sprint)");
+    const char* sprintState = "(can sprint)";
+    if (player.stamina.heavySecondsLeft > 0.0F) {
+        sprintState = "(heavy)";
+    } else if (player.stamina.winded) {
+        sprintState = "(winded)";
+    }
+    page.stat("Stamina", "%.0f%% %s", player.stamina.level * PERCENT, sprintState);
     page.slider("Flask effect", &rule.flaskSeconds, MIN_FLASK_SECONDS, MAX_FLASK_SECONDS, "%.0f s",
                 "How long sprinting costs no stamina after a flask of tea is picked up. "
                 "A flask that is picked up later uses the new number.");

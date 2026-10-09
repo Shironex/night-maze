@@ -138,6 +138,13 @@ constexpr float STAMINA_MARK_OVERHANG = 3.0F;
 // The seconds of the tea stand this far right of the line.
 constexpr float TEA_TEXT_GAP = 10.4F;
 
+// The marks of a heavy player on the stamina line: this wide, and reaching this far
+// above and below the line. They walk from the ends of the line to its middle while the
+// weight of the heartstone runs out. What the line holds is drawn this faint meanwhile.
+constexpr float HEAVY_MARK_WIDTH = 2.4F;
+constexpr float HEAVY_MARK_OVERHANG = 4.0F;
+constexpr float HEAVY_LINE_OPACITY = 0.45F;
+
 // How many times per second the stamina line of a winded player goes faint and back,
 // and its opacity at the faintest moment (1 hides what is behind, 0 is invisible).
 constexpr float WINDED_PULSES_PER_SECOND = 2.0F;
@@ -166,6 +173,7 @@ constexpr ImVec2 HINT_PLACE{0.5F, 0.835F};
 // another form: GATE OPEN under the counter, the copper line of the tea, the red gauge.
 constexpr float GATE_HINT_SECONDS = 6.0F;
 constexpr float TEA_HINT_SECONDS = 4.0F;
+constexpr float HEAVY_HINT_SECONDS = 5.0F;
 constexpr float BATTERY_HINT_SECONDS = 6.0F;
 constexpr float HINT_FADE_SECONDS = 0.5F;
 
@@ -504,7 +512,7 @@ void drawCrystalCounter(const Canvas& canvas, const game::Round& round) {
     const float barBottom = barTop + CRYSTAL_BAR_HEIGHT * scale;
     canvas.list->AddRectFilled({barLeft, barTop}, {right, barBottom},
                                ink(canvas, TEXT_COLOR, TRACK_OPACITY));
-    const int total = static_cast<int>(round.crystals.size());
+    const int total = game::crystalTotal(round);
     // A maze without crystals has nothing to fill the bar with and no place for a tick,
     // and it must not be divided by.
     if (total > 0) {
@@ -549,18 +557,28 @@ void drawCrystalCounter(const Canvas& canvas, const game::Round& round) {
 // The stamina line at the bottom, in the middle: it gets shorter from both ends
 // towards its middle, so its length is read without looking at it. Only there while
 // the stamina is in use (game::staminaBarVisible). flaskFraction is how much of the
-// effect of a flask is left (game::flaskEffectFraction).
+// effect of a flask is left (game::flaskEffectFraction), heavyFraction how much of the
+// weight of the heartstone (game::heavyFraction).
 void drawStaminaLine(Canvas canvas, const game::Stamina& stamina, float flaskFraction,
-                     float animationSeconds) {
+                     float heavyFraction, float animationSeconds) {
     if (!game::staminaBarVisible(stamina)) {
         return;
     }
     // The tea of a flask works: the stamina is full and stays full, so the line shows
     // something else, in another colour: the time that is left, running down.
-    const bool tea = stamina.noDrainSecondsLeft > 0.0F;
+    // Heavy comes first: the tea waits until the weight is gone (advanceStaminaClocks),
+    // so while the player is heavy the line shows the stamina, which cannot be used.
+    const bool heavy = stamina.heavySecondsLeft > 0.0F;
+    const bool tea = !heavy && stamina.noDrainSecondsLeft > 0.0F;
     float fraction = stamina.level;
+    float lineOpacity = 1.0F;
     ImVec4 color = HUD_STAMINA_COLOR;
-    if (tea) {
+    if (heavy) {
+        // Heavy: the line is there and faint, in the dim colour of a winded line but
+        // steady. Nobody is out of breath.
+        color = HUD_STAMINA_WINDED_COLOR;
+        lineOpacity = HEAVY_LINE_OPACITY;
+    } else if (tea) {
         fraction = flaskFraction;
         color = HUD_FLASK_COLOR;
     } else if (stamina.winded) {
@@ -596,7 +614,31 @@ void drawStaminaLine(Canvas canvas, const game::Stamina& stamina, float flaskFra
     // What is left, the same length to both sides of the middle.
     const float filled = half * std::clamp(fraction, 0.0F, 1.0F);
     canvas.list->AddRectFilled({middle.x - filled, top}, {middle.x + filled, bottom},
-                               ink(canvas, color));
+                               ink(canvas, color, lineOpacity));
+
+    if (heavy) {
+        // Two marks in the colour of the crystals that close in on the middle: they
+        // start at the ends of the line and meet when the weight is gone. Beside the
+        // line the seconds, like the seconds of the tea.
+        const float reach = half * std::clamp(heavyFraction, 0.0F, 1.0F);
+        const float heavyMark = HEAVY_MARK_WIDTH * scale;
+        const float heavyOverhang = HEAVY_MARK_OVERHANG * scale;
+        const ImU32 heavyColor = ink(canvas, HUD_CRYSTAL_COLOR);
+        canvas.list->AddRectFilled({middle.x - reach - heavyMark / 2.0F, top - heavyOverhang},
+                                   {middle.x - reach + heavyMark / 2.0F, bottom + heavyOverhang},
+                                   heavyColor);
+        canvas.list->AddRectFilled({middle.x + reach - heavyMark / 2.0F, top - heavyOverhang},
+                                   {middle.x + reach + heavyMark / 2.0F, bottom + heavyOverhang},
+                                   heavyColor);
+        std::array<char, NUMBER_TEXT_SIZE> seconds{};
+        std::snprintf(seconds.data(), seconds.size(), "%.0f s",
+                      std::ceil(stamina.heavySecondsLeft));
+        const float lineMiddle = (top + bottom) / 2.0F;
+        drawText(canvas,
+                 {middle.x + half + TEA_TEXT_GAP * scale,
+                  lineMiddle - fontPixels(canvas, TEA_FONT_SIZE) / 2.0F},
+                 TEA_FONT_SIZE, HUD_CRYSTAL_COLOR, seconds.data());
+    }
 
     if (tea) {
         // The seconds beside the line. ceil rounds up, so they count 20, 19 ... 1 and
@@ -671,9 +713,13 @@ void drawHintLine(Canvas canvas, const game::Round& round, const game::Player& p
 
     // The tea counts down from the length of its effect, so what is gone of that length
     // is the time since the flask was drunk.
+    // Not while the player is heavy: the tea waits for the weight to go, and its sentence
+    // comes when its seconds start to run.
+    const bool heavy = stamina.heavySecondsLeft > 0.0F;
     const float sinceDrink =
-        std::max(player.staminaSettings.flaskSeconds - stamina.noDrainSecondsLeft, 0.0F);
-    if (stamina.noDrainSecondsLeft > 0.0F && offer(sinceDrink, TEA_HINT_SECONDS, HUD_FLASK_COLOR)) {
+        secondsSince(player.staminaSettings.flaskSeconds, stamina.noDrainSecondsLeft);
+    if (!heavy && stamina.noDrainSecondsLeft > 0.0F &&
+        offer(sinceDrink, TEA_HINT_SECONDS, HUD_FLASK_COLOR)) {
         // ceil rounds up, so the sentence counts 20, 19 ... like the seconds beside the
         // line.
         std::snprintf(text.data(), text.size(), "Warm tea. Sprinting costs nothing for %.0f s.",
@@ -681,6 +727,12 @@ void drawHintLine(Canvas canvas, const game::Round& round, const game::Player& p
     }
     if (round.gateOpen && offer(round.gateOpenSeconds, GATE_HINT_SECONDS, HUD_CRYSTAL_COLOR)) {
         std::snprintf(text.data(), text.size(), "The gate is open. Find the exit.");
+    }
+    // The heartstone was just taken.
+    const float sinceTaken =
+        secondsSince(player.staminaSettings.heavySeconds, stamina.heavySecondsLeft);
+    if (heavy && offer(sinceTaken, HEAVY_HINT_SECONDS, HUD_CRYSTAL_COLOR)) {
+        std::snprintf(text.data(), text.size(), "%s", HEAVY_HINT);
     }
     if (round.battery <= 0.0F &&
         offer(round.batteryEmptySeconds, BATTERY_HINT_SECONDS, HUD_BATTERY_LOW_COLOR)) {
@@ -770,8 +822,7 @@ void drawWinCard(const game::Round& round, const game::KeyBindings& keys, float 
 
         ImGui::Separator();
         ImGui::Text("Time: %s", timeText(round.elapsedSeconds).data());
-        ImGui::Text("Crystals: %d of %d", round.collectedCount,
-                    static_cast<int>(round.crystals.size()));
+        ImGui::Text("Crystals: %d of %d", round.collectedCount, game::crystalTotal(round));
         ImGui::Spacing();
         // "%s" and the name as an argument: the name itself is never read as a format.
         ImGui::TextColored(HUD_BATTERY_COLOR, "%s: play again",
@@ -922,9 +973,9 @@ void drawHud(const game::MazeWorld& world, const game::Round& round,
                         .opacity = 1.0F};
     drawLampGauge(canvas, round, settings);
     drawCrystalCounter(canvas, round);
-    drawStaminaLine(canvas, player.stamina,
-                    game::flaskEffectFraction(player.stamina, player.staminaSettings),
-                    round.animationSeconds);
+    drawStaminaLine(
+        canvas, player.stamina, game::flaskEffectFraction(player.stamina, player.staminaSettings),
+        game::heavyFraction(player.stamina, player.staminaSettings), round.animationSeconds);
     drawNoiseTicks(canvas, round, settings);
     drawNightName(canvas, round, playedNight, playedDaily);
     // A sentence waits while the map is shown: its place is where the bottom edge of

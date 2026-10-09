@@ -25,6 +25,7 @@
 
 #include <imgui.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <filesystem>
@@ -254,10 +255,15 @@ void drawCollisionBoxes(Page& page, const DebugContext& context) {
     page.stat("Boxes", "%d walls (%d opened by levers), %d pillars, %d gate, %d stile",
               static_cast<int>(world.walls.size()) - openedWalls, openedWalls,
               static_cast<int>(world.pillars.size()), gateBoxes, world.stileWall ? 1 : 0);
-    // One pickup sphere around every crystal that is not collected yet.
+    // One pickup sphere around every crystal that is not collected yet, and one around
+    // the heartstone while it is there. Counted, not subtracted: the heartstone raises
+    // the collected count by more than one.
+    const auto crystalsLeft = std::ranges::count_if(
+        round.crystals, [](const game::RoundCrystal& crystal) { return !crystal.collected; });
+    const int heartstoneLeft = round.hasHeartstone && !round.heartstoneTaken ? 1 : 0;
     page.stat("All boxes", "%d, pickup spheres: %d",
               static_cast<int>(world.colliders.size()) - openedWalls + gateBoxes,
-              static_cast<int>(round.crystals.size()) - round.collectedCount);
+              static_cast<int>(crystalsLeft) + heartstoneLeft);
     page.stat("Wall box", "%.2f m thick (the visible wall: %.2f m)", game::WALL_COLLISION_THICKNESS,
               game::WALL_VISUAL_THICKNESS);
 
