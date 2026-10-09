@@ -129,6 +129,17 @@ struct MazeWorld {
     /// them are already collected is not stored here: that is the state of a round.
     std::vector<CrystalSpawn> crystals;
 
+    /// The dead end of the heartstone (game::heartstoneCell), or empty in a maze that is
+    /// too small to have one. It is not one of the crystals above. Whether it is taken
+    /// is the state of a round.
+    std::optional<MazeCell> heartstone;
+
+    /// The crystals as the seed alone gives them, before the heartstone took its dead
+    /// end. The levers, the notes and the puddles are placed around THESE cells and not
+    /// around crystals: so the heartstone moved none of them in any seed. It differs from
+    /// crystals by the one or two crystals that made room (buildMazeWorld).
+    std::vector<CrystalSpawn> seedCrystals;
+
     /// The levers and the notes of the maze, chosen from its seed
     /// (game::placeInteractables) and hanging at the height of the terrain. Which levers
     /// are pulled is not stored here: that is the state of a round.

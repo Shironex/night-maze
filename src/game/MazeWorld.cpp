@@ -3,6 +3,7 @@
 
 #include "game/Exit.hpp"
 #include "game/Flasks.hpp"
+#include "game/Heartstone.hpp"
 #include "game/MazeGenerator.hpp"
 #include "game/Stile.hpp"
 #include "scene/Transform.hpp"
@@ -163,16 +164,38 @@ MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed, const Height
     // The crystals: never in the start cell (the player would collect one without
     // moving) and never in the exit cell (it is behind the gate). They also keep out of
     // the dead ends the flasks will use when a round starts.
-    std::vector<MazeCell> flaskCells = flaskDeadEnds(maze, seed, START_CELL, exit.cell);
-    flaskCells.resize(
-        std::min(flaskCells.size(), static_cast<std::size_t>(FLASK_RESERVED_DEAD_ENDS)));
-    world.crystals = placeCrystals(maze, seed, START_CELL, exit.cell, crystalCount, flaskCells);
+    const std::vector<MazeCell> flaskOrder = flaskDeadEnds(maze, seed, START_CELL, exit.cell);
+    const std::size_t reservedCount =
+        std::min(flaskOrder.size(), static_cast<std::size_t>(FLASK_RESERVED_DEAD_ENDS));
+    const std::vector<MazeCell> flaskCells(
+        flaskOrder.begin(), flaskOrder.begin() + static_cast<std::ptrdiff_t>(reservedCount));
+    world.seedCrystals = placeCrystals(maze, seed, START_CELL, exit.cell, crystalCount, flaskCells);
+
+    // The heartstone takes its dead end before anything else, and the flasks take the
+    // next ones of their order (Round.cpp skips its cell). The crystals are placed as
+    // above, with the same reserved cells, so their shuffle is the same, and then kept
+    // out of two cells: the cell of the heartstone, and, when that was one of the
+    // reserved dead ends, the dead end the flasks get in its place. So at most two
+    // crystals of a seed move, and nothing else does.
+    world.heartstone = heartstoneCell(maze, START_CELL, exit.cell);
+    std::vector<MazeCell> keptFree;
+    if (world.heartstone) {
+        keptFree.push_back(*world.heartstone);
+        const bool wasReserved =
+            std::ranges::find(flaskCells, *world.heartstone) != flaskCells.end();
+        if (wasReserved && flaskOrder.size() > reservedCount) {
+            keptFree.push_back(flaskOrder[reservedCount]);
+        }
+    }
+    world.crystals =
+        placeCrystals(maze, seed, START_CELL, exit.cell, crystalCount, flaskCells, keptFree);
 
     // The levers and the notes come after the crystals: a lever avoids the cells that
-    // have a crystal. For every lever the wall it opens is looked up in the wall list
-    // once, here, so nothing has to search for it while the game runs.
+    // have a crystal. They are given the crystals of the seed (MazeWorld::seedCrystals),
+    // so the heartstone moves no lever. For every lever the wall it opens is looked up in
+    // the wall list once, here, so nothing has to search for it while the game runs.
     world.interactables =
-        placeInteractables(maze, seed, START_CELL, exit.cell, world.crystals, interactables);
+        placeInteractables(maze, seed, START_CELL, exit.cell, world.seedCrystals, interactables);
     world.leverWalls.reserve(world.interactables.levers.size());
     for (const Lever& lever : world.interactables.levers) {
         world.leverWalls.push_back(wallIndexOf(world.walls, lever));

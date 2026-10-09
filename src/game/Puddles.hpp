@@ -132,9 +132,10 @@ std::vector<PuddleSpawn> placePuddles(const Maze& maze, std::uint32_t seed, Maze
 glm::vec2 puddleRimCorner(int corner);
 
 /// The puddles of a world, lying on its terrain: placePuddles with the maze, the seed,
-/// the exit and the crystals of the world, and the middle of every puddle PUDDLE_LIFT
-/// above the ground there. Call it again after the terrain of the world was rebuilt:
-/// the same puddles come back at their new heights.
+/// the exit and the crystals of the seed (MazeWorld::seedCrystals), without a puddle that
+/// would lie under the heartstone or under a crystal that made room for it, and the
+/// middle of every puddle PUDDLE_LIFT above the ground there. Call it again after the terrain of
+/// the world was rebuilt: the same puddles come back at their new heights.
 std::vector<Puddle> puddlesOnGround(const MazeWorld& world, float share);
 
 /// The water of all puddles as triangles, ready for gfx::Mesh: plain data, so tests can

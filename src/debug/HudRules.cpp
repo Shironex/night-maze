@@ -27,4 +27,8 @@ float hintOpacity(float seconds, float holdSeconds, float fadeSeconds) {
     return std::max(1.0F - faded, 0.0F);
 }
 
+float secondsSince(float wholeSeconds, float secondsLeft) {
+    return std::max(wholeSeconds - secondsLeft, 0.0F);
+}
+
 } // namespace debug

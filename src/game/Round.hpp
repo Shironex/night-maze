@@ -5,6 +5,7 @@
 #include "game/Discovery.hpp"
 #include "game/Flasks.hpp"
 #include "game/GateLamp.hpp"
+#include "game/Heartstone.hpp"
 #include "game/Interactables.hpp"
 #include "game/Lighting.hpp"
 #include "game/Maze.hpp"
@@ -134,9 +135,20 @@ struct Round {
     /// The crystals, in the order of MazeWorld::crystals.
     std::vector<RoundCrystal> crystals;
 
-    /// How many crystals are collected, and how many are needed to open the gate.
+    /// How many crystals are collected, and how many are needed to open the gate. The
+    /// heartstone counts as HEARTSTONE_WORTH of the collected ones. The number needed is
+    /// counted from the crystals above alone, so the heartstone is never needed: it is
+    /// a shortcut.
     int collectedCount = 0;
     int requiredCount = 0;
+
+    /// The heartstone of the round (game/Heartstone.hpp). hasHeartstone is true in
+    /// a round that was started on a maze that has one (MazeWorld::heartstone), and
+    /// heartstoneTaken from the moment the player picked it up: it is no longer drawn
+    /// and gives no light. Like a flask it keeps no position: that is computed from its
+    /// cell and the terrain when it is needed (heartstoneBase).
+    bool hasHeartstone = false;
+    bool heartstoneTaken = false;
 
     /// The flasks of tea, and how many of them the player has picked up. The count only
     /// grows within a round, so comparing it before and after a step tells that a flask
@@ -219,6 +231,16 @@ struct Round {
 /// is open from the start.
 int requiredCrystalCount(int total, float fraction);
 
+/// How many crystals the round has to collect in all, for "3 of 16" and for the bar of
+/// the HUD: the crystals of the maze, and HEARTSTONE_WORTH more in a round with
+/// a heartstone. A round in which collectedCount has reached it left nothing behind.
+int crystalTotal(const Round& round);
+
+/// Where the lower point of the heartstone is at this moment, following its bobbing: the
+/// place it is drawn at and the place its light hangs over. Empty when the round has no
+/// heartstone or the player has taken it.
+std::optional<glm::vec3> heartstoneBase(const MazeWorld& world, const Round& round);
+
 /// A fresh round on the maze: every crystal in its place, a full battery, the gate
 /// closed and the clocks at 0. A maze without crystals needs none, and a maze without
 /// a gate has nothing to open: in both cases the round starts with the way out open.
@@ -228,7 +250,8 @@ int requiredCrystalCount(int total, float fraction);
 ///
 /// The flasks are placed here, GameplaySettings::flaskCount of them, from the seed of
 /// the maze (game::placeFlasks), and not when the world is built: so a new round puts
-/// every flask back, and the world of a seed is the same with and without flasks.
+/// every flask back, and the world of a seed is the same with and without flasks. No
+/// flask lies in the dead end of the heartstone: the flasks take the next ones.
 Round startRound(const MazeWorld& world, const GameplaySettings& settings);
 
 /// The maze with the walls of this round: Round::maze, or the maze of the world for
@@ -256,6 +279,9 @@ scene::Sphere playerReach(const glm::vec3& feetPosition);
 ///     the shade is moved after this call),
 ///   - every crystal whose pickup sphere the player reaches is collected and charges
 ///     the battery,
+///   - the heartstone, reached in the same way, is taken: it counts as HEARTSTONE_WORTH
+///     crystals and fills the battery (Round::heartstoneTaken). That it is heavy is not
+///     decided here, for the same reason as with the tea below,
 ///   - every flask the player reaches in the same way is picked up
 ///     (Round::flasksCollected). What the tea does is not decided here: the round
 ///     knows nothing about the stamina of the player,
@@ -420,9 +446,10 @@ LightingSettings lightingForFrame(const LightingSettings& settings, const Round&
                                   const GameplaySettings& gameplay);
 
 /// Where the point lights of this moment could hang: above every crystal that is not
-/// collected yet, following its bobbing. A frame is drawn with the ones nearest to the
-/// eye (game::nearestPointLights), because a large maze has more crystals than the
-/// shaders have point lights.
+/// collected yet, following its bobbing. The light of the heartstone is not in the list:
+/// it has a look of its own (heartstoneBase, game::heartstoneLightPosition). A frame is drawn with
+/// the ones nearest to the eye (game::nearestPointLights), because a large maze has more crystals
+/// than the shaders have point lights.
 std::vector<glm::vec3> crystalLightPositions(const Round& round);
 
 } // namespace game

@@ -54,8 +54,9 @@ struct StartOptions {
     /// start cell.
     std::optional<float> startYawDegrees;
 
-    /// True: the first round starts with every crystal collected, so the gate is open
-    /// (--collect-all). The crystals are picked up by the rules of the round, not set.
+    /// True: the first round starts with every crystal and the heartstone collected, so
+    /// the gate is open (--collect-all). They are picked up by the rules of the round,
+    /// not set.
     bool collectAll = false;
 
     /// True: a calm night for this run, whatever the settings file says: no maze of the

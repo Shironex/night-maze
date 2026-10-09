@@ -64,6 +64,24 @@ void collectCrystals(Round& round, const GameplaySettings& settings, const scene
     }
 }
 
+// Takes the heartstone when the reach of the player overlaps its pickup sphere, which is
+// centred on the middle of the resting stone like the sphere of a crystal. It counts as
+// several crystals and fills the battery, whatever charge was left.
+void collectHeartstone(Round& round, const MazeWorld& world, const GameplaySettings& settings,
+                       const scene::Sphere& reach) {
+    if (!round.hasHeartstone || round.heartstoneTaken || !world.heartstone) {
+        return;
+    }
+    const glm::vec3 rest =
+        heartstoneRestPosition(*world.heartstone, groundHeightAt(world, *world.heartstone));
+    const scene::Sphere pickup{.center = heartstoneCenter(rest), .radius = settings.pickupRadius};
+    if (scene::overlaps(reach, pickup)) {
+        round.heartstoneTaken = true;
+        round.collectedCount += HEARTSTONE_WORTH;
+        round.battery = 1.0F;
+    }
+}
+
 // Picks up every flask whose pickup sphere the reach of the player overlaps, like
 // collectCrystals. A flask is small, so the sphere is centred on the place it rests at.
 void collectFlasks(Round& round, const MazeWorld& world, const GameplaySettings& settings,
@@ -107,6 +125,20 @@ int requiredCrystalCount(int total, float fraction) {
     return std::clamp(needed, 1, total);
 }
 
+int crystalTotal(const Round& round) {
+    return static_cast<int>(round.crystals.size()) + (round.hasHeartstone ? HEARTSTONE_WORTH : 0);
+}
+
+std::optional<glm::vec3> heartstoneBase(const MazeWorld& world, const Round& round) {
+    if (!round.hasHeartstone || round.heartstoneTaken || !world.heartstone) {
+        return std::nullopt;
+    }
+    const glm::vec3 rest =
+        heartstoneRestPosition(*world.heartstone, groundHeightAt(world, *world.heartstone));
+    // The bobbing of the crystals, at the point of the movement the first one starts at.
+    return crystalBobPosition(rest, 0, round.animationSeconds);
+}
+
 Round startRound(const MazeWorld& world, const GameplaySettings& settings) {
     Round round;
     round.crystals.reserve(world.crystals.size());
@@ -118,10 +150,17 @@ Round startRound(const MazeWorld& world, const GameplaySettings& settings) {
     round.requiredCount =
         requiredCrystalCount(static_cast<int>(round.crystals.size()), settings.requiredFraction);
 
+    round.hasHeartstone = world.heartstone.has_value();
+
     // The flasks, in the cells the seed of the maze gives them. They know the crystals:
-    // a flask never lies in the cell of one.
+    // a flask never lies in the cell of one. The dead end of the heartstone is taken in
+    // the same way, so it is handed over as one more cell that holds something.
+    std::vector<CrystalSpawn> taken = world.crystals;
+    if (world.heartstone) {
+        taken.push_back({.cell = *world.heartstone});
+    }
     for (const MazeCell cell : placeFlasks(world.maze, world.seed, START_CELL, world.exitCell,
-                                           world.crystals, settings.flaskCount)) {
+                                           taken, settings.flaskCount)) {
         round.flasks.push_back({.cell = cell});
     }
 
@@ -222,6 +261,7 @@ void updateRound(Round& round, const MazeWorld& world, const GameplaySettings& s
 
         const scene::Sphere reach = playerReach(feetPosition);
         collectCrystals(round, settings, reach);
+        collectHeartstone(round, world, settings, reach);
         collectFlasks(round, world, settings, reach);
 
         // The number needed is computed again in every step, because the debug UI can

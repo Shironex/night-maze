@@ -12,6 +12,7 @@
 #include "gfx/Shader.hpp"
 #include "scene/Transform.hpp"
 
+#include <optional>
 #include <span>
 
 namespace game {
@@ -39,6 +40,10 @@ constexpr const char* GATE_LANTERN_MODEL_FILE = "models/gate_lantern.obj";
 constexpr const char* GATE_BELL_MODEL_FILE = "models/gate_bell.obj";
 constexpr const char* MILESTONE_MODEL_FILE = "models/milestone.obj";
 
+// The model of the heartstone, built like the crystals: 0.9 m tall, with its origin at
+// its lower point.
+constexpr const char* HEARTSTONE_MODEL_FILE = "models/heartstone.obj";
+
 // The model of a flask of tea: in metres, upright, with its origin at its base, built like
 // the crystals.
 constexpr const char* FLASK_MODEL_FILE = "models/flask.obj";
@@ -56,6 +61,7 @@ constexpr const char* SHADE_HOLLOW_MODEL_FILE = "models/shade_hollow.obj";
 GameplayRenderer::GameplayRenderer(assets::AssetCache& assets)
     : m_crystals{assets.model(core::assetPath(CRYSTAL_A_MODEL_FILE)),
                  assets.model(core::assetPath(CRYSTAL_B_MODEL_FILE))},
+      m_heartstone(assets.model(core::assetPath(HEARTSTONE_MODEL_FILE))),
       m_flask(assets.model(core::assetPath(FLASK_MODEL_FILE))),
       m_shade(assets.model(core::assetPath(SHADE_MODEL_FILE))),
       m_shadeHollow(assets.model(core::assetPath(SHADE_HOLLOW_MODEL_FILE))),
@@ -69,7 +75,7 @@ void GameplayRenderer::draw(const gfx::Shader& shader, const MazeWorld& world, c
                             const glm::vec3& crystalGlow, const glm::vec3& lampGlow,
                             float bellSwingDegrees) const {
     drawGate(shader, world, round, lampGlow, bellSwingDegrees);
-    drawCrystals(shader, round, crystalGlow);
+    drawCrystals(shader, world, round, crystalGlow);
 }
 
 void GameplayRenderer::drawGate(const gfx::Shader& shader, const MazeWorld& world,
@@ -118,8 +124,8 @@ void GameplayRenderer::drawGate(const gfx::Shader& shader, const MazeWorld& worl
     }
 }
 
-void GameplayRenderer::drawCrystals(const gfx::Shader& shader, const Round& round,
-                                    const glm::vec3& crystalGlow) const {
+void GameplayRenderer::drawCrystals(const gfx::Shader& shader, const MazeWorld& world,
+                                    const Round& round, const glm::vec3& crystalGlow) const {
     // Set here too: the crystals may be drawn with another program than the gate.
     setModelSamplers(shader);
 
@@ -144,6 +150,17 @@ void GameplayRenderer::drawCrystals(const gfx::Shader& shader, const Round& roun
 
         drawModel(shader, m_crystals[static_cast<std::size_t>(crystal.variant)],
                   std::span<const glm::mat4>(&crystalMatrix, 1));
+    }
+
+    // The heartstone, while it is there: the same picture with a stronger glow, turning
+    // slower than the crystals.
+    if (const std::optional<glm::vec3> base = heartstoneBase(world, round)) {
+        scene::Transform transform;
+        transform.position = *base;
+        transform.rotationDegrees = {0.0F, heartstoneSpinDegrees(round.animationSeconds), 0.0F};
+        const glm::mat4 heartstoneMatrix = transform.matrix();
+        shader.setVec3(EMISSIVE_UNIFORM, crystalGlow * HEARTSTONE_GLOW_FACTOR);
+        drawModel(shader, m_heartstone, std::span<const glm::mat4>(&heartstoneMatrix, 1));
     }
 }
 

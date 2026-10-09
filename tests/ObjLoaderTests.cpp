@@ -1018,6 +1018,41 @@ TEST_CASE("loadObj: splinter_a.obj and splinter_b.obj") {
     }
 }
 
+TEST_CASE("loadObj: heartstone.obj") {
+    // The big splinter of a maze: four slivers of 40 triangles each, in the material of
+    // the splinters and with its origin at its lower point.
+    assets::ObjModel model;
+    std::string error;
+    const bool ok = assets::loadObj(modelsDirectory() / "heartstone.obj", model, error);
+    CAPTURE(error);
+    REQUIRE(ok);
+    CHECK(model.unknownLineCount == 0U);
+    for (const gfx::Vertex& vertex : model.vertices) {
+        CHECK(glm::length(vertex.normal) == doctest::Approx(1.0F).epsilon(0.001));
+    }
+    REQUIRE(model.parts.size() == 1U);
+    CHECK(model.parts[0].material == "splinter");
+    REQUIRE(model.materials.size() == 1U);
+    CHECK(model.materials[0].diffuseTexture.filename() == "splinter.png");
+    CHECK(model.materials[0].normalTexture.filename() == "splinter_normal.png");
+    CHECK(model.indices.size() == 160U * 3U);
+
+    // 0.9 m tall to the centimetre, and no taller than the game takes it to be: its
+    // light hangs above HEARTSTONE_HEIGHT (game/Heartstone.hpp).
+    const Bounds bounds = boundsOf(model);
+    CHECK(std::abs(bounds.min.y) < 0.001F);
+    CHECK(bounds.max.y > 0.89F);
+    CHECK(bounds.max.y <= 0.9F);
+
+    // Every side keeps to its half of the picture, like the sides of the splinters, so
+    // the rind does not glow.
+    for (const gfx::Vertex& vertex : model.vertices) {
+        CHECK(vertex.uv.x > 0.05F);
+        CHECK(vertex.uv.x < 0.95F);
+        CHECK(std::abs(vertex.uv.x - 0.5F) > 0.05F);
+    }
+}
+
 TEST_CASE("loadObj: shade.obj and shade_hollow.obj") {
     // The two models the shade is drawn with: the cloth, and the faces that show the night
     // (an oval where a face would be, and the two cuffs). The cloth: 12 bands of 16 sides,

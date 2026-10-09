@@ -137,6 +137,9 @@ TEST_CASE("a crystal is collected from the middle of its cell, not from the next
     const game::MazeWorld world = game::buildMazeWorld(4, 4, 4U);
     const game::GameplaySettings settings;
     game::Round round = game::startRound(world, settings);
+    // Only the crystal is asked about here. In a maze this small the heartstone floats
+    // one cell from it, where the steps below walk, so this round is played without one.
+    round.hasHeartstone = false;
     bool flashlightOn = false;
     const glm::vec3 under = feetUnder(round.crystals[0]);
 

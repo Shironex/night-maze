@@ -45,6 +45,7 @@ constexpr std::array<SoundCueInfo, SOUND_CUE_COUNT> SOUND_CUES = {{
     {.file = "audio/shade_alert.wav", .name = "shade alert"},
     {.file = "audio/shade_banish.wav", .name = "shade banish"},
     {.file = "audio/gate_bell.wav", .name = "gate bell"},
+    {.file = "audio/heartstone_pickup.wav", .name = "heartstone pickup"},
 }};
 
 // The first sound of the steps of the player and of the shade: the others follow it in
@@ -99,6 +100,7 @@ SoundCue flashlightKeyCue(float battery, bool wasOn) {
 RoundSoundSnapshot soundSnapshot(const Round& round, bool flashlightOn) {
     return {.collectedCount = round.collectedCount,
             .flasksCollected = round.flasksCollected,
+            .heartstoneTaken = round.heartstoneTaken,
             .gateOpen = round.gateOpen,
             .battery = round.battery,
             .flashlightOn = flashlightOn};
@@ -111,7 +113,9 @@ std::vector<SoundCue> roundStepCues(const RoundSoundSnapshot& before, const Roun
 
     // "More than before" and not "different": a count that went down belongs to another
     // round, and that is not a pickup.
-    if (round.collectedCount > before.collectedCount) {
+    // The heartstone raises the count too, and has its own sound further down.
+    const bool tookHeartstone = round.heartstoneTaken && !before.heartstoneTaken;
+    if (round.collectedCount > before.collectedCount && !tookHeartstone) {
         cues.push_back(SoundCue::CrystalPickup);
     }
     if (!before.gateOpen && round.gateOpen) {
@@ -129,6 +133,9 @@ std::vector<SoundCue> roundStepCues(const RoundSoundSnapshot& before, const Roun
     // "More than before", for the same reason as with the crystals.
     if (round.flasksCollected > before.flasksCollected) {
         cues.push_back(SoundCue::FlaskPickup);
+    }
+    if (tookHeartstone) {
+        cues.push_back(SoundCue::HeartstonePickup);
     }
     return cues;
 }

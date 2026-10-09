@@ -21,4 +21,13 @@ float hudScale(float displayScale, float windowHeight);
 /// (gone). 0 also before its moment, for a negative time.
 float hintOpacity(float seconds, float holdSeconds, float fadeSeconds);
 
+/// The sentence the player reads after taking the heartstone, while it cannot sprint. It
+/// is at most 60 printable ASCII characters, so it fits the line of the hints.
+inline constexpr const char* HEAVY_HINT = "Heavy. No running for a while.";
+
+/// The seconds a clock that runs DOWN from wholeSeconds has already run: what the hints
+/// of the tea and of the heartstone count from. Never below 0, also when the clock holds
+/// more than wholeSeconds (the debug UI changed the length while it ran).
+float secondsSince(float wholeSeconds, float secondsLeft);
+
 } // namespace debug

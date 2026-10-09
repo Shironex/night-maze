@@ -167,6 +167,8 @@ add_library(game_logic STATIC
     src/game/GateLamp.hpp
     src/game/Grass.cpp
     src/game/Grass.hpp
+    src/game/Heartstone.cpp
+    src/game/Heartstone.hpp
     src/game/Interactables.cpp
     src/game/Interactables.hpp
     src/game/Interaction.cpp
@@ -445,6 +447,7 @@ add_executable(night_maze_tests
     tests/GameStateTests.cpp
     tests/GateLampTests.cpp
     tests/GrassTests.cpp
+    tests/HeartstoneTests.cpp
     tests/HudRulesTests.cpp
     tests/ImageLoaderTests.cpp
     tests/InteractablesTests.cpp

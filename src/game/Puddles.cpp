@@ -127,11 +127,17 @@ glm::vec2 puddleRimCorner(int corner) {
 
 std::vector<Puddle> puddlesOnGround(const MazeWorld& world, float share) {
     const std::vector<PuddleSpawn> spawns =
-        placePuddles(world.maze, world.seed, START_CELL, world.exitCell, world.crystals, share);
+        placePuddles(world.maze, world.seed, START_CELL, world.exitCell, world.seedCrystals, share);
 
     std::vector<Puddle> puddles;
     puddles.reserve(spawns.size());
     for (const PuddleSpawn& spawn : spawns) {
+        // The puddles were chosen around the crystals of the seed. The heartstone, and
+        // a crystal that made room for it, came later: a puddle under one of them is
+        // left out, so no other puddle of the seed moves and none lies under a pickup.
+        if (spawn.cell == world.heartstone || hasCrystal(world.crystals, spawn.cell)) {
+            continue;
+        }
         // The middle of the puddle: the centre of the cell moved by the offset (its two
         // numbers are along X and along Z), as high as the film of water lies there.
         glm::vec3 center = cellCenter(spawn.cell.x, spawn.cell.z);

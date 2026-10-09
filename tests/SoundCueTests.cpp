@@ -76,14 +76,14 @@ TEST_CASE("every cue has a file and a name of its own") {
     CHECK(files.size() == game::SOUND_CUE_COUNT);
     CHECK(names.size() == game::SOUND_CUE_COUNT);
     // The last entry of the enum is the last entry of the table.
-    CHECK(game::soundCueIndex(game::SoundCue::GateBell) == game::SOUND_CUE_COUNT - 1);
+    CHECK(game::soundCueIndex(game::SoundCue::HeartstonePickup) == game::SOUND_CUE_COUNT - 1);
     // New cues are added after the old ones, so every old cue keeps its number: the
     // nineteen that were there before the shade learned to hunt end with the wind, and
     // the two of the hunting shade come before the bell of the gate.
     CHECK(game::soundCueIndex(game::SoundCue::MazeWind) == 18U);
     CHECK(game::soundCueIndex(game::SoundCue::ShadeAlert) == 19U);
     CHECK(game::soundCueIndex(game::SoundCue::ShadeBanish) == 20U);
-    CHECK(game::SOUND_CUE_COUNT == 22U);
+    CHECK(game::SOUND_CUE_COUNT == 23U);
 }
 
 TEST_CASE("the flashlight key clicks on, clicks off, and clicks dead on an empty battery") {
@@ -911,8 +911,8 @@ TEST_CASE("a sample of the wind is heard on a menu, but never over the intro") {
     CHECK(game::MAZE_WIND_SAMPLE_FADE_IN_SECONDS < game::MAZE_WIND_SAMPLE_SECONDS);
 }
 
-TEST_CASE("the bell of the gate is the last cue and has a sound file of its own") {
-    CHECK(game::soundCueIndex(game::SoundCue::GateBell) == game::SOUND_CUE_COUNT - 1);
+TEST_CASE("the bell of the gate keeps its number and has a sound file of its own") {
+    CHECK(game::soundCueIndex(game::SoundCue::GateBell) == 21U);
     CHECK(std::string(game::soundCueFile(game::SoundCue::GateBell)) == "audio/gate_bell.wav");
     CHECK(std::string(game::soundCueName(game::SoundCue::GateBell)) == "gate bell");
     // It tells the player something, so it follows the effects volume, not the ambient one.

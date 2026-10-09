@@ -58,10 +58,13 @@ enum class SoundCue {
     /// open (advanceGateBell), louder the nearer the player is to the exit
     /// (gateBellVolume), and once at full volume when the player walks through.
     GateBell,
+    /// The heartstone was taken: the sound of a crystal, larger and lower. It takes the
+    /// place of CrystalPickup in that step.
+    HeartstonePickup,
 };
 
 /// How many cues there are: the number of entries of SoundCue.
-constexpr std::size_t SOUND_CUE_COUNT = 22;
+constexpr std::size_t SOUND_CUE_COUNT = 23;
 
 /// The place of a cue in the list of sounds: its number as an index.
 std::size_t soundCueIndex(SoundCue cue);
@@ -89,11 +92,12 @@ SoundCue flashlightKeyCue(float battery, bool wasOn);
 /// BEFORE the step. Comparing them with the round after the step tells what the step
 /// did, so game::updateRound needs no extra way to report it.
 struct RoundSoundSnapshot {
-    int collectedCount = 0;    ///< Round::collectedCount
-    int flasksCollected = 0;   ///< Round::flasksCollected
-    bool gateOpen = false;     ///< Round::gateOpen
-    float battery = 1.0F;      ///< Round::battery
-    bool flashlightOn = false; ///< the switch of the flashlight
+    int collectedCount = 0;       ///< Round::collectedCount
+    int flasksCollected = 0;      ///< Round::flasksCollected
+    bool heartstoneTaken = false; ///< Round::heartstoneTaken
+    bool gateOpen = false;        ///< Round::gateOpen
+    float battery = 1.0F;         ///< Round::battery
+    bool flashlightOn = false;    ///< the switch of the flashlight
 };
 
 /// The snapshot of a round as it is now. flashlightOn is the switch of the flashlight
@@ -105,12 +109,14 @@ RoundSoundSnapshot soundSnapshot(const Round& round, bool flashlightOn);
 ///
 ///   - CrystalPickup when more crystals are collected than before. Once per step, also
 ///     when the step collected two crystals: two copies of one sound at the same moment
-///     are only one louder sound.
+///     are only one louder sound. Not in the step that took the heartstone, which also
+///     raises the count: that step has a sound of its own, the last of this list.
 ///   - GateOpen when the gate was closed before and is open now.
 ///   - FlashlightDead when the battery ran out in this step with the light on: it held
 ///     a charge before, it is empty now, and the switch went from on to off.
 ///   - FlaskPickup when more flasks are picked up than before, once per step like the
 ///     crystal. It has a sound of its own, so a flask is never taken for a crystal.
+///   - HeartstonePickup when the heartstone was taken in this step.
 ///
 /// The list is empty for most steps. Its order is the order above.
 ///

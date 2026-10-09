@@ -65,10 +65,11 @@ game::MazeWorld defaultWorld(const game::Heightmap& heightmap, float heightScale
                                 game::DEFAULT_MAZE_SEED, heightmap, heightScale);
 }
 
-// The puddles of a world as the seed chose them, placed the way puddlesOnGround does.
+// The puddles of a world as the seed chose them, placed the way puddlesOnGround does:
+// around the crystals of the seed, the ones from before the heartstone took its dead end.
 std::vector<game::PuddleSpawn> spawnsOf(const game::MazeWorld& world, float share) {
     return game::placePuddles(world.maze, world.seed, game::START_CELL, world.exitCell,
-                              world.crystals, share);
+                              world.seedCrystals, share);
 }
 
 // Number of cells of a world that may get a puddle: all but the start, the exit and the
@@ -215,7 +216,7 @@ TEST_CASE("puddles are in different cells, never at the start, at the exit or un
             CHECK(world.maze.contains(cell.x, cell.z));
             CHECK_FALSE(cell == game::START_CELL);
             CHECK_FALSE(cell == world.exitCell);
-            for (const game::CrystalSpawn& crystal : world.crystals) {
+            for (const game::CrystalSpawn& crystal : world.seedCrystals) {
                 CHECK_FALSE(cell == crystal.cell);
             }
             for (std::size_t other = i + 1; other < puddles.size(); ++other) {
@@ -350,7 +351,15 @@ TEST_CASE("on uneven ground the middle of a puddle lies PUDDLE_LIFT above the gr
 
 TEST_CASE("the puddles of a world lie where the seed put them, in every cell they belong to") {
     const game::MazeWorld world = game::buildMazeWorld(6, 5, 21, roughHeightmap(), 1.0F);
-    const std::vector<game::PuddleSpawn> spawns = spawnsOf(world, 0.6F);
+    std::vector<game::PuddleSpawn> spawns = spawnsOf(world, 0.6F);
+    // A puddle the seed put under the heartstone, or under the crystal that made room
+    // for it, is left out of the world (tests/HeartstoneTests.cpp).
+    std::erase_if(spawns, [&world](const game::PuddleSpawn& spawn) {
+        return spawn.cell == world.heartstone ||
+               std::ranges::any_of(world.crystals, [&spawn](const game::CrystalSpawn& crystal) {
+                   return crystal.cell == spawn.cell;
+               });
+    });
     const std::vector<game::Puddle> puddles = game::puddlesOnGround(world, 0.6F);
     REQUIRE(puddles.size() == spawns.size());
     REQUIRE_FALSE(puddles.empty());

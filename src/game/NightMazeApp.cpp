@@ -585,6 +585,15 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
                 crystal.restPosition - glm::vec3(0.0F, PLAYER_REACH_HEIGHT, 0.0F);
             updateRound(m_round, m_mazeWorld, m_gameplay, feet, m_lighting.flashlightOn, 0.0F);
         }
+        // The heartstone too, in the same way. Only the round takes it: nobody carried
+        // it, so the player does not start heavy.
+        if (m_mazeWorld.heartstone) {
+            const MazeCell cell = *m_mazeWorld.heartstone;
+            const glm::vec3 feet =
+                heartstoneCenter(heartstoneRestPosition(cell, groundHeightAt(m_mazeWorld, cell))) -
+                glm::vec3(0.0F, PLAYER_REACH_HEIGHT, 0.0F);
+            updateRound(m_round, m_mazeWorld, m_gameplay, feet, m_lighting.flashlightOn, 0.0F);
+        }
         // The gate has opened: its box leaves the obstacle list, like in a step that
         // opens it (onUpdate).
         m_obstacles = roundObstacles(m_mazeWorld, m_round);
@@ -1222,8 +1231,7 @@ void NightMazeApp::startStoryCard() {
         writeCardLines({label.c_str(), campaignNight(m_playedNight).title, "", ""}, true);
     } else {
         // The ending card: its third line says whether a crystal was left in the maze.
-        const bool crystalsLeft =
-            m_round.collectedCount < static_cast<int>(m_round.crystals.size());
+        const bool crystalsLeft = m_round.collectedCount < crystalTotal(m_round);
         writeCardLines(endingLines(crystalsLeft), true);
     }
     // Black from the first frame, and no text yet: the lines come up by themselves.
@@ -1643,7 +1651,7 @@ void NightMazeApp::fillRoundEndDocument() {
     m_ui.setText(m_roundEndDocument, TIME_ID, timeText(m_round.elapsedSeconds));
     m_ui.setText(m_roundEndDocument, CRYSTALS_ID,
                  std::to_string(m_round.collectedCount) + " of " +
-                     std::to_string(m_round.crystals.size()));
+                     std::to_string(crystalTotal(m_round)));
     // The difficulty and the seed together name the maze: with both, a friend plays
     // the same one. After a night of the campaign the row names the night ("Night 2",
     // "The Shepherds' Gates"), and the line of the story of that night stands under the
@@ -2075,6 +2083,11 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // counts the flasks. What the tea does belongs to the stamina (game::drinkFlask).
     if (m_round.flasksCollected > flasksBefore) {
         drinkFlask(m_player.stamina, m_player.staminaSettings);
+    }
+    // The heartstone was taken in this step: from now on the player is heavy. Like the
+    // tea, that belongs to the stamina (game::carryHeartstone).
+    if (m_round.heartstoneTaken && !soundBefore.heartstoneTaken) {
+        carryHeartstone(m_player.stamina, m_player.staminaSettings);
     }
     // The sounds of this step: a crystal, the gate, the battery that ran out
     // (game::roundStepCues), and the beat of a low battery when one is due. Both are
@@ -2730,6 +2743,17 @@ void NightMazeApp::onRender(double alpha) {
     for (const glm::vec3& position : crystalLightPositions(m_round)) {
         pointLights.push_back({.position = position});
     }
+    // The heartstone has a light of its own look too: the colour of the crystals,
+    // brighter and reaching farther, pulsing with them (frameLighting is already dimmed
+    // by the pulse).
+    if (const std::optional<glm::vec3> base = heartstoneBase(m_mazeWorld, m_round)) {
+        pointLights.push_back(
+            {.position = heartstoneLightPosition(*base),
+             .ownLook = true,
+             .color = frameLighting.pointColor,
+             .radius = frameLighting.pointRadius * HEARTSTONE_LIGHT_RADIUS_FACTOR,
+             .intensity = frameLighting.pointIntensity * HEARTSTONE_LIGHT_INTENSITY_FACTOR});
+    }
     if (m_mazeWorld.hasGate) {
         pointLights.push_back(gateLampLight(gateScenery(m_mazeWorld).lightPosition, lampStrength,
                                             lampProgress, m_gameplay.gate));
@@ -3187,7 +3211,7 @@ void NightMazeApp::drawGateAndCrystals(const gfx::Shader& shader) const {
     // Every crystal is drawn exactly once per frame: here, with the program of the
     // walls, or later by drawReflections with the reflect program.
     if (!crystalsReflect()) {
-        m_gameplayRenderer.drawCrystals(shader, m_round, crystalEmissive());
+        m_gameplayRenderer.drawCrystals(shader, m_mazeWorld, m_round, crystalEmissive());
     }
 }
 
@@ -3257,7 +3281,7 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
     m_reflectShader.setFloat(ENVIRONMENT_REFLECT_SHARE_UNIFORM, m_environment.crystalReflectShare);
     m_reflectShader.setFloat(ENVIRONMENT_REFRACTION_RATIO_UNIFORM,
                              m_environment.crystalRefractionRatio);
-    m_gameplayRenderer.drawCrystals(m_reflectShader, m_round,
+    m_gameplayRenderer.drawCrystals(m_reflectShader, m_mazeWorld, m_round,
                                     crystalEmissive() * m_environment.crystalGlowShare);
 
     // The face in the hood of the shade and its cuffs: a piece of the night. All of

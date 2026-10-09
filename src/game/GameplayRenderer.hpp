@@ -64,10 +64,13 @@ public:
     /// still while the door sinks. The bell hangs in the gatehouse, turned by
     /// bellSwingDegrees (game::gateBellMatrix). It sets uEmissive to lampGlow for the
     /// lanterns and leaves it black. A maze without a gate gets none of this.
-    /// drawCrystals sets uEmissive to crystalGlow.
+    /// drawCrystals sets uEmissive to crystalGlow. It also draws the heartstone of the
+    /// round while it is not taken (game::heartstoneBase): the big splinter, turning
+    /// slowly, with crystalGlow times HEARTSTONE_GLOW_FACTOR. So every pass that draws
+    /// the crystals draws it, with the same program.
     void drawGate(const gfx::Shader& shader, const MazeWorld& world, const Round& round,
                   const glm::vec3& lampGlow, float bellSwingDegrees) const;
-    void drawCrystals(const gfx::Shader& shader, const Round& round,
+    void drawCrystals(const gfx::Shader& shader, const MazeWorld& world, const Round& round,
                       const glm::vec3& crystalGlow) const;
 
     /// Draws every flask of the round that is not picked up yet: floating low over the
@@ -98,6 +101,7 @@ private:
     // variant: the number of a variant is its index here.
     std::array<const assets::LoadedModel*, static_cast<std::size_t>(CRYSTAL_VARIANT_COUNT)>
         m_crystals;
+    const assets::LoadedModel* m_heartstone;
     const assets::LoadedModel* m_flask;
     const assets::LoadedModel* m_shade;
     const assets::LoadedModel* m_shadeHollow;
