@@ -39,7 +39,7 @@ export default defineConfig({
     {
       id: 'menu',
       title: 'Main menu',
-      caption: 'The main menu with Begin, Nights and Free play, over a video loop recorded from the game.',
+      caption: 'The main menu with Begin, Nights, Ledger, Tonight's hedge, Free play, Settings and Quit, over a video loop recorded from the game.',
     },
     {
       id: 'shade',

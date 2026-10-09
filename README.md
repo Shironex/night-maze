@@ -51,7 +51,7 @@ Windows is what ships. I last ran the game on a Mac around version 0.9.0. Since 
     <td width="50%"><img src="docs/showcase/shade.webp" alt="Night Maze: The shadow" /></td>
   </tr>
   <tr>
-    <td align="center"><sub>The main menu with Begin, Nights and Free play, over a video loop recorded from the game.</sub></td>
+    <td align="center"><sub>The main menu with Begin, Nights, Ledger, Tonight's hedge, Free play, Settings and Quit, over a video loop recorded from the game.</sub></td>
     <td align="center"><sub>The shadow at the end of a corridor. It stands still while the light is on it.</sub></td>
   </tr>
   <tr>
