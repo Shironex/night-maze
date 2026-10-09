@@ -15,6 +15,7 @@ import build_chalk
 import build_flask
 import build_gate
 import build_gate_arch
+import build_gate_bell
 import build_gate_lantern
 import build_lever
 import build_milestone
@@ -37,6 +38,7 @@ build_wall_pillar.build(shots)
 build_splinter.build(shots)
 build_gate.build(shots)
 build_gate_arch.build(shots)
+build_gate_bell.build(shots)
 build_gate_lantern.build(shots)
 build_milestone.build(shots)
 build_lever.build(shots)

@@ -1,5 +1,6 @@
-// GateLamp: the lantern of the exit gate (how bright it is and in which colour) and where
-// the gatehouse, its three lanterns, its light and the milestone stand.
+// GateLamp: the lantern of the exit gate (how bright it is and in which colour), how its
+// bell swings, and where the gatehouse, its three lanterns, its bell, its light and the
+// milestone stand.
 #pragma once
 
 #include "game/Lighting.hpp"
@@ -108,11 +109,70 @@ PointLightSpot gateLampLight(const glm::vec3& position, float strength, float ga
 /// gatehouse, and two small ones that hang on the piers and face the approach.
 constexpr int GATE_LANTERN_COUNT = 3;
 
+/// The cote is a double one: two openings under one roof, 0.58 m wide each, with a post
+/// between them over the middle of the gate. The big lantern hangs in the middle of one
+/// and the bell in the middle of the other. Both numbers are measured along the X axis of
+/// the gatehouse model (tools/blender/build_gate_arch.py), so the two are placed with the
+/// matrix of the gatehouse and always end up in their own opening.
+constexpr float GATE_COTE_LANTERN_ALONG = 0.36F;
+constexpr float GATE_BELL_ALONG = -0.36F;
+
 /// The big lantern: how high its base hangs and how many times larger than the model it
 /// is drawn. The model is 0.2 m wide with the middle of its glass 0.13 m above its base,
 /// so the glass of the big one is centred 5.1 m up: 2 m above the walls (WALL_HEIGHT).
 constexpr float GATE_COTE_LANTERN_HEIGHT = 4.84F;
 constexpr float GATE_COTE_LANTERN_SCALE = 2.0F;
+
+/// The bell (the model gate_bell, tools/blender/build_gate_bell.py): how high its pivot
+/// hangs, just under the beam of the cote. The origin of the model is the pivot, and the
+/// bell reaches 0.37 m down from it.
+constexpr float GATE_BELL_HEIGHT = 5.47F;
+
+/// The furthest the bell swings to each side, in degrees. At this angle its lip is still
+/// clear of the posts of its opening.
+constexpr float GATE_BELL_SWING_DEGREES = 18.0F;
+
+/// The swing as a weight on a spring with a brake, counted in degrees. A toll pushes the
+/// bell with GATE_BELL_PUSH (degrees per second). The spring (GATE_BELL_SPRING, per second
+/// squared) pulls it back to the middle, which makes one swing there and back take about
+/// 1.2 s, and the brake (GATE_BELL_BRAKE, per second) takes the swing away. With these
+/// numbers the first swing reaches almost GATE_BELL_SWING_DEGREES, and after four seconds
+/// under one degree is left: the bell hangs still before the next toll
+/// (GATE_BELL_SECONDS).
+constexpr float GATE_BELL_PUSH = 122.0F;
+constexpr float GATE_BELL_SPRING = 26.0F;
+constexpr float GATE_BELL_BRAKE = 2.0F;
+
+/// Where the bell is in its swing. It is simulation state like the clock of the bell
+/// (game::GateBell): advanced in fixed steps, and a new round starts with a new one.
+struct BellSwing {
+    /// The angle away from hanging straight down, from -GATE_BELL_SWING_DEGREES to
+    /// GATE_BELL_SWING_DEGREES.
+    float degrees = 0.0F;
+    /// How fast the angle changes.
+    float degreesPerSecond = 0.0F;
+};
+
+/// A toll: pushes the bell. Call it when SoundCue::GateBell is played (the toll of the
+/// open gate from game::advanceGateBell, and the one for walking through). A push in the
+/// middle of a swing adds to it, so nothing jumps.
+void tollBellSwing(BellSwing& swing);
+
+/// Advances the swing by one fixed step of stepSeconds seconds.
+///
+///   - A bell that was never pushed stays exactly at 0. Only a toll pushes it, and the
+///     bell tolls only while the gate is open (game::gateBellTolls): so the bell of a
+///     shut gate hangs still.
+///   - After a push it swings to both sides, a little less each time, and never further
+///     than GATE_BELL_SWING_DEGREES.
+///   - Once nearly nothing is left of the swing it is set to exactly 0: the bell hangs
+///     still again until the next toll.
+void advanceBellSwing(BellSwing& swing, float stepSeconds);
+
+/// The model matrix of the bell: its pivot in its opening of the gatehouse (arch is
+/// GateScenery::arch), turned by swingDegrees around the axis across the gate. So the
+/// bell swings along the gate, between its two posts, whichever way the gate stands.
+glm::mat4 gateBellMatrix(const glm::mat4& arch, float swingDegrees);
 
 /// The two bracket lanterns: how high their bases hang (above the head of the player,
 /// who is 1.8 m tall), how far from the middle of the gate along it, and how far in
@@ -149,6 +209,8 @@ struct GateScenery {
     glm::mat4 arch{1.0F};
 
     /// The model matrices of the lanterns: the big one first, then the two on the piers.
+    /// The big one hangs in its opening of the cote, GATE_COTE_LANTERN_ALONG from the
+    /// middle of the gate. The bell in the other opening moves: game::gateBellMatrix.
     std::array<glm::mat4, GATE_LANTERN_COUNT> lanterns{glm::mat4{1.0F}, glm::mat4{1.0F},
                                                        glm::mat4{1.0F}};
 

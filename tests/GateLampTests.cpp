@@ -1,6 +1,7 @@
 // Tests of game/GateLamp.hpp: how brightly the lamp of the gate burns and in which
-// colour, its point light, and where the gatehouse, its lanterns and the milestone stand
-// in every maze the game can build. The last tests read the three model files.
+// colour, its point light, how its bell swings, and where the gatehouse, its lanterns,
+// its bell and the milestone stand in every maze the game can build. The last tests read
+// the four model files.
 #include "game/GateLamp.hpp"
 
 #include "assets/ImageLoader.hpp"
@@ -12,6 +13,7 @@
 #include "game/MazeWorld.hpp"
 #include "game/Player.hpp"
 #include "game/Round.hpp"
+#include "game/SoundCues.hpp"
 #include "game/Terrain.hpp"
 #include "scene/Collider.hpp"
 
@@ -36,6 +38,17 @@ constexpr float LANTERN_HALF_WIDTH = 0.1F;
 constexpr float LANTERN_HEIGHT = 0.36F;
 // The widest part of the lantern is its cap, which is a little wider than its base.
 constexpr float LANTERN_CAP_HALF_WIDTH = 0.12F;
+
+// The openings of the double cote of the gatehouse model: each reaches from the post over
+// the middle of the gate to an outer post, this far from the middle, and from the sill
+// up to the beam.
+constexpr float OPENING_NEAR = 0.07F;
+constexpr float OPENING_FAR = 0.65F;
+constexpr float OPENING_BOTTOM = 4.12F;
+constexpr float OPENING_TOP = 5.5F;
+
+// The bell model reaches this far down from its pivot (tools/blender/build_gate_bell.py).
+constexpr float BELL_HEIGHT = 0.37F;
 
 // The milestone model: 0.25 m wide above its foot (tools/blender/build_milestone.py).
 constexpr float MILESTONE_HALF_WIDTH = 0.125F;
@@ -354,12 +367,29 @@ TEST_CASE("the gatehouse, the lanterns and the milestone fit every maze the game
             }
             CHECK(pillarsAtGate == 2);
 
-            // The big lantern: over the middle of the gate, its glass above every wall
-            // and every pillar of the maze, and under the roof of the gatehouse.
+            // The big lantern: in its opening of the cote, where the matrix of the
+            // gatehouse puts that point of the model, its glass above every wall and
+            // every pillar of the maze, and under the roof of the gatehouse.
             const glm::vec3 big = placeOf(scenery.lanterns[0]);
-            CHECK(big.x == doctest::Approx(base.x));
-            CHECK(big.z == doctest::Approx(base.z));
+            const glm::vec3 inModel{scenery.arch * glm::vec4{game::GATE_COTE_LANTERN_ALONG,
+                                                             game::GATE_COTE_LANTERN_HEIGHT, 0.0F,
+                                                             1.0F}};
+            CHECK(glm::distance(big, inModel) < 0.0001F);
+            CHECK(glm::distance(glm::vec2{big.x, big.z}, glm::vec2{base.x, base.z}) ==
+                  doctest::Approx(game::GATE_COTE_LANTERN_ALONG));
             CHECK(big.y == doctest::Approx(base.y + game::GATE_COTE_LANTERN_HEIGHT));
+
+            // The bell: its pivot in the other opening, as far from the middle of the
+            // gate on the other side, and all of it under the roof. Hanging still or
+            // swung out, the pivot stays where it is.
+            const glm::vec3 pivot = placeOf(game::gateBellMatrix(scenery.arch, 0.0F));
+            CHECK(pivot.y == doctest::Approx(base.y + game::GATE_BELL_HEIGHT));
+            CHECK(pivot.y < base.y + game::GATE_HOUSE_HEIGHT);
+            CHECK((pivot.x + big.x) / 2.0F == doctest::Approx(base.x));
+            CHECK((pivot.z + big.z) / 2.0F == doctest::Approx(base.z));
+            CHECK(glm::distance(pivot, placeOf(game::gateBellMatrix(
+                                           scenery.arch, game::GATE_BELL_SWING_DEGREES))) <
+                  0.0001F);
             CHECK(big.y + LANTERN_HEIGHT * game::GATE_COTE_LANTERN_SCALE <
                   base.y + game::GATE_HOUSE_HEIGHT);
             for (const scene::Aabb& box : world.colliders) {
@@ -486,6 +516,23 @@ TEST_CASE("the gatehouse model stays inside the pillars where the player walks")
     CHECK(highest <= game::GATE_HOUSE_HEIGHT);
     CHECK(highest > game::GATE_HOUSE_HEIGHT - 0.1F);
 
+    // The two openings of the cote are empty: no corner of the stone lies inside one, so
+    // the lantern and the bell hang free. The posts and the beam end on their edges.
+    for (const gfx::Vertex& vertex : arch.vertices) {
+        const glm::vec3& p = vertex.position;
+        const bool inside = std::abs(p.x) > OPENING_NEAR + 0.001F &&
+                            std::abs(p.x) < OPENING_FAR - 0.001F && p.y > OPENING_BOTTOM + 0.001F &&
+                            p.y < OPENING_TOP - 0.001F;
+        CHECK_FALSE(inside);
+    }
+    // The big lantern, with its cap, fits into its opening and hangs under the beam.
+    const float capHalf = LANTERN_CAP_HALF_WIDTH * game::GATE_COTE_LANTERN_SCALE;
+    CHECK(game::GATE_COTE_LANTERN_ALONG - capHalf > OPENING_NEAR);
+    CHECK(game::GATE_COTE_LANTERN_ALONG + capHalf < OPENING_FAR);
+    CHECK(game::GATE_COTE_LANTERN_HEIGHT > OPENING_BOTTOM);
+    CHECK(game::GATE_COTE_LANTERN_HEIGHT + LANTERN_HEIGHT * game::GATE_COTE_LANTERN_SCALE <=
+          OPENING_TOP + 0.07F);
+
     // The same from both sides and from both ends: every corner has a twin mirrored in
     // x and one mirrored in z. So the matrix of the gate needs no turn.
     const auto hasVertexAt = [&arch](const glm::vec3& place) {
@@ -541,4 +588,146 @@ TEST_CASE("the lantern and the milestone models have the sizes the game places t
     // Knee high: between 0.4 and 0.8 m.
     CHECK(stoneTop > 0.4F);
     CHECK(stoneTop < 0.8F);
+}
+
+TEST_CASE("a bell that is never pushed hangs still, and the bell of a shut gate is never pushed") {
+    // The gate stays shut for a minute: the clock of the bell gives no toll, so nothing
+    // pushes the bell, and it stays exactly where it hangs.
+    const game::Round closed;
+    game::GateBell bell;
+    game::BellSwing swing;
+    for (int i = 0; i < 120 * 60; ++i) {
+        if (game::advanceGateBell(bell, closed, game::GATE_BELL_SECONDS, STEP)) {
+            game::tollBellSwing(swing);
+        }
+        game::advanceBellSwing(swing, STEP);
+        REQUIRE(swing.degrees == 0.0F);
+        REQUIRE(swing.degreesPerSecond == 0.0F);
+    }
+}
+
+TEST_CASE("a toll swings the bell to both sides and the swing dies away before the next toll") {
+    game::BellSwing swing;
+    game::tollBellSwing(swing);
+
+    // One wait between two tolls, step by step.
+    const int steps = static_cast<int>(game::GATE_BELL_SECONDS / STEP);
+    float furthest = 0.0F;
+    float furthestBack = 0.0F;
+    float afterFourSeconds = 0.0F;
+    int turns = 0;
+    float before = 0.0F;
+    for (int i = 1; i <= steps; ++i) {
+        game::advanceBellSwing(swing, STEP);
+        CHECK(std::abs(swing.degrees) <= game::GATE_BELL_SWING_DEGREES);
+        furthest = std::max(furthest, swing.degrees);
+        furthestBack = std::min(furthestBack, swing.degrees);
+        // A change of side: the bell went through the middle.
+        if (before * swing.degrees < 0.0F) {
+            ++turns;
+        }
+        if (swing.degrees != 0.0F) {
+            before = swing.degrees;
+        }
+        if (static_cast<float>(i) * STEP >= 4.0F) {
+            afterFourSeconds = std::max(afterFourSeconds, std::abs(swing.degrees));
+        }
+        // It starts with the toll: after a tenth of a second it is well on its way.
+        if (i == 12) {
+            CHECK(swing.degrees > 5.0F);
+        }
+    }
+    // Nearly the whole way out on the first swing, and well out on the way back.
+    CHECK(furthest > game::GATE_BELL_SWING_DEGREES - 2.0F);
+    CHECK(furthestBack < -game::GATE_BELL_SWING_DEGREES / 3.0F);
+    // Several swings, not one slow lean.
+    CHECK(turns >= 4);
+    // Under a degree is left after four seconds, and at the next toll it hangs still.
+    CHECK(afterFourSeconds < 1.0F);
+    CHECK(swing.degrees == 0.0F);
+    CHECK(swing.degreesPerSecond == 0.0F);
+}
+
+TEST_CASE("tolls in quick succession never swing the bell past its limit") {
+    // A toll every second, the shortest wait the debug UI allows, and then one in every
+    // step: the pushes add up, and the stop holds the bell.
+    game::BellSwing swing;
+    for (int i = 0; i < 120 * 20; ++i) {
+        if (i % 120 == 0 || i > 120 * 10) {
+            game::tollBellSwing(swing);
+        }
+        game::advanceBellSwing(swing, STEP);
+        REQUIRE(std::abs(swing.degrees) <= game::GATE_BELL_SWING_DEGREES);
+    }
+    // Left alone it comes to rest again.
+    for (int i = 0; i < 120 * 10; ++i) {
+        game::advanceBellSwing(swing, STEP);
+    }
+    CHECK(swing.degrees == 0.0F);
+}
+
+TEST_CASE("the bell model hangs from its pivot and swings clear of the posts of its opening") {
+    const assets::ObjModel bell = loadModel("gate_bell.obj");
+    REQUIRE_FALSE(bell.vertices.empty());
+    CHECK(bell.parts.size() == 1);
+    CHECK(bell.mirroredTriangleCount == 0);
+    CHECK(bell.indices.size() / 3 <= 320);
+
+    // Everything hangs under the pivot, the origin, and the clapper is the lowest point.
+    float lowest = 0.0F;
+    for (const gfx::Vertex& vertex : bell.vertices) {
+        CHECK(vertex.position.y <= 0.0001F);
+        lowest = std::min(lowest, vertex.position.y);
+    }
+    CHECK(lowest == doctest::Approx(-BELL_HEIGHT));
+    // At rest it hangs above the sill of its opening.
+    CHECK(game::GATE_BELL_HEIGHT - BELL_HEIGHT > OPENING_BOTTOM);
+
+    // Swung out as far as it goes, to either side, every corner is still between the two
+    // posts and above the sill. The matrix is the one the game draws with, for a
+    // gatehouse that stands at the origin. Only the top corners of the yoke may reach
+    // into the beam it hangs from, where nobody sees them.
+    for (const float degrees :
+         {-game::GATE_BELL_SWING_DEGREES, 0.0F, game::GATE_BELL_SWING_DEGREES}) {
+        const glm::mat4 matrix = game::gateBellMatrix(glm::mat4{1.0F}, degrees);
+        for (const gfx::Vertex& vertex : bell.vertices) {
+            const glm::vec3 place{matrix * glm::vec4{vertex.position, 1.0F}};
+            CHECK(-place.x > OPENING_NEAR);
+            CHECK(-place.x < OPENING_FAR);
+            CHECK(place.y > OPENING_BOTTOM);
+            CHECK(place.y < OPENING_TOP + 0.05F);
+        }
+    }
+
+    // The same from the front and from the back: every corner has a twin mirrored in z.
+    bool mirrored = true;
+    for (const gfx::Vertex& vertex : bell.vertices) {
+        const glm::vec3 twin{vertex.position.x, vertex.position.y, -vertex.position.z};
+        mirrored =
+            mirrored && std::ranges::any_of(bell.vertices, [&twin](const gfx::Vertex& other) {
+                return glm::distance(other.position, twin) < 0.001F;
+            });
+    }
+    CHECK(mirrored);
+
+    // The bell is open below, and the renderer draws no back faces: so it has faces that
+    // look down and inwards, the inside of its wall. Their corners lie above the lip.
+    int insideFaces = 0;
+    for (std::size_t i = 0; i + 2 < bell.indices.size(); i += 3) {
+        const gfx::Vertex& a = bell.vertices[bell.indices[i]];
+        const gfx::Vertex& b = bell.vertices[bell.indices[i + 1]];
+        const gfx::Vertex& c = bell.vertices[bell.indices[i + 2]];
+        const glm::vec3 middle = (a.position + b.position + c.position) / 3.0F;
+        const glm::vec3 normal = glm::cross(b.position - a.position, c.position - a.position);
+        const glm::vec3 outwards{middle.x, 0.0F, middle.z};
+        // Inside the wall of the bell: between the top of the inside and the lip, away
+        // from the axis (that is the clapper), looking towards the axis.
+        if (middle.y < -0.11F && middle.y > -0.364F && glm::length(outwards) > 0.06F &&
+            glm::dot(normal, outwards) < 0.0F) {
+            ++insideFaces;
+        }
+    }
+    // Four rings of twelve faces of two triangles each, and the clapper block has none
+    // that far out.
+    CHECK(insideFaces >= 4 * 12 * 2);
 }

@@ -1,10 +1,13 @@
-// GateLamp: the lantern of the exit gate (how bright it is and in which colour) and where
-// the gatehouse, its three lanterns, its light and the milestone stand.
+// GateLamp: the lantern of the exit gate (how bright it is and in which colour), how its
+// bell swings, and where the gatehouse, its three lanterns, its bell, its light and the
+// milestone stand.
 #include "game/GateLamp.hpp"
 
 #include "game/Interactables.hpp"
 #include "game/MazeLayout.hpp"
 #include "scene/Transform.hpp"
+
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -35,6 +38,11 @@ glm::mat4 placedAt(const glm::vec3& position, float scale) {
     transform.scale = glm::vec3{scale};
     return transform.matrix();
 }
+
+// A swing this small, in degrees and in degrees per second, counts as none: the bell is
+// set to rest. At the lip of the bell that is a step of about a millimetre.
+constexpr float BELL_REST_DEGREES = 0.2F;
+constexpr float BELL_REST_SPEED = 1.0F;
 
 // True when a stone may stand against this wall of the approach cell: the maze has the
 // wall, no lever opens it, and no lever and no note hangs on it.
@@ -88,6 +96,42 @@ PointLightSpot gateLampLight(const glm::vec3& position, float strength, float ga
             .intensity = GATE_LAMP_LIGHT_INTENSITY};
 }
 
+void tollBellSwing(BellSwing& swing) {
+    swing.degreesPerSecond += GATE_BELL_PUSH;
+}
+
+void advanceBellSwing(BellSwing& swing, float stepSeconds) {
+    // The speed first and the angle with the new speed: in this order the fixed steps of
+    // the game do not make the swing grow by themselves.
+    swing.degreesPerSecond +=
+        (-GATE_BELL_SPRING * swing.degrees - GATE_BELL_BRAKE * swing.degreesPerSecond) *
+        stepSeconds;
+    swing.degrees += swing.degreesPerSecond * stepSeconds;
+
+    // The stop: two tolls close together (a short interval typed into the debug UI)
+    // could push the bell into a post. It stands at the limit until the spring takes
+    // it back.
+    if (std::abs(swing.degrees) > GATE_BELL_SWING_DEGREES) {
+        swing.degrees =
+            std::clamp(swing.degrees, -GATE_BELL_SWING_DEGREES, GATE_BELL_SWING_DEGREES);
+        swing.degreesPerSecond = 0.0F;
+    }
+    // Nearly nothing left: the bell hangs still.
+    if (std::abs(swing.degrees) < BELL_REST_DEGREES &&
+        std::abs(swing.degreesPerSecond) < BELL_REST_SPEED) {
+        swing = {};
+    }
+}
+
+glm::mat4 gateBellMatrix(const glm::mat4& arch, float swingDegrees) {
+    // From the right: the turn around the pivot (the origin of the model) in the space
+    // of the gatehouse, where Z runs across the gate, then the step to the pivot, then
+    // the matrix of the gatehouse.
+    const glm::mat4 atPivot =
+        glm::translate(arch, glm::vec3{GATE_BELL_ALONG, GATE_BELL_HEIGHT, 0.0F});
+    return glm::rotate(atPivot, glm::radians(swingDegrees), glm::vec3{0.0F, 0.0F, 1.0F});
+}
+
 Direction gateSide(const MazeWorld& world) {
     // The gate stands on the border of the exit cell, one metre from its middle. The
     // side it is on is the direction that step points in: its larger part, and the sign
@@ -119,7 +163,13 @@ GateScenery gateScenery(const MazeWorld& world) {
     const glm::vec3 up{0.0F, 1.0F, 0.0F};
     const glm::vec3 base = world.gate.position;
 
-    scenery.lanterns[0] = placedAt(base + up * GATE_COTE_LANTERN_HEIGHT, GATE_COTE_LANTERN_SCALE);
+    // The big lantern, in its opening of the cote. Which end of the gate that is depends
+    // on how the model lies, so its place is a point of the model, moved by the matrix
+    // of the gatehouse: placed along `along` it would hang in the opening of the bell in
+    // half of the mazes.
+    const glm::vec3 inCote{
+        scenery.arch * glm::vec4{GATE_COTE_LANTERN_ALONG, GATE_COTE_LANTERN_HEIGHT, 0.0F, 1.0F}};
+    scenery.lanterns[0] = placedAt(inCote, GATE_COTE_LANTERN_SCALE);
     const glm::vec3 bracket =
         base + out * GATE_BRACKET_LANTERN_OUT + up * GATE_BRACKET_LANTERN_HEIGHT;
     scenery.lanterns[1] = placedAt(bracket + along * GATE_BRACKET_LANTERN_ALONG, 1.0F);

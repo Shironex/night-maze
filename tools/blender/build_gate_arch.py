@@ -1,6 +1,7 @@
 # Builds the model gate_arch: the stone gatehouse that stands over the exit gate. Two piers
-# over the two pillars, a stone head over the doorway, a gable, and on top a small cote
-# with a roof, in which the big lantern hangs above the walls of the maze.
+# over the two pillars, a stone head over the doorway, a gable, and on top a double cote:
+# two openings under one roof, as chapel gables have them. The big lantern hangs in one
+# opening and the bell (build_gate_bell.py) in the other, above the walls of the maze.
 # Output: assets/models/gate_arch.obj and gate_arch.mtl.
 #
 # Run from the repository root:
@@ -25,7 +26,7 @@ NAME = "gate_arch"
 # whichever side the player comes from.
 #
 # The numbers the game has to agree with are in src/game/GateLamp.hpp (where the lanterns
-# hang) and src/game/MazeLayout.hpp (GATE_HOUSE_HEIGHT, PILLAR_SIZE).
+# and the bell hang) and src/game/MazeLayout.hpp (GATE_HOUSE_HEIGHT, PILLAR_SIZE).
 
 # The middle of each pier: on the grid corner at the end of the gate, where a pillar of
 # the maze stands (wall_pillar: 0.3 m wide with a foot of 0.4 m, 3.15 m high).
@@ -89,19 +90,28 @@ CORBEL_REACH = 0.56
 CORBEL_BOTTOM = 2.6
 CORBEL_TOP = 2.74
 
-# The cote on the gable: a sill, two posts, a beam the big lantern hangs from and a small
-# roof. The big lantern is 0.4 m wide and its glass is centred 5.1 m up (the game draws
-# the lantern model twice as large there).
-SILL_HALF_LENGTH = 0.5
+# The double cote on the gable: a sill, three posts, a beam over them and one roof. The
+# two openings between the posts are open front and back, so the cote is the same from
+# both sides. Each opening is 0.58 m wide. The big lantern hangs in the middle of the one
+# at +X: it is 0.4 m wide and its glass is centred 5.1 m up (the game draws the lantern
+# model twice as large there). The bell hangs in the middle of the one at -X and swings
+# along the gate: at 18 degrees to a side its lip is still 0.017 m clear of the post.
+SILL_HALF_LENGTH = 0.86
 SILL_HALF_THICKNESS = 0.2
 SILL_BOTTOM = 3.98
 SILL_TOP = 4.12
-POST_X = 0.36
+# The sill is longer than the gable is high under its ends: the gable falls away there. A
+# block under the sill fills the gap. It is a little shorter and thinner than the sill,
+# and its underside is inside the gable.
+BLOCK_HALF_LENGTH = 0.82
+BLOCK_HALF_THICKNESS = 0.19
+BLOCK_BOTTOM = 3.62
+POST_XS = (-0.72, 0.0, 0.72)
 POST_HALF = 0.07
 POST_TOP = 5.58
 BEAM_HALF_THICKNESS = 0.05
 BEAM_BOTTOM = 5.5
-ROOF_HALF_LENGTH = 0.58
+ROOF_HALF_LENGTH = 0.94
 ROOF_HALF_THICKNESS = 0.35
 # The ridge of the roof: the highest point of the model, just under GATE_HOUSE_HEIGHT (6 m).
 ROOF_TOP = 5.98
@@ -231,15 +241,6 @@ def build(shots):
                 skip=("-y",) if face > 0.0 else ("+y",),
             )
 
-        # A post of the cote.
-        common.add_box(
-            vertices,
-            faces,
-            (side * POST_X - POST_HALF, -POST_HALF, SILL_TOP),
-            (side * POST_X + POST_HALF, POST_HALF, POST_TOP),
-            skip=("-z", "+z"),
-        )
-
     # The head between the piers. Its ends are inside the piers and its top is under the
     # gable.
     head_half_length = PIER_X - PIER_HIGH_HALF
@@ -267,18 +268,34 @@ def build(shots):
     # The gable. Its underside lies on the head and is never seen.
     add_roof(vertices, faces, GABLE_HALF_LENGTH, GABLE_HALF_THICKNESS, PIER_TOP, GABLE_TOP, False)
 
-    # The cote: the sill, the beam between the posts and the roof.
+    # The double cote: the block under the sill, the sill, the three posts, the beam over
+    # them and the roof. The ends of the beam are inside the outer posts.
+    common.add_box(
+        vertices,
+        faces,
+        (-BLOCK_HALF_LENGTH, -BLOCK_HALF_THICKNESS, BLOCK_BOTTOM),
+        (BLOCK_HALF_LENGTH, BLOCK_HALF_THICKNESS, SILL_BOTTOM),
+        skip=("-z",),
+    )
     common.add_box(
         vertices,
         faces,
         (-SILL_HALF_LENGTH, -SILL_HALF_THICKNESS, SILL_BOTTOM),
         (SILL_HALF_LENGTH, SILL_HALF_THICKNESS, SILL_TOP),
     )
+    for x in POST_XS:
+        common.add_box(
+            vertices,
+            faces,
+            (x - POST_HALF, -POST_HALF, SILL_TOP),
+            (x + POST_HALF, POST_HALF, POST_TOP),
+            skip=("-z", "+z"),
+        )
     common.add_box(
         vertices,
         faces,
-        (-POST_X, -BEAM_HALF_THICKNESS, BEAM_BOTTOM),
-        (POST_X, BEAM_HALF_THICKNESS, POST_TOP),
+        (POST_XS[0], -BEAM_HALF_THICKNESS, BEAM_BOTTOM),
+        (POST_XS[-1], BEAM_HALF_THICKNESS, POST_TOP),
         skip=("-x", "+x", "+z"),
     )
     add_roof(vertices, faces, ROOF_HALF_LENGTH, ROOF_HALF_THICKNESS, POST_TOP, ROOF_TOP, True)
