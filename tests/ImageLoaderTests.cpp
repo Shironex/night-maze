@@ -1,13 +1,17 @@
 // Tests of assets::loadImage.
 #include "assets/ImageLoader.hpp"
 
+#include "gfx/ColorSpace.hpp"
+
 #include <doctest/doctest.h>
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
+#include <glm/glm.hpp>
 #include <string>
 #include <vector>
 
@@ -65,6 +69,21 @@ double channelAverage(const assets::Image& image, int channel, int firstColumn, 
     return sum / (static_cast<double>(columnCount) * static_cast<double>(rowCount));
 }
 
+// The light a colour picture reflects on average, per channel: every byte is decoded
+// from sRGB first, as the graphics card decodes it for the shader. This is the colour
+// a wall has from far away, where it is drawn from the small copies of its picture.
+glm::dvec3 averageLight(const assets::Image& image) {
+    glm::dvec3 sum{0.0};
+    for (std::size_t i = 0; i + 2 < image.pixels.size(); i += 3) {
+        for (int channel = 0; channel < 3; ++channel) {
+            const float encoded =
+                static_cast<float>(image.pixels[i + static_cast<std::size_t>(channel)]) / 255.0F;
+            sum[channel] += static_cast<double>(gfx::srgbToLinear(encoded));
+        }
+    }
+    return sum / static_cast<double>(image.pixels.size() / 3);
+}
+
 } // namespace
 
 TEST_CASE("the tiling textures of the game load with the size and channels they were made with") {
@@ -109,6 +128,48 @@ TEST_CASE("the normal maps of the game load, and most of their texels are flat")
         CHECK(average[0] == doctest::Approx(128.0).epsilon(0.02));
         CHECK(average[1] == doctest::Approx(128.0).epsilon(0.02));
         CHECK(average[2] > 245.0);
+    }
+}
+
+TEST_CASE("a worn wall reflects as much light as the plain wall, in nearly its colour") {
+    // The looks of game::WallVariant with a picture of their own are drawn segment by
+    // segment between plain walls. Cracks, moss and niches are detail for a player who
+    // stands in front of them. From across the maze only the average of a picture is
+    // left, and a look whose average is darker or of another colour turns its segments
+    // into patches. The mossy wall once reflected 30 percent of the light of the plain
+    // one.
+    //
+    // The weights of the three channels are the ones of Rec. 709: how bright each looks.
+    constexpr glm::dvec3 LUMINANCE_WEIGHTS{0.2126, 0.7152, 0.0722};
+    // The cracks and the niches take 2 and 4 percent of the light away and are left at
+    // that. The generator scales the mossy wall to the plain one.
+    constexpr double BRIGHTNESS_TOLERANCE = 0.05;
+    // The share of a channel in the sum of the three may differ by this much: the moss
+    // moves the green share by 0.024. The dark moss of before moved it by 0.035.
+    constexpr double COLOUR_SHARE_TOLERANCE = 0.03;
+
+    assets::Image plain;
+    std::string error;
+    REQUIRE(assets::loadImage(assetsDirectory() / "textures" / "wall_stone.png", plain, error));
+    REQUIRE(plain.channels == 3);
+    const glm::dvec3 plainLight = averageLight(plain);
+    const double plainBrightness = glm::dot(plainLight, LUMINANCE_WEIGHTS);
+    const glm::dvec3 plainShares = plainLight / (plainLight.x + plainLight.y + plainLight.z);
+
+    for (const std::string fileName : {"wall_cracked.png", "wall_mossy.png", "wall_damaged.png"}) {
+        CAPTURE(fileName);
+        assets::Image worn;
+        REQUIRE(assets::loadImage(assetsDirectory() / "textures" / fileName, worn, error));
+        REQUIRE(worn.channels == 3);
+        const glm::dvec3 light = averageLight(worn);
+
+        CHECK(glm::dot(light, LUMINANCE_WEIGHTS) ==
+              doctest::Approx(plainBrightness).epsilon(BRIGHTNESS_TOLERANCE));
+        const glm::dvec3 shares = light / (light.x + light.y + light.z);
+        for (int channel = 0; channel < 3; ++channel) {
+            CAPTURE(channel);
+            CHECK(std::abs(shares[channel] - plainShares[channel]) < COLOUR_SHARE_TOLERANCE);
+        }
     }
 }
 
