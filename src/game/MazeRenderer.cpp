@@ -1,4 +1,5 @@
-// MazeRenderer: draws the walls, the pillars and the stile of a maze with their models.
+// MazeRenderer: draws the walls, the pillars, the stile and the stone sheep of a maze with
+// their models.
 #include "game/MazeRenderer.hpp"
 
 #include "assets/AssetCache.hpp"
@@ -25,6 +26,10 @@ constexpr const char* PILLAR_MODEL_FILE = "models/wall_pillar.obj";
 constexpr const char* STILE_MODEL_FILE = "models/stile.obj";
 constexpr const char* STILE_POST_MODEL_FILE = "models/stile_post.obj";
 
+// A stone sheep: 0.9 m long, with its head along +X and its origin on the ground under
+// its middle (game/StoneSheep.hpp).
+constexpr const char* STONE_SHEEP_MODEL_FILE = "models/stone_sheep.obj";
+
 // The models of the two shaped looks, Crowned and Broken, in the order of WallVariant.
 // They follow the painted looks in the enum.
 constexpr std::array<const char*, WALL_VARIANT_COUNT - 1 - PAINTED_WALL_VARIANT_COUNT>
@@ -48,7 +53,8 @@ constexpr std::array<WallTextureFiles, PAINTED_WALL_VARIANT_COUNT> WORN_WALL_TEX
 MazeRenderer::MazeRenderer(assets::AssetCache& assets)
     : m_wall(assets.model(core::assetPath(WALL_MODEL_FILE))),
       m_pillar(assets.model(core::assetPath(PILLAR_MODEL_FILE))),
-      m_stilePost(assets.model(core::assetPath(STILE_POST_MODEL_FILE))) {
+      m_stilePost(assets.model(core::assetPath(STILE_POST_MODEL_FILE))),
+      m_stoneSheep(assets.model(core::assetPath(STONE_SHEEP_MODEL_FILE))) {
     if (m_wall == nullptr || m_wall->parts.empty()) {
         return;
     }
@@ -125,6 +131,7 @@ void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world,
     if (world.stileWall && *world.stileWall < wallMatrices.size()) {
         drawModel(shader, m_stilePost, wallMatrices.subspan(*world.stileWall, 1));
     }
+    drawModel(shader, m_stoneSheep, world.sheepMatrices);
 }
 
 } // namespace game

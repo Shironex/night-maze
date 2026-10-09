@@ -247,14 +247,15 @@ void drawCollisionBoxes(Page& page, const DebugContext& context) {
     page.beginCard("Collision boxes");
     // world.colliders holds the box of every wall first and the box of every pillar
     // after them, so the two counts are the sizes of the lists they were made from. The
-    // one box of the stile is the last of the list.
+    // boxes of the stone sheep follow, and the one box of the stile is the last of the list.
     // The gate is one more box while it is closed, and every wall that a lever has
     // opened is one box less (game::roundObstacles).
     const int gateBoxes = game::gateBlocks(world, round) ? 1 : 0;
     const int openedWalls = game::pulledLeverCount(round);
-    page.stat("Boxes", "%d walls (%d opened by levers), %d pillars, %d gate, %d stile",
+    page.stat("Boxes", "%d walls (%d opened by levers), %d pillars, %d gate, %d stile, %d sheep",
               static_cast<int>(world.walls.size()) - openedWalls, openedWalls,
-              static_cast<int>(world.pillars.size()), gateBoxes, world.stileWall ? 1 : 0);
+              static_cast<int>(world.pillars.size()), gateBoxes, world.stileWall ? 1 : 0,
+              static_cast<int>(world.sheep.size()));
     // One pickup sphere around every crystal that is not collected yet, and one around
     // the heartstone while it is there. Counted, not subtracted: the heartstone raises
     // the collected count by more than one.

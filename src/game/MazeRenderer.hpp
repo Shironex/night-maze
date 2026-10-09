@@ -1,4 +1,5 @@
-// MazeRenderer: draws the walls, the pillars and the stile of a maze with their models.
+// MazeRenderer: draws the walls, the pillars, the stile and the stone sheep of a maze with
+// their models.
 #pragma once
 
 #include "game/WallVariants.hpp"
@@ -39,7 +40,8 @@ enum class ViewMode {
 /// with another pair of textures, so those three looks cost six textures and no
 /// geometry. A shaped wall (crowned or broken) is a model of its own with the plain
 /// stone on it. The wall that carries the stile (MazeWorld::stileWall) is drawn with the
-/// stile model, and the post of the stile with the matrix of that wall.
+/// stile model, and the post of the stile with the matrix of that wall. Every stone sheep
+/// (MazeWorld::sheep) is the same model with its own matrix.
 ///
 /// It owns nothing: the models and the textures belong to the asset cache, which
 /// must outlive this object, and the matrices belong to the MazeWorld given to draw.
@@ -54,7 +56,8 @@ public:
     /// programs (lit, gouraud): it must be in use, with uView, uProjection and its own
     /// uniforms (uViewMode, uNormalMapEnabled, or the ones of the lighting) already set.
     /// The function sets the samplers and uEmissive (black: stone does not glow), and
-    /// draws every pillar with game::drawModel and every wall with game::drawMesh (the
+    /// draws every pillar and every stone sheep with game::drawModel and every wall with
+    /// game::drawMesh (the
     /// mesh and the textures of the look of that wall). Both set the textures, uTint,
     /// uModel and uNormalMatrix.
     ///
@@ -72,6 +75,7 @@ private:
     const assets::LoadedModel* m_wall;
     const assets::LoadedModel* m_pillar;
     const assets::LoadedModel* m_stilePost;
+    const assets::LoadedModel* m_stoneSheep;
 
     // What one look of the wall is drawn with: a model, and the colour picture and the
     // normal map that go on it. Not owned.
