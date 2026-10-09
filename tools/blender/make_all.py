@@ -11,13 +11,13 @@ import sys
 # scripts next to this file would not be found without this line.
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+import build_chalk
 import build_flask
 import build_gate
 import build_gate_arch
 import build_gate_lantern
 import build_lever
 import build_milestone
-import build_note
 import build_shade
 import build_splinter
 import build_wall_pillar
@@ -40,7 +40,7 @@ build_gate_arch.build(shots)
 build_gate_lantern.build(shots)
 build_milestone.build(shots)
 build_lever.build(shots)
-build_note.build(shots)
+build_chalk.build(shots)
 build_flask.build(shots)
 build_shade.build(shots)
 

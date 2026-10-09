@@ -1,7 +1,7 @@
 # Blender 5.2.1 LTS MTL File: 'None'
 # www.blender.org
 
-newmtl note_paper
+newmtl chalk
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
 Ks 0.500000 0.500000 0.500000
@@ -10,5 +10,5 @@ Ni 1.500000
 d 1.000000
 illum 2
 Kd 1.000000 1.000000 1.000000
-map_Kd ../textures/note_paper.png
-map_Bump -bm 1.000000 ../textures/note_paper_normal.png
+map_Kd ../textures/chalk.png
+map_Bump -bm 1.000000 ../textures/chalk_normal.png

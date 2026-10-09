@@ -1,6 +1,6 @@
 # Generates the textures of the game into assets/textures: the colour pictures
 # wall_stone.png, wall_cracked.png, wall_mossy.png, wall_damaged.png, ground.png,
-# gate_wood.png, splinter.png, lever_iron.png, lever_brass.png, note_paper.png,
+# gate_wood.png, splinter.png, lever_iron.png, lever_brass.png, chalk.png,
 # flask.png, shade.png and lantern.png, and one normal map for each of them (the same
 # name with _normal). All twenty-six are 512 x 512 pixels, 8 bits per channel, RGB.
 #
@@ -12,12 +12,11 @@
 # the stones and planks divide the image evenly, the noise is smoothed with wrap-around,
 # and the distances between the cells of the crystal and to the stones of the ground are
 # measured across the edges.
-# The exceptions are note_paper.png, flask.png, shade.png, lantern.png and splinter.png:
-# the model of the note shows the whole picture exactly once, so its ink lines do not have
-# to continue across the edges, the pictures of the flask and of the shade go once around
-# their models, so only their left and right edges meet, the lantern only uses a small
-# piece from the middle of each half of its picture, and the splinter a strip down the
-# middle of each half of its picture, so there only the top and bottom edges meet.
+# The exceptions are flask.png, shade.png, lantern.png and splinter.png: the pictures of
+# the flask and of the shade go once around their models, so only their left and right
+# edges meet, the lantern only uses a small piece from the middle of each half of its
+# picture, and the splinter a strip down the middle of each half of its picture, so there
+# only the top and bottom edges meet.
 # Their noise still wraps around, because it comes from the same helpers.
 #
 # A colour picture and its normal map are made from the same pattern (the same stones, the
@@ -58,7 +57,6 @@ GATE_SEED = 37
 CRYSTAL_SEED = 41
 LEVER_SEED = 53
 LEVER_BRASS_SEED = 71
-NOTE_SEED = 29
 # The worn walls show the same stones as the plain wall (WALL_SEED). These seeds only
 # place what was added to them: the cracks, the moss and the rubble in the niches.
 WALL_CRACKED_SEED = 83
@@ -68,6 +66,7 @@ FLASK_SEED = 101
 SHADE_SEED = 103
 LANTERN_IRON_SEED = 107
 LANTERN_GLASS_SEED = 109
+CHALK_SEED = 113
 # The fracture of a splinter is the pattern of CRYSTAL_SEED. This seed places the craters
 # of its rind.
 SPLINTER_RIND_SEED = 127
@@ -124,25 +123,6 @@ GATE_BAND_HALF_HEIGHT = 20
 # pixels (see stone_height).
 BUMP_BLUR_RADIUS = 8
 GRAIN_BLUR_RADIUS = 1
-
-# The ink lines on the paper of the note, in pixels. The model note shows the whole picture
-# once on a sheet 0.30 m wide and 0.40 m high (see build_note.py), so one pixel is about
-# 0.6 mm wide and 0.8 mm high there.
-# Plain paper between the edge of the picture and the writing, on the left and the right.
-NOTE_MARGIN = 72
-# The row of the centre of the top line. Row 0 is the bottom row of the picture, so the
-# top line has the largest number.
-NOTE_TOP_LINE_ROW = 432
-# Distance between the centres of two lines, and the number of lines. The bottom line lies
-# at row 432 - 8 * 40 = 112, which leaves a margin below it too.
-NOTE_LINE_SPACING = 40
-NOTE_LINE_COUNT = 9
-# Half of the height of one ink line: 2.5 pixels are about 2 mm on the sheet, so a line is
-# about 4 mm high.
-NOTE_LINE_HALF_HEIGHT = 2.5
-# A line never ends before this part of the width between the two margins (0.55 = 55 %).
-# Every line gets a random end between this and the full width, like lines of handwriting.
-NOTE_SHORTEST_LINE = 0.55
 
 
 def blur(values, radius):
@@ -808,105 +788,6 @@ def metal_height(pattern, bump_depth, grain_depth):
     return bumps + grain
 
 
-def paper_pattern(seed):
-    """Returns what the colour picture and the normal map of the note have in common.
-
-    The note is a sheet of old paper with soft stains and a few lines of ink that suggest
-    handwriting. The lines are only dark strokes of different lengths: nobody can read
-    them, and the text of a note is shown by the game.
-
-    The result is a dictionary. Its arrays are SIZE x SIZE, one value per pixel:
-      "stains":   how strong the stain on the pixel is, from 0 to 1
-      "grain":    fine noise, from 0 to 1
-      "crumple":  large soft noise for the relief of the sheet, from 0 to 1
-      "ink":      how much ink covers the pixel, from 0 to 1
-    """
-    # Its own random generator, so the numbers of the other textures stay what they are.
-    rng = np.random.default_rng(seed)
-
-    # Pixel coordinates. Row 0 is the bottom row of the image.
-    y, x = np.mgrid[0:SIZE, 0:SIZE]
-
-    # Stains: wide soft noise, and only its upper part counts as a stain, with a smooth
-    # ramp at its edge. The noise is blurred a second time, which rounds the patches (see
-    # the moss in ground_pattern).
-    stain_noise = stretch(blur(smooth_noise(rng, 20), 12))
-    stains = smooth_step(np.clip((stain_noise - 0.55) / 0.25, 0.0, 1.0))
-
-    grain = smooth_noise(rng, 1)
-    crumple = smooth_noise(rng, 10)
-
-    # The ink lines. Every line starts at the left margin and is as high as two times
-    # NOTE_LINE_HALF_HEIGHT. Where it ends is random, so the lines have uneven lengths.
-    line_left = NOTE_MARGIN
-    full_width = SIZE - 2 * NOTE_MARGIN
-    ink = np.zeros((SIZE, SIZE))
-    for line in range(NOTE_LINE_COUNT):
-        # The lines go down the sheet, and row 0 is the bottom row: the row gets smaller.
-        centre = NOTE_TOP_LINE_ROW - line * NOTE_LINE_SPACING
-        line_right = line_left + full_width * rng.uniform(NOTE_SHORTEST_LINE, 1.0)
-
-        # How far the centre of a pixel lies inside the line, in pixels, measured up and
-        # down (across) and left and right (along). Cut off at 0 and 1 it is 1 inside the
-        # line, 0 outside, and the pixels on its border get a value in between: a soft
-        # edge instead of steps.
-        across = np.clip(NOTE_LINE_HALF_HEIGHT - np.abs(y + 0.5 - centre), 0.0, 1.0)
-        along = np.clip(np.minimum(x + 0.5 - line_left, line_right - (x + 0.5)), 0.0, 1.0)
-
-        # The lines do not overlap, so taking the larger value just adds this line.
-        ink = np.maximum(ink, across * along)
-
-    # A pen does not press evenly: soft noise makes the ink stronger and weaker along a
-    # line, between 55 % and 100 %.
-    ink = ink * (0.55 + 0.45 * smooth_noise(rng, 3))
-
-    return {
-        "stains": stains,
-        "grain": grain,
-        "crumple": crumple,
-        "ink": ink,
-    }
-
-
-def paper_color(pattern, paper_color, stain_color, ink_color):
-    """Returns a SIZE x SIZE x 3 array of colors from 0 to 1: old paper with ink lines.
-
-    pattern: the result of paper_pattern.
-    paper_color, stain_color, ink_color: (red, green, blue) from 0 to 1.
-    """
-    # The paper with a little grain: up to 4 % lighter or darker.
-    brightness = 0.96 + 0.08 * pattern["grain"]
-    color = brightness[..., None] * np.array(paper_color)
-
-    # Mix towards the stain colour. Even the middle of a stain only goes half of the way
-    # (the factor 0.5), so the stains stay soft.
-    stains = 0.5 * pattern["stains"]
-    color = color + stains[..., None] * (np.array(stain_color) - color)
-
-    # Mix towards the ink colour: ink = 0 keeps the paper, ink = 1 replaces it.
-    ink = pattern["ink"]
-    color = color + ink[..., None] * (np.array(ink_color) - color)
-
-    return np.clip(color, 0.0, 1.0)
-
-
-def paper_height(pattern, crumple_depth, grain_depth):
-    """Returns a SIZE x SIZE array: how far every pixel of the paper stands out.
-
-    The unit is the size of one pixel of the texture, like in stone_height.
-
-    pattern: the result of paper_pattern, the same one the colour picture was made from.
-    crumple_depth: height of the soft waves of a sheet that was folded and got damp.
-    grain_depth: height of the fine grain of the paper.
-    """
-    # The two kinds of noise, blurred once more for a smooth slope (see stone_height).
-    # The ink is flat: it soaked into the paper and has no relief.
-    crumple = crumple_depth * (blur(pattern["crumple"], BUMP_BLUR_RADIUS) - 0.5)
-    grain = grain_depth * (blur(pattern["grain"], GRAIN_BLUR_RADIUS) - 0.5)
-
-    return crumple + grain
-
-
 def wall_stones():
     """Returns the stone pattern of the wall: every wall texture is made from it.
 
@@ -1294,7 +1175,7 @@ def build():
     # The two pictures of the splinters the player collects, in a function of their own.
     build_splinter_textures()
 
-    # The textures of the lever, the note and the flask. They are in a function of their
+    # The textures of the lever, the chalk and the flask. They are in a function of their
     # own, so they can also be made without writing the pictures above again.
     build_interactable_textures()
 
@@ -1306,17 +1187,17 @@ def build():
 
 
 def build_interactable_textures():
-    """Writes the textures of the things the player uses: the lever, the note, the flask.
+    """Writes the textures of the things the player uses: the lever, the chalk, the flask.
 
     To make only these eight pictures, run from the repository root (one line):
       blender --background --factory-startup --python-expr "import sys;
       sys.path.append('tools/blender'); import make_textures;
       make_textures.build_interactable_textures()"
     The three functions it calls can be run alone in the same way, to make only the four
-    pictures of the lever, only the two of the note or only the two of the flask.
+    pictures of the lever, only the two of the chalk or only the two of the flask.
     """
     build_lever_textures()
-    build_note_textures()
+    build_chalk_textures()
     build_flask_textures()
 
 
@@ -1347,21 +1228,22 @@ def build_lever_textures():
     save_png(normal_map(brass_relief), "lever_brass_normal.png")
 
 
-def build_note_textures():
-    """Writes the texture of the note with its normal map."""
-    # Note: warm off-white paper, light brown stains and dark blue-black ink.
-    note = paper_pattern(seed=NOTE_SEED)
-    note_picture = paper_color(
-        note,
-        paper_color=(0.86, 0.82, 0.70),
-        stain_color=(0.66, 0.56, 0.38),
-        ink_color=(0.14, 0.13, 0.20),
-    )
-    save_png(note_picture, "note_paper.png")
+def build_chalk_textures():
+    """Writes the texture of the chalk marks with its normal map."""
+    # Its own random generator, so the numbers of the other textures stay what they are.
+    rng = np.random.default_rng(CHALK_SEED)
 
-    # The relief of the note: a gently crumpled sheet.
-    note_relief = paper_height(note, crumple_depth=5.0, grain_depth=0.4)
-    save_png(normal_map(note_relief), "note_paper_normal.png")
+    # Chalk: a pale grey-white with a little green in it and nothing drawn on it. The
+    # shape of a mark is its model (build_chalk.py). The picture only keeps a stroke from
+    # being one even colour: fine grain and soft patches where the chalk lies thinner,
+    # from 14 % darker to full strength.
+    grain = smooth_noise(rng, 1)
+    dust = smooth_noise(rng, 6)
+    brightness = 0.86 + 0.08 * grain + 0.06 * dust
+    save_png(brightness[..., None] * np.array((0.93, 0.95, 0.91)), "chalk.png")
+
+    # The relief: only the grain, and very little of it. Chalk is a film of dust.
+    save_png(normal_map(1.2 * (blur(grain, GRAIN_BLUR_RADIUS) - 0.5)), "chalk_normal.png")
 
 
 def build_shade_textures():
