@@ -98,6 +98,10 @@ constexpr std::uint32_t SECOND_MULTIPLIER = 0xC2B2AE35U;
 constexpr int FIRST_SHIFT = 16;
 constexpr int SECOND_SHIFT = 13;
 
+constexpr int SECONDS_PER_MINUTE = 60;
+// Below this number of seconds a leading zero is written: 1:05 and not 1:5.
+constexpr int TWO_DIGITS = 10;
+
 } // namespace
 
 const CampaignNight& campaignNight(int night) {
@@ -180,6 +184,13 @@ int bestAfterWin(int bestSeconds, float elapsedSeconds) {
     const int seconds =
         static_cast<int>(std::clamp(elapsedSeconds, 1.0F, static_cast<float>(MAX_BEST_SECONDS)));
     return bestSeconds == NO_BEST_TIME ? seconds : std::min(bestSeconds, seconds);
+}
+
+std::string timeText(float seconds) {
+    const int whole = static_cast<int>(seconds);
+    const int minutes = whole / SECONDS_PER_MINUTE;
+    const int rest = whole % SECONDS_PER_MINUTE;
+    return std::to_string(minutes) + (rest < TWO_DIGITS ? ":0" : ":") + std::to_string(rest);
 }
 
 std::array<const char*, STORY_CARD_LINE_COUNT> endingLines(bool crystalsLeft) {

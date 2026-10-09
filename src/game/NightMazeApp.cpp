@@ -274,18 +274,6 @@ constexpr const char* CUSTOM_DIFFICULTY_NAME = "Custom";
 // read out to a friend. A typed seed can be any number a seed can be.
 constexpr std::uint32_t RANDOM_SEED_LIMIT = 1000000;
 
-constexpr int SECONDS_PER_MINUTE = 60;
-// Below this number of seconds a leading zero is written: 1:05 and not 1:5.
-constexpr int TWO_DIGITS = 10;
-
-// A time as minutes and seconds, for example "1:05". Parts of a second are cut off.
-std::string timeText(float seconds) {
-    const int whole = static_cast<int>(seconds);
-    const int minutes = whole / SECONDS_PER_MINUTE;
-    const int rest = whole % SECONDS_PER_MINUTE;
-    return std::to_string(minutes) + (rest < TWO_DIGITS ? ":0" : ":") + std::to_string(rest);
-}
-
 // A seed nobody can predict, from 1 to RANDOM_SEED_LIMIT - 1. std::random_device asks
 // the operating system for a random number. It only picks the seed: the maze itself is
 // built by the seeded generator, so the same seed always brings the same maze back.

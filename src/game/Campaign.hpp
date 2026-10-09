@@ -184,6 +184,10 @@ constexpr int MAX_BEST_SECONDS = 5999;
 /// NO_BEST_TIME.
 int bestAfterWin(int bestSeconds, float elapsedSeconds);
 
+/// A time as the menus show it, minutes and seconds: "1:05". Parts of a second are cut
+/// off.
+std::string timeText(float seconds);
+
 /// The most lines a card of text shows (assets/ui/card.rml has that many).
 constexpr std::size_t STORY_CARD_LINE_COUNT = 4;
 
