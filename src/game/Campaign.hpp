@@ -172,6 +172,23 @@ enum class NightEndOffer {
 /// card and no result screen).
 NightEndOffer nightEndOffer(int campaignNight, int wonNight, bool counts);
 
+/// How many nights of light the village on the ridge shows (game/Village.hpp), 0 to
+/// CAMPAIGN_NIGHT_COUNT: every night that is won lights a part of it, in the order the
+/// lines of the result screen name (CampaignNight::endLine).
+///
+///     a night n of the campaign is played    n - 1: the nights before it
+///     its result, and the ending             n: its own lights have just come on
+///     free play, the maze of the day, a menu the progress: campaignNight - 1
+///     a tool run without a night             0
+///
+/// playedNight is the night in play, or 0 for anything else. won is true once that night
+/// is won. A finished night that is played again shows what it showed the first time, so
+/// the picture belongs to the night and not to the save file. campaignNight is the next
+/// night of the campaign (1 to CAMPAIGN_FINISHED): a finished campaign shows all five.
+/// toolRun is StartOptions::toolSwitch: a recording must not depend on a settings file,
+/// so it shows a dark village unless it names its night.
+int villageNightsLit(int playedNight, bool won, int campaignNight, bool toolRun);
+
 /// "No best time yet" in GameSettings::campaignBestSeconds.
 constexpr int NO_BEST_TIME = 0;
 

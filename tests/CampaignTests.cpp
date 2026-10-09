@@ -684,3 +684,39 @@ TEST_CASE("the ending card shows the skip hint at its start, and its bell rings 
     constexpr float BELL_SECONDS = 5.5F;
     CHECK(game::ENDING_BELL_SECONDS + BELL_SECONDS < game::ENDING_CARD_SECONDS);
 }
+
+TEST_CASE(
+    "a night shows the village as the nights before it left it, and its result adds its own") {
+    for (int night = 1; night <= game::CAMPAIGN_NIGHT_COUNT; ++night) {
+        // The progress of the campaign and the tool switch do not matter for a night: a
+        // finished night that is played again shows what it showed the first time.
+        for (const int progress : {1, night, game::CAMPAIGN_FINISHED}) {
+            for (const bool tool : {false, true}) {
+                CHECK(game::villageNightsLit(night, false, progress, tool) == night - 1);
+                CHECK(game::villageNightsLit(night, true, progress, tool) == night);
+            }
+        }
+    }
+    // The first night begins with a dark village, and the last one lights the last window.
+    CHECK(game::villageNightsLit(1, false, 1, false) == 0);
+    CHECK(game::villageNightsLit(5, true, 5, false) == game::CAMPAIGN_NIGHT_COUNT);
+}
+
+TEST_CASE("free play, the maze of the day and the menu show the progress of the campaign") {
+    CHECK(game::villageNightsLit(0, false, 1, false) == 0);
+    CHECK(game::villageNightsLit(0, false, 3, false) == 2);
+    CHECK(game::villageNightsLit(0, false, game::CAMPAIGN_NIGHT_COUNT, false) == 4);
+    CHECK(game::villageNightsLit(0, false, game::CAMPAIGN_FINISHED, false) == 5);
+    // Winning a maze of free play lights nothing.
+    CHECK(game::villageNightsLit(0, true, 3, false) == 2);
+    // A number from a broken settings file stays inside the five nights.
+    CHECK(game::villageNightsLit(0, false, -4, false) == 0);
+    CHECK(game::villageNightsLit(0, false, 99, false) == 5);
+}
+
+TEST_CASE("a tool run without a night shows a dark village, whatever the settings file says") {
+    for (int progress = 1; progress <= game::CAMPAIGN_FINISHED; ++progress) {
+        CHECK(game::villageNightsLit(0, false, progress, true) == 0);
+        CHECK(game::villageNightsLit(0, true, progress, true) == 0);
+    }
+}

@@ -179,6 +179,13 @@ NightEndOffer nightEndOffer(int campaignNight, int wonNight, bool counts) {
                                                               : NightEndOffer::BackToNights;
 }
 
+int villageNightsLit(int playedNight, bool won, int campaignNight, bool toolRun) {
+    if (playedNight >= 1 && playedNight <= CAMPAIGN_NIGHT_COUNT) {
+        return won ? playedNight : playedNight - 1;
+    }
+    return toolRun ? 0 : std::clamp(campaignNight - 1, 0, CAMPAIGN_NIGHT_COUNT);
+}
+
 int bestAfterWin(int bestSeconds, float elapsedSeconds) {
     // The float is brought into the limits first: a huge one would not fit a whole number.
     const int seconds =
