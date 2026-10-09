@@ -10,6 +10,7 @@
 
 #include <glm/glm.hpp>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -57,10 +58,16 @@ constexpr float LEVER_MOUNT_HEIGHT = 1.2F;
 constexpr float NOTE_MOUNT_HEIGHT = 1.5F;
 
 /// The box a lever is picked with: its width along the wall, its height, and its depth
-/// (how far it stands out from the wall into the cell).
+/// (how far it stands out from the wall into the cell). It holds the board of the lever
+/// and the crook in every position (tools/blender/build_crook.py checks that with the
+/// same numbers). The rope of the lever runs down to the ground outside of it.
 constexpr float LEVER_BOX_WIDTH = 0.3F;
-constexpr float LEVER_BOX_HEIGHT = 0.4F;
-constexpr float LEVER_BOX_DEPTH = 0.25F;
+constexpr float LEVER_BOX_HEIGHT = 0.64F;
+constexpr float LEVER_BOX_DEPTH = 0.26F;
+
+/// How high above the ground the plate of a slab ring sits: the iron ring at the foot of
+/// a wall that a lever opens. The ring hangs down from there, above the grass.
+constexpr float SLAB_RING_HEIGHT = 0.42F;
 
 /// The box a note is picked with. A chalk mark is flat, but its box is 15 cm deep on
 /// purpose: see MOUNT_BOX_MIN_DEPTH.
@@ -266,6 +273,16 @@ glm::vec3 leverPosition(const WallRef& mount, float groundHeight);
 /// given side of its cell: LEVER_BOX_WIDTH along the wall, LEVER_BOX_HEIGHT high, and
 /// LEVER_BOX_DEPTH deep from the wall into the cell.
 scene::Aabb leverBox(const glm::vec3& position, Direction side);
+
+/// The two faces of the wall a lever opens, where its slab rings hang: the wall named
+/// from the cell on each of its sides, lever.opens first. A lever only opens a wall
+/// between two cells of the maze, so both faces can always be seen. A ring is only a
+/// sign that the wall is the other end of a rope: it cannot be picked.
+std::array<WallRef, 2> slabRingMounts(const Lever& lever);
+
+/// Where a slab ring hangs: on the visible face of the wall on mount.side of mount.cell,
+/// in the middle of the wall, SLAB_RING_HEIGHT above the ground (see leverPosition).
+glm::vec3 slabRingPosition(const WallRef& mount, float groundHeight);
 
 /// The same two for a note: NOTE_MOUNT_HEIGHT above the ground, and a box of
 /// NOTE_BOX_WIDTH, NOTE_BOX_HEIGHT and NOTE_BOX_DEPTH.

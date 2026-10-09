@@ -188,4 +188,20 @@ glm::mat4 leverHandleMatrix(const Lever& lever, float handleProgress) {
     return transform.matrix();
 }
 
+std::array<glm::mat4, 2> slabRingMatrices(const MazeWorld& world, const Round& round,
+                                          std::size_t index) {
+    const float sunk =
+        index < round.wallProgress.size() ? sinkDepth(round.wallProgress[index]) : 0.0F;
+
+    std::array<glm::mat4, 2> matrices{};
+    const std::array<WallRef, 2> mounts = slabRingMounts(world.interactables.levers.at(index));
+    for (std::size_t face = 0; face < mounts.size(); ++face) {
+        // The ground is looked up under the face itself: x and z do not depend on it.
+        glm::vec3 position = slabRingPosition(mounts[face], 0.0F);
+        position.y += world.terrain.heightAt(position.x, position.z) - sunk;
+        matrices[face] = mountModelMatrix(position, mounts[face].side);
+    }
+    return matrices;
+}
+
 } // namespace game

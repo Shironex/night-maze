@@ -447,6 +447,14 @@ scene::Aabb leverBox(const glm::vec3& position, Direction side) {
     return mountBox(position, side, LEVER_BOX_WIDTH, LEVER_BOX_HEIGHT, LEVER_BOX_DEPTH);
 }
 
+std::array<WallRef, 2> slabRingMounts(const Lever& lever) {
+    return {lever.opens, seenFromBehind(lever.opens)};
+}
+
+glm::vec3 slabRingPosition(const WallRef& mount, float groundHeight) {
+    return mountPosition(mount, groundHeight, SLAB_RING_HEIGHT);
+}
+
 glm::vec3 notePosition(const WallRef& mount, float groundHeight) {
     return mountPosition(mount, groundHeight, NOTE_MOUNT_HEIGHT);
 }

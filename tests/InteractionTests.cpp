@@ -1,7 +1,9 @@
 // Tests of the levers and the notes in a world and in a round (placement, pulling, the
-// opened wall, the note card) and of game::Interaction (the picking of a frame).
+// opened wall, the note card) and of game::Interaction (the picking of a frame). The last
+// tests read the model files of the lever.
 #include "game/Interaction.hpp"
 
+#include "assets/ObjLoader.hpp"
 #include "game/Discovery.hpp"
 #include "game/Interactables.hpp"
 #include "game/MazeLayout.hpp"
@@ -16,8 +18,10 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -88,6 +92,21 @@ bool inside(const scene::Aabb& box, const glm::vec3& point) {
 
 // A rectangle on the minimap is two triangles: six vertices.
 constexpr int QUAD = 6;
+
+// A model of the game, read from the assets directory that CMake compiles in.
+assets::ObjModel loadModel(const char* fileName) {
+    assets::ObjModel model;
+    std::string error;
+    const std::filesystem::path path =
+        std::filesystem::path{NIGHT_MAZE_ASSETS_DIR} / "models" / fileName;
+    REQUIRE_MESSAGE(assets::loadObj(path, model, error), error);
+    return model;
+}
+
+// The ring under the board of the lever is the one part of the post that hangs out of
+// the pick box: its lower edge is this far below the middle of the board
+// (tools/blender/build_crook.py).
+constexpr float POST_RING_BOTTOM = 0.341F;
 
 } // namespace
 
@@ -645,8 +664,8 @@ TEST_CASE("the handle of a lever turns around its pivot: up before the pull, dow
         checkVector(transformPoint(up, glm::vec3{0.0F}), pivot);
         checkVector(transformPoint(down, glm::vec3{0.0F}), pivot);
 
-        // The tip of the handle model, 0.2 m from the pivot: out of the wall and up,
-        // then out and down by the same amounts (the same angle each way).
+        // A point of the crook 0.2 m from the pivot, near the turn of its hook: out of
+        // the wall and up, then out and down by the same amounts (the same angle each way).
         constexpr float LENGTH = 0.2F;
         CHECK(game::LEVER_HANDLE_UP_DEGREES == -game::LEVER_HANDLE_DOWN_DEGREES);
         const float swing = glm::radians(game::LEVER_HANDLE_DOWN_DEGREES);
@@ -662,6 +681,145 @@ TEST_CASE("the handle of a lever turns around its pivot: up before the pull, dow
         CHECK(inside(box, transformPoint(up, tip)));
         CHECK(inside(box, transformPoint(down, tip)));
     }
+}
+
+TEST_CASE("the rope of a lever is slack until the handle is down") {
+    CHECK_FALSE(game::leverRopeTaut(0.0F));
+    CHECK_FALSE(game::leverRopeTaut(0.5F));
+    CHECK(game::leverRopeTaut(game::LEVER_ROPE_TAUT_PROGRESS));
+    CHECK(game::leverRopeTaut(1.0F));
+}
+
+TEST_CASE("the slab rings hang on both faces of the opened wall and sink with it") {
+    // The real hills are not needed: four heights, tiled over the maze, are not level.
+    const game::Heightmap heightmap{.width = 2, .height = 2, .values = {0.0F, 1.0F, 0.6F, 0.2F}};
+    const game::MazeWorld world =
+        game::buildMazeWorld(10, 10, 1U, heightmap, 2.0F, game::InteractableSettings{});
+    REQUIRE_FALSE(world.interactables.levers.empty());
+    game::Round round = game::startRound(world, game::GameplaySettings{});
+
+    const game::WallSegment& wall = world.walls[world.leverWalls[0]];
+    const std::array<game::WallRef, 2> mounts = game::slabRingMounts(world.interactables.levers[0]);
+    const std::array<glm::mat4, 2> hanging = game::slabRingMatrices(world, round, 0);
+    for (std::size_t face = 0; face < hanging.size(); ++face) {
+        CAPTURE(face);
+        const glm::vec3 place = transformPoint(hanging[face], glm::vec3{0.0F});
+        // On the face of that wall: half of its thickness from its middle line, towards
+        // the cell the face looks into, and in the middle of its length.
+        checkVector({place.x, 0.0F, place.z},
+                    glm::vec3{wall.position.x, 0.0F, wall.position.z} -
+                        towards(mounts[face].side) * (game::WALL_VISUAL_THICKNESS / 2.0F));
+        // At the foot, above the ground under the ring itself.
+        CHECK(place.y ==
+              doctest::Approx(world.terrain.heightAt(place.x, place.z) + game::SLAB_RING_HEIGHT));
+        // It looks away from the wall, into its cell.
+        checkVector(transformPoint(hanging[face], {0.0F, 0.0F, 1.0F}),
+                    place - towards(mounts[face].side));
+    }
+    // The two rings look opposite ways.
+    CHECK(mounts[0].side == game::opposite(mounts[1].side));
+
+    // Pulled, the rings go down exactly as far as the wall does, step by step.
+    const glm::vec3 wallStanding =
+        transformPoint(game::roundWallMatrices(world, round)[world.leverWalls[0]], glm::vec3{0.0F});
+    REQUIRE(game::pullRoundLever(round, world, 0));
+    bool flashlightOn = false;
+    for (int i = 0; i < 90; ++i) {
+        game::updateRound(round, world, game::GameplaySettings{}, NOWHERE, flashlightOn, STEP);
+    }
+    const float wallDrop =
+        wallStanding.y -
+        transformPoint(game::roundWallMatrices(world, round)[world.leverWalls[0]], glm::vec3{0.0F})
+            .y;
+    CHECK(wallDrop == doctest::Approx(game::GATE_SINK_DEPTH / 2.0F).epsilon(0.001));
+    const std::array<glm::mat4, 2> sinking = game::slabRingMatrices(world, round, 0);
+    for (std::size_t face = 0; face < sinking.size(); ++face) {
+        const glm::vec3 before = transformPoint(hanging[face], glm::vec3{0.0F});
+        checkVector(transformPoint(sinking[face], glm::vec3{0.0F}),
+                    before - glm::vec3{0.0F, wallDrop, 0.0F});
+    }
+    // The ring of another lever, whose wall still stands, has not moved.
+    if (world.interactables.levers.size() > 1) {
+        game::Round fresh = game::startRound(world, game::GameplaySettings{});
+        CHECK(game::slabRingMatrices(world, round, 1) == game::slabRingMatrices(world, fresh, 1));
+    }
+    // A lever the world does not have is an error, not a ring somewhere.
+    CHECK_THROWS_AS(game::slabRingMatrices(world, round, world.interactables.levers.size()),
+                    std::out_of_range);
+}
+
+TEST_CASE("the models of the lever fit its pick box, and the rope ends in the ground") {
+    for (const game::Direction side : game::ALL_DIRECTIONS) {
+        CAPTURE(static_cast<int>(side));
+        game::Lever lever;
+        lever.mount = {.cell = {.x = 2, .z = 3}, .side = side};
+        lever.position = game::leverPosition(lever.mount, 0.0F);
+        const scene::Aabb box = game::leverBox(lever.position, side);
+        // The box with a thousandth of a millimetre around it: the crook pointing
+        // straight out may end close to its front.
+        const scene::Aabb roomy{.min = box.min - glm::vec3{0.000001F},
+                                .max = box.max + glm::vec3{0.000001F}};
+
+        // The crook, up, half way and down.
+        const assets::ObjModel handle = loadModel("crook_handle.obj");
+        REQUIRE_FALSE(handle.vertices.empty());
+        for (const float progress : {0.0F, 0.5F, 1.0F}) {
+            const glm::mat4 matrix = game::leverHandleMatrix(lever, progress);
+            for (const gfx::Vertex& vertex : handle.vertices) {
+                CHECK(inside(roomy, transformPoint(matrix, vertex.position)));
+            }
+        }
+
+        // The board with its straps and its pin. Only the ring under it hangs lower.
+        const glm::mat4 onWall = game::mountModelMatrix(lever.position, side);
+        const assets::ObjModel post = loadModel("crook_post.obj");
+        REQUIRE_FALSE(post.vertices.empty());
+        for (const gfx::Vertex& vertex : post.vertices) {
+            glm::vec3 place = transformPoint(onWall, vertex.position);
+            CHECK(vertex.position.y >= -POST_RING_BOTTOM - 0.0005F);
+            place.y = std::max(place.y, box.min.y);
+            CHECK(inside(roomy, place));
+        }
+
+        // Both ropes hang from the board and end under the ground the lever stands on,
+        // slack and taut in the same place.
+        float lowestSlack = 0.0F;
+        float lowestTaut = 0.0F;
+        for (const gfx::Vertex& vertex : loadModel("crook_rope_slack.obj").vertices) {
+            lowestSlack = std::min(lowestSlack, transformPoint(onWall, vertex.position).y);
+        }
+        for (const gfx::Vertex& vertex : loadModel("crook_rope_taut.obj").vertices) {
+            lowestTaut = std::min(lowestTaut, transformPoint(onWall, vertex.position).y);
+        }
+        CHECK(lowestSlack < -0.1F);
+        CHECK(lowestTaut == doctest::Approx(lowestSlack));
+    }
+}
+
+TEST_CASE("the chalk crook stays clear of the lever, on the same wall") {
+    // Everything here is in the space of the lever model: x to the right along the wall,
+    // z out of it.
+    float crookLeft = 1.0e9F;
+    float crookRight = -1.0e9F;
+    const assets::ObjModel crook = loadModel("chalk_crook.obj");
+    REQUIRE_FALSE(crook.vertices.empty());
+    for (const gfx::Vertex& vertex : crook.vertices) {
+        crookLeft = std::min(crookLeft, vertex.position.x + game::CHALK_CROOK_OFFSET);
+        crookRight = std::max(crookRight, vertex.position.x + game::CHALK_CROOK_OFFSET);
+    }
+    // To the left of the pick box of the lever, with a gap a finger wide or more.
+    CHECK(crookRight < -game::LEVER_BOX_WIDTH / 2.0F - 0.02F);
+    // And so of everything that is drawn of the lever: the board, the crook, the ropes.
+    for (const char* file :
+         {"crook_post.obj", "crook_handle.obj", "crook_rope_slack.obj", "crook_rope_taut.obj"}) {
+        CAPTURE(file);
+        for (const gfx::Vertex& vertex : loadModel(file).vertices) {
+            CHECK(vertex.position.x > crookRight);
+        }
+    }
+    // On the same wall segment: not behind the pillar at its end, which covers the last
+    // half of its own width.
+    CHECK(crookLeft > -(game::WALL_LENGTH - game::PILLAR_SIZE) / 2.0F);
 }
 
 TEST_CASE("the chalk arrow of a hint leans along its wall, or points up and down") {

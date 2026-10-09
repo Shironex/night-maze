@@ -652,10 +652,10 @@ TEST_CASE("a lever hangs on the visible face of its wall, a hand high above the 
         const glm::vec3 position = game::leverPosition(mount, GROUND);
         checkVector(position, {5.0F, GROUND + game::LEVER_MOUNT_HEIGHT, 6.1F});
 
-        // 0.3 m wide along X, 0.4 m high, and 0.25 m deep from the wall towards +Z.
+        // 0.3 m wide along X, 0.64 m high, and 0.26 m deep from the wall towards +Z.
         const scene::Aabb box = game::leverBox(position, mount.side);
-        checkVector(box.min, {4.85F, 1.5F, 6.1F});
-        checkVector(box.max, {5.15F, 1.9F, 6.35F});
+        checkVector(box.min, {4.85F, 1.38F, 6.1F});
+        checkVector(box.max, {5.15F, 2.02F, 6.36F});
     }
 
     SUBCASE("on the east side") {
@@ -666,8 +666,8 @@ TEST_CASE("a lever hangs on the visible face of its wall, a hand high above the 
 
         // The width is along Z now, the depth along X, from the wall towards -X.
         const scene::Aabb box = game::leverBox(position, mount.side);
-        checkVector(box.min, {5.65F, 1.5F, 6.85F});
-        checkVector(box.max, {5.9F, 1.9F, 7.15F});
+        checkVector(box.min, {5.64F, 1.38F, 6.85F});
+        checkVector(box.max, {5.9F, 2.02F, 7.15F});
     }
 
     SUBCASE("on the south and on the west side") {
@@ -676,6 +676,26 @@ TEST_CASE("a lever hangs on the visible face of its wall, a hand high above the 
         checkVector(game::leverPosition({.cell = cell, .side = game::Direction::West}, GROUND),
                     {4.1F, GROUND + game::LEVER_MOUNT_HEIGHT, 7.0F});
     }
+}
+
+TEST_CASE("a slab ring hangs at the foot of both faces of the wall a lever opens") {
+    // The wall between the cells (2, 3) and (3, 3) stands on the line x = 6.
+    game::Lever lever;
+    lever.opens = {.cell = {.x = 2, .z = 3}, .side = game::Direction::East};
+
+    const std::array<game::WallRef, 2> mounts = game::slabRingMounts(lever);
+    CHECK(mounts[0] == lever.opens);
+    CHECK(mounts[1] == game::WallRef{.cell = {.x = 3, .z = 3}, .side = game::Direction::West});
+    CHECK(game::sameWall(mounts[0], mounts[1]));
+
+    // One ring on each face, 0.1 m to either side of the line, in the middle of the wall.
+    constexpr float GROUND = 0.5F;
+    checkVector(game::slabRingPosition(mounts[0], GROUND),
+                {5.9F, GROUND + game::SLAB_RING_HEIGHT, 7.0F});
+    checkVector(game::slabRingPosition(mounts[1], GROUND),
+                {6.1F, GROUND + game::SLAB_RING_HEIGHT, 7.0F});
+    // At the foot of the wall: well below the lever and its pick box.
+    CHECK(game::SLAB_RING_HEIGHT < game::LEVER_MOUNT_HEIGHT - game::LEVER_BOX_HEIGHT / 2.0F);
 }
 
 TEST_CASE("a note hangs like a lever, a little below the eyes, with a box of its own size") {

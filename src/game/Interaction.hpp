@@ -11,6 +11,7 @@
 
 #include <glm/glm.hpp>
 
+#include <array>
 #include <cstddef>
 #include <span>
 #include <string>
@@ -135,26 +136,39 @@ constexpr float HIGHLIGHT_MAX_GLOW = 2.4F;
 /// pulse per second (a full turn is 6.28).
 constexpr float HIGHLIGHT_PULSE_SPEED = 5.0F;
 
-// The models. All of them follow one convention (tools/blender/build_lever.py and
+// The models. All of them follow one convention (tools/blender/build_crook.py and
 // build_chalk.py): the origin is the middle of the back, the point fixed to the wall,
 // the back lies in the plane z = 0 and the model stands out along +Z. That is the model
 // of something on the NORTH wall of a cell: it reaches south, into the cell. Its +X is
 // the right hand side of someone who stands in the cell and looks at the wall.
+//
+// A lever is a shepherd's crook on an oak board: the board with its pin (crook_post.obj),
+// the crook that turns on the pin (crook_handle.obj) and a rope from the pin through an
+// iron ring into the turf, which is one of two models (see leverRopeTaut).
 
 /// The pivot the handle of a lever turns around lies this far in front of the wall face,
-/// in metres, in the middle of the plate. It has to match the housing of the model
-/// lever.obj (build_lever.py), or the handle would float beside it.
+/// in metres, in the middle of the board. It has to match the pin of the model
+/// crook_post.obj (build_crook.py), or the crook would float beside it.
 constexpr float LEVER_PIVOT_DEPTH = 0.05F;
 
 /// The angle of the handle around the X axis of the model, in degrees, before the lever
 /// is pulled and after. The handle model points along +Z (straight out of the wall).
 /// A positive turn around X moves +Z towards -Y, which is down, so "up" is the negative
-/// angle. 55 degrees is steep on purpose: seen from the front the rod then runs clearly
-/// up (or down) from the middle of the plate and the knob stands beyond the edge of the
-/// plate, so the two states differ in their outline. The knob still stays inside the
-/// pick box of the lever (build_lever.py checks that with the same numbers).
+/// angle. 55 degrees is steep on purpose: seen from the front the shaft then runs clearly
+/// up (or down) from the middle of the board, so the two states differ in their outline.
+/// The crook still stays inside the pick box of the lever (build_crook.py checks that
+/// with the same numbers).
 constexpr float LEVER_HANDLE_UP_DEGREES = -55.0F;
 constexpr float LEVER_HANDLE_DOWN_DEGREES = 55.0F;
+
+/// The rope of a lever hangs slack until the handle has come this far down (see
+/// game::leverHandleProgress), and is drawn pulled straight from then on.
+constexpr float LEVER_ROPE_TAUT_PROGRESS = 0.9F;
+
+/// True when the rope of a lever is drawn taut: the handle is down, or nearly.
+constexpr bool leverRopeTaut(float handleProgress) {
+    return handleProgress >= LEVER_ROPE_TAUT_PROGRESS;
+}
 
 /// Model matrix of something that hangs on a wall: the model moved to position (the
 /// point on the wall face, Lever::position or Note::position) and turned around the
@@ -186,7 +200,8 @@ constexpr glm::vec3 CHALK_GLOW{0.16F, 0.26F, 0.25F};
 /// the lever for someone who looks at the wall, in metres (a negative number is to the
 /// left), at the height of the lever. The pick box of the lever ends 0.15 m from its
 /// middle and the crook is 0.11 m wide, so the two never touch, and a wall is 2 m wide.
-/// No note hangs in the cell of a lever.
+/// The board of the lever is narrower than its pick box, and its rope comes down on the
+/// other side. No note hangs in the cell of a lever.
 constexpr float CHALK_CROOK_OFFSET = -0.32F;
 
 /// Model matrix of the handle of a lever: the handle model with its origin in the
@@ -195,5 +210,14 @@ constexpr float CHALK_CROOK_OFFSET = -0.32F;
 /// (handleProgress 1, see game::leverHandleProgress) and turned with the wall like
 /// mountModelMatrix does.
 glm::mat4 leverHandleMatrix(const Lever& lever, float handleProgress);
+
+/// Model matrices of the two slab rings of lever number index: the iron ring at the foot
+/// of the wall the lever opens, one on each face of that wall (game::slabRingMounts).
+/// Each hangs SLAB_RING_HEIGHT above the ground under its own face (the terrain of the
+/// world) and is lowered by as far as the wall has sunk in the round (game::sinkDepth),
+/// so it goes into the ground with the wall. index must be a lever of the world. A round
+/// that does not know the lever leaves the rings where they hang.
+std::array<glm::mat4, 2> slabRingMatrices(const MazeWorld& world, const Round& round,
+                                          std::size_t index);
 
 } // namespace game
