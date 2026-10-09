@@ -1,4 +1,5 @@
-// WallVariants: which wall segments of a maze look cracked, mossy or damaged.
+// WallVariants: which wall segments of a maze look cracked, mossy or damaged, and which
+// carry a crown of stone twigs or have lost a coping stone.
 #include "game/WallVariants.hpp"
 
 #include "game/MazeGenerator.hpp"
@@ -18,11 +19,16 @@ namespace {
 // at 2^32, which is well defined.
 constexpr std::uint32_t WALL_VARIANT_SEED_OFFSET = 4000037U;
 
+// The shaped looks (Crowned, Broken) have a generator of their own, with another number
+// added to the seed. The first generator then draws exactly what it drew before these
+// looks existed, so the painted walls of a seed stay where they were.
+constexpr std::uint32_t WALL_SHAPE_SEED_OFFSET = 5000011U;
+
 // A roll of the dice from 0 to 99 is compared with a number of walls out of 100.
 constexpr std::uint32_t PERCENT = 100;
 
-// The looks a worn wall can get: all of them but the plain one.
-constexpr std::uint32_t WORN_VARIANT_COUNT = static_cast<std::uint32_t>(WALL_VARIANT_COUNT) - 1;
+// The looks a painted wall can get.
+constexpr std::uint32_t WORN_VARIANT_COUNT = static_cast<std::uint32_t>(PAINTED_WALL_VARIANT_COUNT);
 
 // From a wall to the middle of a cell it belongs to: half a cell, across the wall.
 constexpr float HALF_CELL = CELL_SIZE / 2.0F;
@@ -50,9 +56,10 @@ bool isNearStart(const Maze& maze, MazeCell cell, MazeCell start) {
                WALL_VARIANT_START_CLEARANCE;
 }
 
-// True when the lever or the note with this mount hangs on the segment. The mount names
-// a side of a cell, and wallSegmentOn gives the segment on that side exactly as
-// wallSegments lists it, so the two can be compared number for number.
+// True when the lever or the note with this mount hangs on the segment (or, for the wall
+// a lever opens, when it is the segment). The mount names a side of a cell, and
+// wallSegmentOn gives the segment on that side exactly as wallSegments lists it, so the
+// two can be compared number for number.
 bool hangsOn(const WallRef& mount, const WallSegment& segment) {
     const WallSegment mounted = wallSegmentOn(mount.cell.x, mount.cell.z, mount.side);
     return mounted.position == segment.position && mounted.axis == segment.axis;
@@ -65,20 +72,29 @@ bool carriesSomething(const Interactables& interactables, const WallSegment& seg
            std::ranges::any_of(interactables.notes, onSegment);
 }
 
+// True when a lever opens the segment: it sinks into the ground then.
+bool opensForALever(const Interactables& interactables, const WallSegment& segment) {
+    return std::ranges::any_of(interactables.levers, [&segment](const Lever& lever) {
+        return hangsOn(lever.opens, segment);
+    });
+}
+
 } // namespace
 
 std::vector<WallVariant> chooseWallVariants(const Maze& maze, std::uint32_t seed, MazeCell start,
                                             const Interactables& interactables) {
     const std::vector<WallSegment> segments = wallSegments(maze);
     std::mt19937 generator(seed + WALL_VARIANT_SEED_OFFSET);
+    std::mt19937 shapeGenerator(seed + WALL_SHAPE_SEED_OFFSET);
 
     std::vector<WallVariant> variants;
     variants.reserve(segments.size());
     for (const WallSegment& segment : segments) {
-        // Both numbers are drawn for every wall, before any rule is looked at: the
+        // All three numbers are drawn for every wall, before any rule is looked at: the
         // numbers a wall gets then depend on its place in the list alone.
         const std::uint32_t roll = randomBelow(generator, PERCENT);
         const std::uint32_t worn = randomBelow(generator, WORN_VARIANT_COUNT);
+        const std::uint32_t shape = randomBelow(shapeGenerator, PERCENT);
 
         const WallSides sides = sidesOf(segment);
         const bool border = !maze.contains(sides.first.x, sides.first.z) ||
@@ -86,11 +102,19 @@ std::vector<WallVariant> chooseWallVariants(const Maze& maze, std::uint32_t seed
         const std::uint32_t chance =
             border ? BORDER_WALL_VARIANT_PERCENT : INNER_WALL_VARIANT_PERCENT;
 
-        const bool staysPlain = roll >= chance || isNearStart(maze, sides.first, start) ||
-                                isNearStart(maze, sides.second, start) ||
-                                carriesSomething(interactables, segment);
-        // The worn looks have the numbers 1 to 3 in the enum, right after Plain.
-        variants.push_back(staysPlain ? WallVariant::Plain : static_cast<WallVariant>(worn + 1));
+        if (isNearStart(maze, sides.first, start) || isNearStart(maze, sides.second, start) ||
+            carriesSomething(interactables, segment)) {
+            variants.push_back(WallVariant::Plain);
+        } else if (roll < chance) {
+            // The painted looks have the numbers 1 to 3 in the enum, right after Plain.
+            variants.push_back(static_cast<WallVariant>(worn + 1));
+        } else if (shape >= CROWNED_WALL_PERCENT + BROKEN_WALL_PERCENT ||
+                   opensForALever(interactables, segment)) {
+            variants.push_back(WallVariant::Plain);
+        } else {
+            variants.push_back(shape < CROWNED_WALL_PERCENT ? WallVariant::Crowned
+                                                            : WallVariant::Broken);
+        }
     }
     return variants;
 }

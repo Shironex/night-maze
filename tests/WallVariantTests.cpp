@@ -1,4 +1,5 @@
-// Tests of game::WallVariants: which walls of a maze look worn, and which stay plain.
+// Tests of game::WallVariants: which walls of a maze look worn, which carry a crown or
+// a broken coping, and which stay plain.
 #include "game/WallVariants.hpp"
 
 #include "game/MazeLayout.hpp"
@@ -12,6 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <numeric>
 #include <vector>
 
 namespace {
@@ -73,6 +75,27 @@ bool carriesSomething(const game::MazeWorld& world, const game::WallSegment& wal
     return false;
 }
 
+// True when a lever of the world opens the wall.
+bool opensForALever(const game::MazeWorld& world, const game::WallSegment& wall) {
+    for (const game::Lever& lever : world.interactables.levers) {
+        if (hangsOn(lever.opens, wall)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// True for the three looks that are textures: cracked, mossy and damaged.
+bool isPainted(game::WallVariant variant) {
+    return variant == game::WallVariant::Cracked || variant == game::WallVariant::Mossy ||
+           variant == game::WallVariant::Damaged;
+}
+
+// True for the two looks that are models of their own: crowned and broken.
+bool isShaped(game::WallVariant variant) {
+    return variant == game::WallVariant::Crowned || variant == game::WallVariant::Broken;
+}
+
 } // namespace
 
 TEST_CASE("every wall of a world has a look") {
@@ -98,11 +121,13 @@ TEST_CASE("golden wall looks: the counts of seed 1 are the same on every system"
     // the same on Windows and on macOS. They were written down from a run on Windows, and
     // again when the six notes came: a wall that carries a note stays plain. They moved once more
     // when the crystals began to leave dead ends to the flasks, which moved the notes.
+    // The crowned and the broken walls came out of the plain ones: the three painted
+    // counts (7, 15, 8) are the ones from before those two looks existed.
     const game::MazeWorld world = worldOf(1U);
     const std::array<int, game::WALL_VARIANT_COUNT> counts =
         game::countWallVariants(world.wallVariants);
-    CHECK(counts[0] + counts[1] + counts[2] + counts[3] == static_cast<int>(world.walls.size()));
-    CHECK(counts == std::array<int, game::WALL_VARIANT_COUNT>{91, 7, 15, 8});
+    CHECK(std::accumulate(counts.begin(), counts.end(), 0) == static_cast<int>(world.walls.size()));
+    CHECK(counts == std::array<int, game::WALL_VARIANT_COUNT>{71, 7, 15, 8, 16, 4});
 }
 
 TEST_CASE("walls near the start and walls that carry a lever or a note stay plain") {
@@ -168,7 +193,7 @@ TEST_CASE("the border is worn more often than the inside, in the promised shares
             if (isNearStart(world.maze, wall) || carriesSomething(world, wall)) {
                 continue;
             }
-            const bool worn = world.wallVariants[i] != game::WallVariant::Plain;
+            const bool worn = isPainted(world.wallVariants[i]);
             if (isBorder(world.maze, wall)) {
                 ++borderWalls;
                 borderWorn += worn ? 1 : 0;
@@ -192,21 +217,99 @@ TEST_CASE("the border is worn more often than the inside, in the promised shares
     CHECK(std::abs(innerShare - game::INNER_WALL_VARIANT_PERCENT / PERCENT) < TOLERANCE);
     CHECK(borderShare > innerShare);
 
-    // The three worn looks share the worn walls evenly: each has about a third.
+    // The three painted looks share the worn walls evenly: each has about a third.
     const int wornWalls = borderWorn + innerWorn;
-    for (std::size_t look = 1; look < game::WALL_VARIANT_COUNT; ++look) {
+    for (std::size_t look = 1; look <= game::PAINTED_WALL_VARIANT_COUNT; ++look) {
         CAPTURE(look);
         const double share = static_cast<double>(looks.at(look)) / wornWalls;
         CHECK(std::abs(share - 1.0 / 3.0) < TOLERANCE);
     }
 }
 
+TEST_CASE("crowned and broken walls come out of the plain walls, in the promised shares") {
+    // Counted like the shares above, among the walls that may get a shaped look: not
+    // near the start, carrying nothing, opened by no lever, and not painted.
+    constexpr std::uint32_t SEED_COUNT = 200;
+    int candidates = 0;
+    int crowned = 0;
+    int broken = 0;
+    int walls = 0;
+    int crownedOfAll = 0;
+    int brokenOfAll = 0;
+
+    for (std::uint32_t seed = 0; seed < SEED_COUNT; ++seed) {
+        const game::MazeWorld world = worldOf(seed);
+        for (std::size_t i = 0; i < world.walls.size(); ++i) {
+            const game::WallSegment& wall = world.walls[i];
+            const game::WallVariant variant = world.wallVariants[i];
+            ++walls;
+            crownedOfAll += variant == game::WallVariant::Crowned ? 1 : 0;
+            brokenOfAll += variant == game::WallVariant::Broken ? 1 : 0;
+            if (isNearStart(world.maze, wall) || carriesSomething(world, wall) ||
+                opensForALever(world, wall) || isPainted(variant)) {
+                continue;
+            }
+            ++candidates;
+            crowned += variant == game::WallVariant::Crowned ? 1 : 0;
+            broken += variant == game::WallVariant::Broken ? 1 : 0;
+        }
+    }
+
+    constexpr double TOLERANCE = 0.03;
+    constexpr double PERCENT = 100.0;
+    REQUIRE(candidates > 1000);
+    const double crownedShare = static_cast<double>(crowned) / candidates;
+    const double brokenShare = static_cast<double>(broken) / candidates;
+    CHECK(std::abs(crownedShare - game::CROWNED_WALL_PERCENT / PERCENT) < TOLERANCE);
+    CHECK(std::abs(brokenShare - game::BROKEN_WALL_PERCENT / PERCENT) < TOLERANCE);
+
+    // Over all walls of a maze, the plain ones near the start included, that is a modest
+    // share: the top edge of most walls stays the straight line it was.
+    const double crownedOfAllShare = static_cast<double>(crownedOfAll) / walls;
+    const double brokenOfAllShare = static_cast<double>(brokenOfAll) / walls;
+    CHECK(crownedOfAllShare > 0.10);
+    CHECK(crownedOfAllShare < 1.0 / 5.0);
+    CHECK(brokenOfAllShare > 0.05);
+    CHECK(brokenOfAllShare < 1.0 / 10.0);
+}
+
+TEST_CASE("a wall that a lever opens keeps its top whole") {
+    // Such a wall sinks by a little more than its height. The twigs of a crown would
+    // be left standing in the opening.
+    constexpr std::uint32_t SEED_COUNT = 200;
+    int opened = 0;
+    int couldBeShaped = 0;
+
+    for (std::uint32_t seed = 0; seed < SEED_COUNT; ++seed) {
+        CAPTURE(seed);
+        const game::MazeWorld world = worldOf(seed);
+        REQUIRE(world.leverWalls.size() == world.interactables.levers.size());
+        for (const std::size_t wall : world.leverWalls) {
+            REQUIRE(wall < world.wallVariants.size());
+            ++opened;
+            CHECK_FALSE(isShaped(world.wallVariants[wall]));
+            CHECK(opensForALever(world, world.walls[wall]));
+            couldBeShaped += world.wallVariants[wall] == game::WallVariant::Plain &&
+                                     !isNearStart(world.maze, world.walls[wall]) &&
+                                     !carriesSomething(world, world.walls[wall])
+                                 ? 1
+                                 : 0;
+        }
+    }
+
+    // The loop met many such walls, and many of them had no other reason to be plain.
+    CHECK(opened > 100);
+    CHECK(couldBeShaped > 50);
+}
+
 TEST_CASE("countWallVariants counts every look") {
     using game::WallVariant;
-    const std::vector<WallVariant> variants = {WallVariant::Plain,   WallVariant::Mossy,
-                                               WallVariant::Damaged, WallVariant::Plain,
-                                               WallVariant::Mossy,   WallVariant::Plain};
+    const std::vector<WallVariant> variants = {
+        WallVariant::Plain,   WallVariant::Mossy,  WallVariant::Damaged,
+        WallVariant::Plain,   WallVariant::Mossy,  WallVariant::Plain,
+        WallVariant::Crowned, WallVariant::Broken, WallVariant::Crowned};
     CHECK(game::countWallVariants(variants) ==
-          std::array<int, game::WALL_VARIANT_COUNT>{3, 0, 2, 1});
-    CHECK(game::countWallVariants({}) == std::array<int, game::WALL_VARIANT_COUNT>{0, 0, 0, 0});
+          std::array<int, game::WALL_VARIANT_COUNT>{3, 0, 2, 1, 2, 1});
+    CHECK(game::countWallVariants({}) ==
+          std::array<int, game::WALL_VARIANT_COUNT>{0, 0, 0, 0, 0, 0});
 }
