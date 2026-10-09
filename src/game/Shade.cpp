@@ -511,6 +511,22 @@ float batteryDrainFactor(const Shade& shade, const ShadeSettings& settings) {
     return shade.present && shade.lit ? std::max(settings.burnBatteryFactor, 1.0F) : 1.0F;
 }
 
+float shadeBurnProgress(const Shade& shade, const ShadeSettings& settings) {
+    if (!shade.present || settings.burnSeconds <= 0.0F) {
+        return 0.0F;
+    }
+    if (shade.dissolveLeft > 0.0F) {
+        return 1.0F;
+    }
+    return std::clamp(shade.burnSeconds / settings.burnSeconds, 0.0F, 1.0F);
+}
+
+float shadeHoodBrightness(float burnProgress) {
+    const float progress = std::clamp(burnProgress, 0.0F, 1.0F);
+    return SHADE_HOOD_REST_BRIGHTNESS +
+           (SHADE_HOOD_BURNED_BRIGHTNESS - SHADE_HOOD_REST_BRIGHTNESS) * progress * progress;
+}
+
 ShadeState shadeState(const Shade& shade) {
     if (shade.quietLeft > 0.0F) {
         return ShadeState::Banished;

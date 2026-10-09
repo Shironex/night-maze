@@ -732,6 +732,64 @@ TEST_CASE("the burn clock runs up in the light and falls back slowly in the dark
     CHECK(settings.burnRecoverRate < 1.0F);
 }
 
+TEST_CASE("the burn progress is the burn clock as a part of the burn time") {
+    const game::ShadeSettings settings;
+    game::Shade shade;
+    shade.present = true;
+    CHECK(game::shadeBurnProgress(shade, settings) == 0.0F);
+    shade.burnSeconds = settings.burnSeconds / 2.0F;
+    CHECK(game::shadeBurnProgress(shade, settings) == doctest::Approx(0.5F));
+    shade.burnSeconds = settings.burnSeconds;
+    CHECK(game::shadeBurnProgress(shade, settings) == 1.0F);
+    // Never more than all of it, and never less than nothing.
+    shade.burnSeconds = settings.burnSeconds * 3.0F;
+    CHECK(game::shadeBurnProgress(shade, settings) == 1.0F);
+    shade.burnSeconds = -1.0F;
+    CHECK(game::shadeBurnProgress(shade, settings) == 0.0F);
+
+    // The banish puts the clock back to 0, but the figure that dissolves is the burned one.
+    shade.burnSeconds = 0.0F;
+    shade.dissolveLeft = game::SHADE_DISSOLVE_SECONDS;
+    CHECK(game::shadeBurnProgress(shade, settings) == 1.0F);
+    shade.dissolveLeft = 0.0F;
+    CHECK(game::shadeBurnProgress(shade, settings) == 0.0F);
+
+    // A burn time of nothing (the slider of the debug window) divides by nothing.
+    shade.burnSeconds = 1.0F;
+    game::ShadeSettings instant = settings;
+    instant.burnSeconds = 0.0F;
+    CHECK(game::shadeBurnProgress(shade, instant) == 0.0F);
+    instant.burnSeconds = -2.0F;
+    CHECK(game::shadeBurnProgress(shade, instant) == 0.0F);
+
+    // A round without a shade has nothing that burns.
+    shade.present = false;
+    CHECK(game::shadeBurnProgress(shade, settings) == 0.0F);
+}
+
+TEST_CASE("the hood is dim at rest and flares up at the end of the burn") {
+    CHECK(game::shadeHoodBrightness(0.0F) == game::SHADE_HOOD_REST_BRIGHTNESS);
+    CHECK(game::shadeHoodBrightness(1.0F) == doctest::Approx(game::SHADE_HOOD_BURNED_BRIGHTNESS));
+    // At rest the night in the hood is darker than the sky behind the figure.
+    CHECK(game::SHADE_HOOD_REST_BRIGHTNESS < 1.0F);
+    CHECK(game::SHADE_HOOD_BURNED_BRIGHTNESS > 4.0F * game::SHADE_HOOD_REST_BRIGHTNESS);
+
+    // It only ever gets brighter along the burn, and most of that in the second half.
+    float before = game::shadeHoodBrightness(0.0F);
+    for (int step = 1; step <= 20; ++step) {
+        const float now = game::shadeHoodBrightness(static_cast<float>(step) / 20.0F);
+        CHECK(now > before);
+        before = now;
+    }
+    const float whole = game::SHADE_HOOD_BURNED_BRIGHTNESS - game::SHADE_HOOD_REST_BRIGHTNESS;
+    CHECK(game::shadeHoodBrightness(0.5F) - game::SHADE_HOOD_REST_BRIGHTNESS ==
+          doctest::Approx(whole / 4.0F));
+
+    // Outside 0..1 it stays at its ends.
+    CHECK(game::shadeHoodBrightness(-1.0F) == game::SHADE_HOOD_REST_BRIGHTNESS);
+    CHECK(game::shadeHoodBrightness(2.0F) == doctest::Approx(game::SHADE_HOOD_BURNED_BRIGHTNESS));
+}
+
 TEST_CASE("the beam burns the shade away: it reappears far from the player and is quiet") {
     const game::Maze maze = corridor(30);
     const std::vector<scene::Aabb> walls = game::mazeColliders(maze);

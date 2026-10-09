@@ -451,6 +451,24 @@ float burnAfter(float burnSeconds, bool lit, const ShadeSettings& settings, floa
 /// while the beam is on the shade (Shade::lit), otherwise 1. The beam costs to burn.
 float batteryDrainFactor(const Shade& shade, const ShadeSettings& settings);
 
+/// How far the beam has burned the shade, from 0 (not at all) to 1 (about to be banished):
+/// the burn clock (Shade::burnSeconds) as a part of ShadeSettings::burnSeconds. It is 1 for
+/// as long as the figure dissolves after a banish (Shade::dissolveLeft): the clock itself
+/// is back at 0 from the step of the banish on, but the figure that is still drawn there
+/// is the burned one. 0 for a round without a shade, and for a burn time of 0 or less.
+/// Drawing only: the stars in the hood are as bright as this says (shadeHoodBrightness).
+float shadeBurnProgress(const Shade& shade, const ShadeSettings& settings);
+
+/// How bright the night in the hood of the shade is drawn, as a number the brightness of
+/// the sky is multiplied by: SHADE_HOOD_REST_BRIGHTNESS for a shade the beam has not
+/// touched, SHADE_HOOD_BURNED_BRIGHTNESS right before the banish. In between it follows
+/// the square of the progress (shadeBurnProgress, clamped to 0..1), so the hood stays
+/// dark through the first half of the burn and flares up in the last: the 2.5 seconds
+/// can be seen running out, and a shade at rest is still a dark figure.
+constexpr float SHADE_HOOD_REST_BRIGHTNESS = 0.6F;
+constexpr float SHADE_HOOD_BURNED_BRIGHTNESS = 9.0F;
+float shadeHoodBrightness(float burnProgress);
+
 /// What the shade is doing (ShadeState): the first state of that list that holds.
 ShadeState shadeState(const Shade& shade);
 
