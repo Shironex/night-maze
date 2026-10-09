@@ -1,8 +1,9 @@
-# Builds the two models of the thing the player collects, a splinter of the moon:
-# splinter_a is one sliver, splinter_b is three slivers that broke apart where they fell.
+# Builds the models of the thing the player collects, a splinter of the moon:
+# splinter_a is one sliver, splinter_b is three slivers that broke apart where they fell,
+# and heartstone is the one big piece of a maze: four slivers grown into one.
 # A sliver is long and thin. Two of its five sides are the rind of the moon, grey and
 # pitted, the other three are clean fracture, and those glow.
-# Output: assets/models/splinter_a.obj, splinter_a.mtl, splinter_b.obj and splinter_b.mtl.
+# Output: assets/models/splinter_a.obj, splinter_b.obj and heartstone.obj, each with its .mtl.
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/build_splinter.py
@@ -20,9 +21,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import blender_common as common
 
 # All sizes are in metres. The geometry is written in Blender space, where Z is the height.
-# After export Z becomes the game Y axis. Both models are 0.5 m tall (0.496 m, because the
-# slivers lean) and their origin is the lower point of the main sliver: the game lets them
-# float and turns them about the upright line through that point.
+# After export Z becomes the game Y axis. The two splinters are 0.5 m tall (0.496 m, because
+# the slivers lean) and the heartstone 0.9 m. Their origin is the lower point of the main
+# sliver: the game lets them float and turns them about the upright line through that point.
 
 # A sliver is built ring by ring, like the flask, and every ring has these five corners:
 # the angle of the corner around the axis in degrees, and how far out it lies (1 = the
@@ -59,6 +60,9 @@ FRACTURE_U_CENTRE = 0.75
 # picture continues from its top edge to its bottom edge), so the sides of two rings do
 # not show the same craters.
 UV_UNITS_PER_METRE = 3.0
+# The slivers of the heartstone are up to 0.15 m wide, where a splinter has 0.085 m. Its
+# picture is that much less dense, so its widest side covers the same third.
+HEARTSTONE_UV_UNITS_PER_METRE = UV_UNITS_PER_METRE * 0.085 / 0.15
 
 
 def random_numbers(seed):
@@ -80,13 +84,15 @@ def random_numbers(seed):
     return following
 
 
-def add_sliver(vertices, faces, uvs, base, axis, length, width, twist, seed):
+def add_sliver(vertices, faces, uvs, base, axis, length, width, twist, seed,
+               uv_units=UV_UNITS_PER_METRE):
     """Appends one sliver to the lists `vertices`, `faces` and `uvs`.
 
     base: the lower point (x, y, z). axis: the direction from it to the upper point, of
     any length. length, width: the size of the sliver, the width measured from the axis
     to the rind. twist: by how many degrees the last ring is turned against the first.
-    seed: the seed of the jitter of this sliver.
+    seed: the seed of the jitter of this sliver. uv_units: how many units of u and v one
+    metre of the sliver is.
 
     faces gets triangles only. uvs gets one entry per triangle: the (u, v) of its three
     corners.
@@ -133,14 +139,14 @@ def add_sliver(vertices, faces, uvs, base, axis, length, width, twist, seed):
             corners = [corner for place, corner in enumerate(corners)
                        if corner != corners[place - 1]]
             u_centre = RIND_U_CENTRE if side < RIND_SIDES else FRACTURE_U_CENTRE
-            add_side(vertices, faces, uvs, corners, inside, (u_centre, middle))
+            add_side(vertices, faces, uvs, corners, inside, (u_centre, middle), uv_units)
 
 
-def add_side(vertices, faces, uvs, corners, inside, uv_centre):
+def add_side(vertices, faces, uvs, corners, inside, uv_centre, uv_units):
     """Appends one side of a sliver, three or four corners, as one or two triangles.
 
     The side faces away from the point `inside`. Its piece of the picture lies around
-    `uv_centre`.
+    `uv_centre`, `uv_units` units of u and v to the metre.
     """
     points = [Vector(vertices[corner]) for corner in corners]
     centre = sum(points, Vector()) / len(points)
@@ -171,8 +177,8 @@ def add_side(vertices, faces, uvs, corners, inside, uv_centre):
     up.normalize()
     right = up.cross(normal)
     side_uvs = [
-        (uv_centre[0] + (point - centre).dot(right) * UV_UNITS_PER_METRE,
-         uv_centre[1] + (point - centre).dot(up) * UV_UNITS_PER_METRE)
+        (uv_centre[0] + (point - centre).dot(right) * uv_units,
+         uv_centre[1] + (point - centre).dot(up) * uv_units)
         for point in points
     ]
 
@@ -183,7 +189,8 @@ def add_side(vertices, faces, uvs, corners, inside, uv_centre):
         uvs.append((side_uvs[0], side_uvs[place], side_uvs[place + 1]))
 
 
-def finish(name, vertices, faces, uvs, shots):
+def finish(name, vertices, faces, uvs, shots, shot_target=(0.03, 0.0, 0.25),
+           shot_cameras=((0.9, -0.5, 0.45), (-0.8, 0.6, 0.5))):
     """Turns the lists into a textured model, exports it and renders the review shots."""
     model = common.create_mesh_object(name, vertices, faces)
 
@@ -201,8 +208,8 @@ def finish(name, vertices, faces, uvs, shots):
         # Two views aimed at the middle of the splinter: the rind, and the fracture.
         common.render_review_shots(
             name,
-            target=(0.03, 0.0, 0.25),
-            camera_positions=[(0.9, -0.5, 0.45), (-0.8, 0.6, 0.5)],
+            target=shot_target,
+            camera_positions=list(shot_cameras),
         )
 
 
@@ -240,9 +247,34 @@ def build_splinter_b(shots):
     finish("splinter_b", vertices, faces, uvs, shots)
 
 
+def build_heartstone(shots):
+    common.reset_scene()
+
+    vertices = []
+    faces = []
+    uvs = []
+
+    # Four slivers grown into one piece. The main one stands almost upright and is 0.9 m
+    # long, two lean away from it like the side slivers of splinter_b, and the fourth
+    # lies low across them. They overlap at their lower points.
+    slivers = (
+        ((0.0, 0.0, 0.0), (0.05, 0.02, 1.0), 0.9, 0.15, 18.0, 11),
+        ((0.03, -0.02, 0.02), (0.7, -0.3, 1.0), 0.62, 0.11, -24.0, 12),
+        ((-0.03, 0.03, 0.02), (-0.55, 0.62, 1.0), 0.55, 0.1, 22.0, 13),
+        ((0.0, 0.04, 0.0), (0.1, 0.9, 0.6), 0.45, 0.085, 30.0, 14),
+    )
+    for base, axis, length, width, twist, seed in slivers:
+        add_sliver(vertices, faces, uvs, base=base, axis=axis, length=length, width=width,
+                   twist=twist, seed=seed, uv_units=HEARTSTONE_UV_UNITS_PER_METRE)
+
+    finish("heartstone", vertices, faces, uvs, shots, shot_target=(0.05, 0.05, 0.45),
+           shot_cameras=((1.6, -0.9, 0.8), (-1.4, 1.1, 0.9)))
+
+
 def build(shots):
     build_splinter_a(shots)
     build_splinter_b(shots)
+    build_heartstone(shots)
 
 
 if __name__ == "__main__":
