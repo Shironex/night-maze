@@ -219,6 +219,10 @@ constexpr const char* ENVIRONMENT_BACKGROUND_UNIFORM = "uBackground";
 /// shows it, in radians. 0 for everything except the hollow of the hood of the shade.
 constexpr const char* ENVIRONMENT_SKY_TURN_UNIFORM = "uSkyTurn";
 
+/// reflect.frag: how many times more the stars of the sky are lifted above the sky
+/// around them. 0 for everything except the hood of a shade the beam is burning.
+constexpr const char* ENVIRONMENT_STAR_BOOST_UNIFORM = "uStarBoost";
+
 /// reflect.frag, how a surface shows the sky: how much of its colour is the sky (0 to
 /// 1), whether that share grows at flat angles (1, the Fresnel effect) or not (0), the
 /// share of the mirrored picture in it (the rest is the refracted one) and the ratio the

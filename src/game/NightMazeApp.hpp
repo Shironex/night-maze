@@ -918,9 +918,11 @@ private:
     bool m_shadeDrawn = false;
     glm::mat4 m_shadeMatrix{1.0F};
     // How bright the night in the hood of that shade is: the brightness of the sky is
-    // multiplied by it (game::shadeHoodBrightness). It follows the burn clock of the
-    // round, and is the value of a shade at rest for the one of the intro.
+    // multiplied by it (game::shadeHoodBrightness), and how much its stars are lifted
+    // above that (game::shadeHoodStarBoost). Both follow the burn clock of the round,
+    // and are the values of a shade at rest for the one of the intro.
     float m_shadeHoodBrightness = SHADE_HOOD_REST_BRIGHTNESS;
+    float m_shadeHoodStarBoost = 0.0F;
     // How much the drawn shade walks, from 0 (stands) to 1 (walks). It follows the state
     // of the shade over a third of a second, so the pose never jumps (game::shadeSwayPose).
     float m_shadeWalkAmount = 0.0F;

@@ -388,12 +388,12 @@ constexpr float MIRROR_ONLY = 1.0F;
 // (uEnvironmentStrength), all of that the picture seen through the surface
 // (uReflectShare), and the ray into it is not bent (uRefractionRatio), so the sky is read
 // along the look of the eye. That sky is turned by this angle around the vertical axis,
-// in radians (uSkyTurn): about 37 degrees, far enough that no star in the hood sits
-// beside the same star of the sky behind the figure.
+// in radians (uSkyTurn): 20 degrees, a little, but enough that no star in the hood sits
+// where the sky behind the figure has it.
 constexpr float SKY_ONLY = 1.0F;
 constexpr float SEEN_THROUGH_ONLY = 0.0F;
 constexpr float NO_REFRACTION = 1.0F;
-constexpr float SHADE_HOOD_SKY_TURN = 0.65F;
+constexpr float SHADE_HOOD_SKY_TURN = 0.35F;
 
 // Reads the heightmap picture. When it cannot be loaded the ground is flat: the error is
 // in the log and the game is still playable.
@@ -2422,8 +2422,9 @@ void NightMazeApp::onRender(double alpha) {
         m_shadeMatrix = shade.matrix();
         // The stars in its hood get brighter as the beam burns it: the burn clock of the
         // rules, shown. No clock of the drawing is involved.
-        m_shadeHoodBrightness =
-            shadeHoodBrightness(shadeBurnProgress(m_round.shade, m_gameplay.shade));
+        const float burn = shadeBurnProgress(m_round.shade, m_gameplay.shade);
+        m_shadeHoodBrightness = shadeHoodBrightness(burn);
+        m_shadeHoodStarBoost = shadeHoodStarBoost(burn);
     }
     // The one picture outside a round that has a shade in it: the card of the intro that
     // warns of it. It stands still in the cell the script names, on the ground, turned
@@ -2441,6 +2442,7 @@ void NightMazeApp::onRender(double alpha) {
                                                 m_gameplay.shade.sway));
             m_shadeMatrix = shade.matrix();
             m_shadeHoodBrightness = SHADE_HOOD_REST_BRIGHTNESS;
+            m_shadeHoodStarBoost = 0.0F;
             m_shadeDrawn = true;
         }
     }
@@ -3062,9 +3064,9 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
     // light them), read where the eye looks and not where a mirror would send the look:
     // the refracted picture alone, with a ratio that bends nothing. The sky is turned
     // by SHADE_HOOD_SKY_TURN, so these are not the stars behind the figure, and is as
-    // bright as the burn clock says. The faces are flat: no normal map. The turn and the
-    // brightness are put back for the puddles. The strength, the shares and the normal
-    // map they set themselves.
+    // bright as the burn clock says, its stars lifted most. The faces are flat: no normal
+    // map. The turn, the star boost and the brightness are put back for the puddles. The strength,
+    // the shares and the normal map they set themselves.
     if (m_shadeDrawn) {
         m_reflectShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, 0);
         m_reflectShader.setFloat(ENVIRONMENT_STRENGTH_UNIFORM, SKY_ONLY);
@@ -3073,8 +3075,10 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
         m_reflectShader.setFloat(ENVIRONMENT_SKY_TURN_UNIFORM, SHADE_HOOD_SKY_TURN);
         m_reflectShader.setFloat(ENVIRONMENT_SKY_BRIGHTNESS_UNIFORM,
                                  m_skyboxSettings.brightness * m_shadeHoodBrightness);
+        m_reflectShader.setFloat(ENVIRONMENT_STAR_BOOST_UNIFORM, m_shadeHoodStarBoost);
         m_gameplayRenderer.drawShadeHollow(m_reflectShader, m_shadeMatrix);
         m_reflectShader.setFloat(ENVIRONMENT_SKY_TURN_UNIFORM, 0.0F);
+        m_reflectShader.setFloat(ENVIRONMENT_STAR_BOOST_UNIFORM, 0.0F);
         m_reflectShader.setFloat(ENVIRONMENT_SKY_BRIGHTNESS_UNIFORM, m_skyboxSettings.brightness);
     }
 

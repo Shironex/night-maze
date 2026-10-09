@@ -47,6 +47,11 @@ uniform vec3 uBackground; // the clear colour, a linear colour
 // the stars behind the figure, as if the hood were a hole. Turned, it is a piece of the
 // night that was cut out and put back crooked.
 uniform float uSkyTurn;
+// How much the stars are lifted above the sky around them: what a texel is brighter
+// than STAR_FLOOR is added this many times more. 0 for the crystals and the puddles (and
+// the value after a reload): the sky as it is. The hood of the shade raises it while
+// the beam burns the shade, so its stars flare and the empty sky between them does not.
+uniform float uStarBoost;
 
 // How much of the colour of the surface is the sky it shows, from 0 (the lit surface
 // alone) to 1 (the sky alone). With uFresnelEnabled it is the share for a look straight
@@ -75,6 +80,10 @@ out vec4 fragColor;
 // rim (game::buildPuddleMesh).
 const vec2 PUDDLE_UV_CENTER = vec2(0.5);
 const float PUDDLE_UV_RADIUS = 0.5;
+
+// The brightest the sky is where it has no star and no moon, as a linear colour value:
+// the horizon and the Milky Way of tools/blender/make_skybox.py together stay below it.
+const float STAR_FLOOR = 0.04;
 
 // The exponent of Schlick's formula. The same number as game::SCHLICK_EXPONENT in
 // src/game/EnvironmentMapping.hpp.
@@ -125,7 +134,10 @@ vec3 environmentColor(vec3 direction) {
     float turnSin = sin(uSkyTurn);
     vec3 turned = vec3(turnCos * direction.x + turnSin * direction.z, direction.y,
                        turnCos * direction.z - turnSin * direction.x);
-    return texture(uEnvironmentMap, turned).rgb * uSkyBrightness;
+    vec3 sky = texture(uEnvironmentMap, turned).rgb;
+    // With a boost of 0 this adds nothing.
+    sky += max(sky - STAR_FLOOR, 0.0) * uStarBoost;
+    return sky * uSkyBrightness;
 }
 
 void main() {
