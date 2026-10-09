@@ -95,6 +95,7 @@ body.paused .column {
 .rise.d5 { transition: opacity transform 0.5s 0.35s cubic-out; }
 .rise.d6 { transition: opacity transform 0.5s 0.41s cubic-out; }
 .rise.d7 { transition: opacity transform 0.5s 0.47s cubic-out; }
+.rise.d8 { transition: opacity transform 0.5s 0.53s cubic-out; }
 body.open .rise {
     opacity: 1;
     transform: translateX(0vh);
@@ -739,8 +740,9 @@ button.chip.key.waiting, button.chip.key.waiting:focus-visible {
 /* The way of the arrow keys through the main menu, named element by element like the
    one through free play above. */
 #campaign { nav-down: #open-nights; }
-#open-nights { nav-up: #campaign; nav-down: #open-daily; }
-#open-daily { nav-up: #open-nights; nav-down: #open-free-play; }
+#open-nights { nav-up: #campaign; nav-down: #open-ledger; }
+#open-ledger { nav-up: #open-nights; nav-down: #open-daily; }
+#open-daily { nav-up: #open-ledger; nav-down: #open-free-play; }
 #open-free-play { nav-up: #open-daily; nav-down: #open-settings; }
 #open-settings { nav-up: #open-free-play; nav-down: #quit; }
 #quit { nav-up: #open-settings; }
@@ -854,4 +856,112 @@ button.gone, .row.gone {
    in the middle of the window, not in the lower third. */
 .story.middle .story-lines {
     bottom: 38vh;
+}
+
+/* ---- the lamplighter's ledger (ledger.rml) ------------------------------------------- */
+
+/* The entry "Ledger" makes seven entries in the main menu. Each one is a little lower
+   there than in the pause menu, so the last one stays clear of the info block. */
+.menu.long button.item {
+    padding-top: 0.55vh;
+    padding-bottom: 0.55vh;
+    font-size: 4.2vh;
+}
+
+/* A panel that follows the width of the window, for two pages side by side: its width
+   is a share of the window, its padding and border counted in. It starts higher than
+   the panel of the settings: fifteen lines and three headings stand on its first page. */
+.panel.ledger {
+    box-sizing: border-box;
+    left: 6vh;
+    top: 4vh;
+    width: 93%;
+    padding: 3vh 4vh 1.4vh 4vh;
+    /* No shadow under it. RmlUi draws a box with a shadow into a picture of the box and
+       its shadow together, and for a box this near to the size of the window that picture
+       is larger than the window: it is cut off, and the border comes out stretched. */
+    box-shadow: none;
+}
+.ledger-head {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+}
+/* The counter, "11 of 24", in the colour of the crystals. */
+.ledger-count {
+    display: block;
+    font-size: 3vh;
+    color: #56d6ca;
+}
+.panel.ledger .sep {
+    margin: 1.4vh 0 1vh 0;
+}
+.panel.ledger .buttons {
+    margin: 1.6vh 0 1vh 0;
+}
+/* What does not fit scrolls here, up and down only. */
+.ledger-scroll {
+    height: 66vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.ledger-pages {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+.ledger-page {
+    width: 74vh;
+    margin-right: 3vh;
+}
+/* The heading of a night, in the amber of the flashlight. */
+.ledger-night {
+    margin: 1.5vh 0 0.7vh 0;
+    font-size: 2.1vh;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #ffb854;
+}
+/* A line that was read. One row: the longest line of the story is 60 characters. */
+.ledger-line {
+    height: 3.3vh;
+    font-size: 2.4vh;
+    line-height: 3.3vh;
+    white-space: nowrap;
+    color: #e2eaf6;
+}
+/* A line still to find: a faint ruled blank as high as a line, in one of three widths
+   that follow from the number of the line and not from its text. */
+.ledger-blank {
+    height: 3.3vh;
+}
+.ledger-blank .rule {
+    height: 2.35vh;
+    border-bottom: 0.15vh #8c9ab640;
+}
+.ledger-blank.w0 .rule { width: 40vh; }
+.ledger-blank.w1 .rule { width: 49vh; }
+.ledger-blank.w2 .rule { width: 58vh; }
+
+/* The bar of the scrolling part: a thin track and a bar in the colours of the panel. */
+.ledger-scroll scrollbarvertical {
+    width: 1vh;
+}
+.ledger-scroll scrollbarvertical slidertrack {
+    background-color: #242f4a;
+    border-radius: 0.5vh;
+}
+.ledger-scroll scrollbarvertical sliderbar {
+    width: 1vh;
+    min-height: 4vh;
+    background-color: #5c709c;
+    border-radius: 0.5vh;
+}
+.ledger-scroll scrollbarvertical sliderbar:hover, .ledger-scroll scrollbarvertical sliderbar:active {
+    background-color: #ffb854;
+}
+.ledger-scroll scrollbarvertical sliderarrowdec, .ledger-scroll scrollbarvertical sliderarrowinc {
+    width: 0;
+    height: 0;
 }

@@ -15,16 +15,21 @@
         <div class="rise d2">
             <button class="item" data-action="restart"><div class="bar"></div>Restart maze</button>
         </div>
+        <!-- The lamplighter's ledger: every line of the story that was read. The round
+             stays stopped behind it. -->
         <div class="rise d3">
-            <button class="item" data-action="settings"><div class="bar"></div>Settings</button>
+            <button class="item" id="open-ledger" data-action="ledger"><div class="bar"></div>Ledger</button>
         </div>
         <div class="rise d4">
+            <button class="item" data-action="settings"><div class="bar"></div>Settings</button>
+        </div>
+        <div class="rise d5">
             <button class="item" data-action="menu"><div class="bar"></div>Back to menu</button>
         </div>
     </div>
     <!-- The seed and the difficulty of the round are written by the game when the
          screen comes up (NightMazeApp::fillPauseDocument). -->
-    <div class="rise d5">
+    <div class="rise d6">
         <p class="note"><span id="difficulty">Normal</span>, seed <span id="seed">1</span>. Press <span class="amber">Esc</span> to resume.</p>
     </div>
 </div>

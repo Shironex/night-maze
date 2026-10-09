@@ -10,6 +10,7 @@
 #include "game/Exit.hpp"
 #include "game/GateLamp.hpp"
 #include "game/Interactables.hpp"
+#include "game/Ledger.hpp"
 #include "game/Puddles.hpp"
 #include "game/Shade.hpp"
 #include "game/ShaderUniforms.hpp"
@@ -23,6 +24,7 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <ctime>
 #include <filesystem>
@@ -135,6 +137,8 @@ constexpr const char* SETTINGS_DOCUMENT_FILE = "ui/settings.rml";
 constexpr const char* FREE_PLAY_DOCUMENT_FILE = "ui/free_play.rml";
 constexpr const char* NIGHTS_DOCUMENT_FILE = "ui/nights.rml";
 constexpr const char* NEW_CAMPAIGN_DOCUMENT_FILE = "ui/new_campaign.rml";
+// The lamplighter's ledger, opened from the main menu and from the pause menu.
+constexpr const char* LEDGER_DOCUMENT_FILE = "ui/ledger.rml";
 // The card of text the intro is told with, and the title card of a night and the ending
 // card after it. It has no buttons.
 constexpr const char* CARD_DOCUMENT_FILE = "ui/card.rml";
@@ -198,6 +202,22 @@ constexpr const char* CARD_HINT_ID = "hint";
 // ui::UiLayer::setClass) and the black it comes out of.
 constexpr const char* DOCUMENT_ID = "#document";
 constexpr const char* CURTAIN_ID = "curtain";
+
+// The ledger: its counter, its two pages, the part that scrolls and its entry in the
+// main menu and in the pause menu (the same id in both documents).
+constexpr const char* LEDGER_COUNT_ID = "ledger-count";
+constexpr std::array<const char*, 2> LEDGER_PAGE_IDS = {"ledger-page-1", "ledger-page-2"};
+constexpr const char* LEDGER_SCROLL_ID = "ledger-scroll";
+constexpr const char* LEDGER_ENTRY_ID = "open-ledger";
+// How many groups (nights) stand on its first page: three with five lines each. The
+// second page has the other two, and room for a group that is added later.
+constexpr std::size_t LEDGER_FIRST_PAGE_GROUPS = 3;
+// How far its keys scroll, in heights of the scrolling part (ui::UiLayer::scrollBy): an
+// arrow key per second it is held, Page Up and Page Down per press (a little less than
+// a page, so the eye keeps a line), Home and End to the end.
+constexpr float LEDGER_ARROW_PAGES_PER_SECOND = 1.2F;
+constexpr float LEDGER_PAGE_KEY_PAGES = 0.85F;
+constexpr float LEDGER_END_PAGES = 1000.0F;
 
 // The classes the code sets on elements. The style sheet says what they look like.
 constexpr const char* CHOSEN_CLASS = "chosen";
@@ -317,6 +337,11 @@ std::uint32_t todayLocal() {
 // Reads the settings file from the working directory. Without a file (the first start)
 // and with a file that cannot be read the game starts with its defaults: parseSettings
 // skips everything it does not understand.
+// True for the two screens that show the ledger.
+bool isLedger(GameMode mode) {
+    return mode == GameMode::LedgerFromMenu || mode == GameMode::LedgerFromPause;
+}
+
 GameSettings loadSettings() {
     std::string text;
     if (!core::readTextFile(SETTINGS_FILE_NAME, text)) {
@@ -497,6 +522,7 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
       m_startSeed(options.seed),
       m_campaignIntroPlays(campaignIntroPlays(options)),
       m_fixedDailyDate(fixedDailyDate(options)),
+      m_ledgerCounts(!options.toolSwitch),
       m_playedDifficultyName(difficultyLevel(m_settings.difficulty).name),
       m_ui(window()) {
     // The two lit programs and the grass program read the lights from the uniform buffer
@@ -600,14 +626,15 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     m_freePlayDocument = m_ui.loadDocument(FREE_PLAY_DOCUMENT_FILE);
     m_nightsDocument = m_ui.loadDocument(NIGHTS_DOCUMENT_FILE);
     m_newCampaignDocument = m_ui.loadDocument(NEW_CAMPAIGN_DOCUMENT_FILE);
+    m_ledgerDocument = m_ui.loadDocument(LEDGER_DOCUMENT_FILE);
     m_pauseDocument = m_ui.loadDocument(PAUSE_DOCUMENT_FILE);
     m_roundEndDocument = m_ui.loadDocument(ROUND_END_DOCUMENT_FILE);
     m_settingsDocument = m_ui.loadDocument(SETTINGS_DOCUMENT_FILE);
     m_menusLoaded = m_mainMenuDocument != ui::NO_DOCUMENT &&
                     m_freePlayDocument != ui::NO_DOCUMENT && m_nightsDocument != ui::NO_DOCUMENT &&
                     m_newCampaignDocument != ui::NO_DOCUMENT &&
-                    m_pauseDocument != ui::NO_DOCUMENT && m_roundEndDocument != ui::NO_DOCUMENT &&
-                    m_settingsDocument != ui::NO_DOCUMENT;
+                    m_ledgerDocument != ui::NO_DOCUMENT && m_pauseDocument != ui::NO_DOCUMENT &&
+                    m_roundEndDocument != ui::NO_DOCUMENT && m_settingsDocument != ui::NO_DOCUMENT;
     // The card of the intro and of the nights: one more document, not one of the menus.
     m_cardDocument = m_ui.loadDocument(CARD_DOCUMENT_FILE);
     if (!m_menusLoaded) {
@@ -771,6 +798,12 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
         window().requestClose();
     }
     showScreen();
+    // Back from the ledger: the keyboard stands on the entry it was opened with, not on
+    // the first entry of the menu.
+    if (isLedger(before)) {
+        m_ui.focus(m_mode == GameMode::Paused ? m_pauseDocument : m_mainMenuDocument,
+                   LEDGER_ENTRY_ID);
+    }
     // The title card of a night or the ending card has just come up: its clock starts.
     // Last, because a card that cannot be shown is over at once, which is an event again.
     if (m_mode != before && (m_mode == GameMode::NightCard || m_mode == GameMode::EndingCard)) {
@@ -1070,6 +1103,9 @@ void NightMazeApp::showScreen() {
     } else if (m_mode == GameMode::Nights) {
         document = m_nightsDocument;
         fillNightsDocument();
+    } else if (isLedger(m_mode)) {
+        document = m_ledgerDocument;
+        fillLedgerDocument();
     } else if (m_mode == GameMode::NewCampaign) {
         // Nothing to fill: the question is always the same.
         document = m_newCampaignDocument;
@@ -1485,6 +1521,64 @@ void NightMazeApp::fillNightsDocument() {
         m_ui.setClass(m_nightsDocument, id, NEXT_CLASS, status == NightStatus::Open);
         m_ui.setClass(m_nightsDocument, id, LOCKED_CLASS, status == NightStatus::Locked);
     }
+}
+
+void NightMazeApp::fillLedgerDocument() {
+    m_ui.setText(m_ledgerDocument, LEDGER_COUNT_ID, ledgerCounterText(m_settings.storyRead));
+    // The two pages, written as RML: a heading per night, then its lines. A line that
+    // was read is its text, any other a ruled blank in one of three widths. The texts
+    // hold no character that RML would read as a tag (tests/LedgerTests.cpp).
+    std::array<std::string, LEDGER_PAGE_IDS.size()> pages;
+    const std::vector<LedgerGroup> groups = ledgerGroups(m_settings.storyRead);
+    for (std::size_t i = 0; i < groups.size(); ++i) {
+        std::string& page = pages.at(i < LEDGER_FIRST_PAGE_GROUPS ? 0 : 1);
+        page += R"(<p class="ledger-night">)" + groups[i].title + "</p>";
+        for (const LedgerLine& line : groups[i].lines) {
+            if (line.read) {
+                page += R"(<p class="ledger-line">)" + std::string(flavourLine(line.line)) + "</p>";
+            } else {
+                page += R"(<div class="ledger-blank w)" + std::to_string(line.blankWidth) +
+                        R"("><div class="rule"></div></div>)";
+            }
+        }
+    }
+    for (std::size_t i = 0; i < pages.size(); ++i) {
+        m_ui.setText(m_ledgerDocument, LEDGER_PAGE_IDS.at(i), pages.at(i));
+    }
+    // The page opens at its top.
+    m_ui.scrollBy(m_ledgerDocument, LEDGER_SCROLL_ID, -LEDGER_END_PAGES);
+}
+
+void NightMazeApp::scrollLedger() {
+    // The arrows scroll for as long as they are held, the other keys once per press
+    // (wasKeyPressed is true for one frame, so they are read here, once per frame).
+    float pages = 0.0F;
+    const auto held = static_cast<float>(time().deltaSeconds()) * LEDGER_ARROW_PAGES_PER_SECOND;
+    pages += input().isKeyDown(GLFW_KEY_DOWN) ? held : 0.0F;
+    pages -= input().isKeyDown(GLFW_KEY_UP) ? held : 0.0F;
+    pages += input().wasKeyPressed(GLFW_KEY_PAGE_DOWN) ? LEDGER_PAGE_KEY_PAGES : 0.0F;
+    pages -= input().wasKeyPressed(GLFW_KEY_PAGE_UP) ? LEDGER_PAGE_KEY_PAGES : 0.0F;
+    pages += input().wasKeyPressed(GLFW_KEY_END) ? LEDGER_END_PAGES : 0.0F;
+    pages -= input().wasKeyPressed(GLFW_KEY_HOME) ? LEDGER_END_PAGES : 0.0F;
+    if (pages != 0.0F) {
+        m_ui.scrollBy(m_ledgerDocument, LEDGER_SCROLL_ID, pages);
+    }
+}
+
+void NightMazeApp::markOpenNoteRead() {
+    // A run driven by a tool writes no progress, like its night and its maze of the day.
+    if (!m_ledgerCounts || !m_round.noteOpen ||
+        m_round.noteIndex >= m_mazeWorld.interactables.notes.size()) {
+        return;
+    }
+    const Note& note = m_mazeWorld.interactables.notes[m_round.noteIndex];
+    if (note.kind != NoteKind::Flavour) {
+        return;
+    }
+    // Written at once: a line that was read stays read, also when the round is left
+    // without a win. saveSettings writes only when the set has changed.
+    m_settings.storyRead = withLineRead(m_settings.storyRead, note.flavourIndex);
+    saveSettings();
 }
 
 void NightMazeApp::fillPauseDocument() {
@@ -2123,6 +2217,9 @@ void NightMazeApp::onRender(double alpha) {
     handleMenuActions();
     handleControlChanges();
     handleKeyCapture();
+    if (isLedger(m_mode)) {
+        scrollLedger();
+    }
 
     // The intro: the request of the debug UI to play it again, and its frame. Both come
     // before everything below, because the frame may end the intro: the rest of this
@@ -2714,6 +2811,8 @@ void NightMazeApp::handleInteraction(bool cursorCaptured) {
         // The round has changed, so the action is asked again: the lever that was just
         // pulled is not highlighted in this frame, and an opened card can be closed.
         m_pick.action = interactionFor(m_round, m_pick.picked);
+        // The card of a story note has come up: its line is in the ledger from now on.
+        markOpenNoteRead();
     } else if (clicked && !cursorCaptured) {
         // A click into the scene that hit nothing to use: it captures the cursor, which
         // switches on mouse look and movement. So a click with the free cursor ON

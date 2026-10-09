@@ -1,0 +1,31 @@
+<rml>
+<head>
+    <title>Ledger</title>
+    <link type="text/rcss" href="menu.rcss"/>
+</head>
+<body class="dim">
+<!-- The lamplighter's ledger: every line of the story, night by night. A line that was
+     read shows its text, the others a ruled blank. The game writes the counter and the
+     two pages when the screen comes up (NightMazeApp::fillLedgerDocument). The pages
+     stand side by side and go under each other in a narrow window. What does not fit
+     scrolls inside the element "ledger-scroll": by the wheel, and by the arrow keys,
+     Page Up, Page Down, Home and End, which the game reads (NightMazeApp::scrollLedger). -->
+<div class="panel ledger">
+    <div class="ledger-head">
+        <h2 class="panel-title">The lamplighter's ledger</h2>
+        <span class="ledger-count" id="ledger-count"></span>
+    </div>
+    <div class="sep"></div>
+    <div class="ledger-scroll" id="ledger-scroll">
+        <div class="ledger-pages">
+            <div class="ledger-page" id="ledger-page-1"></div>
+            <div class="ledger-page" id="ledger-page-2"></div>
+        </div>
+    </div>
+    <div class="buttons">
+        <button class="btn primary" id="ledger-back" data-action="back" autofocus>Back</button>
+        <span class="keys">Arrows, Page Up, Page Down or the wheel: scroll | Esc: back</span>
+    </div>
+</div>
+</body>
+</rml>

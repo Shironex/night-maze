@@ -18,7 +18,7 @@
         <p class="subtitle">The Last Lamp</p>
         <p class="tagline">The moon sees every corridor. You see one.</p>
     </div>
-    <div class="menu">
+    <div class="menu long">
         <div class="rise d1">
             <!-- The campaign: "Begin" before a night is won, "Continue" with the next
                  night beside it, "New campaign" once the last night is won. The label
@@ -33,27 +33,31 @@
         <div class="rise d2">
             <button class="item" id="open-nights" data-action="nights"><div class="bar"></div>Nights</button>
         </div>
+        <!-- The lamplighter's ledger: every line of the story that was read. -->
+        <div class="rise d3">
+            <button class="item" id="open-ledger" data-action="ledger"><div class="bar"></div>Ledger</button>
+        </div>
         <!-- The maze of the day, the same one for every player: its day stands beside
              it, and the best time of the day once it has one. -->
-        <div class="rise d3">
+        <div class="rise d4">
             <div class="entry">
                 <button class="item" id="open-daily" data-action="daily"><div class="bar"></div>Tonight's hedge</button>
                 <span class="beside" id="daily-date"></span>
             </div>
         </div>
-        <div class="rise d4">
+        <div class="rise d5">
             <button class="item" id="open-free-play" data-action="free-play"><div class="bar"></div>Free play</button>
         </div>
-        <div class="rise d5">
+        <div class="rise d6">
             <button class="item" id="open-settings" data-action="settings"><div class="bar"></div>Settings</button>
         </div>
-        <div class="rise d6">
+        <div class="rise d7">
             <button class="item" id="quit" data-action="quit"><div class="bar"></div>Quit</button>
         </div>
     </div>
 </div>
 <!-- The numbers of the night the first entry starts. -->
-<div class="info rise d7">
+<div class="info rise d8">
     <div class="fact">
         <p class="fact-name">Maze</p>
         <p class="fact-value" id="info-maze">10 x 10</p>

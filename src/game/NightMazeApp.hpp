@@ -560,8 +560,19 @@ private:
     void fillFreePlayDocument();
     void fillNightsDocument();
     void fillPauseDocument();
+    void fillLedgerDocument();
     void fillRoundEndDocument();
     void fillSettingsDocument();
+
+    /// Scrolls the page of the ledger by the keys that are down in this frame: the arrow
+    /// keys, Page Up, Page Down, Home and End. Called once per frame while the ledger is
+    /// shown. The wheel of the mouse scrolls it without code of the game.
+    void scrollLedger();
+
+    /// Puts the story line of the note whose card is open into the ledger
+    /// (GameSettings::storyRead) and writes the settings file. Nothing happens for a hint,
+    /// for a line that is in the ledger already, and in a run driven by a tool.
+    void markOpenNoteRead();
 
     /// Uses the mouse sensitivity and the field of view of m_settings: they are copied
     /// to m_mouseSensitivity and to the camera. Called when a setting changed, not in
@@ -1049,6 +1060,10 @@ private:
     // The day of "Tonight's hedge" in a run that must not ask the clock
     // (game::fixedDailyDate), or NO_DAILY_DATE. Such a run never writes a best time.
     std::uint32_t m_fixedDailyDate = NO_DAILY_DATE;
+    // True when a note that is read in this run goes into the ledger of the settings
+    // file. False in a run with a tool switch (StartOptions::toolSwitch): its notes are
+    // read by scripts.
+    bool m_ledgerCounts = true;
     // The name of the difficulty of the game in play, for the pause menu and the
     // result screen: the name of a level, or "Custom" for a maze the debug UI asked for.
     std::string m_playedDifficultyName;
@@ -1064,6 +1079,7 @@ private:
     ui::DocumentId m_freePlayDocument = ui::NO_DOCUMENT;
     ui::DocumentId m_nightsDocument = ui::NO_DOCUMENT;
     ui::DocumentId m_newCampaignDocument = ui::NO_DOCUMENT;
+    ui::DocumentId m_ledgerDocument = ui::NO_DOCUMENT;
     ui::DocumentId m_pauseDocument = ui::NO_DOCUMENT;
     ui::DocumentId m_roundEndDocument = ui::NO_DOCUMENT;
     ui::DocumentId m_settingsDocument = ui::NO_DOCUMENT;
