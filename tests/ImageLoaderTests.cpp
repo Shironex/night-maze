@@ -81,7 +81,7 @@ glm::dvec3 averageLight(const assets::Image& image) {
             sum[channel] += static_cast<double>(gfx::srgbToLinear(encoded));
         }
     }
-    return sum / static_cast<double>(image.pixels.size() / 3);
+    return sum / (static_cast<double>(image.pixels.size()) / 3.0);
 }
 
 } // namespace
