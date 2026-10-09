@@ -145,6 +145,8 @@ add_library(game_logic STATIC
     src/game/Bloom.hpp
     src/game/Campaign.cpp
     src/game/Campaign.hpp
+    src/game/Daily.cpp
+    src/game/Daily.hpp
     src/game/Crystals.cpp
     src/game/Crystals.hpp
     src/game/Difficulty.cpp
@@ -420,6 +422,7 @@ add_executable(night_maze_tests
     tests/AudioEngineTests.cpp
     tests/BloomTests.cpp
     tests/CampaignTests.cpp
+    tests/DailyTests.cpp
     tests/ColliderTests.cpp
     tests/ColorSpaceTests.cpp
     tests/CoverFitTests.cpp
