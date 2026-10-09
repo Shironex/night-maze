@@ -25,6 +25,16 @@ float hintOpacity(float seconds, float holdSeconds, float fadeSeconds);
 /// is at most 60 printable ASCII characters, so it fits the line of the hints.
 inline constexpr const char* HEAVY_HINT = "Heavy. No running for a while.";
 
+/// The one sentence for the step in which the heartstone opened the gate: the sentence of
+/// the gate and the one above would start in the same moment, and the line of the hints
+/// has room for one. The same limit of 60 characters.
+inline constexpr const char* HEAVY_GATE_HINT = "The gate is open. Heavy, no running for a while.";
+
+/// True when two sentences started in the same step: their ages, in seconds, are less
+/// than a quarter of a second apart. The two ages are counted by two clocks (one counts
+/// up, one down from 30), so they are never equal to the last digit.
+bool sameMoment(float secondsA, float secondsB);
+
 /// The seconds a clock that runs DOWN from wholeSeconds has already run: what the hints
 /// of the tea and of the heartstone count from. Never below 0, also when the clock holds
 /// more than wholeSeconds (the debug UI changed the length while it ran).

@@ -631,15 +631,56 @@ TEST_CASE("the share of the weight that is left stays between 0 and 1") {
 
 // ---- the HUD and the settings ------------------------------------------------------------
 
-TEST_CASE("the sentence of the heartstone fits the line of the hints") {
-    const std::string_view hint = debug::HEAVY_HINT;
-    CHECK_FALSE(hint.empty());
-    CHECK(hint.size() <= 60U);
-    for (const char letter : hint) {
-        // The printable ASCII characters, from the space to the tilde.
-        CHECK(letter >= ' ');
-        CHECK(letter <= '~');
+TEST_CASE("the sentences of the heartstone fit the line of the hints") {
+    for (const std::string_view hint : {debug::HEAVY_HINT, debug::HEAVY_GATE_HINT}) {
+        CAPTURE(hint);
+        CHECK_FALSE(hint.empty());
+        CHECK(hint.size() <= 60U);
+        for (const char letter : hint) {
+            // The printable ASCII characters, from the space to the tilde.
+            CHECK(letter >= ' ');
+            CHECK(letter <= '~');
+        }
     }
+}
+
+TEST_CASE("a heartstone that opens the gate starts both sentences in the same moment") {
+    // The gate needs 10 on the Easy level. Seven crystals, then the heartstone: the step
+    // that takes it opens the gate.
+    const game::MazeWorld world = levelWorld(game::Difficulty::Easy, 3);
+    const game::GameplaySettings settings;
+    game::Round round = game::startRound(world, settings);
+    bool flashlightOn = false;
+    const std::vector<game::RoundCrystal> crystals = round.crystals;
+    for (std::size_t i = 0; round.collectedCount + game::HEARTSTONE_WORTH < round.requiredCount;
+         ++i) {
+        const glm::vec3 feet =
+            crystals[i].restPosition - glm::vec3{0.0F, game::PLAYER_REACH_HEIGHT, 0.0F};
+        game::updateRound(round, world, settings, feet, flashlightOn, STEP);
+    }
+    REQUIRE_FALSE(round.gateOpen);
+    game::updateRound(round, world, settings, feetAtHeartstone(world), flashlightOn, STEP);
+    REQUIRE(round.gateOpen);
+    REQUIRE(round.heartstoneTaken);
+
+    // The application makes the player heavy in that step. Both clocks then run for the
+    // 6 seconds the sentence of the gate stays: the one of the round counts up, the one
+    // of the stamina down from 30, and they stay the same moment all the way.
+    const game::StaminaSettings staminaSettings;
+    game::Stamina stamina;
+    game::carryHeartstone(stamina, staminaSettings);
+    for (int i = 0; i < 6 * STEPS_PER_SECOND; ++i) {
+        game::updateRound(round, world, settings, NOWHERE, flashlightOn, STEP);
+        game::advanceStamina(stamina, staminaSettings, false, STEP);
+        const float sinceTaken =
+            debug::secondsSince(staminaSettings.heavySeconds, stamina.heavySecondsLeft);
+        REQUIRE(debug::sameMoment(round.gateOpenSeconds, sinceTaken));
+    }
+
+    // A gate that opened long before the heartstone was taken is another moment.
+    CHECK_FALSE(debug::sameMoment(40.0F, 0.0F));
+    CHECK_FALSE(debug::sameMoment(0.0F, 0.3F));
+    CHECK(debug::sameMoment(2.0F, 2.1F));
 }
 
 TEST_CASE("secondsSince counts up while its clock counts down") {

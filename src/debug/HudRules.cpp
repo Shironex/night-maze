@@ -3,6 +3,7 @@
 #include "debug/HudRules.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 namespace debug {
 
@@ -25,6 +26,11 @@ float hintOpacity(float seconds, float holdSeconds, float fadeSeconds) {
     // How much of the fade is over, from 0 to 1, and what is left of the sentence.
     const float faded = (seconds - holdSeconds) / fadeSeconds;
     return std::max(1.0F - faded, 0.0F);
+}
+
+bool sameMoment(float secondsA, float secondsB) {
+    constexpr float SAME_MOMENT_SECONDS = 0.25F;
+    return std::abs(secondsA - secondsB) < SAME_MOMENT_SECONDS;
 }
 
 float secondsSince(float wholeSeconds, float secondsLeft) {

@@ -725,13 +725,18 @@ void drawHintLine(Canvas canvas, const game::Round& round, const game::Player& p
         std::snprintf(text.data(), text.size(), "Warm tea. Sprinting costs nothing for %.0f s.",
                       std::ceil(stamina.noDrainSecondsLeft));
     }
-    if (round.gateOpen && offer(round.gateOpenSeconds, GATE_HINT_SECONDS, HUD_CRYSTAL_COLOR)) {
-        std::snprintf(text.data(), text.size(), "The gate is open. Find the exit.");
-    }
-    // The heartstone was just taken.
+    // The heartstone was just taken. When it is what opened the gate, both sentences
+    // start in one step and the line has room for one: then one sentence says both, for
+    // as long as the sentence of the gate stays.
     const float sinceTaken =
         secondsSince(player.staminaSettings.heavySeconds, stamina.heavySecondsLeft);
-    if (heavy && offer(sinceTaken, HEAVY_HINT_SECONDS, HUD_CRYSTAL_COLOR)) {
+    const bool openedByHeartstone =
+        heavy && round.gateOpen && sameMoment(round.gateOpenSeconds, sinceTaken);
+    if (round.gateOpen && offer(round.gateOpenSeconds, GATE_HINT_SECONDS, HUD_CRYSTAL_COLOR)) {
+        std::snprintf(text.data(), text.size(), "%s",
+                      openedByHeartstone ? HEAVY_GATE_HINT : "The gate is open. Find the exit.");
+    }
+    if (heavy && !openedByHeartstone && offer(sinceTaken, HEAVY_HINT_SECONDS, HUD_CRYSTAL_COLOR)) {
         std::snprintf(text.data(), text.size(), "%s", HEAVY_HINT);
     }
     if (round.battery <= 0.0F &&
