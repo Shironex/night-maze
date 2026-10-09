@@ -215,6 +215,8 @@ add_library(game_logic STATIC
     src/game/Terrain.hpp
     src/game/Vignette.cpp
     src/game/Vignette.hpp
+    src/game/Village.cpp
+    src/game/Village.hpp
     src/game/WallVariants.cpp
     src/game/WallVariants.hpp
 )
@@ -476,6 +478,7 @@ add_executable(night_maze_tests
     tests/TransformTests.cpp
     tests/VideoClockTests.cpp
     tests/VignetteTests.cpp
+    tests/VillageTests.cpp
     tests/WallVariantTests.cpp
     # The files of the debug UI that need neither ImGui nor a window: the text search
     # of the debug window and the arithmetic of the HUD. They are compiled into the
