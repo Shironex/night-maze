@@ -667,14 +667,17 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     // the number of its sound (game::soundCueIndex). A missing file is in the log and
     // its cue is silent (audio::AudioEngine). The winds go into the ambient group of
     // the engine and everything else into the effects group: each group has a volume
-    // of its own (applyAudioSettings).
-    std::array<audio::SoundFile, SOUND_CUE_COUNT> soundFiles;
+    // of its own (applyAudioSettings). After the cues comes the one piece of music, the
+    // theme of the menu, in the music group (game::MENU_THEME_SOUND).
+    std::array<audio::SoundFile, SOUND_CUE_COUNT + 1> soundFiles;
     for (std::size_t i = 0; i < SOUND_CUE_COUNT; ++i) {
         const auto cue = static_cast<SoundCue>(i);
         soundFiles.at(i) = {.path = core::assetPath(soundCueFile(cue)),
                             .group = soundCueIsAmbient(cue) ? audio::SoundGroup::Ambient
                                                             : audio::SoundGroup::Effects};
     }
+    soundFiles.at(MENU_THEME_SOUND) = {.path = core::assetPath(MENU_THEME_FILE),
+                                       .group = audio::SoundGroup::Music};
     m_audio.load(soundFiles);
 
     // The seed free play offers for the first game: the one of the command line, or
@@ -708,7 +711,7 @@ NightMazeApp::~NightMazeApp() {
 // there to be heard (handleControlChanges).
 //
 // The wind of the maze is not played here. It is a loop, and it does stop for a menu:
-// updateAmbience fades it out and in.
+// updateAmbience fades it out and in, and the theme of the menu the other way round.
 void NightMazeApp::playCue(SoundCue cue, float volume) {
     m_audio.play(soundCueIndex(cue), volume);
     m_lastCueName = soundCueName(cue);
@@ -742,6 +745,20 @@ void NightMazeApp::updateAmbience(bool windowFocused) {
     m_audio.setGroupVolume(audio::SoundGroup::Ambient,
                            masterVolumeGain(m_settings.ambientVolume) *
                                pictureBrightness(m_catchSeconds, m_round));
+
+    // The theme of the menu, said in every frame like the wind. The loop keeps its
+    // place while it is off, so the piece goes on after a night where it was left. The
+    // first call of the program comes before the first picture: the theme waits for it.
+    const bool theme = menuThemePlays(
+        {.mode = m_mode, .windowFocused = windowFocused, .pictureShown = m_pictureShown});
+    m_pictureShown = true;
+    m_audio.setLoop(MENU_THEME_SOUND, theme,
+                    theme ? MENU_THEME_FADE_IN_SECONDS : MENU_THEME_FADE_OUT_SECONDS);
+    if (theme != m_menuThemeOn) {
+        m_menuThemeOn = theme;
+        core::logInfo(theme ? "Music: the theme of the menu fades in"
+                            : "Music: the theme of the menu fades out");
+    }
 }
 
 void NightMazeApp::onEscapePressed() {
@@ -1082,6 +1099,10 @@ void NightMazeApp::handleControlChanges() {
                      masterVolumeLabel(m_settings.effectsVolume));
         m_ui.setText(m_settingsDocument, std::string(AMBIENT_VOLUME_SETTING) + TEXT_ID_SUFFIX,
                      masterVolumeLabel(m_settings.ambientVolume));
+        // The music volume needs no sample: on the settings screen of the main menu the
+        // theme itself is playing, and its loudness follows the slider at once.
+        m_ui.setText(m_settingsDocument, std::string(MUSIC_VOLUME_SETTING) + TEXT_ID_SUFFIX,
+                     masterVolumeLabel(m_settings.musicVolume));
     }
 }
 
@@ -1724,7 +1745,7 @@ void NightMazeApp::fillSettingsDocument() {
     m_ui.setValue(m_settingsDocument, volumeId, volume);
     m_ui.setText(m_settingsDocument, volumeId + TEXT_ID_SUFFIX, volume);
 
-    // The two volumes under it, in the same way.
+    // The three volumes under it, in the same way.
     const std::string effectsId(EFFECTS_VOLUME_SETTING);
     const std::string effects = masterVolumeLabel(m_settings.effectsVolume);
     m_ui.setValue(m_settingsDocument, effectsId, effects);
@@ -1734,6 +1755,11 @@ void NightMazeApp::fillSettingsDocument() {
     const std::string ambient = masterVolumeLabel(m_settings.ambientVolume);
     m_ui.setValue(m_settingsDocument, ambientId, ambient);
     m_ui.setText(m_settingsDocument, ambientId + TEXT_ID_SUFFIX, ambient);
+
+    const std::string musicId(MUSIC_VOLUME_SETTING);
+    const std::string music = masterVolumeLabel(m_settings.musicVolume);
+    m_ui.setValue(m_settingsDocument, musicId, music);
+    m_ui.setText(m_settingsDocument, musicId + TEXT_ID_SUFFIX, music);
 
     // The switch of the fullscreen: a class moves its knob.
     m_ui.setClass(m_settingsDocument, FULLSCREEN_ID, ON_CLASS, m_settings.fullscreen);
@@ -1761,9 +1787,10 @@ void NightMazeApp::applyViewSettings() {
 
 void NightMazeApp::applyAudioSettings() {
     m_audio.setMasterVolume(masterVolumeGain(m_settings.masterVolume));
-    // The two groups under it, each with the same curve from its own slider.
+    // The three groups under it, each with the same curve from its own slider.
     m_audio.setGroupVolume(audio::SoundGroup::Effects, masterVolumeGain(m_settings.effectsVolume));
     m_audio.setGroupVolume(audio::SoundGroup::Ambient, masterVolumeGain(m_settings.ambientVolume));
+    m_audio.setGroupVolume(audio::SoundGroup::Music, masterVolumeGain(m_settings.musicVolume));
 }
 
 void NightMazeApp::applyWindowSettings() {

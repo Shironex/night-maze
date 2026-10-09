@@ -37,6 +37,11 @@
         <span class="field-value" id="ambient_volume-text">100</span>
     </div>
     <div class="field">
+        <span class="field-name">Music volume</span>
+        <input type="range" id="music_volume" data-setting="music_volume" min="0" max="100" step="1" value="60"/>
+        <span class="field-value" id="music_volume-text">60</span>
+    </div>
+    <div class="field">
         <span class="field-name">Fullscreen</span>
         <button class="toggle" id="fullscreen" data-action="toggle-fullscreen"><div class="knob"></div></button>
         <span class="field-value" id="fullscreen-text">Off</span>

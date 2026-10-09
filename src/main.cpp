@@ -127,6 +127,7 @@ protected:
             .masterVolume = masterVolumeSetting(),
             .effectsVolume = effectsVolumeSetting(),
             .ambientVolume = ambientVolumeSetting(),
+            .musicVolume = musicVolumeSetting(),
             .lastCueVolume = lastCueVolume(),
             .sampleWind = windSampleRequest(),
             .playIntro = introRequest(),

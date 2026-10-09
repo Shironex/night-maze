@@ -369,10 +369,11 @@ protected:
     /// The master volume of the settings, 0 to 100, for the debug UI.
     float masterVolumeSetting() const { return m_settings.masterVolume; }
 
-    /// The effects volume and the ambient volume of the settings, 0 to 100, for the
-    /// debug UI.
+    /// The effects volume, the ambient volume and the music volume of the settings,
+    /// 0 to 100, for the debug UI.
     float effectsVolumeSetting() const { return m_settings.effectsVolume; }
     float ambientVolumeSetting() const { return m_settings.ambientVolume; }
+    float musicVolumeSetting() const { return m_settings.musicVolume; }
 
     /// The name of the cue that was played last (game::soundCueName), "none" before the
     /// first one, and how many cues were played since the start, for the debug UI.
@@ -588,9 +589,9 @@ private:
     /// Gives the window the size and the fullscreen state of m_settings.
     void applyWindowSettings();
 
-    /// Gives the audio engine the three volumes of m_settings: the master volume and
-    /// the volumes of the effects and of the ambient sounds (game::masterVolumeGain of
-    /// each).
+    /// Gives the audio engine the four volumes of m_settings: the master volume and
+    /// the volumes of the effects, of the ambient sounds and of the music
+    /// (game::masterVolumeGain of each).
     void applyAudioSettings();
 
     /// Switches the wind of the maze on or off for the screen the game is on
@@ -1196,6 +1197,13 @@ private:
     double m_windSampleLeft = 0.0;
     // Set by the debug UI: play a sample of the wind (windSampleRequest).
     bool m_windSampleRequested = false;
+    // False until updateAmbience has run once: the first picture of the program is
+    // drawn after that call, and the theme of the menu waits for it
+    // (game::MenuThemeRequest::pictureShown).
+    bool m_pictureShown = false;
+    // What updateAmbience last told the audio engine about the theme of the menu, to
+    // write one line into the log when it changes.
+    bool m_menuThemeOn = false;
     // Seconds until the volume slider of the settings screen may play its next sample
     // click (handleControlChanges). 0: the next change is heard at once.
     double m_volumeSampleWait = 0.0;
