@@ -101,9 +101,9 @@ CROSSFADE_SECONDS = 1.0
 LEAD_IN_SECONDS = 3.0
 
 # The quality of the final file: the CRF of the x264 encoder. Lower is better and larger.
-# At 16 the dark, smooth parts of the night sky keep their soft steps, and the file stays
+# At 17 the dark, smooth parts of the night sky keep their soft steps, and the file stays
 # well under the size limit below.
-QUALITY_CRF = 16
+QUALITY_CRF = 17
 
 # The file should not be larger than this: it lives in git as a normal file.
 MAX_BYTES = 20 * 1000 * 1000
