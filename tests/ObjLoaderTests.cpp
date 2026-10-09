@@ -899,7 +899,7 @@ TEST_CASE("loadObj: wall_straight_crown.obj") {
     CHECK(bounds.max.z < 0.5F);
     for (const gfx::Vertex& vertex : model.vertices) {
         if (vertex.position.y > 3.0001F) {
-            CHECK(std::abs(vertex.position.x) < 0.95F);
+            CHECK(std::abs(vertex.position.x) < 0.8F);
         }
     }
 }
