@@ -654,6 +654,12 @@ def heartstone_pickup():
     #   - The weight: a soft thump that falls from 210 to 135 Hz, the stone landing in
     #     the hand. It stays above the heartbeat of the low battery (below 120 Hz).
     #
+    #   - The room: the stone room of the maze, a little of it. The stone is taken in
+    #     the same place as the lever is pulled and the gate opens, and it is large
+    #     enough to be answered by the walls, which a small crystal is not. The sound
+    #     keeps its length: the strike is early and the glass rings for two seconds, so
+    #     the wash has died away under it long before the file ends.
+    #
     # Stereo like the crystal: the pairs lean left in one channel and right in the
     # other. It uses no noise, so it needs no random generator.
     length = 2.2
@@ -667,7 +673,7 @@ def heartstone_pickup():
         place(sound, weight, 0.0, 0.45)
         channels.append(biquad(sound, "high", 110.0))
     # The lowest mode still rings faintly at the end, so the end is a slow fade.
-    return finish(channels, out_seconds=0.25)
+    return finish(in_room(channels, 0.3), out_seconds=0.25)
 
 
 # ---- the lever -------------------------------------------------------------------------------
