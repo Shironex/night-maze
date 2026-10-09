@@ -375,18 +375,20 @@ def all_pass(samples, delay, gain):
     return result
 
 
-def room_wash(samples, count, side=0):
+def room_wash(samples, count, side=0, seconds=ROOM_SECONDS):
     # What the room gives back for a sound, without the sound itself: count samples of
     # it. side is 0 for the left or the only channel and 1 for the right one, whose
-    # lines are a little longer, so the wash of a stereo sound is wide.
+    # lines are a little longer, so the wash of a stereo sound is wide. seconds is how
+    # long the wash takes to die away: the sounds of the game all use ROOM_SECONDS, the
+    # music (tools/make_music.py) asks for a far larger room of the same build.
     feed = one_pole_high_pass(list(samples) + [0.0] * max(count - len(samples), 0),
                               ROOM_LOW_CUT_HZ)[:count]
     wash = [0.0] * count
-    for seconds, strength in ROOM_EARLY:
-        place(wash, feed, seconds + 0.0011 * side, strength)
+    for after, strength in ROOM_EARLY:
+        place(wash, feed, after + 0.0011 * side, strength)
     feed = all_pass(all_pass(feed, 223 + 6 * side, 0.6), 73 + 2 * side, 0.6)
     delays = [length + 29 * side for length in ROOM_LINES]
-    gains = [10.0 ** (-3.0 * delay / (SAMPLE_RATE * ROOM_SECONDS)) for delay in delays]
+    gains = [10.0 ** (-3.0 * delay / (SAMPLE_RATE * seconds)) for delay in delays]
     damp = 1.0 - math.exp(-2.0 * math.pi * ROOM_DAMP_HZ / SAMPLE_RATE)
     lines = [[0.0] * delay for delay in delays]
     heads = [0] * 8
@@ -409,16 +411,16 @@ def room_wash(samples, count, side=0):
         # one loud echo where two of them happen to agree.
         wash[i] += 0.35 * (taps[0] - taps[1] + taps[2] - taps[3]
                            + taps[4] - taps[5] + taps[6] - taps[7])
-    if side not in _room_scales:
+    if (side, seconds) not in _room_scales:
         # The strength of the room is set so that one single click comes back with
         # exactly the energy it went in with. That makes "amount" below a plain number:
-        # how strong the room is next to the sound. Measured once per side, on a click
+        # how strong the room is next to the sound. Measured once per side and size, on a click
         # (this very function, called with a click, which is why the entry is filled in
         # first).
-        _room_scales[side] = 1.0
-        click = room_wash([1.0], count_of(1.5 * ROOM_SECONDS), side)
-        _room_scales[side] = 1.0 / math.sqrt(sum(value * value for value in click))
-    scale = _room_scales[side]
+        _room_scales[side, seconds] = 1.0
+        click = room_wash([1.0], count_of(1.5 * seconds), side, seconds)
+        _room_scales[side, seconds] = 1.0 / math.sqrt(sum(value * value for value in click))
+    scale = _room_scales[side, seconds]
     return [value * scale for value in wash]
 
 
