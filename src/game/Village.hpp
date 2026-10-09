@@ -16,7 +16,7 @@ namespace game {
 // The village is the one the lamps are for. It stands on a ridge, the far rim of the
 // hollow. It is not a place in the maze: it is drawn like the sky, centred on the eye, so
 // it never comes closer. Unlike the sky it has real depth: walls, hills and the gatehouse
-// hide it.
+// hide it. Its ridge is the rim of the hollow and closes the whole horizon.
 
 /// The model (tools/blender/build_village.py) is built around the eye that looks at it,
 /// and these numbers must agree with the script: the lane lies this far out and this
@@ -24,6 +24,22 @@ namespace game {
 constexpr float VILLAGE_LANE_DISTANCE = 257.0F;
 constexpr float VILLAGE_LANE_HEIGHT = 27.0F;
 constexpr float VILLAGE_REACH = 290.0F;
+
+/// The ridge is the rim of the hollow: it runs the whole way round the eye, its upper edge
+/// a little above the horizon, and the hill of the village rises out of it. So it has no
+/// ends. Its foot lies this far out and this far below the eye in the model, all the way
+/// round, and these two numbers must agree with the script too.
+constexpr float VILLAGE_FOOT_DISTANCE = 200.0F;
+constexpr float VILLAGE_FOOT_DEPTH = 200.0F;
+
+/// The model rides with the eye, so a raised camera lifts its foot out of the fog that
+/// lies on the ground. Up to this height of the eye above the ground, in metres, the foot
+/// stays in fog so thick that nothing of it is seen, and the ridge has no lower edge:
+/// with the far plane and the fog the game starts with, which a test checks. The glide of
+/// the menu camera (14 m over the hard level, 22 m over the largest maze of the debug
+/// window) and the reveal are far below it. Only
+/// noclip can fly higher.
+constexpr float VILLAGE_CLEAR_EYE_HEIGHT = 60.0F;
 
 /// The model is scaled about the eye until its furthest vertex lies at this part of the
 /// far plane of the camera. Scaling about the eye changes no angle, so the picture is the

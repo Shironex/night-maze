@@ -2,17 +2,26 @@
 // that rises to show it and the timing of its lights.
 #include "game/Village.hpp"
 
+#include "assets/ObjLoader.hpp"
 #include "game/Campaign.hpp"
+#include "game/Fog.hpp"
 #include "game/GateLamp.hpp"
 #include "game/Maze.hpp"
+#include "game/MazeLayout.hpp"
 #include "game/MazeWorld.hpp"
+#include "game/MenuCamera.hpp"
 #include "scene/Camera.hpp"
 
 #include <doctest/doctest.h>
 #include <glm/glm.hpp>
 
+#include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
+#include <filesystem>
+#include <string>
 
 namespace {
 
@@ -85,6 +94,75 @@ TEST_CASE("the village keeps its angles and fits inside the far plane") {
             CHECK(glm::length(lane) < 0.9F * farPlane);
         }
     }
+}
+
+TEST_CASE("the ridge closes the whole horizon and its foot lies deep under the eye") {
+    // The real model. Seen from a raised camera a ridge that ended beside the village was
+    // a black shape afloat in the sky, so the file is checked: in every twelfth of the
+    // way round, the upper edge is above the horizon and the foot is where the header
+    // says it is.
+    assets::ObjModel model;
+    std::string error;
+    const bool ok = assets::loadObj(
+        std::filesystem::path{NIGHT_MAZE_ASSETS_DIR} / "models" / "village.obj", model, error);
+    CAPTURE(error);
+    REQUIRE(ok);
+
+    constexpr std::size_t SECTORS = 12;
+    constexpr float SECTOR_DEGREES = 360.0F / static_cast<float>(SECTORS);
+    std::array<float, SECTORS> highest{};
+    std::array<float, SECTORS> lowest{};
+    highest.fill(-90.0F);
+    lowest.fill(90.0F);
+    for (const gfx::Vertex& vertex : model.vertices) {
+        CHECK(glm::length(vertex.position) <= game::VILLAGE_REACH);
+        const float around = glm::degrees(std::atan2(vertex.position.x, -vertex.position.z));
+        const auto sector = static_cast<std::size_t>((around + 180.0F) / SECTOR_DEGREES) % SECTORS;
+        const float elevation = elevationDegrees(vertex.position);
+        highest.at(sector) = std::max(highest.at(sector), elevation);
+        lowest.at(sector) = std::min(lowest.at(sector), elevation);
+        // Nothing lies below the foot, and what lies as deep is the foot.
+        CHECK(vertex.position.y >= doctest::Approx(-game::VILLAGE_FOOT_DEPTH));
+        if (vertex.position.y < 0.0F) {
+            CHECK(glm::length(glm::vec2{vertex.position.x, vertex.position.z}) ==
+                  doctest::Approx(game::VILLAGE_FOOT_DISTANCE).epsilon(0.001));
+        }
+    }
+    const float foot =
+        -glm::degrees(std::atan2(game::VILLAGE_FOOT_DEPTH, game::VILLAGE_FOOT_DISTANCE));
+    for (std::size_t sector = 0; sector < SECTORS; ++sector) {
+        CAPTURE(sector);
+        CHECK(highest.at(sector) > 0.5F);
+        CHECK(lowest.at(sector) == doctest::Approx(foot).epsilon(0.001));
+    }
+}
+
+TEST_CASE("no camera of the game sees the foot of the ridge: it stays in the fog") {
+    // What the composite pass does with the pixel of the foot (game::fogAmountAt), for
+    // the far plane and the fog the game starts with, at every height of the eye up to
+    // VILLAGE_CLEAR_EYE_HEIGHT.
+    const game::FogSettings fog;
+    const glm::vec3 foot{
+        game::villageMatrix(Direction::North, scene::Camera{}.farPlane) *
+        glm::vec4{0.0F, -game::VILLAGE_FOOT_DEPTH, -game::VILLAGE_FOOT_DISTANCE, 1.0F}};
+    for (int half = 0; half <= static_cast<int>(game::VILLAGE_CLEAR_EYE_HEIGHT * 2.0F); ++half) {
+        const glm::vec3 eye{0.0F, static_cast<float>(half) * 0.5F, 0.0F};
+        CHECK(game::fogAmountAt(fog, eye, eye + foot) > 0.99F);
+    }
+
+    // The cameras of the game stay below that height: the glide, at every moment of its
+    // round, over the largest maze the debug window builds (40 by 40 cells, the hard level
+    // has 22 by 22), and the reveal.
+    const game::MazeWorld world = game::buildMazeWorld(40, 40, 1U);
+    game::MenuCameraSettings glide;
+    glide.shot = game::MenuShot::HighGlide;
+    for (int second = 0; second < 300; second += 5) {
+        const float height =
+            game::menuCameraPose({}, world, glide, static_cast<float>(second)).eye.y;
+        CHECK(height > game::WALL_HEIGHT);
+        CHECK(height < game::VILLAGE_CLEAR_EYE_HEIGHT / 2.0F);
+    }
+    CHECK(game::VILLAGE_REVEAL_HEIGHT < game::VILLAGE_CLEAR_EYE_HEIGHT / 2.0F);
 }
 
 TEST_CASE("the elevation of the debug window lifts the village") {
