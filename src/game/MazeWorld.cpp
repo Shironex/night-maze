@@ -142,6 +142,17 @@ void placeOnTerrain(MazeWorld& world, const Heightmap& heightmap, float heightSc
     placeInteractablesOnTerrain(world.interactables, terrain);
 }
 
+std::vector<MazeCell> flaskCells(const MazeWorld& world, int wantedCount) {
+    // The flasks know the crystals: a flask never lies in the cell of one. The dead end
+    // of the heartstone is taken in the same way, so it is handed over as one more cell
+    // that holds something.
+    std::vector<CrystalSpawn> taken = world.crystals;
+    if (world.heartstone) {
+        taken.push_back({.cell = *world.heartstone});
+    }
+    return placeFlasks(world.maze, world.seed, START_CELL, world.exitCell, taken, wantedCount);
+}
+
 MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed,
                          const InteractableSettings& interactables, int crystalCount) {
     // A new heightmap is flat, so the height scale does not matter.

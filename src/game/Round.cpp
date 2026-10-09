@@ -152,15 +152,8 @@ Round startRound(const MazeWorld& world, const GameplaySettings& settings) {
 
     round.hasHeartstone = world.heartstone.has_value();
 
-    // The flasks, in the cells the seed of the maze gives them. They know the crystals:
-    // a flask never lies in the cell of one. The dead end of the heartstone is taken in
-    // the same way, so it is handed over as one more cell that holds something.
-    std::vector<CrystalSpawn> taken = world.crystals;
-    if (world.heartstone) {
-        taken.push_back({.cell = *world.heartstone});
-    }
-    for (const MazeCell cell : placeFlasks(world.maze, world.seed, START_CELL, world.exitCell,
-                                           taken, settings.flaskCount)) {
+    // The flasks, in the cells the seed of the maze gives them (flaskCells).
+    for (const MazeCell cell : flaskCells(world, settings.flaskCount)) {
         round.flasks.push_back({.cell = cell});
     }
 

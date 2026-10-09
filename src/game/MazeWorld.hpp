@@ -181,6 +181,12 @@ constexpr float FOOTPRINT_MARGIN = 0.05F;
 /// The height of the ground at the centre of a cell of the world.
 float groundHeightAt(const MazeWorld& world, MazeCell cell);
 
+/// The cells of the flasks of a world, for a round with wantedCount of them
+/// (game::placeFlasks): no flask lies in the cell of a crystal or of the heartstone. A
+/// round with fewer flasks gets the first cells of the same list, so the cells for
+/// game::MAX_FLASK_COUNT are every cell a flask of this world can ever lie in.
+std::vector<MazeCell> flaskCells(const MazeWorld& world, int wantedCount);
+
 /// Builds the terrain of the world from the heightmap and puts everything on it: the
 /// walls, the pillars and the gate are lowered to the lowest ground under them, their
 /// matrices and collision boxes follow (the box of the stile with its wall), and the start, the
