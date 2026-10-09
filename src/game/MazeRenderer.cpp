@@ -1,4 +1,4 @@
-// MazeRenderer: draws the walls and the pillars of a maze with their models.
+// MazeRenderer: draws the walls, the pillars and the stile of a maze with their models.
 #include "game/MazeRenderer.hpp"
 
 #include "assets/AssetCache.hpp"
@@ -19,6 +19,11 @@ namespace {
 // Model files, relative to the assets directory.
 constexpr const char* WALL_MODEL_FILE = "models/wall_straight.obj";
 constexpr const char* PILLAR_MODEL_FILE = "models/wall_pillar.obj";
+
+// The stile of the start cell: the wall with the notch and the steps, which is drawn in
+// place of the wall model on one segment, and the post beside it (game/Stile.hpp).
+constexpr const char* STILE_MODEL_FILE = "models/stile.obj";
+constexpr const char* STILE_POST_MODEL_FILE = "models/stile_post.obj";
 
 // The models of the two shaped looks, Crowned and Broken, in the order of WallVariant.
 // They follow the painted looks in the enum.
@@ -42,7 +47,8 @@ constexpr std::array<WallTextureFiles, PAINTED_WALL_VARIANT_COUNT> WORN_WALL_TEX
 
 MazeRenderer::MazeRenderer(assets::AssetCache& assets)
     : m_wall(assets.model(core::assetPath(WALL_MODEL_FILE))),
-      m_pillar(assets.model(core::assetPath(PILLAR_MODEL_FILE))) {
+      m_pillar(assets.model(core::assetPath(PILLAR_MODEL_FILE))),
+      m_stilePost(assets.model(core::assetPath(STILE_POST_MODEL_FILE))) {
     if (m_wall == nullptr || m_wall->parts.empty()) {
         return;
     }
@@ -78,6 +84,14 @@ MazeRenderer::MazeRenderer(assets::AssetCache& assets)
             m_wallLooks[i + 1 + PAINTED_WALL_VARIANT_COUNT].model = shaped;
         }
     }
+
+    // The stile is one more shape of the plain stone. Without its model the wall under
+    // it is drawn like any other.
+    m_stileLook = plain;
+    const assets::LoadedModel* stile = assets.model(core::assetPath(STILE_MODEL_FILE));
+    if (stile != nullptr && !stile->parts.empty()) {
+        m_stileLook.model = stile;
+    }
 }
 
 void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world,
@@ -98,11 +112,19 @@ void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world,
             wallVariants ? std::min(wallMatrices.size(), world.wallVariants.size()) : 0;
         for (std::size_t i = 0; i < wallMatrices.size(); ++i) {
             const WallVariant variant = i < withLook ? world.wallVariants[i] : WallVariant::Plain;
-            const WallLook& look = m_wallLooks.at(static_cast<std::size_t>(variant));
+            // The stile is not a look that can be switched off: its collision box stands
+            // there whatever is drawn.
+            const WallLook& look = world.stileWall == i
+                                       ? m_stileLook
+                                       : m_wallLooks.at(static_cast<std::size_t>(variant));
             drawMesh(shader, look.model->mesh, *look.color, *look.normalMap, tint, wallMatrices[i]);
         }
     }
     drawModel(shader, m_pillar, world.pillarMatrices);
+    // The post of the stile stands where its wall stands.
+    if (world.stileWall && *world.stileWall < wallMatrices.size()) {
+        drawModel(shader, m_stilePost, wallMatrices.subspan(*world.stileWall, 1));
+    }
 }
 
 } // namespace game
