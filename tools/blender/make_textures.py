@@ -1,6 +1,6 @@
 # Generates the textures of the game into assets/textures: the colour pictures
 # wall_stone.png, wall_cracked.png, wall_mossy.png, wall_damaged.png, ground.png,
-# gate_wood.png, crystal.png, lever_iron.png, lever_brass.png, note_paper.png,
+# gate_wood.png, splinter.png, lever_iron.png, lever_brass.png, note_paper.png,
 # flask.png, shade.png and lantern.png, and one normal map for each of them (the same
 # name with _normal). All twenty-six are 512 x 512 pixels, 8 bits per channel, RGB.
 #
@@ -12,11 +12,12 @@
 # the stones and planks divide the image evenly, the noise is smoothed with wrap-around,
 # and the distances between the cells of the crystal and to the stones of the ground are
 # measured across the edges.
-# The exceptions are note_paper.png, flask.png, shade.png and lantern.png: the model of
-# the note shows the whole picture exactly once, so its ink lines do not have to continue
-# across the edges, the pictures of the flask and of the shade go once around their models,
-# so only their left and right edges meet, and the lantern only uses a small piece from
-# the middle of each half of its picture.
+# The exceptions are note_paper.png, flask.png, shade.png, lantern.png and splinter.png:
+# the model of the note shows the whole picture exactly once, so its ink lines do not have
+# to continue across the edges, the pictures of the flask and of the shade go once around
+# their models, so only their left and right edges meet, the lantern only uses a small
+# piece from the middle of each half of its picture, and the splinter a strip down the
+# middle of each half of its picture, so there only the top and bottom edges meet.
 # Their noise still wraps around, because it comes from the same helpers.
 #
 # A colour picture and its normal map are made from the same pattern (the same stones, the
@@ -67,6 +68,9 @@ FLASK_SEED = 101
 SHADE_SEED = 103
 LANTERN_IRON_SEED = 107
 LANTERN_GLASS_SEED = 109
+# The fracture of a splinter is the pattern of CRYSTAL_SEED. This seed places the craters
+# of its rind.
+SPLINTER_RIND_SEED = 127
 
 # The wall model is 3 m high and one repeat of the texture is 2 m, so the lower 1 m of
 # the picture (courses 0 to 3) is seen twice on a wall: at the bottom and again at the
@@ -96,6 +100,13 @@ SHADE_FACE_COLUMN = 384
 SHADE_FACE_HALF_WIDTH = 62
 # The hem of the cloak is frayed and darker below this row.
 SHADE_HEM_ROW = 70
+
+# The rind of a splinter, the left half of its picture. The models (build_splinter.py)
+# show 1.5 pixels per millimetre, so the craters are 0.7 to 2.7 cm across. The colour is
+# a dark grey on purpose: see build_splinter_textures.
+SPLINTER_CRATER_COUNT = 46
+SPLINTER_CRATER_RADIUS = (5.0, 20.0)
+SPLINTER_RIND_COLOR = (0.27, 0.265, 0.25)
 
 # The stones that are missing in the damaged wall, as (course, stone in the course).
 # Both lie in the courses that are seen once, at 1.0 m and at 1.5 m above the ground,
@@ -1280,26 +1291,8 @@ def build():
     )
     save_png(normal_map(gate_height), "gate_wood_normal.png")
 
-    # Crystal: pale turquoise cells with lighter veins. The game adds its own glow and a
-    # turquoise light, so the picture itself stays light.
-    crystal = crystal_pattern(seed=CRYSTAL_SEED, cell_count=28)
-    crystal_picture = crystal_color(
-        crystal,
-        vein_width=3,
-        crystal_color=(0.60, 0.90, 0.86),
-        vein_color=(0.80, 0.97, 0.95),
-    )
-    save_png(crystal_picture, "crystal.png")
-
-    # The relief of the crystal: shallow veins and gently tilted cells.
-    crystal_relief = crystal_height(
-        crystal,
-        bevel_width=6,
-        vein_depth=1.0,
-        tilt=0.06,
-        bump_depth=4.0,
-    )
-    save_png(normal_map(crystal_relief), "crystal_normal.png")
+    # The two pictures of the splinters the player collects, in a function of their own.
+    build_splinter_textures()
 
     # The textures of the lever, the note and the flask. They are in a function of their
     # own, so they can also be made without writing the pictures above again.
@@ -1463,6 +1456,95 @@ def build_lantern_textures():
 
     save_png(color, "lantern.png")
     save_png(normal_map(height), "lantern_normal.png")
+
+
+def build_splinter_textures():
+    """Writes the texture of the moon splinters with its normal map.
+
+    To make only these two pictures, run from the repository root (one line):
+      blender --background --factory-startup --python-expr "import sys;
+      sys.path.append('tools/blender'); import make_textures;
+      make_textures.build_splinter_textures()"
+
+    The picture has two halves, like the one of the lantern, and the model gives every
+    side a piece from the middle of one of them (see build_splinter.py): the left half is
+    the rind, the old surface of the moon, and the right half the fracture.
+
+    The fracture is pale and the rind is dark, and that difference decides what glows.
+    The game multiplies the colour of a surface with one glow value for the whole model
+    (uEmissive in lit.frag), so the fracture shines turquoise and the rind stays a strip
+    of dim stone, which the flashlight shows as the grey it is.
+    """
+    half = SIZE // 2
+    y, x = np.mgrid[0:SIZE, 0:SIZE]
+
+    # The fracture: pale turquoise cells with lighter veins, like the facets inside
+    # a crystal. The game adds its own glow and a turquoise light, so the picture itself
+    # stays light.
+    fracture = crystal_pattern(seed=CRYSTAL_SEED, cell_count=28)
+    fracture_picture = crystal_color(
+        fracture,
+        vein_width=3,
+        crystal_color=(0.60, 0.90, 0.86),
+        vein_color=(0.80, 0.97, 0.95),
+    )
+    # Its relief: shallow veins and gently tilted cells.
+    fracture_relief = crystal_height(
+        fracture,
+        bevel_width=6,
+        vein_depth=1.0,
+        tilt=0.06,
+        bump_depth=4.0,
+    )
+
+    # The rind: grey dust with soft lighter and darker patches. Its own random generator,
+    # so the numbers of the other textures stay what they are.
+    rng = np.random.default_rng(SPLINTER_RIND_SEED)
+    patches = smooth_noise(rng, 10)
+    grain = smooth_noise(rng, 1)
+
+    # The craters. Each is a bowl with a raised lip around it: `bowl` is 1 in the middle
+    # of a crater and 0 at its edge, `lip` is 1 on the edge and fades to both sides.
+    # A crater that crosses the top edge continues at the bottom, and one that crosses the
+    # side of the half continues at its other side, so no crater is cut off.
+    centre_x = rng.uniform(0.0, half, SPLINTER_CRATER_COUNT)
+    centre_y = rng.uniform(0.0, SIZE, SPLINTER_CRATER_COUNT)
+    low, high = SPLINTER_CRATER_RADIUS
+    # Squaring the random number makes small craters common and large ones rare.
+    radius = low + (high - low) * rng.random(SPLINTER_CRATER_COUNT) ** 2
+    bowl = np.zeros((SIZE, SIZE))
+    lip = np.zeros((SIZE, SIZE))
+    crater_relief = np.zeros((SIZE, SIZE))
+    for index in range(SPLINTER_CRATER_COUNT):
+        dx = (x - centre_x[index] + half / 2) % half - half / 2
+        dy = (y - centre_y[index] + SIZE / 2) % SIZE - SIZE / 2
+        distance = np.sqrt(dx * dx + dy * dy) / radius[index]
+        this_bowl = np.clip(1.0 - distance * distance, 0.0, 1.0)
+        this_lip = np.exp(-(((distance - 1.0) / 0.2) ** 2))
+        bowl = np.maximum(bowl, this_bowl)
+        lip = np.maximum(lip, this_lip)
+        # In pixels of height: the depth of a bowl and the height of its lip grow with
+        # its radius, so a large crater is not a shallow dish.
+        crater_relief += radius[index] * (0.12 * this_lip - 0.30 * this_bowl)
+
+    # The floor of a crater is darker and its lip lighter, the way the real ones look
+    # under a high sun.
+    shade = (0.80 + 0.40 * patches) * (0.90 + 0.20 * grain)
+    shade = shade * (1.0 - 0.45 * bowl) * (1.0 + 0.30 * lip * (1.0 - bowl))
+    rind_picture = np.clip(shade[..., None] * np.array(SPLINTER_RIND_COLOR), 0.0, 1.0)
+    rind_relief = (
+        crater_relief
+        + 6.0 * (blur(patches, BUMP_BLUR_RADIUS) - 0.5)
+        + 0.8 * (blur(grain, GRAIN_BLUR_RADIUS) - 0.5)
+    )
+
+    # The columns of the left half take the rind.
+    is_rind = x < half
+    color = np.where(is_rind[..., None], rind_picture, fracture_picture)
+    height = np.where(is_rind, rind_relief, fracture_relief)
+
+    save_png(color, "splinter.png")
+    save_png(normal_map(height), "splinter_normal.png")
 
 
 if __name__ == "__main__":
