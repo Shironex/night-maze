@@ -94,10 +94,14 @@ std::unique_ptr<LoadedSound> loadSound(ma_engine& engine, ma_sound_group& group,
         return nullptr;
     }
 
-    // Decoded straight into the format the engine mixes in (32 bit floats, its number
-    // of channels and its sample rate), so nothing has to be converted while a sound
-    // plays. miniaudio allocates the samples and tells how many frames they are (one
-    // frame is one sample per channel).
+    // Decoded straight into the sample format and the sample rate the engine mixes in
+    // (32 bit floats, the rate of the device), so the costly conversion is done once.
+    // The number of channels is left as the file has it (the 0 below): a mono sound on
+    // a device with eight loudspeakers would otherwise be held eight times. The engine
+    // spreads the channels of a sound over the ones of the device while it mixes, which
+    // is a copy per sample. miniaudio allocates the samples, tells how many frames they
+    // are (one frame is one sample per channel) and writes the channels it found into
+    // the configuration.
     //
     // What this means for a loop: a device mostly runs at another sample rate than the
     // files have, and the conversion starts from silence, so the first few converted
@@ -106,9 +110,8 @@ std::unique_ptr<LoadedSound> loadSound(ma_engine& engine, ma_sound_group& group,
     // that began at a loud sample would tick there on every round. So the file of
     // a loop has to begin where its wave crosses 0 (tools/make_sounds.py puts the seam
     // there, and tests/AudioEngineTests.cpp measures the result).
-    const ma_uint32 channels = ma_engine_get_channels(&engine);
     ma_decoder_config decoderConfig =
-        ma_decoder_config_init(ma_format_f32, channels, ma_engine_get_sample_rate(&engine));
+        ma_decoder_config_init(ma_format_f32, 0, ma_engine_get_sample_rate(&engine));
     ma_uint64 frameCount = 0;
     void* frames = nullptr;
     ma_result result =
@@ -117,6 +120,7 @@ std::unique_ptr<LoadedSound> loadSound(ma_engine& engine, ma_sound_group& group,
         error = std::string("it cannot be decoded (") + ma_result_description(result) + ")";
         return nullptr;
     }
+    const ma_uint32 channels = decoderConfig.channels;
 
     auto loaded = std::make_unique<LoadedSound>();
     // The samples are copied into a vector of ours, which releases them by itself, and
