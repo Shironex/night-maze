@@ -105,16 +105,17 @@ def camera(name, seed, shot, at):
 # in the middle of its walk. The two exceptions: the one picture OF the shade is the run
 # "shade", and the run "intro" plays the intro (the switch --intro).
 RUNS = [
-    # The main menu over its video, then the settings screen: Tab four times goes from
-    # the first entry (the campaign) over "Nights", "Tonight's hedge" and "Free play" to
-    # "Settings". The day beside "Tonight's hedge" is the fixed one of a run with
+    # The main menu over its video, then the settings screen: Tab five times goes from
+    # the first entry (the campaign) over "Nights", "Ledger", "Tonight's hedge" and
+    # "Free play" to "Settings". The day beside "Tonight's hedge" is the fixed one of a run with
     # a switch, so the picture is the same on every day. --calm
     # changes nothing in these two pictures (no round is started): it is there so that
     # no run but "shade" can ever have a shade. A picture of a night of the campaign would
     # start with --night <1..5> in place of --play (no such picture is taken yet).
     Run("menu", ["--calm", "--seed", "76"], {"difficulty": "normal", "master_volume": 100}, [
         ("wait", 2.0), ("pointer_out",), ("grab", "menu"),
-        ("tap", "TAB"), ("tap", "TAB"), ("tap", "TAB"), ("tap", "TAB"), ("tap", "ENTER"),
+        ("tap", "TAB"), ("tap", "TAB"), ("tap", "TAB"), ("tap", "TAB"), ("tap", "TAB"),
+        ("tap", "ENTER"),
         ("wait", 1.0),
         ("pointer_out",), ("grab", "settings")]),
     # A corridor with a crystal glowing in front of the lit wall at its end.
