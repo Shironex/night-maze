@@ -45,6 +45,7 @@ Status words: `accepted (date)` means the code does this today. `superseded by <
 - [the-shade-hood](the-shade-hood.md): night sky in the hood, brighter as it burns, empty sleeves, torn hem
 - [calm-night](calm-night.md): a switch without the shade
 - [campaign-of-five-nights](campaign-of-five-nights.md): own table of nights
+- [village-on-the-ridge](village-on-the-ridge.md): drawn with the sky, real depth, lit night by night
 - [tonights-hedge](tonights-hedge.md): a maze a day, the date is the seed
 - [story-notes-in-order](story-notes-in-order.md): lines read nearest first
 - [lamplighters-ledger](lamplighters-ledger.md): the lines whose note was opened, as codes in one settings line

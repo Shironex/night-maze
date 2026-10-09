@@ -16,7 +16,7 @@ Limits read from the code, which every line below respects:
 - Seven sound cues exist: FlashlightOn, FlashlightOff, FlashlightDead, LowBatteryPulse, CrystalPickup, LeverPull, GateOpen. Anything else is a new sound file.
 - Maze sizes that are tested: 10, 16 and 22 cells a side. The author of the difficulty table estimates that about 24 is the ceiling (moon shadow texel, far plane of the glide).
 
-Words used only in text, with no model behind them: "the village", "the lamps", "chalk". Showing any of them would need new code and new art. This design never shows them. "The stile" has a model since: a step stile in the north border wall of the start cell, with an empty hook where the lamp hung (`docs/decisions/the-stile.md`).
+Words used only in text, with no model behind them: "the lamps", "chalk". Showing any of them would need new code and new art. This design never shows them. "The stile" has a model since: a step stile in the north border wall of the start cell, with an empty hook where the lamp hung (`docs/decisions/the-stile.md`). "The village" has one since too: it stands on the far rim of the hollow, beyond the gate, where the lane leaves the hollow and goes down, and every night that is won lights a part of it (`docs/decisions/village-on-the-ridge.md`).
 
 ---
 

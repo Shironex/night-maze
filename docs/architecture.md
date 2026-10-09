@@ -115,7 +115,7 @@ Render, once (`NightMazeApp::onRender`, then `DebugNightMazeApp::onRender`):
 4. Blend the eye position, build the view and projection matrices, cast the picking ray (`pickForFrame`, `handleInteraction`).
 5. Shadow maps: `drawMoonShadowMap` and `drawFlashlightShadowMap` draw the shadow casters with `assets/shaders/shadow_depth.vert` into two depth textures.
 6. Scene, into the HDR framebuffer (`PostProcess::beginScene`): `LightRig::upload` fills the uniform buffer of the lights, `drawMaze` draws terrain, walls, gate, flasks, shade, crystals, levers and notes with `assets/shaders/lit.frag` (or `assets/shaders/gouraud.frag`, or `assets/shaders/textured.frag` in the unlit and debug views), then `drawGrass` uses `assets/shaders/grass.geom`.
-7. Reflections: `drawReflections` draws the crystals, the night in the hood of the shade and the puddles with `assets/shaders/reflect.frag`, which samples the sky cubemap. The skybox itself comes last (`assets/shaders/skybox.frag`).
+7. Reflections: `drawReflections` draws the crystals, the night in the hood of the shade and the puddles with `assets/shaders/reflect.frag`, which samples the sky cubemap. Then `drawVillage` draws the village on the ridge with `assets/shaders/textured.frag`, centred on the eye like the sky but with real depth. The skybox itself comes last (`assets/shaders/skybox.frag`).
 8. Bloom: `PostProcess::drawBloom` runs `assets/shaders/post/bright.frag` and then `assets/shaders/post/blur.frag` back and forth over half size targets.
 9. Composite: `PostProcess::composite` draws to the window with `assets/shaders/post/composite.frag`. Fog, bloom, exposure, tone mapping, vignette and sRGB encoding all happen in this one pass.
 10. The map, while its key is held: `drawMinimap` (`assets/shaders/post/minimap.frag`, then `assets/shaders/post/minimap_overlay.frag`).
@@ -130,7 +130,7 @@ flowchart TD
     background["MenuBackgroundRenderer draw"]
     shadows["Shadow maps: moon, then flashlight"]
     scene["Scene into HDR framebuffer: drawMaze, drawGrass"]
-    reflect["drawReflections, then skybox"]
+    reflect["drawReflections, the village, then skybox"]
     bloom["PostProcess drawBloom: bright pass, blur"]
     composite["PostProcess composite: fog, bloom, tone mapping, vignette, sRGB"]
     map["drawMinimap, while the map key is held"]
@@ -156,10 +156,11 @@ flowchart TD
 | `Nights` | list of the five nights | `StartNight` to `NightCard`; `BackToMenu`, `Escape` |
 | `NewCampaign` | question before a finished campaign is replaced | `BeginCampaign` to `CampaignIntro`; `StartNight`; `BackToMenu`, `Escape` |
 | `NightCard` | title card of a night or of the maze of the day | `CardFinished`, `Escape` to `Playing` |
-| `Playing` | the round runs | `Escape`, `FocusLost` to `Paused`; `RoundWon` to `RoundEnd`; `CampaignWon` to `EndingCard` |
+| `Playing` | the round runs | `Escape`, `FocusLost` to `Paused`; `RoundWon` to `RoundEnd`; `CampaignWon` to `VillageBeat` |
 | `Paused` | pause menu over the round | `Resume`, `Restart`, `Escape` to `Playing`; `OpenLedger`; `OpenSettings`; `BackToMenu` |
 | `RoundEnd` | result of a won round | `Restart`, `NewMaze` to `Playing`; `BackToMenu`, `Escape` |
-| `EndingCard` | four lines after the last night | `CardFinished`, `Escape` to `MainMenu` |
+| `VillageBeat` | the village with its last window, after the last night | `CardFinished`, `Escape` to `EndingCard` |
+| `EndingCard` | four lines after the village | `CardFinished`, `Escape` to `MainMenu` |
 | `SettingsFromMenu`, `SettingsFromPause` | the same document, remembering where back leads | `CloseSettings`, `Escape` |
 | `LedgerFromMenu`, `LedgerFromPause` | the lamplighter's ledger: every story line that was read, remembering where back leads | `CloseSettings`, `Escape` |
 | `Quitting` | the window closes | nothing |
@@ -177,6 +178,7 @@ The rules are in `game_logic`, as header and source pairs with tests:
 - Enemy: `src/game/Shade.hpp`.
 - Campaign, intro and difficulty: `Campaign.hpp`, `Intro.hpp`, `Difficulty.hpp`.
 - The ledger: `Ledger.hpp` (the set of story lines that were read, its codes in the settings file, the set of a file from before the ledger, the groups and the counter of the page).
+- The village on the ridge: `Village.hpp` (its side, its matrix, the camera that rises to show it after a won night). How many nights of it are lit is `villageNightsLit` in `Campaign.hpp`.
 - The maze of the day: `Daily.hpp` (the date as a seed and as text, the best time of a day, the line beside the menu entry). The date comes in as a parameter. Only the application asks the clock.
 - Settings and input: `Settings.hpp`, `KeyBindings.hpp`, `StartOptions.hpp` (the command line).
 - Sound: `SoundCues.hpp` decides which sound belongs to what happened.
