@@ -2,6 +2,16 @@
 
 Release notes for Night Maze, newest first.
 
+## 0.14.1 (2026-10-09)
+
+The settings screen fits the window again.
+
+### What's new
+
+- The settings screen fits inside the window at every window size and in fullscreen. In 0.14.0 the new music slider made the Settings panel too tall, and its bottom edge was cut off below the key hint.
+- The Settings panel and the Controls panel now line up: they start and end at the same height, their titles stand on one line, and the pair sits in the middle of the height of the window. Before, the Controls panel sat higher.
+- The rows of the Settings panel are a little closer together. The sliders, the switch, the window size buttons and the keys work as before.
+
 ## 0.14.0 (2026-10-09)
 
 The maze looks and sounds like the story now, and it has a theme, a ledger, a daily hedge and a village to light.
