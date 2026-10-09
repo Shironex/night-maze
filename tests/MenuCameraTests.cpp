@@ -244,18 +244,29 @@ TEST_CASE("the path keeps its distance from every wall, every pillar and the gat
         constexpr float MIN_STILE_CLEARANCE = 0.3F;
         REQUIRE(world.stileWall.has_value());
         const std::span<const scene::Aabb> boxes{world.colliders};
+        // The stone sheep are the other exception. One that lies along a wall on the
+        // side of the lane is passed at 0.25 m, and it is 0.6 m high: the camera looks
+        // over it from the height of the eyes.
+        constexpr float MIN_SHEEP_CLEARANCE = 0.2F;
+        const std::size_t wallsAndPillars = world.walls.size() + world.pillars.size();
+        REQUIRE(boxes.size() == wallsAndPillars + world.sheep.size() + 1U);
 
         float nearest = MIN_CLEARANCE * 10.0F;
         float nearestToStile = nearest;
+        float nearestToSheep = nearest;
         for (const glm::vec3& point : path.points) {
-            for (const scene::Aabb& box : boxes.first(boxes.size() - 1)) {
+            for (const scene::Aabb& box : boxes.first(wallsAndPillars)) {
                 nearest = std::min(nearest, groundDistance(point, box));
+            }
+            for (const game::StoneSheep& sheep : world.sheep) {
+                nearestToSheep = std::min(nearestToSheep, groundDistance(point, sheep.box));
             }
             nearest = std::min(nearest, groundDistance(point, world.gateBox));
             nearestToStile = std::min(nearestToStile, groundDistance(point, boxes.back()));
         }
         CHECK(nearest >= MIN_CLEARANCE);
         CHECK(nearestToStile >= MIN_STILE_CLEARANCE);
+        CHECK(nearestToSheep >= MIN_SHEEP_CLEARANCE);
     }
 }
 

@@ -5,6 +5,7 @@
 #include "game/Interactables.hpp"
 #include "game/Maze.hpp"
 #include "game/MazeLayout.hpp"
+#include "game/StoneSheep.hpp"
 #include "game/Terrain.hpp"
 #include "game/WallVariants.hpp"
 #include "scene/Collider.hpp"
@@ -91,7 +92,8 @@ struct MazeWorld {
     std::vector<glm::mat4> pillarMatrices;
 
     /// The obstacles that never change: the box of every wall, then of every pillar, then
-    /// the one box of the stile (game::stileBox). The gate is not in this list, because
+    /// of every stone sheep (in the order of sheep), then the one box of the stile
+    /// (game::stileBox), which is always the last. The gate is not in this list, because
     /// it stops being an obstacle when it opens: the obstacle list of a round is built by
     /// game::roundObstacles.
     std::vector<scene::Aabb> colliders;
@@ -154,6 +156,11 @@ struct MazeWorld {
     /// The look of every wall (plain, painted or shaped), chosen from the seed
     /// (game::chooseWallVariants). Same order as walls.
     std::vector<WallVariant> wallVariants;
+
+    /// The stone sheep of the maze, chosen from its seed after everything else
+    /// (game::placeStoneSheep), standing on the terrain, and a model matrix for each.
+    std::vector<StoneSheep> sheep;
+    std::vector<glm::mat4> sheepMatrices;
 };
 
 /// Camera yaw, in degrees, that looks in the given direction: 0 for North (-Z), 90 for
@@ -177,7 +184,8 @@ float groundHeightAt(const MazeWorld& world, MazeCell cell);
 /// Builds the terrain of the world from the heightmap and puts everything on it: the
 /// walls, the pillars and the gate are lowered to the lowest ground under them, their
 /// matrices and collision boxes follow (the box of the stile with its wall), and the start, the
-/// exit, the exit zone, the levers and the notes are moved to the height of the ground. Nothing
+/// exit, the exit zone, the levers, the notes and the stone sheep are moved to the height of the
+/// ground. Nothing
 /// moves sideways, so the plan of the maze and every collision in the horizontal plane stay as they
 /// were.
 ///

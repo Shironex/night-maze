@@ -103,7 +103,8 @@ std::vector<GrassTuft> placeGrass(const MazeWorld& world, float density);
 /// the last one every lamplighter walked through. The bare ground is one of the signs
 /// that tell the exit from an ordinary dead end. A maze without a gate has none of that.
 /// The other bare place is the ground in front of the stile of the start cell
-/// (game::stileWornGround), in a world that has one (MazeWorld::stileWall).
+/// (game::stileWornGround), in a world that has one (MazeWorld::stileWall). And no grass
+/// grows under a stone sheep (game::stoneSheepBareGround).
 bool grassIsTrampled(const MazeWorld& world, float x, float z);
 
 } // namespace game

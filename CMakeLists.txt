@@ -213,6 +213,8 @@ add_library(game_logic STATIC
     src/game/StartOptions.hpp
     src/game/Stile.cpp
     src/game/Stile.hpp
+    src/game/StoneSheep.cpp
+    src/game/StoneSheep.hpp
     src/game/Terrain.cpp
     src/game/Terrain.hpp
     src/game/Vignette.cpp
@@ -478,6 +480,7 @@ add_executable(night_maze_tests
     tests/SoundCueTests.cpp
     tests/StartOptionsTests.cpp
     tests/StileTests.cpp
+    tests/StoneSheepTests.cpp
     tests/TangentTests.cpp
     tests/TerrainTests.cpp
     tests/TransformTests.cpp

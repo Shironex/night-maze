@@ -38,7 +38,8 @@ TEST_CASE("yawTowards follows the compass of the camera") {
     CHECK(game::yawTowards(game::Direction::West) == 270.0F);
 }
 
-TEST_CASE("a maze world has one matrix and one box per wall and pillar, and the box of the stile") {
+TEST_CASE("a maze world has one matrix and one box per wall, pillar and sheep, and the box of the "
+          "stile") {
     constexpr int WIDTH = 7;
     constexpr int HEIGHT = 4;
     constexpr std::uint32_t SEED = 9;
@@ -54,7 +55,9 @@ TEST_CASE("a maze world has one matrix and one box per wall and pillar, and the 
 
     CHECK(world.wallMatrices.size() == world.walls.size());
     CHECK(world.pillarMatrices.size() == world.pillars.size());
-    CHECK(world.colliders.size() == world.walls.size() + world.pillars.size() + 1U);
+    CHECK(world.sheepMatrices.size() == world.sheep.size());
+    CHECK(world.colliders.size() ==
+          world.walls.size() + world.pillars.size() + world.sheep.size() + 1U);
 }
 
 TEST_CASE("the same size and seed give the same maze world") {

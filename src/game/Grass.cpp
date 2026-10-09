@@ -6,6 +6,7 @@
 #include "game/MazeLayout.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/Stile.hpp"
+#include "game/StoneSheep.hpp"
 #include "game/Terrain.hpp"
 
 #include <array>
@@ -130,6 +131,10 @@ bool grassIsTrampled(const MazeWorld& world, float x, float z) {
     // In front of the stile, where every night begins.
     if (world.stileWall && *world.stileWall < world.walls.size() &&
         stileWornGround(world.walls[*world.stileWall], x, z)) {
+        return true;
+    }
+    // Under a stone sheep: grass does not grow through stone.
+    if (stoneSheepBareGround(world, x, z)) {
         return true;
     }
     // A maze of one cell has no gate, so nobody walks up to one.

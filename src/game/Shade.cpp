@@ -695,7 +695,9 @@ ShadeEvents advanceShade(Shade& shade, const ShadeSettings& settings, const Maze
 
     float reach = shadeSpeed(shade.hunt, settings) * stepSeconds;
     if (sees && own == playerCell) {
-        // The same cell: nothing stands inside a cell, so straight at the player.
+        // The same cell: straight at the player. The only thing that stands inside a cell
+        // is a stone sheep, tucked against a wall, and the shade has no collision box: it
+        // can brush one on this last step, and it can never be held up by one.
         shade.target = own;
         shade.position = walkTowards(shade.position, step.playerFeet, reach);
     } else if (walkToGoal(shade, maze, step.openedWalls, reach)) {

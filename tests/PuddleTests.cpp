@@ -17,6 +17,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -399,12 +400,19 @@ TEST_CASE("no puddle reaches a wall, a pillar or the gate") {
     REQUIRE(puddles.size() > 40U);
 
     // The feet of the walls and the pillars are a little wider than their boxes
-    // (FOOTPRINT_MARGIN), so the rim has to stay that far away from every box.
+    // (FOOTPRINT_MARGIN), so the rim has to stay that far away from every box. The boxes
+    // of the walls and the pillars are the first of the list. The stone sheep after them
+    // are not asked here: a puddle in every free cell, as this test places them, is more
+    // than the game ever has, and the sheep keep out of the cells that have one at the
+    // usual share (StoneSheepTests.cpp).
     bool clearOfBoxes = true;
     bool clearOfGate = true;
+    const std::span<const scene::Aabb> wallsAndPillars =
+        std::span<const scene::Aabb>{world.colliders}.first(world.walls.size() +
+                                                            world.pillars.size());
     for (const game::Puddle& puddle : puddles) {
         const float needed = puddle.radius + game::FOOTPRINT_MARGIN;
-        for (const scene::Aabb& box : world.colliders) {
+        for (const scene::Aabb& box : wallsAndPillars) {
             clearOfBoxes = clearOfBoxes &&
                            distanceToFootprint(box, puddle.center.x, puddle.center.z) >= needed;
         }

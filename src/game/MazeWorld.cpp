@@ -111,7 +111,16 @@ void placeOnTerrain(MazeWorld& world, const Heightmap& heightmap, float heightSc
         world.pillarMatrices.push_back(placedAt(position));
     }
     world.colliders = colliderBoxes(world.walls, world.pillars);
-    // The box of the stile comes last, so box number i still belongs to wall number i.
+    // The stone sheep stand on the ground under their middle. Their boxes come after the
+    // pillars, so box number i still belongs to wall number i.
+    world.sheepMatrices.clear();
+    for (StoneSheep& sheep : world.sheep) {
+        sheep.position.y = terrain.heightAt(sheep.position.x, sheep.position.z);
+        sheep.box = stoneSheepBox(sheep.position, sheep.facing);
+        world.sheepMatrices.push_back(stoneSheepMatrix(sheep));
+        world.colliders.push_back(sheep.box);
+    }
+    // The box of the stile comes last.
     if (world.stileWall && *world.stileWall < world.walls.size()) {
         world.colliders.push_back(stileBox(world.walls[*world.stileWall]));
     }
@@ -202,6 +211,8 @@ MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed, const Height
     }
     // The looks of the walls come last: a wall with a lever or a note on it stays plain.
     world.wallVariants = chooseWallVariants(maze, seed, START_CELL, world.interactables);
+    // The stone sheep come after everything: they only take cells that are still empty.
+    world.sheep = placeStoneSheep(world);
 
     // The heights: the terrain, and everything above standing on it.
     placeOnTerrain(world, heightmap, heightScale);

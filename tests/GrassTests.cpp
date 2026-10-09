@@ -45,13 +45,14 @@ game::MazeWorld testWorld() {
     return game::buildMazeWorld(WIDTH, HEIGHT, SEED, roughHeightmap(), 1.0F);
 }
 
-// The same world with no trampled ground in front of its exit and of its stile: a maze
-// without a gate and without a stile has none (game::grassIsTrampled). The tests that
-// count the tufts of every wall use it, because the trampled ground takes some of those
-// tufts away again.
+// The same world with no trampled ground in front of its exit and of its stile, and no
+// bare ground under a stone sheep: a maze without a gate, without a stile and without
+// sheep has none (game::grassIsTrampled). The tests that count the tufts of every wall
+// use it, because the bare ground takes some of those tufts away again.
 game::MazeWorld withoutTrampledGround(game::MazeWorld world) {
     world.hasGate = false;
     world.stileWall.reset();
+    world.sheep.clear();
     return world;
 }
 

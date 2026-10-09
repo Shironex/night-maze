@@ -81,7 +81,8 @@ void forEveryWorld(Check check) {
 // The box of the stile of a world: the last of its fixed obstacles.
 scene::Aabb stileBoxOf(const game::MazeWorld& world) {
     REQUIRE(world.stileWall.has_value());
-    REQUIRE(world.colliders.size() == world.walls.size() + world.pillars.size() + 1U);
+    REQUIRE(world.colliders.size() ==
+            world.walls.size() + world.pillars.size() + world.sheep.size() + 1U);
     return world.colliders.back();
 }
 
@@ -325,7 +326,7 @@ TEST_CASE("the box of the stile follows its wall onto the terrain") {
     // A world without a stile has no box for it.
     world.stileWall.reset();
     game::placeOnTerrain(world, roughHeightmap(), 3.0F);
-    CHECK(world.colliders.size() == world.walls.size() + world.pillars.size());
+    CHECK(world.colliders.size() == world.walls.size() + world.pillars.size() + world.sheep.size());
 }
 
 TEST_CASE("the ground in front of the steps is worn, the ground around it is not") {
