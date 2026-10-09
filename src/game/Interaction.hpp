@@ -135,10 +135,11 @@ constexpr float HIGHLIGHT_MAX_GLOW = 2.4F;
 /// pulse per second (a full turn is 6.28).
 constexpr float HIGHLIGHT_PULSE_SPEED = 5.0F;
 
-// The models. All three follow one convention (tools/blender/build_lever.py and
-// build_note.py): the origin is the middle of the back, the point fixed to the wall,
+// The models. All of them follow one convention (tools/blender/build_lever.py and
+// build_chalk.py): the origin is the middle of the back, the point fixed to the wall,
 // the back lies in the plane z = 0 and the model stands out along +Z. That is the model
-// of something on the NORTH wall of a cell: it reaches south, into the cell.
+// of something on the NORTH wall of a cell: it reaches south, into the cell. Its +X is
+// the right hand side of someone who stands in the cell and looks at the wall.
 
 /// The pivot the handle of a lever turns around lies this far in front of the wall face,
 /// in metres, in the middle of the plate. It has to match the housing of the model
@@ -160,6 +161,33 @@ constexpr float LEVER_HANDLE_DOWN_DEGREES = 55.0F;
 /// vertical axis so that its +Z points away from the wall on the given side of the
 /// cell, into the cell.
 glm::mat4 mountModelMatrix(const glm::vec3& position, Direction side);
+
+/// How far the chalk arrow of a hint is turned in the plane of its wall, in degrees,
+/// counter clockwise for someone who looks at the wall: 0 points to the right, 90 up,
+/// 180 to the left, 270 down. towards is where the hint points (game::noteLean) and side
+/// the side of the cell the note hangs on.
+///
+/// The reader faces the wall, and the chalk ignores walls:
+///   - a direction with a part along the wall, a diagonal too, leans that way: to the
+///     right or to the left. That is a way the reader can turn and walk,
+///   - straight through the wall is up, straight away from it (behind the reader) down,
+///   - Here is down as well: what the hint names lies in the cell of the reader.
+float chalkArrowDegrees(Compass towards, Direction side);
+
+/// The light a chalk mark gives off by itself, as a linear colour for the uniform
+/// uEmissive. The chalk is ground from a splinter, so it glows a little, in the colour
+/// of the splinters: enough to be found in a corridor without the lamp, far too little
+/// to light the wall around it. It multiplies the pale picture of the chalk like a light
+/// does (see HIGHLIGHT_MIN_GLOW), and it is below the weakest highlight, so a mark the
+/// player points at still gets brighter.
+constexpr glm::vec3 CHALK_GLOW{0.16F, 0.26F, 0.25F};
+
+/// Where the chalk crook beside a lever is drawn: this far to the right of the middle of
+/// the lever for someone who looks at the wall, in metres (a negative number is to the
+/// left), at the height of the lever. The pick box of the lever ends 0.15 m from its
+/// middle and the crook is 0.11 m wide, so the two never touch, and a wall is 2 m wide.
+/// No note hangs in the cell of a lever.
+constexpr float CHALK_CROOK_OFFSET = -0.32F;
 
 /// Model matrix of the handle of a lever: the handle model with its origin in the
 /// pivot (LEVER_PIVOT_DEPTH in front of lever.position), tilted between

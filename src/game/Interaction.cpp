@@ -123,6 +123,54 @@ glm::mat4 mountModelMatrix(const glm::vec3& position, Direction side) {
     return transform.matrix();
 }
 
+float chalkArrowDegrees(Compass towards, Direction side) {
+    // The steps of the compass direction on the grid: East is +1 column, South +1 row.
+    int columns = 0;
+    int rows = 0;
+    switch (towards) {
+    case Compass::Here:
+        break;
+    case Compass::North:
+        rows = -1;
+        break;
+    case Compass::NorthEast:
+        columns = 1;
+        rows = -1;
+        break;
+    case Compass::East:
+        columns = 1;
+        break;
+    case Compass::SouthEast:
+        columns = 1;
+        rows = 1;
+        break;
+    case Compass::South:
+        rows = 1;
+        break;
+    case Compass::SouthWest:
+        columns = -1;
+        rows = 1;
+        break;
+    case Compass::West:
+        columns = -1;
+        break;
+    case Compass::NorthWest:
+        columns = -1;
+        rows = -1;
+        break;
+    }
+
+    // The step towards the wall is (columnStep, rowStep). Turned a quarter clockwise
+    // seen from above it is the right hand of the reader: (-rowStep, columnStep). In
+    // front of the north wall (0, -1) that is (1, 0), east.
+    const int toTheRight = columns * -rowStep(side) + rows * columnStep(side);
+    const int throughTheWall = columns * columnStep(side) + rows * rowStep(side);
+    if (toTheRight != 0) {
+        return toTheRight > 0 ? 0.0F : 180.0F;
+    }
+    return throughTheWall > 0 ? 90.0F : 270.0F;
+}
+
 glm::mat4 leverHandleMatrix(const Lever& lever, float handleProgress) {
     // The pivot: from the point on the wall face straight into the cell. The step
     // towards the wall is (columnStep, 0, rowStep), so into the cell is its opposite.

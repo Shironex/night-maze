@@ -1,4 +1,5 @@
-// InteractableRenderer: draws the levers and the notes of a maze with their models.
+// InteractableRenderer: draws the levers and the notes of a maze with their models, and
+// the chalk crook beside every lever.
 #include "game/InteractableRenderer.hpp"
 
 #include "assets/AssetCache.hpp"
@@ -10,7 +11,10 @@
 #include "game/ShaderUniforms.hpp"
 #include "gfx/Shader.hpp"
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <cstddef>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -18,13 +22,17 @@ namespace game {
 
 namespace {
 
-// Model files, relative to the assets directory. All three have their origin in the
+// Model files, relative to the assets directory. All of them have their origin in the
 // middle of their back, the point fixed to the wall, and stand out along +Z (see
 // game/Interaction.hpp). The handle is a model of its own, because it is the one part
 // that moves: its origin is the pivot it turns around.
 constexpr const char* LEVER_PLATE_MODEL_FILE = "models/lever.obj";
 constexpr const char* LEVER_HANDLE_MODEL_FILE = "models/lever_handle.obj";
-constexpr const char* NOTE_MODEL_FILE = "models/note.obj";
+// The chalk marks: flat strokes 3 mm in front of the wall (tools/blender/build_chalk.py).
+// A note is a lamp (a line of the story) or an arrow (a hint), the crook marks a lever.
+constexpr const char* CHALK_LAMP_MODEL_FILE = "models/chalk_lamp.obj";
+constexpr const char* CHALK_ARROW_MODEL_FILE = "models/chalk_arrow.obj";
+constexpr const char* CHALK_CROOK_MODEL_FILE = "models/chalk_crook.obj";
 
 // Draws a model once. drawModel takes a list of matrices. A span made of a pointer and
 // a count of 1 is a list with this one matrix in it.
@@ -37,14 +45,16 @@ void drawOne(const gfx::Shader& shader, const assets::LoadedModel* model, const 
 InteractableRenderer::InteractableRenderer(assets::AssetCache& assets)
     : m_leverPlate(assets.model(core::assetPath(LEVER_PLATE_MODEL_FILE))),
       m_leverHandle(assets.model(core::assetPath(LEVER_HANDLE_MODEL_FILE))),
-      m_note(assets.model(core::assetPath(NOTE_MODEL_FILE))) {}
+      m_chalkLamp(assets.model(core::assetPath(CHALK_LAMP_MODEL_FILE))),
+      m_chalkArrow(assets.model(core::assetPath(CHALK_ARROW_MODEL_FILE))),
+      m_chalkCrook(assets.model(core::assetPath(CHALK_CROOK_MODEL_FILE))) {}
 
 void InteractableRenderer::draw(const gfx::Shader& shader, const MazeWorld& world,
                                 const Round& round, const PickState& pick,
                                 const glm::vec3& highlight) const {
     setModelSamplers(shader);
 
-    // Iron and paper give off no light. Only the picked one glows: the highlight.
+    // Iron gives off no light. Only the picked lever glows: the highlight.
     constexpr glm::vec3 NO_GLOW{0.0F};
 
     const std::vector<Lever>& levers = world.interactables.levers;
@@ -61,11 +71,34 @@ void InteractableRenderer::draw(const gfx::Shader& shader, const MazeWorld& worl
         drawOne(shader, m_leverHandle, leverHandleMatrix(levers[i], leverHandleProgress(round, i)));
     }
 
+    // The crook beside every lever: a sign, not a thing to use, so it is never the
+    // picked one. It lies on the same wall face, moved sideways.
+    shader.setVec3(EMISSIVE_UNIFORM, CHALK_GLOW);
+    for (const Lever& lever : levers) {
+        drawOne(shader, m_chalkCrook,
+                glm::translate(mountModelMatrix(lever.position, lever.mount.side),
+                               {CHALK_CROOK_OFFSET, 0.0F, 0.0F}));
+    }
+
+    // A hint leans towards what it names now, so the crystals that are left are asked
+    // for in every frame, like for the text of the card.
+    const std::vector<MazeCell> crystalCells = remainingCrystalCells(world, round);
+
     const std::vector<Note>& notes = world.interactables.notes;
     for (std::size_t i = 0; i < notes.size(); ++i) {
         const bool picked = pick.action == Interaction::ReadNote && pick.picked.index == i;
-        shader.setVec3(EMISSIVE_UNIFORM, picked ? highlight : NO_GLOW);
-        drawOne(shader, m_note, mountModelMatrix(notes[i].position, notes[i].mount.side));
+        shader.setVec3(EMISSIVE_UNIFORM, picked ? highlight : CHALK_GLOW);
+
+        const glm::mat4 onWall = mountModelMatrix(notes[i].position, notes[i].mount.side);
+        const std::optional<Compass> lean = noteLean(notes[i], world.exitCell, crystalCells);
+        if (!lean) {
+            // A line of the story, or a hint with nothing left to point at.
+            drawOne(shader, m_chalkLamp, onWall);
+            continue;
+        }
+        // The arrow is turned around the axis that stands on the wall (+Z of the model).
+        const float turn = glm::radians(chalkArrowDegrees(*lean, notes[i].mount.side));
+        drawOne(shader, m_chalkArrow, glm::rotate(onWall, turn, {0.0F, 0.0F, 1.0F}));
     }
 
     // Back to black for whatever is drawn next with this program.

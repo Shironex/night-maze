@@ -663,3 +663,52 @@ TEST_CASE("the handle of a lever turns around its pivot: up before the pull, dow
         CHECK(inside(box, transformPoint(down, tip)));
     }
 }
+
+TEST_CASE("the chalk arrow of a hint leans along its wall, or points up and down") {
+    using game::Compass;
+    using game::Direction;
+
+    // In front of the north wall the right hand is east.
+    CHECK(game::chalkArrowDegrees(Compass::East, Direction::North) == 0.0F);
+    CHECK(game::chalkArrowDegrees(Compass::North, Direction::North) == 90.0F);
+    CHECK(game::chalkArrowDegrees(Compass::West, Direction::North) == 180.0F);
+    CHECK(game::chalkArrowDegrees(Compass::South, Direction::North) == 270.0F);
+
+    // In front of the east wall the right hand is south, in front of the south wall
+    // west, and in front of the west wall north.
+    CHECK(game::chalkArrowDegrees(Compass::South, Direction::East) == 0.0F);
+    CHECK(game::chalkArrowDegrees(Compass::East, Direction::East) == 90.0F);
+    CHECK(game::chalkArrowDegrees(Compass::West, Direction::South) == 0.0F);
+    CHECK(game::chalkArrowDegrees(Compass::North, Direction::South) == 270.0F);
+    CHECK(game::chalkArrowDegrees(Compass::North, Direction::West) == 0.0F);
+    CHECK(game::chalkArrowDegrees(Compass::East, Direction::West) == 270.0F);
+
+    // A diagonal leans along the wall, whether it goes through the wall or away from it.
+    CHECK(game::chalkArrowDegrees(Compass::NorthEast, Direction::North) == 0.0F);
+    CHECK(game::chalkArrowDegrees(Compass::SouthEast, Direction::North) == 0.0F);
+    CHECK(game::chalkArrowDegrees(Compass::NorthWest, Direction::North) == 180.0F);
+    CHECK(game::chalkArrowDegrees(Compass::NorthEast, Direction::East) == 180.0F);
+
+    // What lies in the cell of the reader is behind the reader.
+    for (const Direction side : game::ALL_DIRECTIONS) {
+        CHECK(game::chalkArrowDegrees(Compass::Here, side) == 270.0F);
+    }
+}
+
+TEST_CASE("a hint leans where its text points, and a story line leans nowhere") {
+    const game::MazeCell exit{.x = 9, .z = 1};
+    game::Note note;
+    note.mount = {.cell = {.x = 5, .z = 5}, .side = game::Direction::North};
+
+    note.kind = game::NoteKind::ExitHint;
+    CHECK(game::noteLean(note, exit, {}) == game::Compass::NorthEast);
+
+    note.kind = game::NoteKind::CrystalHint;
+    const std::vector<game::MazeCell> crystals = {{.x = 0, .z = 5}, {.x = 5, .z = 7}};
+    CHECK(game::noteLean(note, exit, crystals) == game::Compass::South);
+    // No crystal is left: the card has a line of its own and nothing to point at.
+    CHECK_FALSE(game::noteLean(note, exit, {}).has_value());
+
+    note.kind = game::NoteKind::Flavour;
+    CHECK_FALSE(game::noteLean(note, exit, crystals).has_value());
+}
