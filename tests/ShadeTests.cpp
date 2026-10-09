@@ -790,6 +790,17 @@ TEST_CASE("the hood is dim at rest and flares up at the end of the burn") {
     CHECK(game::shadeHoodBrightness(2.0F) == doctest::Approx(game::SHADE_HOOD_BURNED_BRIGHTNESS));
 }
 
+TEST_CASE("the stars in the hood flare on the same curve, from nothing") {
+    CHECK(game::shadeHoodStarBoost(0.0F) == 0.0F);
+    CHECK(game::shadeHoodStarBoost(0.5F) ==
+          doctest::Approx(game::SHADE_HOOD_BURNED_STAR_BOOST / 4.0F));
+    CHECK(game::shadeHoodStarBoost(1.0F) == doctest::Approx(game::SHADE_HOOD_BURNED_STAR_BOOST));
+    CHECK(game::shadeHoodStarBoost(-1.0F) == 0.0F);
+    CHECK(game::shadeHoodStarBoost(2.0F) == doctest::Approx(game::SHADE_HOOD_BURNED_STAR_BOOST));
+    // The stars gain more than the sky between them: that is what reads as stars.
+    CHECK(game::SHADE_HOOD_BURNED_STAR_BOOST > game::SHADE_HOOD_BURNED_BRIGHTNESS);
+}
+
 TEST_CASE("the beam burns the shade away: it reappears far from the player and is quiet") {
     const game::Maze maze = corridor(30);
     const std::vector<scene::Aabb> walls = game::mazeColliders(maze);

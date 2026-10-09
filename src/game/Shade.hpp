@@ -464,10 +464,20 @@ float shadeBurnProgress(const Shade& shade, const ShadeSettings& settings);
 /// touched, SHADE_HOOD_BURNED_BRIGHTNESS right before the banish. In between it follows
 /// the square of the progress (shadeBurnProgress, clamped to 0..1), so the hood stays
 /// dark through the first half of the burn and flares up in the last: the 2.5 seconds
-/// can be seen running out, and a shade at rest is still a dark figure.
+/// can be seen running out, and a shade at rest is still a dark figure. The empty sky
+/// between the stars rises only this little: from the far end of the beam the hood is
+/// a few pixels that seldom hold a star, and the burn has to show there too.
 constexpr float SHADE_HOOD_REST_BRIGHTNESS = 0.6F;
-constexpr float SHADE_HOOD_BURNED_BRIGHTNESS = 9.0F;
+constexpr float SHADE_HOOD_BURNED_BRIGHTNESS = 3.0F;
 float shadeHoodBrightness(float burnProgress);
+
+/// How much the stars in the hood are lifted above the sky around them: what a texel of
+/// the sky is brighter than empty sky is added this many times more (uStarBoost of
+/// reflect.frag). 0 at rest, SHADE_HOOD_BURNED_STAR_BOOST right before the banish, on
+/// the same curve as shadeHoodBrightness. This is what makes the burn read as stars
+/// that flare, and not as a lamp behind blue glass.
+constexpr float SHADE_HOOD_BURNED_STAR_BOOST = 10.0F;
+float shadeHoodStarBoost(float burnProgress);
 
 /// What the shade is doing (ShadeState): the first state of that list that holds.
 ShadeState shadeState(const Shade& shade);

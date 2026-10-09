@@ -527,6 +527,11 @@ float shadeHoodBrightness(float burnProgress) {
            (SHADE_HOOD_BURNED_BRIGHTNESS - SHADE_HOOD_REST_BRIGHTNESS) * progress * progress;
 }
 
+float shadeHoodStarBoost(float burnProgress) {
+    const float progress = std::clamp(burnProgress, 0.0F, 1.0F);
+    return SHADE_HOOD_BURNED_STAR_BOOST * progress * progress;
+}
+
 ShadeState shadeState(const Shade& shade) {
     if (shade.quietLeft > 0.0F) {
         return ShadeState::Banished;
