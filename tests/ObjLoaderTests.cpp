@@ -1018,6 +1018,67 @@ TEST_CASE("loadObj: splinter_a.obj and splinter_b.obj") {
     }
 }
 
+TEST_CASE("loadObj: shade.obj and shade_hollow.obj") {
+    // The two models the shade is drawn with: the cloth, and the faces that show the night
+    // (the hollow of the hood and the two cuffs). The cloth: 12 bands of 16 sides without
+    // the 8 of the hollow, the tip of the hood, the two lowest bands once more from inside,
+    // and two sleeves of 12 sides with a lid. The hollow: those 8 sides and two cuffs.
+    struct Part {
+        std::string file;
+        std::size_t triangles;
+    };
+    for (const Part& part : {Part{.file = "shade.obj", .triangles = 502U},
+                             Part{.file = "shade_hollow.obj", .triangles = 24U}}) {
+        CAPTURE(part.file);
+        // Not through loadGameModel, for the same reason as the flask: slanted faces.
+        assets::ObjModel model;
+        std::string error;
+        const bool ok = assets::loadObj(modelsDirectory() / part.file, model, error);
+        CAPTURE(error);
+        REQUIRE(ok);
+        CHECK(model.unknownLineCount == 0U);
+        for (const gfx::Vertex& vertex : model.vertices) {
+            CHECK(glm::length(vertex.normal) == doctest::Approx(1.0F).epsilon(0.001));
+        }
+
+        // One material, the cloth, for both: the hollow wears its dark patch wherever the
+        // game shows no sky on it.
+        REQUIRE(model.parts.size() == 1U);
+        CHECK(model.parts[0].material == "shade");
+        REQUIRE(model.materials.size() == 1U);
+        CHECK(model.materials[0].diffuseTexture.filename() == "shade.png");
+        CHECK(model.materials[0].normalTexture.filename() == "shade_normal.png");
+        CHECK(std::filesystem::exists(model.materials[0].diffuseTexture));
+        CHECK(std::filesystem::exists(model.materials[0].normalTexture));
+        CHECK(model.indices.size() == part.triangles * 3U);
+
+        // The faces that look into the cloak and the sleeves are not mirror images: the
+        // normal map of the cloth is right on them.
+        CHECK(model.mirroredTriangleCount == 0U);
+    }
+
+    // The cloth: 2.1 m tall as the rules take the shade to be, a tenth of a metre into
+    // the ground, and no wider than the 0.9 m at which it has caught the player.
+    assets::ObjModel cloth;
+    std::string error;
+    REQUIRE(assets::loadObj(modelsDirectory() / "shade.obj", cloth, error));
+    const Bounds clothBounds = boundsOf(cloth);
+    CHECK(clothBounds.min.y == doctest::Approx(-0.1F));
+    CHECK(clothBounds.max.y == doctest::Approx(2.1F));
+    CHECK(clothBounds.min.x > -0.55F);
+    CHECK(clothBounds.max.x < 0.55F);
+
+    // The hollow lies inside the outline of the cloth: the back of the hood between 1.69
+    // and 1.92 m, and the cuffs at the knees.
+    assets::ObjModel hollow;
+    REQUIRE(assets::loadObj(modelsDirectory() / "shade_hollow.obj", hollow, error));
+    const Bounds hollowBounds = boundsOf(hollow);
+    CHECK(hollowBounds.max.y == doctest::Approx(1.92F));
+    CHECK(hollowBounds.min.y > 0.6F);
+    CHECK(hollowBounds.min.x > clothBounds.min.x);
+    CHECK(hollowBounds.max.x < clothBounds.max.x);
+}
+
 TEST_CASE("loadObj: material libraries and texture paths of files written by the test") {
     // A scratch directory of its own, removed again at the end of the test case.
     const std::filesystem::path directory =
