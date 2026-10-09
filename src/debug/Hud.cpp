@@ -6,6 +6,7 @@
 #include "debug/HudRules.hpp"
 #include "debug/Theme.hpp"
 #include "game/Campaign.hpp"
+#include "game/Daily.hpp"
 #include "game/Interaction.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/Player.hpp"
@@ -21,6 +22,7 @@
 #include <cfloat>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <string>
 #include <string_view>
@@ -713,11 +715,14 @@ void drawHintLine(Canvas canvas, const game::Round& round, const game::Player& p
 
 // The name of the night at the top left, for the first seconds of a night of the
 // campaign: "NIGHT 2" as a small label and its title under it. playedNight is the night
-// in play, or 0 for free play, which has no name.
-void drawNightName(Canvas canvas, const game::Round& round, int playedNight) {
+// in play, or 0 for free play, which has no name. The maze of the day (playedDaily, its
+// day or 0) is named the same way: "TONIGHT'S HEDGE" and its day under it.
+void drawNightName(Canvas canvas, const game::Round& round, int playedNight,
+                   std::uint32_t playedDaily) {
     // A round that started again after a catch is not the start of the night: it shows
     // the caught line, and the name stays away (NIGHT_NAME_SECONDS).
-    if (playedNight == 0 || round.caughtLine != game::NO_CAUGHT_LINE) {
+    const bool daily = playedDaily != game::NO_DAILY_DATE;
+    if ((playedNight == 0 && !daily) || round.caughtLine != game::NO_CAUGHT_LINE) {
         return;
     }
     // The time of the round stands still under the title card of the night, so it is
@@ -730,7 +735,9 @@ void drawNightName(Canvas canvas, const game::Round& round, int playedNight) {
 
     // "Night 2" in capital letters, like the other small labels. toupper wants its
     // letter as an unsigned char.
-    std::string label = game::campaignNightLabel(playedNight);
+    std::string label = daily ? game::DAILY_NAME : game::campaignNightLabel(playedNight);
+    const std::string title =
+        daily ? game::dailyDateText(playedDaily) : game::campaignNight(playedNight).title;
     for (char& letter : label) {
         letter = static_cast<char>(std::toupper(static_cast<unsigned char>(letter)));
     }
@@ -741,7 +748,7 @@ void drawNightName(Canvas canvas, const game::Round& round, int playedNight) {
     const float titleTop =
         corner.y + (LABEL_FONT_SIZE * LINE_HEIGHT + NIGHT_NAME_LINE_GAP) * canvas.scale;
     drawText(canvas, {corner.x, titleTop + lineInset(canvas, NUMBER_FONT_SIZE)}, NUMBER_FONT_SIZE,
-             HUD_BATTERY_COLOR, game::campaignNight(playedNight).title);
+             HUD_BATTERY_COLOR, title.c_str());
 }
 
 // The card in the middle of the window, shown once the round is won. fontSize is the
@@ -893,7 +900,7 @@ void drawCaughtLine(const game::Round& round) {
 void drawHud(const game::MazeWorld& world, const game::Round& round,
              const game::GameplaySettings& settings, const game::Player& player,
              const game::PickState& pick, bool mapOnScreen, const game::KeyBindings& keys,
-             int playedNight) {
+             int playedNight, std::uint32_t playedDaily) {
     // One scale for every size and every distance of the HUD: it grows with the window
     // (debug::hudScale). FontScaleDpi is the scaling of the display, set by applyTheme.
     const float displayScale = ImGui::GetStyle().FontScaleDpi;
@@ -919,7 +926,7 @@ void drawHud(const game::MazeWorld& world, const game::Round& round,
                     game::flaskEffectFraction(player.stamina, player.staminaSettings),
                     round.animationSeconds);
     drawNoiseTicks(canvas, round, settings);
-    drawNightName(canvas, round, playedNight);
+    drawNightName(canvas, round, playedNight, playedDaily);
     // A sentence waits while the map is shown: its place is where the bottom edge of
     // the map is. Its time goes on, so a sentence whose time ran out under the map is
     // not shown late.

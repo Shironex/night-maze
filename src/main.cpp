@@ -134,6 +134,7 @@ protected:
             .campaignSeed = settings().campaignSeed,
             .campaignBestSeconds = settings().campaignBestSeconds,
             .playedNight = playedNight(),
+            .playedDaily = playedDaily(),
             .campaignRequest = campaignRequest(),
         });
 

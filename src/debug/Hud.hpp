@@ -43,7 +43,8 @@ namespace debug {
 ///     (debug::hintOpacity). While the map is on the screen (mapOnScreen) the sentence
 ///     is left out: the map stands in the middle of the window and reaches down to it,
 ///   - top left, for the first seconds of a night of the campaign (playedNight, 0 in
-///     free play): the number and the title of the night,
+///     free play): the number and the title of the night. The maze of the day
+///     (playedDaily, its day or 0) has its name and its day there,
 ///   - in the middle of the window, while the cursor is captured: a small crosshair,
 ///     the point the picking ray goes through. It changes when the ray points at a lever
 ///     or a note the player can use, and the prompt near the bottom of the window then
@@ -68,6 +69,6 @@ namespace debug {
 void drawHud(const game::MazeWorld& world, const game::Round& round,
              const game::GameplaySettings& settings, const game::Player& player,
              const game::PickState& pick, bool mapOnScreen, const game::KeyBindings& keys,
-             int playedNight);
+             int playedNight, std::uint32_t playedDaily);
 
 } // namespace debug
