@@ -44,9 +44,12 @@ constexpr const char* MILESTONE_MODEL_FILE = "models/milestone.obj";
 constexpr const char* FLASK_MODEL_FILE = "models/flask.obj";
 
 // The model of the shade: a hooded figure 2.1 m tall, in metres, upright, with its origin
-// on the ground under it and its front along +Z. This one name is all the code knows
-// about its look.
+// on the ground under it and its front along +Z. It comes as two files that fit into each
+// other: the cloth, and the faces the cloth is wrapped around (the hollow of the hood and
+// the openings of the two cuffs), which show the night sky. These two names are all the
+// code knows about its look.
 constexpr const char* SHADE_MODEL_FILE = "models/shade.obj";
+constexpr const char* SHADE_HOLLOW_MODEL_FILE = "models/shade_hollow.obj";
 
 } // namespace
 
@@ -55,6 +58,7 @@ GameplayRenderer::GameplayRenderer(assets::AssetCache& assets)
                  assets.model(core::assetPath(CRYSTAL_B_MODEL_FILE))},
       m_flask(assets.model(core::assetPath(FLASK_MODEL_FILE))),
       m_shade(assets.model(core::assetPath(SHADE_MODEL_FILE))),
+      m_shadeHollow(assets.model(core::assetPath(SHADE_HOLLOW_MODEL_FILE))),
       m_gate(assets.model(core::assetPath(GATE_MODEL_FILE))),
       m_gateArch(assets.model(core::assetPath(GATE_ARCH_MODEL_FILE))),
       m_gateLantern(assets.model(core::assetPath(GATE_LANTERN_MODEL_FILE))),
@@ -177,6 +181,15 @@ void GameplayRenderer::drawShade(const gfx::Shader& shader, const glm::mat4& mod
     // shape against the dark.
     shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
     drawModel(shader, m_shade, std::span<const glm::mat4>(&modelMatrix, 1));
+}
+
+void GameplayRenderer::drawShadeHollow(const gfx::Shader& shader,
+                                       const glm::mat4& modelMatrix) const {
+    setModelSamplers(shader);
+    // The night in the hood is not a glow of the surface: the reflect program shows the
+    // sky there, and every other program the dark of the picture.
+    shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
+    drawModel(shader, m_shadeHollow, std::span<const glm::mat4>(&modelMatrix, 1));
 }
 
 } // namespace game

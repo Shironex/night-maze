@@ -33,7 +33,7 @@ struct Round;
 /// object, and all positions come from the MazeWorld and the Round given to draw.
 class GameplayRenderer {
 public:
-    /// Asks the cache for the two crystal models, the flask model, the shade model, the
+    /// Asks the cache for the two crystal models, the flask model, the two shade models, the
     /// gate model and the four models that stand around the gate (the gatehouse, its
     /// lantern, its bell and the milestone).
     /// A model that fails to load is logged by the cache and simply not drawn.
@@ -86,6 +86,13 @@ public:
     /// Whether a frame has a shade at all is decided by the caller.
     void drawShade(const gfx::Shader& shader, const glm::mat4& modelMatrix) const;
 
+    /// Draws what drawShade leaves open, with the same matrix: the hollow of the hood and
+    /// the openings of the two cuffs. It is a call of its own because the scene draws
+    /// these faces with the reflect program, which shows the night sky on them, when it
+    /// has one, and with the program of the walls when it has not (they are dark cloth
+    /// then). The shadow passes call both. uEmissive is set to black.
+    void drawShadeHollow(const gfx::Shader& shader, const glm::mat4& modelMatrix) const;
+
 private:
     // Not owned. nullptr when the model could not be loaded. One crystal model per
     // variant: the number of a variant is its index here.
@@ -93,6 +100,7 @@ private:
         m_crystals;
     const assets::LoadedModel* m_flask;
     const assets::LoadedModel* m_shade;
+    const assets::LoadedModel* m_shadeHollow;
     const assets::LoadedModel* m_gate;
     const assets::LoadedModel* m_gateArch;
     const assets::LoadedModel* m_gateLantern;

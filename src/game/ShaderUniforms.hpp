@@ -215,6 +215,10 @@ constexpr const char* ENVIRONMENT_SKY_BRIGHTNESS_UNIFORM = "uSkyBrightness";
 constexpr const char* ENVIRONMENT_SKY_VISIBLE_UNIFORM = "uSkyVisible";
 constexpr const char* ENVIRONMENT_BACKGROUND_UNIFORM = "uBackground";
 
+/// reflect.frag: the angle the sky is turned by around the vertical axis before a surface
+/// shows it, in radians. 0 for everything except the hollow of the hood of the shade.
+constexpr const char* ENVIRONMENT_SKY_TURN_UNIFORM = "uSkyTurn";
+
 /// reflect.frag, how a surface shows the sky: how much of its colour is the sky (0 to
 /// 1), whether that share grows at flat angles (1, the Fresnel effect) or not (0), the
 /// share of the mirrored picture in it (the rest is the refracted one) and the ratio the

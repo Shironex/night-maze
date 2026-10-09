@@ -1,5 +1,6 @@
 #version 410 core
-// Fragment shader of the surfaces that show the sky (crystals and puddles): the lit
+// Fragment shader of the surfaces that show the sky (crystals, puddles and the hollow of
+// the hood of the shade): the lit
 // colour of the surface, blended with the sky read from the cube map in the direction
 // of the mirrored ray and of the refracted ray (environment mapping).
 
@@ -39,6 +40,13 @@ uniform float uSkyBrightness;
 // (the clear colour), and that colour is what a mirror shows then, in every direction.
 uniform bool uSkyVisible;
 uniform vec3 uBackground; // the clear colour, a linear colour
+// The angle the sky is turned by around the vertical axis before it is read, in radians.
+// 0 for the crystals and the puddles (and the value after a reload): they show the sky
+// that is there. The hollow of the hood of the shade shows the sky along the look of the
+// eye (a refraction ratio of 1 bends nothing), and unturned its stars would be exactly
+// the stars behind the figure, as if the hood were a hole. Turned, it is a piece of the
+// night that was cut out and put back crooked.
+uniform float uSkyTurn;
 
 // How much of the colour of the surface is the sky it shows, from 0 (the lit surface
 // alone) to 1 (the sky alone). With uFresnelEnabled it is the share for a look straight
@@ -111,7 +119,13 @@ vec3 environmentColor(vec3 direction) {
     if (!uSkyVisible) {
         return uBackground;
     }
-    return texture(uEnvironmentMap, direction).rgb * uSkyBrightness;
+    // A turn around the y axis by uSkyTurn: x and z turn, the height of the direction
+    // stays. With an angle of 0 this is the direction itself.
+    float turnCos = cos(uSkyTurn);
+    float turnSin = sin(uSkyTurn);
+    vec3 turned = vec3(turnCos * direction.x + turnSin * direction.z, direction.y,
+                       turnCos * direction.z - turnSin * direction.x);
+    return texture(uEnvironmentMap, turned).rgb * uSkyBrightness;
 }
 
 void main() {

@@ -917,6 +917,10 @@ private:
     // the card of the intro that shows it standing in a corridor (game::introShadeCell).
     bool m_shadeDrawn = false;
     glm::mat4 m_shadeMatrix{1.0F};
+    // How bright the night in the hood of that shade is: the brightness of the sky is
+    // multiplied by it (game::shadeHoodBrightness). It follows the burn clock of the
+    // round, and is the value of a shade at rest for the one of the intro.
+    float m_shadeHoodBrightness = SHADE_HOOD_REST_BRIGHTNESS;
     // How much the drawn shade walks, from 0 (stands) to 1 (walks). It follows the state
     // of the shade over a third of a second, so the pose never jumps (game::shadeSwayPose).
     float m_shadeWalkAmount = 0.0F;
