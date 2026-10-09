@@ -45,9 +45,9 @@ struct CategoryInfo {
 
 inline constexpr std::array<CategoryInfo, CATEGORY_COUNT> CATEGORIES = {{
     {.name = "Render",
-     .description = "Lighting mode, sky, clear colour and texture filtering.",
+     .description = "Lighting mode, sky, village, clear colour and texture filtering.",
      .icon = Icon::Render,
-     .controlCount = 8,
+     .controlCount = 10,
      .tabCount = 0,
      .tabs = {}},
     {.name = "Light",
@@ -115,9 +115,10 @@ constexpr int totalControlCount() {
 // round) 131, and the twelve sliders of the hunting shade (two speeds, four hearing
 // distances, the sight, the search time, three of the burn and the quiet time) 143,
 // and the five sliders of the gate (the glow of its lamp, the two ends of its ember, the
-// reach of its light and the wait of its bell) 148.
+// reach of its light and the wait of its bell) 148, and the switch and the elevation of
+// the village 150.
 // A control that is added or removed changes this number and the count of its category
 // above.
-static_assert(totalControlCount() == 148);
+static_assert(totalControlCount() == 150);
 
 } // namespace debug

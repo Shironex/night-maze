@@ -1,4 +1,4 @@
-// "Render" category of the debug window: lighting mode, sky, clear colour, the view of
+// "Render" category of the debug window: lighting mode, sky, village, clear colour, the view of
 // the textured shader and the texture filtering.
 #include "debug/categories/RenderCategory.hpp"
 
@@ -8,6 +8,7 @@
 #include "game/Lighting.hpp"
 #include "game/MazeRenderer.hpp"
 #include "game/Skybox.hpp"
+#include "game/Village.hpp"
 #include "gfx/Texture2D.hpp"
 
 namespace debug {
@@ -25,6 +26,11 @@ constexpr const char* FILTER_ITEMS = "Nearest\0Bilinear\0Trilinear\0";
 // a black sky. The pictures are dark, so the range goes well above 1.
 constexpr float MIN_SKY_BRIGHTNESS = 0.0F;
 constexpr float MAX_SKY_BRIGHTNESS = 6.0F;
+
+// Range of the slider that lifts or sinks the village on the ridge, in degrees. The lane
+// lies 6 degrees above the horizon by itself.
+constexpr float MIN_VILLAGE_ELEVATION = -10.0F;
+constexpr float MAX_VILLAGE_ELEVATION = 20.0F;
 
 // Anisotropy level 1 means "off", and a driver without the extension reports 1 as its
 // maximum.
@@ -54,6 +60,14 @@ void drawScene(Page& page, const DebugContext& context) {
                 MAX_SKY_BRIGHTNESS, "%.3f",
                 "How bright the sky is drawn. 1 leaves its pictures as they are, 0 is "
                 "a black sky.");
+    // The village beyond the gate, drawn with the sky.
+    page.toggle("Village", &context.village.enabled,
+                "The village on the ridge beyond the gate. It is drawn like the sky, "
+                "centred on the eye, but with real depth, so walls hide it.");
+    page.slider("Village elevation", &context.village.elevationDegrees, MIN_VILLAGE_ELEVATION,
+                MAX_VILLAGE_ELEVATION, "%.1f deg",
+                "Lifts or sinks the ridge. At 0 the lane lies 6 degrees above the horizon "
+                "and the cap of the tower near 9.");
     // data() is the address of the three floats of the array.
     page.color("Clear colour", context.clearColor.data(),
                "The background where the sky is not drawn.");

@@ -88,6 +88,7 @@ protected:
             .round = round(),
             .skyboxShader = skyboxShader(),
             .skybox = skyboxSettings(),
+            .village = villageSettings(),
             .grassShader = grassShader(),
             .terrain = terrainSettings(),
             .grass = grassSettings(),

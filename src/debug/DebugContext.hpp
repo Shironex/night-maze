@@ -42,6 +42,7 @@ struct Round;
 class ShadowMap;
 struct ShadowSettings;
 struct SkyboxSettings;
+struct VillageSettings;
 struct TerrainSettings;
 } // namespace game
 
@@ -116,6 +117,8 @@ struct DebugContext {
     gfx::Shader& skyboxShader;
     /// The switch and the brightness of the sky, editable.
     game::SkyboxSettings& skybox;
+    /// The switch and the elevation of the village on the ridge, editable.
+    game::VillageSettings& village;
     /// Shader program of the grass, editable: reloaded like texturedShader.
     gfx::Shader& grassShader;
     /// The height scale and the wireframe switch of the terrain, editable.

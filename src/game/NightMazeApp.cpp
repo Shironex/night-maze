@@ -11,6 +11,7 @@
 #include "game/GateLamp.hpp"
 #include "game/Interactables.hpp"
 #include "game/Ledger.hpp"
+#include "game/ModelDraw.hpp"
 #include "game/Puddles.hpp"
 #include "game/Shade.hpp"
 #include "game/ShaderUniforms.hpp"
@@ -495,6 +496,7 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
                       core::assetPath(REFLECT_FRAGMENT_SHADER_FILE)),
       m_mazeRenderer(m_assets),
       m_gameplayRenderer(m_assets),
+      m_villageRenderer(m_assets),
       m_interactableRenderer(m_assets),
       m_terrainRenderer(m_assets),
       m_puddleRenderer(m_assets),
@@ -520,6 +522,7 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
       // command line when one was named there. Otherwise the menu rolls one (below).
       m_newGame{.difficulty = m_settings.difficulty, .seed = options.seed},
       m_startSeed(options.seed),
+      m_toolRun(options.toolSwitch),
       m_campaignIntroPlays(campaignIntroPlays(options)),
       m_fixedDailyDate(fixedDailyDate(options)),
       m_ledgerCounts(!options.toolSwitch),
@@ -2706,6 +2709,19 @@ void NightMazeApp::onRender(double alpha) {
         drawPickLines(view, projection);
     }
 
+    // The village on the ridge, before the sky and after everything of the maze: it lies
+    // near the far plane, so the maze has already filled most of the pixels it would
+    // cover. How many nights of it are lit is a rule of the campaign. The live scene
+    // behind a menu and a maze of free play show the progress of the campaign, a night
+    // shows itself, and the intro, which tells that the lamps have gone out, shows none.
+    const bool ownNight = m_playedNight != 0 && !usesMenuCamera(m_mode);
+    const bool nightWon = m_mode == GameMode::RoundEnd || m_mode == GameMode::VillageBeat ||
+                          m_mode == GameMode::EndingCard;
+    const int nightsLit = intro ? 0
+                                : villageNightsLit(ownNight ? m_playedNight : 0, nightWon,
+                                                   m_settings.campaignNight, m_toolRun);
+    drawVillage(view, projection, frameCamera.farPlane, nightsLit, 1.0F);
+
     // The sky comes LAST, after everything that writes depth. It is drawn at the largest
     // depth and passes the depth test only where nothing else was drawn. With the walls
     // and hills already in the depth buffer, the graphics card can reject the hidden sky
@@ -3243,6 +3259,32 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
     // unit 0 back, but with no crystal left and no puddle nothing was drawn, so it is
     // put back here: the rest of the frame expects unit 0 to be the active one.
     GL_CHECK(glActiveTexture(GL_TEXTURE0));
+}
+
+void NightMazeApp::drawVillage(const glm::mat4& view, const glm::mat4& projection, float farPlane,
+                               int nightsLit, float newestStrength) const {
+    if (!m_villageSettings.enabled || !m_mazeWorld.hasGate || !m_texturedShader.isValid()) {
+        return;
+    }
+    // The state this draw relies on, said here and not taken from the pass before it: the
+    // puddles are blended and write no depth, and the village must write its depth, or
+    // the sky, drawn next at the largest depth, would paint over it.
+    GL_CHECK(glEnable(GL_DEPTH_TEST));
+    GL_CHECK(glDepthMask(GL_TRUE));
+    GL_CHECK(glDisable(GL_BLEND));
+
+    m_texturedShader.use();
+    // The view matrix without its translation, as in skybox.vert: the village is centred
+    // on the eye and never comes closer. It keeps its real depth, unlike the sky.
+    m_texturedShader.setMat4(VIEW_UNIFORM, glm::mat4{glm::mat3{view}});
+    m_texturedShader.setMat4(PROJECTION_UNIFORM, projection);
+    m_texturedShader.setInt(VIEW_MODE_UNIFORM, static_cast<int>(m_viewMode));
+    m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
+    setModelSamplers(m_texturedShader);
+    m_villageRenderer.draw(
+        m_texturedShader,
+        villageMatrix(villageSide(m_mazeWorld), farPlane, m_villageSettings.elevationDegrees),
+        nightsLit, newestStrength);
 }
 
 void NightMazeApp::drawGrass(const glm::mat4& view, const glm::mat4& projection) const {

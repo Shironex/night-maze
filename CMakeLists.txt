@@ -349,6 +349,8 @@ add_executable(night_maze
     src/game/ColliderLines.hpp
     src/game/GameplayRenderer.cpp
     src/game/GameplayRenderer.hpp
+    src/game/VillageRenderer.cpp
+    src/game/VillageRenderer.hpp
     src/game/GrassRenderer.cpp
     src/game/GrassRenderer.hpp
     src/game/InteractableRenderer.cpp

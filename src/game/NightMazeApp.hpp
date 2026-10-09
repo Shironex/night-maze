@@ -38,6 +38,7 @@
 #include "game/Terrain.hpp"
 #include "game/TerrainRenderer.hpp"
 #include "game/Village.hpp"
+#include "game/VillageRenderer.hpp"
 #include "gfx/Shader.hpp"
 #include "scene/Camera.hpp"
 #include "scene/Collider.hpp"
@@ -295,6 +296,10 @@ protected:
     /// The switch and the brightness of the sky, exposed so the debug UI can edit them
     /// live.
     SkyboxSettings& skyboxSettings() { return m_skyboxSettings; }
+
+    /// The switch and the elevation of the village on the ridge, exposed so the debug UI
+    /// can edit them live.
+    VillageSettings& villageSettings() { return m_villageSettings; }
 
     /// The settings of the lighting (mode, moon, flashlight, point lights, highlight,
     /// normal mapping), exposed so the debug UI can edit them live.
@@ -676,6 +681,14 @@ private:
     /// its end it sends GameEvent::CardFinished, which leads to the ending card.
     void updateVillageBeat();
 
+    /// Draws the village on the ridge and its lights into the scene, centred on the eye
+    /// like the sky and with real depth. view and projection are the ones of the frame,
+    /// farPlane the far plane of its camera. nightsLit and newestStrength are what
+    /// VillageRenderer::draw takes. Nothing is drawn in a maze without a gate, with the
+    /// switch of the debug UI off, or without the textured program.
+    void drawVillage(const glm::mat4& view, const glm::mat4& projection, float farPlane,
+                     int nightsLit, float newestStrength) const;
+
     /// Does what the debug UI asked of the campaign (m_campaignRequest) and clears the
     /// request. Called once per frame.
     void handleCampaignRequest();
@@ -866,6 +879,7 @@ private:
     assets::AssetCache m_assets;
     MazeRenderer m_mazeRenderer;
     GameplayRenderer m_gameplayRenderer;
+    VillageRenderer m_villageRenderer;
     InteractableRenderer m_interactableRenderer;
     TerrainRenderer m_terrainRenderer;
     GrassRenderer m_grassRenderer;
@@ -1013,6 +1027,9 @@ private:
     // Whether the sky is drawn and how bright it is.
     SkyboxSettings m_skyboxSettings;
 
+    // Whether the village on the ridge is drawn and how high it stands.
+    VillageSettings m_villageSettings;
+
     // How the crystals and the puddles show the sky (edited by the debug UI). The
     // puddles themselves are not kept: they are placed, handed to m_puddleRenderer and
     // forgotten, like the tufts of the grass.
@@ -1066,6 +1083,9 @@ private:
     // The seed of the command line (StartOptions::seed): the maze behind the main menu
     // is built from it again when the intro, which has a maze of its own, is over.
     std::uint32_t m_startSeed = DEFAULT_MAZE_SEED;
+    // StartOptions::toolSwitch: a run driven by a tool shows the village dark unless it
+    // names its night (game::villageNightsLit).
+    bool m_toolRun = false;
     // True when a campaign that is begun in this run plays the intro first
     // (game::campaignIntroPlays of the command line).
     bool m_campaignIntroPlays = true;
