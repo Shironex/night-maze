@@ -6,7 +6,7 @@
 #   python tools/make_sounds.py
 # It needs nothing but Python: only the standard library is used (no numpy, no package
 # for pictures). That is why the filters below are plain loops over lists of numbers.
-# The whole run takes a few seconds. --report takes most of a minute: the wind of the
+# The whole run takes a quarter of a minute. --report takes most of a minute: the wind of the
 # intro is half a minute long, and measuring it is far more work than making it.
 #
 # The sounds are not recordings and nothing is downloaded. Each one is computed here
@@ -28,6 +28,9 @@
 #     a BAND PASS the ones around it. Its Q says how narrow the band is: a high Q rings
 #     at the frequency, a low Q only colours the noise.
 #   - ENVELOPES: curves between 0 and 1 that shape the loudness over time.
+#
+# The sounds that happen in the maze are then set into one ROOM, a computed reverb of
+# stone walls (see in_room), each with its own amount of it.
 #
 # Rules that keep the files clean (finish() applies them to every sound):
 #
@@ -101,7 +104,9 @@ PEAK_DB = {
     "winded_breath.wav": -24.0,
     "flask_pickup.wav": -9.0,
     "shade_near.wav": -13.0,
-    "caught.wav": -10.0,
+    # (Two decibels lower since the notes die away in the room: the room fills the gaps
+    # between the two notes, and the ear hears the whole as louder.)
+    "caught.wav": -12.0,
     # The two sounds of the intro. The wind lies under spoken text (the cards) for half
     # a minute and must never be in front. Noise is far quieter to the ear than its
     # loudest sample says, so its number is not the lowest. The bell is far away.
@@ -320,6 +325,115 @@ def moving_band_pass(samples, frequencies, q):
         high = sample - low - damping * band
         band += tuning * high
         result.append(band)
+    return result
+
+
+# ---- building blocks: the room ---------------------------------------------------------------
+
+# The maze is stone: walls close by on every side. A sound made there comes back from
+# them, first as a few single echoes within a fortieth of a second, then as a dense wash
+# that dies away in about a second. That wash is REVERB, and every sound that happens in
+# the maze gets the same one, more or less of it, so they all sit in one place. The
+# clicks of the lamp get none: they happen in the hand.
+#
+# It is computed with a FEEDBACK DELAY NETWORK: eight delay lines of different lengths
+# (32 to 66 ms, no length a multiple of another, so their echoes never fall together).
+# What leaves a line is made a little duller and quieter and is fed back into all eight,
+# mixed so that no energy is added (each line gets its own output minus a quarter of
+# the sum of all: a Householder matrix). After a few rounds there are thousands of
+# echoes per second and the ear hears a room and not echoes.
+
+# The lengths of the eight lines, in samples at 44 100 per second.
+ROOM_LINES = (1423, 1637, 1873, 2087, 2281, 2477, 2683, 2903)
+# How long the wash takes to fall by 60 dB, the usual measure of a room.
+ROOM_SECONDS = 1.2
+# Stone gives the low and middle part back and air eats the high part: what goes round
+# passes a gentle low pass at this frequency every time.
+ROOM_DAMP_HZ = 3200.0
+# The first single echoes: (seconds after the sound, strength).
+ROOM_EARLY = ((0.0073, 0.5), (0.0131, -0.38), (0.0197, 0.3), (0.0271, -0.22))
+# Nothing below this frequency goes into the room: a low wash is mud, and the low end
+# belongs to the heartbeat of the battery.
+ROOM_LOW_CUT_HZ = 180.0
+
+_room_scales = {}
+
+
+def all_pass(samples, delay, gain):
+    # Smears a sound in time without changing its colour (a Schroeder all pass): every
+    # click that goes in comes out as a short train of clicks. Two of them in front of
+    # the room keep a sharp knock from coming back as a row of sharp knocks.
+    line = [0.0] * delay
+    head = 0
+    result = []
+    for sample in samples:
+        held = line[head]
+        value = sample + gain * held
+        line[head] = value
+        head = (head + 1) % delay
+        result.append(held - gain * value)
+    return result
+
+
+def room_wash(samples, count, side=0):
+    # What the room gives back for a sound, without the sound itself: count samples of
+    # it. side is 0 for the left or the only channel and 1 for the right one, whose
+    # lines are a little longer, so the wash of a stereo sound is wide.
+    feed = one_pole_high_pass(list(samples) + [0.0] * max(count - len(samples), 0),
+                              ROOM_LOW_CUT_HZ)[:count]
+    wash = [0.0] * count
+    for seconds, strength in ROOM_EARLY:
+        place(wash, feed, seconds + 0.0011 * side, strength)
+    feed = all_pass(all_pass(feed, 223 + 6 * side, 0.6), 73 + 2 * side, 0.6)
+    delays = [length + 29 * side for length in ROOM_LINES]
+    gains = [10.0 ** (-3.0 * delay / (SAMPLE_RATE * ROOM_SECONDS)) for delay in delays]
+    damp = 1.0 - math.exp(-2.0 * math.pi * ROOM_DAMP_HZ / SAMPLE_RATE)
+    lines = [[0.0] * delay for delay in delays]
+    heads = [0] * 8
+    lows = [0.0] * 8
+    taps = [0.0] * 8
+    order = range(8)
+    # The wash starts 9 ms after the sound: the way to the nearest wall and back.
+    start = count_of(0.009)
+    for i in range(start, count):
+        total = 0.0
+        for k in order:
+            low = lows[k] = lows[k] + damp * (lines[k][heads[k]] - lows[k])
+            value = taps[k] = low * gains[k]
+            total += value
+        entering = feed[i - start] - 0.25 * total
+        for k in order:
+            lines[k][heads[k]] = entering + taps[k]
+            heads[k] = (heads[k] + 1) % delays[k]
+        # Every second line counts backwards: the lines are added up without becoming
+        # one loud echo where two of them happen to agree.
+        wash[i] += 0.35 * (taps[0] - taps[1] + taps[2] - taps[3]
+                           + taps[4] - taps[5] + taps[6] - taps[7])
+    if side not in _room_scales:
+        # The strength of the room is set so that one single click comes back with
+        # exactly the energy it went in with. That makes "amount" below a plain number:
+        # how strong the room is next to the sound. Measured once per side, on a click
+        # (this very function, called with a click, which is why the entry is filled in
+        # first).
+        _room_scales[side] = 1.0
+        click = room_wash([1.0], count_of(1.5 * ROOM_SECONDS), side)
+        _room_scales[side] = 1.0 / math.sqrt(sum(value * value for value in click))
+    scale = _room_scales[side]
+    return [value * scale for value in wash]
+
+
+def in_room(channels, amount, tail_seconds=0.0):
+    # A sound set into the stone room, for each of its channels. amount is how strong
+    # the room is next to the sound itself (0.5: the wash of a click has a quarter of
+    # the energy of the click). tail_seconds makes the sound longer by that much, so
+    # the wash has time to die away after the sound is over. A sound that must keep its
+    # length gets no tail: its room is then heard under it and in its last moments.
+    result = []
+    for side, channel in enumerate(channels):
+        count = len(channel) + count_of(tail_seconds)
+        wash = room_wash(channel, count, side)
+        result.append([(channel[i] if i < len(channel) else 0.0) + amount * wash[i]
+                       for i in range(count)])
     return result
 
 
@@ -570,9 +684,10 @@ def lever_pull():
     #     straining. Quiet: it only roughens the creak.
     #   - The knock, at 0.46 s: three low stone modes and a short burst of dull noise,
     #     all behind a low pass because it happens at a distance, and once more 95 ms
-    #     later, weaker and duller, as it comes back from the walls of the maze.
+    #     later, weaker and duller, as it comes back from the walls of the maze. Under
+    #     it a low thud, and after it a short scrape of stone on stone.
     generator = random.Random(6)
-    sound = silence(0.9)
+    sound = silence(1.0)
 
     creak_count = count_of(0.42)
     slips = [0.0] * creak_count
@@ -595,6 +710,13 @@ def lever_pull():
     creak = with_level(scaled(creak, swell_curve(creak_count, 0.07, 0.11)), 0.34)
     place(sound, creak)
 
+    # The body of the lever, under the creak: the same slips through a third, lower
+    # resonance that climbs from 150 to 235 Hz. It is what makes the creak a thing of
+    # some size and not a door hinge.
+    body = biquad(moving_band_pass(slips, [150.0 + 85.0 * p for p in climb], 7.0), "low", 900.0)
+    place(sound, with_level(scaled(scaled(body, strain), swell_curve(creak_count, 0.07, 0.11)),
+                            0.2))
+
     knock_count = count_of(0.3)
     knock = modes(0.3, [(96.0, 1.0, 0.07), (163.0, 0.8, 0.045), (251.0, 0.55, 0.028)])
     dull = scaled(noise(generator, knock_count), decay_curve(knock_count, 0.012))
@@ -604,7 +726,21 @@ def lever_pull():
     knock = with_peak(one_pole_low_pass(knock, 900.0), 3.0)
     place(sound, knock, 0.46)
     place(sound, one_pole_low_pass(knock, 350.0), 0.555, 0.28)
-    return finish([sound])
+    # The thud under the knock: the weight of the slab that was let go, a thump that
+    # falls from 105 to 55 Hz. The knock is the edge of the event, this is its mass.
+    place(sound, with_peak(falling_thump(0.4, 105.0, 55.0, 0.04, 0.085), 1.6), 0.462)
+    # The scrape after it: stone sliding a hand's width over stone, 0.3 s of noise in
+    # two bands (330 and 640 Hz) whose loudness catches and comes free.
+    scrape_count = count_of(0.32)
+    raw = noise(generator, scrape_count)
+    scrape = biquad([a + 0.6 * b for a, b in zip(biquad(raw, "band", 330.0, 1.1),
+                                                biquad(raw, "band", 640.0, 1.4))], "low", 1100.0)
+    scrape = scaled(scaled(scrape, swell_curve(scrape_count, 0.05, 0.2)),
+                    [value ** 1.5 for value in wander_curve(generator, scrape_count, 22.0,
+                                                            lowest=0.15)])
+    place(sound, with_level(scrape, 0.2), 0.52)
+    # The room: the knock is the one sound of the lever that fills the maze.
+    return finish(in_room([sound], 0.45, tail_seconds=0.5), out_seconds=0.15)
 
 
 # ---- the gate --------------------------------------------------------------------------------
@@ -612,7 +748,7 @@ def lever_pull():
 
 def gate_open():
     # A slab of stone sinking into the ground. It sinks for 1.5 s (GATE_OPEN_SECONDS in
-    # src/game/Round.hpp), then the sound has a third of a second to die away.
+    # src/game/Round.hpp), then the thud has a second to die away between the walls.
     #
     #   - The drag: noise through wide band passes at 240 and 470 Hz and a weaker one
     #     at 900 Hz, stone on stone, behind a low pass. Its loudness wanders (two
@@ -623,8 +759,10 @@ def gate_open():
     #     ground. Noise and not a sine: a steady low tone would read as a machine.
     #   - The grit: sparse tiny ticks around 2 kHz, small stones crushed in the track.
     #     Very quiet. They come more often where the drag is loud.
+    #   - The groan: the slab slipping through its track, a low creak that sinks from
+    #     210 to 120 Hz while the slab slows down.
     #   - The settling thud at 1.36 s: the slab reaches the bottom. A falling thump and
-    #     two stone modes, with a burst of dull noise.
+    #     two stone modes, with a burst of dull noise, and a deeper thump under them.
     #
     # Stereo: each channel has its own drag noise and its own grit, while the wander of
     # the loudness, the rumble and the thud are the same in both, so the slab stays in
@@ -644,12 +782,36 @@ def gate_open():
     weight = [m * (0.6 + 0.4 * c) for m, c in zip(motion, catch)]
     rumble = with_level(scaled(rumble, weight), 0.6)
 
+    # The groan: the slab is held by its track and slips through it, many times per
+    # second (the stick-slip of the lever, far heavier). The slips come 34 times
+    # a second at first and 17 times at the end, and ring in two resonances that sink
+    # with them, from 210 to 120 Hz and from 420 to 260 Hz: the slab slows down as it
+    # reaches the bottom, and its voice sinks with it.
+    # (The slips have a random generator of their own, so the noise of the drag below
+    # is the one it was before the groan was added.)
+    slipping = random.Random(21)
+    slips = [0.0] * count
+    position = 0.0
+    while position < moving:
+        slips[int(position)] = slipping.uniform(0.5, 1.0)
+        rate = 34.0 - 17.0 * position / moving
+        position += SAMPLE_RATE / rate * slipping.uniform(0.8, 1.2)
+    sink = [min(i / moving, 1.0) for i in range(count)]
+    groan = [a + 0.5 * b for a, b in zip(
+        moving_band_pass(slips, [210.0 - 90.0 * p for p in sink], 8.0),
+        moving_band_pass(slips, [420.0 - 160.0 * p for p in sink], 6.0))]
+    groan = with_level(scaled(biquad(groan, "low", 1200.0),
+                              [m * (0.35 + 0.65 * c) for m, c in zip(motion, catch)]), 0.3)
+
     thud_count = count_of(0.45)
-    thud = falling_thump(0.45, 120.0, 58.0, 0.03, 0.11)
-    place(thud, modes(0.45, [(149.0, 0.5, 0.06), (228.0, 0.3, 0.04)]))
+    thud = falling_thump(0.6, 120.0, 58.0, 0.03, 0.11)
+    place(thud, modes(0.6, [(149.0, 0.5, 0.06), (228.0, 0.3, 0.04)]))
     burst = scaled(noise(generator, thud_count), decay_curve(thud_count, 0.02))
     place(thud, with_peak(biquad(burst, "low", 350.0), 0.8))
-    thud = with_peak(thud, 4.0)
+    # Under the thud the ground itself: a thump from 78 down to 41 Hz that dies away
+    # slowly. It is felt more than heard, and it is what makes the slab heavy.
+    place(thud, falling_thump(0.6, 78.0, 41.0, 0.05, 0.17), 0.004, 0.45)
+    thud = with_peak(thud, 4.6)
 
     channels = []
     for _ in range(2):
@@ -667,13 +829,17 @@ def gate_open():
                 grit[i] = generator.uniform(-1.0, 1.0)
         grit = biquad(grit, "band", 2100.0, 2.5)
         # The mix, with the drag at a loudness of 1: the rumble at a little over half
-        # of it, the grit at a thirtieth, and the thud peaking well above all of them.
+        # of it, the groan at a third, the grit at a thirtieth, and the thud peaking
+        # well above all of them. The groan, the rumble and the thud are the same in
+        # both channels.
         sound = drag
         place(sound, rumble)
+        place(sound, groan)
         place(sound, with_level(grit, 0.033))
         place(sound, thud, 1.36)
         channels.append(sound)
-    return finish(channels)
+    # The room: the thud rolls through the maze for most of a second.
+    return finish(in_room(channels, 0.4, tail_seconds=0.75), out_seconds=0.2)
 
 
 # ---- the breath of a winded player -----------------------------------------------------------
@@ -786,7 +952,9 @@ def shade_near():
     place(sound, with_level(drone, 1.0))
     place(sound, with_level(air, 0.08))
     sound = scaled(sound, swell_curve(count, 0.25, 0.33))
-    return finish([biquad(sound, "low", 900.0)])
+    # The room: 70 ms more, which keeps the file under the fastest wait between two hums.
+    return finish(in_room([biquad(sound, "low", 900.0)], 0.3, tail_seconds=0.07),
+                  out_seconds=0.05)
 
 
 def caught():
@@ -802,7 +970,11 @@ def caught():
                     swell_curve(count_of(1.15), 0.15, 0.7))
     place(sound, with_peak(first, 0.8), 0.0)
     place(sound, with_peak(second, 1.0), 0.35)
-    return finish([biquad(sound, "low", 1500.0)])
+    # The room: the two notes are let go into the maze and die away between its walls.
+    return finish(in_room([biquad(sound, "low", 1500.0)], 0.35, tail_seconds=0.5),
+                  out_seconds=0.2)
+
+
 def shade_alert():
     # The shade has noticed you and turns towards you: one short, cold sound. It must
     # not be taken for the hum (a low drone that swells), for the crystal (a struck glass
@@ -826,7 +998,9 @@ def shade_alert():
                    "band", 2500.0, 2.0)
     place(sound, with_peak(tones, 1.0), 0.0)
     place(sound, with_peak(frost, 0.12), 0.0)
-    return finish([biquad(sound, "low", 4000.0)])
+    # The room, for the 70 ms the file has left: the shade is in the maze.
+    return finish(in_room([biquad(sound, "low", 4000.0)], 0.35, tail_seconds=0.07),
+                  out_seconds=0.05)
 
 
 def shade_banish():
@@ -854,7 +1028,9 @@ def shade_banish():
     sound = silence(seconds)
     place(sound, with_peak(air, 1.0), 0.0)
     place(sound, with_peak(weight, 0.12), 0.0)
-    return finish([biquad(biquad(sound, "low", 2200.0), "high", 80.0)])
+    # The room under it: the file keeps its length of one second.
+    return finish(in_room([biquad(biquad(sound, "low", 2200.0), "high", 80.0)], 0.4),
+                  out_seconds=0.08)
 
 
 # ---- the intro: the wind and the bell --------------------------------------------------------
@@ -865,34 +1041,78 @@ def shade_banish():
 INTRO_SECONDS = 30.0
 
 
+# The layers of a wind. Wind has no tone: it is air that rushes past things, and every
+# thing it passes colours it in its own way and at its own time. So a wind is several
+# bands of noise, each from a noise of its own, and each moving on its own:
+# (name, lowest and highest centre of its band in Hz, Q, loudness next to the body,
+#  how much of its loudness is always there, how far a gust pushes its band up).
+#
+#   - The body: the "whoo", a wide band in the low middle.
+#   - The hollow: a narrower, lower band, the wind in the passages. It comes and goes.
+#   - The edge: a thin band higher up, air over the top of a wall. Quiet, and often
+#     nearly gone: when it is there the wind whistles a little.
+WIND_LAYERS = (("body", 230.0, 430.0, 1.5, 1.0, 0.6, 0.35),
+               ("hollow", 150.0, 250.0, 2.6, 0.5, 0.35, 0.2),
+               ("edge", 700.0, 1150.0, 2.2, 0.24, 0.15, 0.4))
+
+
+def wind(generator, count, movements, gust, air_frequency, air_level):
+    # A wind of count samples. movements is one curve between 0 and 1 per layer of
+    # WIND_LAYERS: where its band sits and how loud it is, independent of the others.
+    # gust is one more curve, 0 for calm and 1 for the top of a gust: a gust makes all
+    # layers louder and higher together, which is what tells the ear that the WHOLE
+    # wind picked up and not one corner of it. The air is a wide quiet band on top that
+    # only follows the gusts: it keeps the wind from sounding like something behind
+    # a door.
+    sound = [0.0] * count
+    for (_, lowest, highest, q, level, always, push), movement in zip(WIND_LAYERS, movements):
+        centres = [lowest + (highest - lowest) * min(1.0, 0.7 * m + push * g)
+                   for m, g in zip(movement, gust)]
+        loudness = [(always + (1.0 - always) * m) * (0.62 + 0.58 * g)
+                    for m, g in zip(movement, gust)]
+        layer = with_level(moving_band_pass(noise(generator, count), centres, q), level)
+        place(sound, scaled(layer, loudness))
+    air = with_level(biquad(noise(generator, count), "band", air_frequency, 0.6), air_level)
+    place(sound, scaled(air, [0.45 + 0.9 * g for g in gust]))
+    return sound
+
+
+def gust_curve(count, period, gusts):
+    # The gusts of a wind as a curve: 0, and a smooth hill for every gust. gusts is a
+    # list of (where its top lies, how wide it is, how high), the first two as parts of
+    # period. Places are counted round the period, so a curve whose period is the length
+    # of a loop ends where it begins. A gust rises faster than it falls, like a real one:
+    # the hill leans to the left.
+    curve = []
+    for i in range(count):
+        value = 0.0
+        for top, width, height in gusts:
+            away = (i / period - top + 0.5) % 1.0 - 0.5
+            reach = width * (0.38 if away < 0.0 else 0.62)
+            if abs(away) < reach:
+                value += height * (0.5 + 0.5 * math.cos(math.pi * away / reach)) ** 2
+        curve.append(min(value, 1.0))
+    return curve
+
+
 def intro_wind():
-    # Night wind over open ground, for the whole intro. Wind has no tone: it is air
-    # that rushes past things, noise whose colour and loudness move slowly.
-    #
-    #   - The body: noise through a band pass whose centre wanders between 180 and
-    #     520 Hz (a random walk with a new target every three seconds). The moving
-    #     centre is the "whoo" of wind: a gust is higher AND louder.
-    #   - The air: the same noise through a wide band around 1100 Hz, quiet. It keeps
-    #     the wind from sounding like something behind a door.
-    #   - The gusts: the loudness of both follows the same random walk as the centre,
-    #     and never falls below a third, so the bed does not drop out.
-    #   - The ground: noise below 90 Hz, steady and quiet. The size of the place.
+    # Night wind over open ground, for the whole intro: the three layers of WIND_LAYERS,
+    # each wandering on a random walk of its own (a new target every two to four
+    # seconds), the air around 1100 Hz, and five gusts of different size, at 4, 9.5,
+    # 15, 21 and 25.5 s. Under it the ground: noise below 90 Hz, steady and quiet. The
+    # size of the place.
     #
     # The fades are in the file: it rises over three seconds and falls over the last
     # four, so the wind is already going when the first card is read and gone when the
     # main menu comes in.
     generator = random.Random(10)
     count = count_of(INTRO_SECONDS)
-    raw = noise(generator, count)
-    gust = wander_curve(generator, count, 0.33, lowest=0.0)
-
-    body = moving_band_pass(raw, [180.0 + 340.0 * g for g in gust], 1.6)
-    air = biquad(raw, "band", 1100.0, 0.6)
+    movements = [wander_curve(generator, count, speed) for speed in (0.33, 0.5, 0.27)]
+    gust = gust_curve(count, count, [(4.0 / 30.0, 0.13, 0.7), (9.5 / 30.0, 0.09, 0.45),
+                                     (15.0 / 30.0, 0.16, 1.0), (21.0 / 30.0, 0.08, 0.5),
+                                     (25.5 / 30.0, 0.12, 0.75)])
+    sound = wind(generator, count, movements, gust, 1100.0, 0.22)
     ground = biquad(biquad(noise(generator, count), "low", 90.0), "high", 30.0)
-
-    loudness = [0.34 + 0.66 * g for g in gust]
-    sound = scaled(with_level(body, 1.0), loudness)
-    place(sound, scaled(with_level(air, 0.16), loudness))
     place(sound, with_level(ground, 0.22))
     sound = scaled(biquad(sound, "low", 2400.0), swell_curve(count, 3.0, 4.0))
     return finish([sound])
@@ -901,26 +1121,54 @@ def intro_wind():
 # How the partials of a church bell lie above its "prime", the note the ear names. The
 # names are the ones bell founders use: the hum an octave below, then the prime, the
 # tierce (a minor third, which is what makes a bell sound sad), the quint, the nominal
-# an octave above and two more above that. They are tuned by the founder and still are
+# an octave above and four more above that. They are tuned by the founder and still are
 # no harmonic series: that is the sound of a bell.
-BELL_PARTIALS = [(0.5, 0.55, 3.2), (1.0, 1.0, 2.4), (1.2, 0.7, 1.7), (1.5, 0.3, 1.2),
-                 (2.0, 0.55, 0.9), (2.51, 0.18, 0.55), (3.01, 0.12, 0.4)]
+#
+# Each line: (how many times the prime, strength, decay time, beats per second). The
+# last number is what makes a cast bell sound alive. No bell is perfectly round, so
+# every partial exists twice, a hair apart in pitch, and the two drift in and out of
+# step: the partial swells and sinks slowly, each one at its own speed (the WARBLE of
+# a bell). The high partials are short: they are the clang of the strike.
+BELL_PARTIALS = [(0.5, 0.55, 3.2, 0.55), (1.0, 1.0, 2.4, 0.9), (1.2, 0.7, 1.7, 1.3),
+                 (1.5, 0.3, 1.2, 1.9), (2.0, 0.55, 0.9, 1.6), (2.51, 0.18, 0.55, 2.7),
+                 (3.01, 0.12, 0.4, 3.4), (4.1, 0.08, 0.28, 4.6), (5.43, 0.05, 0.2, 6.1)]
+
+# The prime of the bell of the village: a small tower bell.
+BELL_PRIME = 311.0
+
+
+def bell(generator, seconds, lasting, start_seconds, low_pass, room):
+    # The bell of the village, as far away as the arguments say.
+    #
+    #   - The ring: every partial of BELL_PARTIALS as a pair of sine waves, the weaker
+    #     one a little higher and a little shorter. They start in step, so the strike
+    #     is the loudest moment, and each pair then beats at its own speed. lasting
+    #     stretches or shrinks every decay time.
+    #   - The strike: the clapper is metal on metal, a burst of noise of a few
+    #     milliseconds around 900 Hz. It is what tells the ear that something was HIT.
+    #     Quiet, because the bell is far away, but without it the bell is an organ note.
+    #   - Far: the ring rises over start_seconds instead of at once, and two gentle low
+    #     passes at low_pass take the brightness away. Air does that over a distance:
+    #     the high part of a sound arrives last and weakest.
+    #   - The room: the bell is heard in the maze, between its walls.
+    partials = []
+    for ratio, strength, decay, beat in BELL_PARTIALS:
+        frequency = BELL_PRIME * ratio
+        partials.append((frequency - 0.5 * beat, 0.68 * strength, decay * lasting))
+        partials.append((frequency + 0.5 * beat, 0.32 * strength, 0.9 * decay * lasting))
+    sound = with_peak(modes(seconds, partials, start_seconds=start_seconds), 1.0)
+    strike_count = count_of(0.06)
+    strike = biquad(scaled(noise(generator, strike_count), decay_curve(strike_count, 0.006)),
+                    "band", 900.0, 0.8)
+    place(sound, with_peak(strike, 0.3), 0.0)
+    sound = one_pole_low_pass(one_pole_low_pass(sound, low_pass), low_pass)
+    return in_room([sound], room)
 
 
 def intro_bell():
-    # One bell of the village, far away. The prime is at 311 Hz (a small tower bell).
-    #
-    #   - The ring: the seven partials above, each with its own strength and decay
-    #     time. The low ones ring for seconds, the high ones are gone within a second.
-    #   - Far: the strike has a slow start of 12 ms and no clapper noise at all, and
-    #     a low pass at 1500 Hz takes the brightness away. Air does that over
-    #     a distance: the high part of a sound arrives last and weakest.
-    #
-    # The file is 5.5 s long, and its end is a slow fade: the hum still rings then.
-    prime = 311.0
-    ring = modes(5.5, [(prime * ratio, strength, decay) for ratio, strength, decay in BELL_PARTIALS],
-                 start_seconds=0.012)
-    return finish([one_pole_low_pass(one_pole_low_pass(ring, 1500.0), 1500.0)], out_seconds=0.8)
+    # One bell of the village, far away, on the first and on the last card of the
+    # intro. The file is 5.5 s long, and its end is a slow fade: the hum still rings.
+    return finish(bell(random.Random(19), 5.5, 1.0, 0.008, 1900.0, 0.35), out_seconds=0.8)
 
 
 def gate_bell():
@@ -928,27 +1176,37 @@ def gate_bell():
     # intro (the same partials on the same prime of 311 Hz), heard from the maze, so it
     # is the one sound of the night the player already knows.
     #
-    #   - Shorter: every partial dies away in half the time, and the file is 2.6 s long.
-    #     The bell tolls every 6 s and is never cut off by its next toll.
-    #   - Farther: the strike takes 20 ms to arrive, and the low pass sits at 1100 Hz
-    #     instead of 1500 Hz.
+    #   - Shorter: every partial dies away in three quarters of the time, and the file
+    #     is 2.95 s long, just under the 3 s that --report allows it. The game plays a
+    #     toll on a voice of its own, so a toll that follows early does not cut it off.
+    #   - Farther: the strike takes 14 ms to arrive, the low pass sits at 1400 Hz
+    #     instead of 1900 Hz, and there is more of the room in it.
     #
-    # Its end is a slow fade, like the end of the bell of the intro. It uses no noise,
-    # so it needs no random generator.
-    prime = 311.0
-    ring = modes(2.6, [(prime * ratio, strength, 0.5 * decay)
-                       for ratio, strength, decay in BELL_PARTIALS], start_seconds=0.02)
-    return finish([one_pole_low_pass(one_pole_low_pass(ring, 1100.0), 1100.0)], out_seconds=0.5)
+    # Its end is a slow fade, like the end of the bell of the intro.
+    return finish(bell(random.Random(20), 2.95, 0.75, 0.014, 1400.0, 0.5), out_seconds=0.6)
 
 
 # ---- steps: the player and the shade ---------------------------------------------------------
 
 
+def grains(generator, count, per_second, thinning_seconds):
+    # Many tiny things breaking one after the other (grit under a sole, frozen blades
+    # of grass): single clicks at random moments, each of its own strength, many at
+    # first and fewer and fewer after thinning_seconds. Raw, they are only clicks. A
+    # band pass with a high Q turns every one into a tiny ring, the sound of one grain.
+    clicks = [0.0] * count
+    for i in range(count):
+        chance = per_second / SAMPLE_RATE * math.exp(-i / (thinning_seconds * SAMPLE_RATE))
+        if generator.random() < chance:
+            clicks[i] = generator.uniform(-1.0, 1.0)
+    return clicks
+
+
 def footstep(seed, pitch, brush_at):
-    # One step of the player on the ground of the maze: earth with grass on it. Three
-    # files are made from this function, each with its own noise, a slightly other
-    # pitch and its brush a little earlier or later, and the game plays them in turn:
-    # the same step again and again would sound like a machine.
+    # One step of the player on the ground of the maze: hard earth with frozen grass on
+    # it. Three files are made from this function, each with its own noise, a slightly
+    # other pitch and its crunch a little earlier or later, and the game plays them in
+    # turn: the same step again and again would sound like a machine.
     #
     #   - The heel: a thump that falls from about 240 to 110 Hz within a few hundredths
     #     of a second and is gone at once. The weight of the body arriving. It rises
@@ -956,11 +1214,15 @@ def footstep(seed, pitch, brush_at):
     #     of the low battery (below 120 Hz), so the two are not taken for each other.
     #   - The earth: a short burst of dull noise around 300 Hz with the heel, the soil
     #     giving way a little.
-    #   - The grass: noise in a wide band around 1500 Hz that swells and fades within
-    #     a tenth of a second, a moment after the heel. The sole rolling over the
-    #     blades. Quiet, and its loudness wanders, so it rustles and does not hiss.
+    #   - The crunch: the sole rolling over frost and grit, a moment after the heel.
+    #     A few dozen grains within a tenth of a second, most of them at the start,
+    #     ringing in two bands around 1700 and 2900 Hz. This is the part that says
+    #     what the ground is made of.
+    #   - The rustle: a quiet wide band of noise around 1500 Hz under the crunch, the
+    #     blades bending. It fills the gaps between the grains.
+    #   - The room: a little of the stone walls, heard in the last tenth of a second.
     #
-    # The file is 0.26 s long: shorter than the wait between two steps of a sprint
+    # The file is 0.34 s long: shorter than the wait between two steps of a sprint
     # (0.36 s, FOOTSTEP_SPRINT_METRES in src/game/SoundCues.hpp at 5.5 m/s).
     generator = random.Random(seed)
     sound = silence(0.26)
@@ -976,12 +1238,19 @@ def footstep(seed, pitch, brush_at):
     grass = biquad(noise(generator, grass_count), "band", 1500.0 * pitch, 0.7)
     grass = scaled(scaled(grass, swell_curve(grass_count, 0.03, 0.11)),
                    wander_curve(generator, grass_count, 45.0, lowest=0.4))
+    crunch = [a + 0.6 * b for a, b in zip(
+        biquad(grains(generator, grass_count, 420.0, 0.035), "band", 1700.0 * pitch, 3.0),
+        biquad(grains(generator, grass_count, 300.0, 0.05), "band", 2900.0 * pitch, 4.0))]
+    crunch = scaled(crunch, swell_curve(grass_count, 0.004, 0.08))
 
-    # The mix: the heel is the step, the earth a good half of it, the grass below both.
+    # The mix: the heel is the step, the earth a good half of it, the crunch and the
+    # rustle below both.
     place(sound, with_peak(heel, 1.0), 0.0)
     place(sound, with_peak(earth, 0.6), 0.002)
-    place(sound, with_peak(grass, 0.25), brush_at)
-    return finish([biquad(sound, "low", 3500.0)])
+    place(sound, with_peak(crunch, 0.42), brush_at - 0.02)
+    place(sound, with_peak(grass, 0.18), brush_at)
+    return finish(in_room([biquad(sound, "low", 3500.0)], 0.3, tail_seconds=0.08),
+                  out_seconds=0.05)
 
 
 def shade_step(seed, pitch):
@@ -993,8 +1262,13 @@ def shade_step(seed, pitch):
     #   - The weight: a thump that falls from about 250 to 125 Hz and rises over 30 ms,
     #     like a hand laid on a table.
     #   - The cloth: a little dull noise around 420 Hz that swells and fades with it.
+    #   - The frost: the ground giving way under the weight, slowly. A few dull grains
+    #     around 560 and 800 Hz, far quieter than the crunch under the player and with
+    #     nothing bright in them.
+    #   - The room: more of it than on the steps of the player. The shade is somewhere
+    #     else in the maze, and what reaches the player is mostly the walls.
     #
-    # Two files, a little apart in pitch, played in turn. Each is 0.32 s long, and the
+    # Two files, a little apart in pitch, played in turn. Each is 0.6 s long, and the
     # steps of the shade come every 0.65 s (SHADE_STEP_METRES in src/game/SoundCues.hpp
     # at 4 m/s).
     generator = random.Random(seed)
@@ -1006,10 +1280,16 @@ def shade_step(seed, pitch):
     cloth_count = count_of(0.2)
     cloth = biquad(noise(generator, cloth_count), "band", 420.0 * pitch, 1.0)
     cloth = scaled(cloth, swell_curve(cloth_count, 0.04, 0.14))
+    frost = [a + 0.5 * b for a, b in zip(
+        biquad(grains(generator, cloth_count, 160.0, 0.06), "band", 560.0 * pitch, 3.5),
+        biquad(grains(generator, cloth_count, 110.0, 0.06), "band", 800.0 * pitch, 4.0))]
+    frost = scaled(frost, swell_curve(cloth_count, 0.03, 0.12))
 
     place(sound, with_peak(weight, 1.0), 0.0)
     place(sound, with_peak(cloth, 0.12), 0.01)
-    return finish([biquad(sound, "low", 1000.0)])
+    place(sound, with_peak(frost, 0.16), 0.03)
+    return finish(in_room([biquad(biquad(sound, "low", 1000.0), "low", 1400.0)], 0.5,
+                          tail_seconds=0.28), out_seconds=0.12)
 
 
 # ---- the wind of the maze: a loop ------------------------------------------------------------
@@ -1027,13 +1307,14 @@ def maze_wind():
     # quieter, with less movement, and without the low ground, which belongs to the
     # heartbeat of the low battery.
     #
-    #   - The body: noise through a band pass whose centre moves between 240 and 480 Hz.
-    #   - The air: the same noise through a wide band around 1200 Hz, quiet.
-    #   - The movement: the centre and the loudness follow one slow curve. In the intro
-    #     that curve is a random walk. Here it is two sine waves, one that takes the
-    #     whole loop and one that takes a third of it: both are back where they began
-    #     when the loop ends, so the wind rises and falls without a pattern the ear
-    #     could count, and the movement has no seam either.
+    #   - The three layers of WIND_LAYERS and the air around 1200 Hz.
+    #   - The movement. In the intro every layer follows a random walk. Here every
+    #     layer follows a few sine waves that fit into the loop a whole number of times
+    #     (the body once and three times, the hollow twice and five times, the edge
+    #     three, four and seven times), each starting at its own place. All of them are
+    #     back where they began when the loop ends, so the movement has no seam, and
+    #     because the layers never move together the ear finds no pattern to count.
+    #   - Two gusts per round, a larger one at 3.1 s and a smaller one at 7.4 s.
     #
     # Closing the loop. Twelve seconds are made, two more than the loop is long. The
     # last two are laid over the first two: where the loop begins, the extra end is at
@@ -1052,18 +1333,20 @@ def maze_wind():
     count = count_of(MAZE_WIND_SECONDS)
     overlap = count_of(MAZE_WIND_OVERLAP_SECONDS)
     total = count + overlap
-    raw = noise(generator, total)
 
-    # From 0 to 1, and the same again after count samples.
+    # Curves between 0 and 1 that are the same again after count samples.
     turn = 2.0 * math.pi / count
-    gust = [0.5 + 0.3 * math.sin(turn * i + 1.0) + 0.2 * math.sin(3.0 * turn * i + 2.3)
-            for i in range(total)]
+    movements = []
+    for cycles in ((1, 3), (2, 5), (3, 4, 7)):
+        parts = [(number, generator.uniform(0.0, 2.0 * math.pi), 1.0 / (place_in + 1))
+                 for place_in, number in enumerate(cycles)]
+        reach = sum(strength for _, _, strength in parts)
+        movements.append([0.5 + 0.5 * sum(strength * math.sin(number * turn * i + phase)
+                                          for number, phase, strength in parts) / reach
+                          for i in range(total)])
+    gust = gust_curve(total, count, [(0.31, 0.3, 0.8), (0.74, 0.2, 0.5)])
 
-    body = moving_band_pass(raw, [240.0 + 240.0 * g for g in gust], 1.5)
-    air = biquad(raw, "band", 1200.0, 0.6)
-    loudness = [0.6 + 0.4 * g for g in gust]
-    sound = scaled(with_level(body, 1.0), loudness)
-    place(sound, scaled(with_level(air, 0.2), loudness))
+    sound = wind(generator, total, movements, gust, 1200.0, 0.26)
     # Two low passes keep it soft and make the halving of the sample rate safe. The
     # high pass takes away what lies under 120 Hz (and with it any DC offset).
     sound = biquad(biquad(biquad(sound, "low", 2400.0), "low", 4000.0), "high", 120.0)
