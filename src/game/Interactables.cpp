@@ -703,14 +703,13 @@ std::optional<Compass> noteLean(const Note& note, MazeCell exit,
 
 std::string noteText(const Note& note, MazeCell exit, std::span<const MazeCell> crystalCells) {
     const std::optional<Compass> lean = noteLean(note, exit, crystalCells);
-    if (note.kind == NoteKind::ExitHint) {
-        return hintSentence("The gate", "waits", lean.value());
+    // Only a hint leans: the one to the gate always, the one to a splinter while one is left.
+    if (lean) {
+        return note.kind == NoteKind::ExitHint ? hintSentence("The gate", "waits", *lean)
+                                               : hintSentence("A splinter", "glows", *lean);
     }
     if (note.kind == NoteKind::CrystalHint) {
-        if (!lean) {
-            return "You took every one. The moon will look harder.";
-        }
-        return hintSentence("A splinter", "glows", *lean);
+        return "You took every one. The moon will look harder.";
     }
     // Flavour is what is left.
     return std::string{flavourLine(note.flavourIndex)};
