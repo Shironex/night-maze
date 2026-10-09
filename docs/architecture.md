@@ -115,7 +115,7 @@ Render, once (`NightMazeApp::onRender`, then `DebugNightMazeApp::onRender`):
 4. Blend the eye position, build the view and projection matrices, cast the picking ray (`pickForFrame`, `handleInteraction`).
 5. Shadow maps: `drawMoonShadowMap` and `drawFlashlightShadowMap` draw the shadow casters with `assets/shaders/shadow_depth.vert` into two depth textures.
 6. Scene, into the HDR framebuffer (`PostProcess::beginScene`): `LightRig::upload` fills the uniform buffer of the lights, `drawMaze` draws terrain, walls, gate, flasks, shade, crystals, levers and notes with `assets/shaders/lit.frag` (or `assets/shaders/gouraud.frag`, or `assets/shaders/textured.frag` in the unlit and debug views), then `drawGrass` uses `assets/shaders/grass.geom`.
-7. Reflections: `drawReflections` draws the crystals, the hollow of the hood of the shade and the puddles with `assets/shaders/reflect.frag`, which samples the sky cubemap. The skybox itself comes last (`assets/shaders/skybox.frag`).
+7. Reflections: `drawReflections` draws the crystals, the night in the hood of the shade and the puddles with `assets/shaders/reflect.frag`, which samples the sky cubemap. The skybox itself comes last (`assets/shaders/skybox.frag`).
 8. Bloom: `PostProcess::drawBloom` runs `assets/shaders/post/bright.frag` and then `assets/shaders/post/blur.frag` back and forth over half size targets.
 9. Composite: `PostProcess::composite` draws to the window with `assets/shaders/post/composite.frag`. Fog, bloom, exposure, tone mapping, vignette and sRGB encoding all happen in this one pass.
 10. The map, while its key is held: `drawMinimap` (`assets/shaders/post/minimap.frag`, then `assets/shaders/post/minimap_overlay.frag`).
