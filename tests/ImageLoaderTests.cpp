@@ -163,8 +163,10 @@ TEST_CASE("a worn wall reflects as much light as the plain wall, in nearly its c
         REQUIRE(worn.channels == 3);
         const glm::dvec3 light = averageLight(worn);
 
-        CHECK(glm::dot(light, LUMINANCE_WEIGHTS) ==
-              doctest::Approx(plainBrightness).epsilon(BRIGHTNESS_TOLERANCE));
+        // As a share of the plain wall: doctest::Approx would add 1 to the scale of
+        // the comparison, and 5 percent of 1.3 is a fifth of these numbers.
+        const double brightness = glm::dot(light, LUMINANCE_WEIGHTS);
+        CHECK(std::abs(brightness / plainBrightness - 1.0) < BRIGHTNESS_TOLERANCE);
         const glm::dvec3 shares = light / (light.x + light.y + light.z);
         for (int channel = 0; channel < 3; ++channel) {
             CAPTURE(channel);
