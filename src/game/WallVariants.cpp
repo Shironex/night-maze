@@ -4,6 +4,7 @@
 
 #include "game/MazeGenerator.hpp"
 #include "game/MazeLayout.hpp"
+#include "game/Stile.hpp"
 
 #include <algorithm>
 #include <cstdlib>
@@ -102,9 +103,9 @@ std::vector<WallVariant> chooseWallVariants(const Maze& maze, std::uint32_t seed
         const std::uint32_t chance =
             border ? BORDER_WALL_VARIANT_PERCENT : INNER_WALL_VARIANT_PERCENT;
 
-        const bool staysPlain = isNearStart(maze, sides.first, start) ||
-                                isNearStart(maze, sides.second, start) ||
-                                carriesSomething(interactables, segment);
+        const bool staysPlain =
+            isNearStart(maze, sides.first, start) || isNearStart(maze, sides.second, start) ||
+            carriesStile(segment, start) || carriesSomething(interactables, segment);
         WallVariant variant = WallVariant::Plain;
         if (!staysPlain && roll < chance) {
             // The painted looks have the numbers 1 to 3 in the enum, right after Plain.

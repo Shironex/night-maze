@@ -239,11 +239,12 @@ TEST_CASE("a maze world carries the exit, the gate box and the exit zone of its 
     checkVector(world.gateBox.min, {6.0F, 0.0F, 1.85F});
     checkVector(world.gateBox.max, {8.0F, 3.0F, 2.15F});
 
-    // The gate is not one of the walls and not one of the fixed obstacles.
+    // The gate is not one of the walls and not one of the fixed obstacles: those are
+    // the walls, the pillars and the one box of the stile.
     for (const game::WallSegment& wall : world.walls) {
         CHECK(wall.position != world.gate.position);
     }
-    CHECK(world.colliders.size() == world.walls.size() + world.pillars.size());
+    CHECK(world.colliders.size() == world.walls.size() + world.pillars.size() + 1U);
 
     // A pillar stands at each end of the gate: the walls on the two sides of the dead
     // end stop there.

@@ -736,7 +736,8 @@ TEST_CASE("on uneven ground the walls, pillars and the gate are sunk until no ga
 
     SUBCASE("the boxes and the matrices follow the lowered positions") {
         const std::vector<scene::Aabb> expected = game::colliderBoxes(world.walls, world.pillars);
-        REQUIRE(world.colliders.size() == expected.size());
+        // One box more than the walls and the pillars: the stile, at the end of the list.
+        REQUIRE(world.colliders.size() == expected.size() + 1U);
         for (std::size_t i = 0; i < expected.size(); ++i) {
             CHECK(world.colliders[i].min == expected[i].min);
             CHECK(world.colliders[i].max == expected[i].max);

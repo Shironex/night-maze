@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <set>
+#include <span>
 #include <stdexcept>
 #include <tuple>
 #include <vector>
@@ -237,14 +238,24 @@ TEST_CASE("the path keeps its distance from every wall, every pillar and the gat
         const game::MazeWorld world = worldOf(seed);
         const game::MenuCameraPath path = game::buildMenuCameraPath(world);
 
+        // The stile is the last box of the list, and the one exception: its steps reach
+        // 0.31 m further into the start cell than the box of a wall, and the lane passes
+        // them at 0.34 m. That is still three times the near plane.
+        constexpr float MIN_STILE_CLEARANCE = 0.3F;
+        REQUIRE(world.stileWall.has_value());
+        const std::span<const scene::Aabb> boxes{world.colliders};
+
         float nearest = MIN_CLEARANCE * 10.0F;
+        float nearestToStile = nearest;
         for (const glm::vec3& point : path.points) {
-            for (const scene::Aabb& box : world.colliders) {
+            for (const scene::Aabb& box : boxes.first(boxes.size() - 1)) {
                 nearest = std::min(nearest, groundDistance(point, box));
             }
             nearest = std::min(nearest, groundDistance(point, world.gateBox));
+            nearestToStile = std::min(nearestToStile, groundDistance(point, boxes.back()));
         }
         CHECK(nearest >= MIN_CLEARANCE);
+        CHECK(nearestToStile >= MIN_STILE_CLEARANCE);
     }
 }
 

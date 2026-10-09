@@ -13,6 +13,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -89,10 +90,17 @@ struct MazeWorld {
     std::vector<glm::mat4> wallMatrices;
     std::vector<glm::mat4> pillarMatrices;
 
-    /// The obstacles that never change: the box of every wall, then of every pillar. The
-    /// gate is not in this list, because it stops being an obstacle when it opens: the
-    /// obstacle list of a round is built by game::roundObstacles.
+    /// The obstacles that never change: the box of every wall, then of every pillar, then
+    /// the one box of the stile (game::stileBox). The gate is not in this list, because
+    /// it stops being an obstacle when it opens: the obstacle list of a round is built by
+    /// game::roundObstacles.
     std::vector<scene::Aabb> colliders;
+
+    /// The number of the wall in walls that carries the stile of the start cell
+    /// (game::stileWallIndex): it is drawn with the stile models in place of the wall
+    /// model, has the last box of colliders in front of it and bare ground at its foot.
+    /// Every built world has one. Empty, the world has no stile at all.
+    std::optional<std::size_t> stileWall;
 
     /// Where the player starts: the centre of cell (0, 0), feet on the ground.
     glm::vec3 startPosition{0.0F};
@@ -156,9 +164,10 @@ float groundHeightAt(const MazeWorld& world, MazeCell cell);
 
 /// Builds the terrain of the world from the heightmap and puts everything on it: the
 /// walls, the pillars and the gate are lowered to the lowest ground under them, their
-/// matrices and collision boxes follow, and the start, the exit, the exit zone, the
-/// levers and the notes are moved to the height of the ground. Nothing moves sideways, so the plan
-/// of the maze and every collision in the horizontal plane stay as they were.
+/// matrices and collision boxes follow (the box of the stile with its wall), and the start, the
+/// exit, the exit zone, the levers and the notes are moved to the height of the ground. Nothing
+/// moves sideways, so the plan of the maze and every collision in the horizontal plane stay as they
+/// were.
 ///
 /// It can be called again on the same world with another height scale. Things that copy
 /// heights out of the world (the crystals and the obstacle list of a round, the player)

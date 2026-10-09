@@ -45,9 +45,11 @@ constexpr float BELL_REST_DEGREES = 0.2F;
 constexpr float BELL_REST_SPEED = 1.0F;
 
 // True when a stone may stand against this wall of the approach cell: the maze has the
-// wall, no lever opens it, and no lever and no note hangs on it.
+// wall, no lever opens it, and no lever and no note hangs on it. No wall of the start
+// cell takes one: in a maze of two cells the approach cell is the start cell, and that
+// cell has the stile for its mark.
 bool wallTakesMilestone(const MazeWorld& world, const WallRef& wall) {
-    if (!world.maze.hasWall(wall.cell.x, wall.cell.z, wall.side)) {
+    if (!world.maze.hasWall(wall.cell.x, wall.cell.z, wall.side) || wall.cell == START_CELL) {
         return false;
     }
     for (const Lever& lever : world.interactables.levers) {

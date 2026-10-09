@@ -45,11 +45,13 @@ game::MazeWorld testWorld() {
     return game::buildMazeWorld(WIDTH, HEIGHT, SEED, roughHeightmap(), 1.0F);
 }
 
-// The same world with no trampled ground in front of its exit: a maze without a gate has
-// none (game::grassIsTrampled). The tests that count the tufts of every wall use it,
-// because the trampled ground takes some of those tufts away again.
+// The same world with no trampled ground in front of its exit and of its stile: a maze
+// without a gate and without a stile has none (game::grassIsTrampled). The tests that
+// count the tufts of every wall use it, because the trampled ground takes some of those
+// tufts away again.
 game::MazeWorld withoutTrampledGround(game::MazeWorld world) {
     world.hasGate = false;
+    world.stileWall.reset();
     return world;
 }
 
@@ -328,10 +330,10 @@ TEST_CASE("the trampled ground takes tufts away and moves no other tuft of a see
             game::buildMazeWorld(before.size, before.size, before.seed, roughHeightmap(), 1.0F);
         REQUIRE(world.hasGate);
 
-        // The same world without a gate has no trampled ground, so its grass is the
-        // grass as it was: the same count and the same checksum as before the rule.
-        game::MazeWorld ungated = world;
-        ungated.hasGate = false;
+        // The same world without a gate and without a stile has no trampled ground, so
+        // its grass is the grass as it was: the same count and the same checksum as
+        // before the rule.
+        const game::MazeWorld ungated = withoutTrampledGround(world);
         const std::vector<game::GrassTuft> all =
             game::placeGrass(ungated, game::DEFAULT_GRASS_DENSITY);
         CHECK(all.size() == before.count);

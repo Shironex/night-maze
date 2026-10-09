@@ -62,6 +62,8 @@ constexpr int WALL_VARIANT_START_CLEARANCE = 2;
 ///
 /// The rules:
 ///   - a wall within WALL_VARIANT_START_CLEARANCE cells of start stays plain,
+///   - the wall that carries the stile (game::carriesStile) stays plain: it has a model
+///     of its own, and a look would be drawn in place of it,
 ///   - a wall a lever or a note hangs on stays plain: the niche of a damaged wall is
 ///     only painted, and a lever in front of it would seem to float,
 ///   - of the other walls, BORDER_WALL_VARIANT_PERCENT out of 100 on the outer border

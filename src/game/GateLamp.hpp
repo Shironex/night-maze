@@ -233,7 +233,8 @@ struct GateScenery {
 /// these walls that is there: the one to the left of somebody who walks towards the
 /// gate, the one to the right, the one behind them. A wall that a lever opens, or that
 /// carries a lever or a note, does not count: the stone would stand in front of a plate
-/// or beside a wall that sinks.
+/// or beside a wall that sinks. Nor does a wall of the start cell, which is the approach
+/// cell in a maze of two cells: the stile stands there.
 ///
 /// The world must have a gate. Call it again after the terrain was rebuilt
 /// (game::placeOnTerrain): the heights come from the world.

@@ -4,6 +4,7 @@
 #include "game/Exit.hpp"
 #include "game/Flasks.hpp"
 #include "game/MazeGenerator.hpp"
+#include "game/Stile.hpp"
 #include "scene/Transform.hpp"
 
 #include <algorithm>
@@ -109,6 +110,10 @@ void placeOnTerrain(MazeWorld& world, const Heightmap& heightmap, float heightSc
         world.pillarMatrices.push_back(placedAt(position));
     }
     world.colliders = colliderBoxes(world.walls, world.pillars);
+    // The box of the stile comes last, so box number i still belongs to wall number i.
+    if (world.stileWall && *world.stileWall < world.walls.size()) {
+        world.colliders.push_back(stileBox(world.walls[*world.stileWall]));
+    }
 
     // The start and the exit stand on the ground at the centre of their cells.
     world.startPosition = cellCenter(START_CELL.x, START_CELL.z);
@@ -144,6 +149,7 @@ MazeWorld buildMazeWorld(int width, int height, std::uint32_t seed, const Height
     // The plan of the maze: where things stand, seen from above.
     world.walls = wallSegments(maze);
     world.pillars = pillarPositions(maze);
+    world.stileWall = stileWallIndex(world.walls, START_CELL);
     world.startYawDegrees = startYaw(maze);
 
     // The exit and its gate.
