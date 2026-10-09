@@ -6,6 +6,7 @@
 #include "game/Daily.hpp"
 #include "game/Difficulty.hpp"
 #include "game/KeyBindings.hpp"
+#include "game/Ledger.hpp"
 
 #include <array>
 #include <cstdint>
@@ -105,6 +106,11 @@ struct GameSettings {
     /// file, so it is kept between two starts of the game.
     int nextStoryLine = 0;
 
+    /// The lamplighter's ledger (game/Ledger.hpp): the story lines whose note the player
+    /// has opened, in any mode. A line is added when its card comes up. It is the book of
+    /// the player: a new campaign does not empty it.
+    StoryReadSet storyRead = 0;
+
     /// True: a calm night. The maze has no shade, on every difficulty. The switch is in
     /// free play screen, next to the difficulty. The campaign does not ask it.
     bool calmNight = false;
@@ -155,6 +161,8 @@ constexpr std::string_view MASTER_VOLUME_SETTING = "master_volume";
 constexpr std::string_view EFFECTS_VOLUME_SETTING = "effects_volume";
 constexpr std::string_view AMBIENT_VOLUME_SETTING = "ambient_volume";
 constexpr std::string_view STORY_LINE_SETTING = "story_line";
+/// The lines of the story that were read, for the ledger (game::formatReadSet).
+constexpr std::string_view STORY_READ_SETTING = "story_read";
 constexpr std::string_view CALM_NIGHT_SETTING = "calm_night";
 /// The name the story line counter had while the story had no lines about the shadow.
 /// It is still read, from a file that has no STORY_LINE_SETTING, and never written.
@@ -192,6 +200,8 @@ std::string campaignBestSetting(int night);
 ///     ambient_volume      the same
 ///     story_line          a whole number, "5" (rounded; a number past the last story
 ///                         line is wrapped round to the start of the table)
+///     story_read          the codes of the story lines that were read, "N01 N04 N22", or
+///                         nothing (game::parseReadSet; a word that is no code is skipped)
 ///     calm_night          "on" or "off"
 ///     intro_seen          "on" or "off"
 ///     campaign_night      a whole number from 1 to 6, "3": the next night of the
@@ -227,6 +237,10 @@ bool applySetting(GameSettings& settings, std::string_view name, std::string_vie
 /// story_line at all, wherever the two lines stand: a file of the version before is
 /// carried over once, and after that the new name is the only one that counts.
 ///
+/// A file without a story_read line was written before the ledger existed: its set of
+/// read lines is made once from its two counters (game::readSetFromOldCounters). A file
+/// with the line, also an empty one, is taken as it is.
+///
 /// The campaign is tidied up after the last line: a best time of a night that is not
 /// won yet (a file edited by hand) is dropped, so it cannot become the time to beat.
 /// A file written before the campaign existed has none of its lines and loads as "no
@@ -250,7 +264,7 @@ std::string formatSettings(const GameSettings& settings);
 /// The settings after the button "Reset defaults" of the settings screen: everything
 /// that screen shows is back at its default (the mouse, the field of view, the window,
 /// the three volumes and the keys). What is chosen or earned somewhere else stays: the
-/// difficulty and the calm night of free play, the story line counter, that the intro
+/// difficulty and the calm night of free play, the story line counter, the ledger, that the intro
 /// was seen, the campaign (its next night, its seed and its best times) and the record
 /// of the maze of the day. A reset of the settings is no reset of the progress.
 GameSettings resetSettings(const GameSettings& settings);

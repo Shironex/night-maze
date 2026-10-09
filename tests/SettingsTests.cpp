@@ -211,6 +211,7 @@ TEST_CASE("the file is plain text a person can read and edit") {
           "story_line = 0\n"
           "calm_night = off\n"
           "intro_seen = off\n"
+          "story_read = \n"
           "campaign_night = 1\n"
           "key_forward = W\n"
           "key_back = S\n"
@@ -543,6 +544,8 @@ TEST_CASE("a file of game 0.12 loads with the default of everything that came la
     expected.nextStoryLine = 5;
     expected.calmNight = true;
     expected.introSeen = true;
+    // The file is older than the ledger: the five lines before its story counter are read.
+    expected.storyRead = game::readSetFromOldCounters(5, 1);
     // And nothing else differs from a game that has no file: the comparison is of every
     // field, so a setting that is added later is covered without a new line here.
     CHECK(settings == expected);
@@ -581,6 +584,7 @@ TEST_CASE("reset defaults brings back the screen and the keys, and keeps the pro
     // What is chosen or earned somewhere else.
     settings.difficulty = game::Difficulty::Hard;
     settings.nextStoryLine = 7;
+    settings.storyRead = game::readSetFromOldCounters(7, 3);
     settings.calmNight = true;
     settings.introSeen = true;
     settings.campaignNight = 3;
@@ -591,6 +595,7 @@ TEST_CASE("reset defaults brings back the screen and the keys, and keeps the pro
     GameSettings expected;
     expected.difficulty = game::Difficulty::Hard;
     expected.nextStoryLine = 7;
+    expected.storyRead = game::readSetFromOldCounters(7, 3);
     expected.calmNight = true;
     expected.introSeen = true;
     expected.campaignNight = 3;

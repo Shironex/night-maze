@@ -175,6 +175,8 @@ add_library(game_logic STATIC
     src/game/Intro.hpp
     src/game/KeyBindings.cpp
     src/game/KeyBindings.hpp
+    src/game/Ledger.cpp
+    src/game/Ledger.hpp
     src/game/Lighting.cpp
     src/game/Lighting.hpp
     src/game/Maze.cpp
@@ -445,6 +447,7 @@ add_executable(night_maze_tests
     tests/InteractionTests.cpp
     tests/IntroTests.cpp
     tests/KeyBindingsTests.cpp
+    tests/LedgerTests.cpp
     tests/LightTests.cpp
     tests/LightingTests.cpp
     tests/MazeGeneratorTests.cpp

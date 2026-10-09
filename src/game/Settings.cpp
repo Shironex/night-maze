@@ -187,6 +187,12 @@ bool applySetting(GameSettings& settings, std::string_view name, std::string_vie
             static_cast<int>(std::fmod(std::round(number), static_cast<float>(flavourLineCount())));
         return true;
     }
+    if (name == STORY_READ_SETTING) {
+        // Every text is a set: a word that is no code of a line is skipped, and an empty
+        // text is the empty ledger.
+        settings.storyRead = parseReadSet(value);
+        return true;
+    }
     if (name == OLD_STORY_LINE_SETTING) {
         float number = 0.0F;
         if (!parseNumber(value, number)) {
@@ -278,6 +284,8 @@ GameSettings parseSettings(std::string_view text) {
     std::string_view oldStoryLine;
     bool hasOldStoryLine = false;
     bool hasStoryLine = false;
+    // A file without the line of the ledger is older than the ledger.
+    bool hasStoryRead = false;
 
     // Line after line: the text up to the next line end, then the rest.
     while (!text.empty()) {
@@ -303,6 +311,7 @@ GameSettings parseSettings(std::string_view text) {
         // A line that cannot be read changes nothing: applySetting returns false.
         const bool applied = applySetting(settings, name, value);
         hasStoryLine = hasStoryLine || (applied && name == STORY_LINE_SETTING);
+        hasStoryRead = hasStoryRead || (applied && name == STORY_READ_SETTING);
     }
     if (hasOldStoryLine && !hasStoryLine) {
         applySetting(settings, OLD_STORY_LINE_SETTING, oldStoryLine);
@@ -313,6 +322,12 @@ GameSettings parseSettings(std::string_view text) {
         if (nightStatus(settings.campaignNight, night) != NightStatus::Finished) {
             settings.campaignBestSeconds.at(static_cast<std::size_t>(night - 1)) = NO_BEST_TIME;
         }
+    }
+    // A file from before the ledger: the lines its counters prove are read. Asked after
+    // the old story line counter was carried over, and only once: the line is written
+    // from now on, also while the ledger is empty.
+    if (!hasStoryRead) {
+        settings.storyRead = readSetFromOldCounters(settings.nextStoryLine, settings.campaignNight);
     }
     // The maze of the day: a best time belongs to a day, and a day with a best time was
     // won. The count of days alone says nothing wrong, so it stays.
@@ -341,6 +356,9 @@ std::string formatSettings(const GameSettings& settings) {
     text += settingLine(STORY_LINE_SETTING, std::to_string(settings.nextStoryLine));
     text += settingLine(CALM_NIGHT_SETTING, std::string(settings.calmNight ? ON_VALUE : OFF_VALUE));
     text += settingLine(INTRO_SEEN_SETTING, std::string(settings.introSeen ? ON_VALUE : OFF_VALUE));
+    // The ledger always has its line, also while it is empty: a file without the line is
+    // taken for one from before the ledger (parseSettings).
+    text += settingLine(STORY_READ_SETTING, formatReadSet(settings.storyRead));
     text += settingLine(CAMPAIGN_NIGHT_SETTING, std::to_string(settings.campaignNight));
     // The seed and the best times only once they exist.
     if (settings.campaignSeed != NO_CAMPAIGN_SEED) {
@@ -371,6 +389,7 @@ GameSettings resetSettings(const GameSettings& settings) {
     GameSettings reset;
     reset.difficulty = settings.difficulty;
     reset.nextStoryLine = settings.nextStoryLine;
+    reset.storyRead = settings.storyRead;
     reset.calmNight = settings.calmNight;
     reset.introSeen = settings.introSeen;
     reset.campaignNight = settings.campaignNight;
