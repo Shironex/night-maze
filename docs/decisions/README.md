@@ -34,6 +34,7 @@ Status words: `accepted (date)` means the code does this today. `superseded by <
 - [exit-cell](exit-cell.md): farthest cell by passages
 - [crystals-and-gate](crystals-and-gate.md): crystal count, gate share, darkness
 - [crystal-lights](crystal-lights.md): nearest crystals carry the lights
+- [moon-splinters](moon-splinters.md): crystals drawn as splinters, dark rind in one picture
 - [sprint-stamina-and-flasks](sprint-stamina-and-flasks.md): stamina and tea flasks
 
 ## Enemy and story
