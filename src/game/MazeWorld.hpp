@@ -131,7 +131,7 @@ struct MazeWorld {
     /// its box in colliders, because the three lists are in the same order.
     std::vector<std::size_t> leverWalls;
 
-    /// The look of every wall (plain, cracked, mossy or damaged), chosen from the seed
+    /// The look of every wall (plain, painted or shaped), chosen from the seed
     /// (game::chooseWallVariants). Same order as walls.
     std::vector<WallVariant> wallVariants;
 };

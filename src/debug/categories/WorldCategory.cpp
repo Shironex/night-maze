@@ -142,12 +142,13 @@ void drawMazeInPlay(Page& page, const game::MazeWorld& world, game::MazeSettings
     // The worn walls. The switch only changes what is drawn: the looks stay chosen, so
     // the numbers below it do not change with it.
     page.toggle("Wall variants", &settings.wallVariants,
-                "Some walls are drawn cracked, mossy or damaged: the same model with "
-                "other textures, chosen from the seed. Off: every wall is plain stone.");
+                "Some walls are drawn cracked, mossy or damaged (other textures), crowned "
+                "with stone twigs or with a broken coping (other models), chosen from the "
+                "seed. Off: every wall is plain.");
     const std::array<int, game::WALL_VARIANT_COUNT> looks =
         game::countWallVariants(world.wallVariants);
-    page.stat("Wall looks", "%d plain, %d cracked, %d mossy, %d damaged", looks[0], looks[1],
-              looks[2], looks[3]);
+    page.stat("Wall looks", "%d plain, %d cracked, %d mossy, %d damaged, %d crowned, %d broken",
+              looks[0], looks[1], looks[2], looks[3], looks[4], looks[5]);
     page.endCard();
 }
 

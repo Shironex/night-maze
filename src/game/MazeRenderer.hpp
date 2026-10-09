@@ -35,16 +35,18 @@ enum class ViewMode {
 /// each with its own model matrix (one draw call per object). The ground they stand on
 /// is drawn by TerrainRenderer.
 ///
-/// Every wall is the same model. A worn wall (game::WallVariant) is that model with
-/// another pair of textures, so the three worn looks cost six textures and no geometry.
+/// A painted wall (cracked, mossy or damaged, see game::WallVariant) is the wall model
+/// with another pair of textures, so those three looks cost six textures and no
+/// geometry. A shaped wall (crowned or broken) is a model of its own with the plain
+/// stone on it.
 ///
-/// It owns nothing: the two models and the textures belong to the asset cache, which
+/// It owns nothing: the models and the textures belong to the asset cache, which
 /// must outlive this object, and the matrices belong to the MazeWorld given to draw.
 class MazeRenderer {
 public:
-    /// Asks the cache for the two models of the maze and for the textures of the worn
+    /// Asks the cache for the models of the maze and for the textures of the painted
     /// walls. A model that fails to load is logged by the cache and simply not drawn.
-    /// A worn look whose textures fail to load is drawn with the plain stone.
+    /// A look whose textures or model fail to load is drawn as a plain wall.
     explicit MazeRenderer(assets::AssetCache& assets);
 
     /// Draws the whole maze. shader is the textured program or one of the two lit
@@ -52,15 +54,15 @@ public:
     /// uniforms (uViewMode, uNormalMapEnabled, or the ones of the lighting) already set.
     /// The function sets the samplers and uEmissive (black: stone does not glow), and
     /// draws every pillar with game::drawModel and every wall with game::drawMesh (the
-    /// wall mesh with the textures of the look of that wall). Both set the textures,
-    /// uTint, uModel and uNormalMatrix.
+    /// mesh and the textures of the look of that wall). Both set the textures, uTint,
+    /// uModel and uNormalMatrix.
     ///
     /// wallMatrices are the model matrices of the walls for this frame
     /// (game::roundWallMatrices): the ones of the world, with the walls that levers have
     /// opened lowered into the ground. The pillars are drawn from the world.
     ///
-    /// wallVariants false draws every wall with the plain stone, whatever look the
-    /// world chose for it (MazeWorld::wallVariants).
+    /// wallVariants false draws every wall as a plain wall, whatever look the world
+    /// chose for it (MazeWorld::wallVariants).
     void draw(const gfx::Shader& shader, const MazeWorld& world,
               std::span<const glm::mat4> wallMatrices, bool wallVariants) const;
 
@@ -69,15 +71,17 @@ private:
     const assets::LoadedModel* m_wall;
     const assets::LoadedModel* m_pillar;
 
-    // The colour picture and the normal map of one look of the wall. Not owned.
-    struct WallTextures {
+    // What one look of the wall is drawn with: a model, and the colour picture and the
+    // normal map that go on it. Not owned.
+    struct WallLook {
+        const assets::LoadedModel* model = nullptr;
         const gfx::Texture2D* color = nullptr;
         const gfx::Texture2D* normalMap = nullptr;
     };
-    // One pair per look, found by the number of the WallVariant. The plain pair is the
-    // one the wall model names. Left empty (two null pointers each) when the wall model
-    // could not be loaded: nothing is drawn then.
-    std::array<WallTextures, WALL_VARIANT_COUNT> m_wallTextures;
+    // One entry per look, found by the number of the WallVariant. The plain entry is
+    // the wall model with the textures it names. Left empty (null pointers) when the
+    // wall model could not be loaded: nothing is drawn then.
+    std::array<WallLook, WALL_VARIANT_COUNT> m_wallLooks;
 };
 
 } // namespace game

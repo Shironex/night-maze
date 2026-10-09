@@ -846,6 +846,83 @@ TEST_CASE("loadObj: wall_straight.obj") {
     }
 }
 
+namespace {
+
+// Loads one of the two shaped walls and checks what both have in common. Not through
+// loadGameModel: that helper wants normals of length exactly 1, and the slanted faces of
+// these two have normals the file rounds to four decimals.
+assets::ObjModel loadShapedWall(const char* fileName) {
+    assets::ObjModel model;
+    std::string error;
+    const bool ok = assets::loadObj(modelsDirectory() / fileName, model, error);
+    CAPTURE(error);
+    REQUIRE(ok);
+    CHECK(model.unknownLineCount == 0U);
+    for (const std::uint32_t index : model.indices) {
+        CHECK(index < model.vertices.size());
+    }
+    for (const gfx::Vertex& vertex : model.vertices) {
+        CHECK(glm::length(vertex.normal) == doctest::Approx(1.0F).epsilon(0.001));
+    }
+
+    // One material: the stone of the plain wall, with its two pictures.
+    REQUIRE(model.parts.size() == 1U);
+    CHECK(model.parts[0].material == "wall_stone");
+    CHECK(model.parts[0].indexCount == model.indices.size());
+    REQUIRE(model.materials.size() == 1U);
+    CHECK(model.materials[0].diffuseTexture.filename() == "wall_stone.png");
+    CHECK(model.materials[0].normalTexture.filename() == "wall_stone_normal.png");
+    CHECK(std::filesystem::exists(model.materials[0].diffuseTexture));
+    CHECK(std::filesystem::exists(model.materials[0].normalTexture));
+    return model;
+}
+
+} // namespace
+
+TEST_CASE("loadObj: wall_straight_crown.obj") {
+    const assets::ObjModel model = loadShapedWall("wall_straight_crown.obj");
+
+    // The 30 triangles of the plain wall and 32 twigs of 12 triangles each. The wall is
+    // the model that is drawn most often, so this number has to stay small.
+    CHECK(model.indices.size() == 414U * 3U);
+
+    // The wall itself is the plain one: as long, and standing on the floor. The twigs
+    // rise above its 3 m, by no more than a metre, and may lean out over the corridor,
+    // but they stay clear of the two ends, where the caps of the pillars are.
+    const Bounds bounds = boundsOf(model);
+    CHECK(bounds.min.x == doctest::Approx(-1.0F));
+    CHECK(bounds.max.x == doctest::Approx(1.0F));
+    CHECK(bounds.min.y == doctest::Approx(0.0F));
+    CHECK(bounds.max.y > 3.3F);
+    CHECK(bounds.max.y < 4.0F);
+    CHECK(bounds.min.z > -0.5F);
+    CHECK(bounds.max.z < 0.5F);
+    for (const gfx::Vertex& vertex : model.vertices) {
+        if (vertex.position.y > 3.0001F) {
+            CHECK(std::abs(vertex.position.x) < 0.95F);
+        }
+    }
+}
+
+TEST_CASE("loadObj: wall_straight_broken.obj") {
+    const assets::ObjModel model = loadShapedWall("wall_straight_broken.obj");
+
+    // 28 sides of boxes: the plinth and the body with five each (the top of the body
+    // closes the gap), two pieces of coping and the askew stone with six each.
+    CHECK(model.indices.size() == 56U * 3U);
+
+    // Nothing is taller than the wall by more than the lifted end of the askew stone,
+    // and nothing is wider by more than a millimetre.
+    const Bounds bounds = boundsOf(model);
+    CHECK(bounds.min.x == doctest::Approx(-1.0F));
+    CHECK(bounds.max.x == doctest::Approx(1.0F));
+    CHECK(bounds.min.y == doctest::Approx(0.0F));
+    CHECK(bounds.min.z == doctest::Approx(-0.14F).epsilon(0.02));
+    CHECK(bounds.max.y > 3.0F);
+    CHECK(bounds.max.y < 3.05F);
+    CHECK(bounds.max.z == doctest::Approx(0.14F).epsilon(0.02));
+}
+
 TEST_CASE("loadObj: wall_pillar.obj") {
     const assets::ObjModel model =
         loadGameModel("wall_pillar.obj", "wall_stone", "wall_stone.png", "wall_stone_normal.png");
