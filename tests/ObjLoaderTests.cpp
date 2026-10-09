@@ -890,6 +890,57 @@ TEST_CASE("loadObj: flask.obj") {
     CHECK(bounds.max.x == doctest::Approx(0.088F));
 }
 
+TEST_CASE("loadObj: splinter_a.obj and splinter_b.obj") {
+    // The two models a crystal is drawn with (game::CRYSTAL_VARIANT_COUNT). A sliver has
+    // 40 triangles: five sides between six rings, as triangles at the two points and as
+    // two triangles each in between. splinter_b is three slivers.
+    struct Splinter {
+        std::string file;
+        std::size_t triangles;
+    };
+    for (const Splinter& splinter :
+         {Splinter{"splinter_a.obj", 40U}, Splinter{"splinter_b.obj", 120U}}) {
+        CAPTURE(splinter.file);
+        // Not through loadGameModel, for the same reason as the flask: slanted faces.
+        assets::ObjModel model;
+        std::string error;
+        const bool ok = assets::loadObj(modelsDirectory() / splinter.file, model, error);
+        CAPTURE(error);
+        REQUIRE(ok);
+        CHECK(model.unknownLineCount == 0U);
+        for (const gfx::Vertex& vertex : model.vertices) {
+            CHECK(glm::length(vertex.normal) == doctest::Approx(1.0F).epsilon(0.001));
+        }
+
+        // One material, and the two pictures it names are there.
+        REQUIRE(model.parts.size() == 1U);
+        CHECK(model.parts[0].material == "splinter");
+        REQUIRE(model.materials.size() == 1U);
+        CHECK(model.materials[0].diffuseTexture.filename() == "splinter.png");
+        CHECK(model.materials[0].normalTexture.filename() == "splinter_normal.png");
+        CHECK(std::filesystem::exists(model.materials[0].diffuseTexture));
+        CHECK(std::filesystem::exists(model.materials[0].normalTexture));
+        CHECK(model.indices.size() == splinter.triangles * 3U);
+
+        // The origin is the lower point, to the millimetre (a side sliver of splinter_b
+        // leans so far that a corner of it dips a hair lower), and the upper point is no
+        // higher than the game takes a crystal to be: its light hangs above
+        // CRYSTAL_HEIGHT (game/Crystals.hpp).
+        const Bounds bounds = boundsOf(model);
+        CHECK(std::abs(bounds.min.y) < 0.001F);
+        CHECK(bounds.max.y > 0.45F);
+        CHECK(bounds.max.y <= 0.5F);
+
+        // Every side keeps to its half of the picture: the rind on the left, the fracture
+        // on the right, and nothing within a twentieth of the picture of the line between.
+        for (const gfx::Vertex& vertex : model.vertices) {
+            CHECK(vertex.uv.x > 0.05F);
+            CHECK(vertex.uv.x < 0.95F);
+            CHECK(std::abs(vertex.uv.x - 0.5F) > 0.05F);
+        }
+    }
+}
+
 TEST_CASE("loadObj: material libraries and texture paths of files written by the test") {
     // A scratch directory of its own, removed again at the end of the test case.
     const std::filesystem::path directory =

@@ -18,12 +18,13 @@ namespace game {
 
 namespace {
 
-// Model files, relative to the assets directory. The crystal models are about 0.5 m
-// high with their origin at the base (for crystal_b the base of its main shard, so
-// that model is not centred on its origin). The gate model is built like the wall
-// model: along X, from x = -1 to x = +1, with its origin in the middle of its base.
-constexpr const char* CRYSTAL_A_MODEL_FILE = "models/crystal_a.obj";
-constexpr const char* CRYSTAL_B_MODEL_FILE = "models/crystal_b.obj";
+// Model files, relative to the assets directory. A crystal is drawn as a splinter of
+// the moon: one sliver or three, about 0.5 m high, with the origin at the lower point
+// of the main sliver. The slivers lean, so the models are not centred on their origin.
+// The gate model is built like the wall model: along X, from x = -1 to x = +1, with its
+// origin in the middle of its base.
+constexpr const char* CRYSTAL_A_MODEL_FILE = "models/splinter_a.obj";
+constexpr const char* CRYSTAL_B_MODEL_FILE = "models/splinter_b.obj";
 constexpr const char* GATE_MODEL_FILE = "models/gate.obj";
 
 // What stands around the gate and never moves. The gatehouse is built like the gate:
