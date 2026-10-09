@@ -1,4 +1,4 @@
-# Shared helpers of the Blender scripts: scene reset, box building, UV projection, textured
+# Shared helpers of the Blender scripts: scene reset, boxes, roofs, UV projection, textured
 # material with a normal map, OBJ export with fixed options and review renders.
 #
 # Two coordinate systems meet in this file:
@@ -79,6 +79,77 @@ def add_box(vertices, faces, low, high, skip=()):
     for name, corners in sides.items():
         if name not in skip:
             faces.append(tuple(first + corner for corner in corners))
+
+
+def add_roof(
+    vertices, faces, half_length, half_thickness, bottom, top, with_base,
+    centre=(0.0, 0.0), ridge_along_x=False,
+):
+    """Appends a roof with two slopes over a rectangle around `centre` (x, y).
+
+    The rectangle reaches `half_length` along X and `half_thickness` along Y, at the height
+    `bottom`. The ridge lies at the height `top`. It runs along Y in the middle, so the
+    roof is a triangle seen from the front, or along X with `ridge_along_x`, and then the
+    front shows a slope. `with_base` adds the level underside, for a roof that can be seen
+    from below.
+    """
+    centre_x, centre_y = centre
+    first = len(vertices)
+    vertices.extend(
+        [
+            (centre_x - half_length, centre_y - half_thickness, bottom),  # 0
+            (centre_x + half_length, centre_y - half_thickness, bottom),  # 1
+            (centre_x + half_length, centre_y + half_thickness, bottom),  # 2
+            (centre_x - half_length, centre_y + half_thickness, bottom),  # 3
+        ]
+    )
+    # Counter clockwise as seen from outside.
+    if ridge_along_x:
+        vertices.extend(
+            [
+                (centre_x - half_length, centre_y, top),  # 4
+                (centre_x + half_length, centre_y, top),  # 5
+            ]
+        )
+        roof = [
+            (0, 1, 5, 4),  # the slope facing -Y
+            (2, 3, 4, 5),  # the slope facing +Y
+            (0, 4, 3),  # the triangle facing -X
+            (1, 2, 5),  # the triangle facing +X
+        ]
+    else:
+        vertices.extend(
+            [
+                (centre_x, centre_y - half_thickness, top),  # 4
+                (centre_x, centre_y + half_thickness, top),  # 5
+            ]
+        )
+        roof = [
+            (0, 4, 5, 3),  # the slope facing -X
+            (1, 2, 5, 4),  # the slope facing +X
+            (0, 1, 4),  # the triangle facing -Y
+            (2, 3, 5),  # the triangle facing +Y
+        ]
+    if with_base:
+        roof.append((0, 3, 2, 1))
+    for corners in roof:
+        faces.append(tuple(first + corner for corner in corners))
+
+
+def add_pyramid(vertices, faces, centre_x, half, bottom, top, centre_y=0.0):
+    """Appends the four slopes of a pyramid over a square at the height `bottom`."""
+    first = len(vertices)
+    vertices.extend(
+        [
+            (centre_x - half, centre_y - half, bottom),  # 0
+            (centre_x + half, centre_y - half, bottom),  # 1
+            (centre_x + half, centre_y + half, bottom),  # 2
+            (centre_x - half, centre_y + half, bottom),  # 3
+            (centre_x, centre_y, top),  # 4
+        ]
+    )
+    for corners in ((0, 1, 4), (1, 2, 4), (2, 3, 4), (3, 0, 4)):
+        faces.append(tuple(first + corner for corner in corners))
 
 
 def create_mesh_object(name, vertices, faces):
@@ -169,6 +240,36 @@ def face_project_uvs(mesh, metres_per_uv_unit):
             u = position.dot(right)
             v = position.dot(up)
             uv_layer.data[loop_index].uv = (u / metres_per_uv_unit, v / metres_per_uv_unit)
+
+
+def piece_project_uvs(mesh, centres, uv_units_per_metre):
+    """Gives every face a small piece of the picture, around the middle listed for it.
+
+    For a model that wears a picture with several plain parts, like the pale glass and
+    the dark iron of the lantern: `centres` names, for every face in the order of the
+    faces, the middle (u, v) of the part it belongs to. The face is projected onto its
+    own plane, like face_project_uvs does: `up` is the height as far as the face allows
+    and `right` points to the right for someone who looks at the face from outside. The
+    corners are measured from the middle of the face, so the piece lies around the middle
+    named for it.
+    """
+    uv_layer = mesh.uv_layers.new(name="uv")
+
+    # from_pydata keeps the order of the faces, so face number i has centres[i].
+    for polygon, centre in zip(mesh.polygons, centres):
+        normal = polygon.normal
+        up = Vector((0.0, 0.0, 1.0)) - normal * normal.z
+        if up.length < 0.000001:
+            # A level face has no height direction. Blender Y is used instead.
+            up = Vector((0.0, 1.0, 0.0))
+        up.normalize()
+        right = up.cross(normal)
+
+        for loop_index in polygon.loop_indices:
+            position = mesh.vertices[mesh.loops[loop_index].vertex_index].co - polygon.center
+            u = centre[0] + position.dot(right) * uv_units_per_metre
+            v = centre[1] + position.dot(up) * uv_units_per_metre
+            uv_layer.data[loop_index].uv = (u, v)
 
 
 def assign_textured_material(model, material_name, texture_file, normal_map_file):

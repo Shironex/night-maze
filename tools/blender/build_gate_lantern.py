@@ -9,7 +9,6 @@
 import os
 import sys
 
-from mathutils import Vector
 
 # Blender does not add the folder of the script to the module search path, so the helper
 # module next to this file would not be found without this line.
@@ -68,33 +67,6 @@ def add_part(vertices, faces, centres, low, high, centre, skip=()):
     before = len(faces)
     common.add_box(vertices, faces, low, high, skip=skip)
     centres.extend([centre] * (len(faces) - before))
-
-
-def project_uvs(mesh, centres):
-    """Gives every face its piece of the picture, around the middle listed for it.
-
-    The face is projected onto its own plane, like common.face_project_uvs does: `up` is
-    the height as far as the face allows and `right` points to the right for someone who
-    looks at the face from outside. The corners are measured from the middle of the face,
-    so the piece lies around the middle of the half of the picture the face belongs to.
-    """
-    uv_layer = mesh.uv_layers.new(name="uv")
-
-    # from_pydata keeps the order of the faces, so face number i has centres[i].
-    for polygon, centre in zip(mesh.polygons, centres):
-        normal = polygon.normal
-        up = Vector((0.0, 0.0, 1.0)) - normal * normal.z
-        if up.length < 0.000001:
-            # A level face has no height direction. Blender Y is used instead.
-            up = Vector((0.0, 1.0, 0.0))
-        up.normalize()
-        right = up.cross(normal)
-
-        for loop_index in polygon.loop_indices:
-            position = mesh.vertices[mesh.loops[loop_index].vertex_index].co - polygon.center
-            u = centre[0] + position.dot(right) * UV_UNITS_PER_METRE
-            v = centre[1] + position.dot(up) * UV_UNITS_PER_METRE
-            uv_layer.data[loop_index].uv = (u, v)
 
 
 def build(shots):
@@ -175,7 +147,7 @@ def build(shots):
     )
 
     model = common.create_mesh_object(NAME, vertices, faces)
-    project_uvs(model.data, centres)
+    common.piece_project_uvs(model.data, centres, UV_UNITS_PER_METRE)
     common.assign_textured_material(model, "lantern", "lantern.png", "lantern_normal.png")
     common.export_obj(NAME)
 

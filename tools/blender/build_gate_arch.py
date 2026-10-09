@@ -117,53 +117,6 @@ ROOF_HALF_THICKNESS = 0.35
 ROOF_TOP = 5.98
 
 
-def add_roof(vertices, faces, half_length, half_thickness, bottom, top, with_base):
-    """Appends a roof: a triangle seen from the front, with its ridge across the gate.
-
-    The ridge runs along Y in the middle (x = 0) at the height `top`, and the two slopes
-    fall to x = -half_length and x = +half_length at the height `bottom`. `with_base`
-    adds the level underside, for a roof that can be seen from below.
-    """
-    first = len(vertices)
-    vertices.extend(
-        [
-            (-half_length, -half_thickness, bottom),  # 0
-            (half_length, -half_thickness, bottom),  # 1
-            (half_length, half_thickness, bottom),  # 2
-            (-half_length, half_thickness, bottom),  # 3
-            (0.0, -half_thickness, top),  # 4
-            (0.0, half_thickness, top),  # 5
-        ]
-    )
-    # Counter clockwise as seen from outside.
-    roof = [
-        (0, 4, 5, 3),  # the slope facing -X
-        (1, 2, 5, 4),  # the slope facing +X
-        (0, 1, 4),  # the triangle facing -Y
-        (2, 3, 5),  # the triangle facing +Y
-    ]
-    if with_base:
-        roof.append((0, 3, 2, 1))
-    for corners in roof:
-        faces.append(tuple(first + corner for corner in corners))
-
-
-def add_pyramid(vertices, faces, centre_x, half, bottom, top):
-    """Appends the four slopes of a pyramid over a square at the height `bottom`."""
-    first = len(vertices)
-    vertices.extend(
-        [
-            (centre_x - half, -half, bottom),  # 0
-            (centre_x + half, -half, bottom),  # 1
-            (centre_x + half, half, bottom),  # 2
-            (centre_x - half, half, bottom),  # 3
-            (centre_x, 0.0, top),  # 4
-        ]
-    )
-    for corners in ((0, 1, 4), (1, 2, 4), (2, 3, 4), (3, 0, 4)):
-        faces.append(tuple(first + corner for corner in corners))
-
-
 def add_haunch(vertices, faces, side):
     """Appends one haunch. side is -1 for the end at -X and +1 for the end at +X."""
     pier_x = side * (PIER_X - PIER_HIGH_HALF)
@@ -224,7 +177,7 @@ def build(shots):
             (x + CAP_HALF, CAP_HALF, CAP_TOP),
             skip=("+z",),
         )
-        add_pyramid(vertices, faces, x, CAP_HALF, CAP_TOP, CAP_POINT)
+        common.add_pyramid(vertices, faces, x, CAP_HALF, CAP_TOP, CAP_POINT)
 
         add_haunch(vertices, faces, side)
 
@@ -266,7 +219,9 @@ def build(shots):
     )
 
     # The gable. Its underside lies on the head and is never seen.
-    add_roof(vertices, faces, GABLE_HALF_LENGTH, GABLE_HALF_THICKNESS, PIER_TOP, GABLE_TOP, False)
+    common.add_roof(
+        vertices, faces, GABLE_HALF_LENGTH, GABLE_HALF_THICKNESS, PIER_TOP, GABLE_TOP, False
+    )
 
     # The double cote: the block under the sill, the sill, the three posts, the beam over
     # them and the roof. The ends of the beam are inside the outer posts.
@@ -298,7 +253,9 @@ def build(shots):
         (POST_XS[-1], BEAM_HALF_THICKNESS, POST_TOP),
         skip=("-x", "+x", "+z"),
     )
-    add_roof(vertices, faces, ROOF_HALF_LENGTH, ROOF_HALF_THICKNESS, POST_TOP, ROOF_TOP, True)
+    common.add_roof(
+        vertices, faces, ROOF_HALF_LENGTH, ROOF_HALF_THICKNESS, POST_TOP, ROOF_TOP, True
+    )
 
     model = common.create_mesh_object(NAME, vertices, faces)
     # face_project_uvs and not box_project_uvs: the gable, the roof, the haunches and the
