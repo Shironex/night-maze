@@ -163,7 +163,7 @@ std::unique_ptr<LoadedSound> loadSound(ma_engine& engine, ma_sound_group& group,
 
 struct AudioEngine::Backend {
     ma_engine engine{};
-    // The two groups, in the order of SoundGroup. A group is a node of the engine that
+    // The three groups, in the order of SoundGroup. A group is a node of the engine that
     // the voices of its sounds are mixed into, with a volume of its own, before the
     // sum goes on to the device.
     std::array<ma_sound_group, SOUND_GROUP_COUNT> groups{};
@@ -232,7 +232,7 @@ AudioEngine::AudioEngine(AudioOutput output) {
     }
     backend->engineReady = true;
 
-    // The two groups. Without them no sound could be loaded, so a failure here is
+    // The three groups. Without them no sound could be loaded, so a failure here is
     // treated like a missing device.
     for (ma_sound_group& group : backend->groups) {
         result = ma_sound_group_init(&backend->engine, 0, nullptr, &group);

@@ -12,16 +12,17 @@
 
 namespace audio {
 
-/// The two groups a sound can belong to. Each has a volume of its own under the master
-/// volume, so the player can turn the wind down without losing the sounds that tell
-/// something, or the other way round.
+/// The three groups a sound can belong to. Each has a volume of its own under the master
+/// volume, so the player can turn the wind or the music down without losing the sounds
+/// that tell something, or the other way round.
 enum class SoundGroup {
     Effects = 0, ///< everything that happens: clicks, pickups, steps, warnings
     Ambient,     ///< the air of a place: wind
+    Music,       ///< the theme of the menu
 };
 
 /// How many groups there are: the number of entries of SoundGroup.
-constexpr std::size_t SOUND_GROUP_COUNT = 2;
+constexpr std::size_t SOUND_GROUP_COUNT = 3;
 
 /// One sound to load: its file and the group it is mixed in.
 struct SoundFile {
@@ -53,8 +54,8 @@ enum class AudioOutput {
 /// How loud a sound is heard is the product of four numbers, each from 0 to 1: the
 /// samples of its file, the volume of the play (play), the volume of its group
 /// (setGroupVolume) and the master volume (setMasterVolume). miniaudio multiplies them
-/// while it mixes: the groups are two nodes every sound runs through on its way to the
-/// device. This class does not mix anything itself.
+/// while it mixes: the groups are three nodes, and every sound runs through one of them
+/// on its way to the device. This class does not mix anything itself.
 ///
 /// Sound is something the game can do without. When the computer has no sound device,
 /// or the device cannot be opened, the constructor writes one line into the log and
@@ -85,8 +86,13 @@ public:
     AudioEngine(const AudioEngine&) = delete;
     AudioEngine& operator=(const AudioEngine&) = delete;
 
-    /// Reads the sound files and decodes each of them completely into memory: they are
-    /// short, and a decoded sound starts without any work at the moment it is played.
+    /// Reads the sound files and decodes each of them completely into memory: a decoded
+    /// sound starts without any work at the moment it is played. A file may be a WAV or
+    /// a FLAC file. The samples are kept as 32 bit floats at the sample rate of the
+    /// device and with the channels of the FILE, so a second of a mono sound takes
+    /// 0.19 MB at 48 000 frames per second and a second of a stereo sound 0.38 MB,
+    /// whatever the device has. The short sounds are nothing next to that. The theme of
+    /// the menu (72.7 s, stereo) is 27.9 MB.
     /// The sound of files[i] is number i for play and setLoop. A file that cannot be
     /// loaded keeps its number, so the numbers of the others do not move. Calling it
     /// again replaces the list, and every loop is off afterwards. Does nothing without
@@ -182,7 +188,7 @@ private:
     std::string m_status;
     float m_masterVolume = 1.0F;
     // In the order of SoundGroup.
-    std::array<float, SOUND_GROUP_COUNT> m_groupVolumes = {1.0F, 1.0F};
+    std::array<float, SOUND_GROUP_COUNT> m_groupVolumes = {1.0F, 1.0F, 1.0F};
 };
 
 } // namespace audio

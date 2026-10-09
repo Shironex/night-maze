@@ -1,5 +1,5 @@
-// Tests of audio::AudioEngine: the volume of one play, the two groups, loops with their
-// fades and what stopAll does to them.
+// Tests of audio::AudioEngine: the volume of one play, the three groups, loops with their
+// fades, what stopAll does to them, and the theme of the menu (a FLAC file).
 //
 // No test here opens a sound device, and none is heard. The engine is made without
 // one (audio::AudioOutput::None) and asked for its mixed sound sample by sample
@@ -32,6 +32,10 @@ constexpr std::size_t CHANNELS = 2;
 // The wind of the maze is a loop of this many seconds (tools/make_sounds.py).
 constexpr std::size_t WIND_SECONDS = 10;
 
+// The theme of the menu is a loop of 72.72 seconds (tools/make_music.py): this many
+// frames of the engine.
+constexpr std::size_t THEME_FRAMES = 3490560;
+
 // The directory of the sounds in the repository. NIGHT_MAZE_ASSETS_DIR is set by
 // CMakeLists.txt, so the tests do not depend on the directory they are started from.
 SoundFile soundFile(const char* name, SoundGroup group = SoundGroup::Effects) {
@@ -48,6 +52,15 @@ std::vector<float> renderLeft(AudioEngine& engine, double seconds) {
         left[i] = mixed[i * CHANNELS];
     }
     return left;
+}
+
+// One channel (0 is left, 1 is right) of sound the engine has mixed.
+std::vector<float> channelOf(const std::vector<float>& mixed, std::size_t channel) {
+    std::vector<float> one(mixed.size() / CHANNELS);
+    for (std::size_t i = 0; i < one.size(); ++i) {
+        one[i] = mixed[i * CHANNELS + channel];
+    }
+    return one;
 }
 
 // The largest sample of a stretch of sound, without its sign.
@@ -113,7 +126,10 @@ TEST_CASE("the volume of a play scales that play and does not stick to the voice
     engine.load(files);
 
     const float full = peakOfPlay(engine, 1.0F);
-    REQUIRE(full > 0.05F);
+    // The file as it is: its loudest sample is at -11 dBFS (assets/audio/README.md),
+    // which is 0.28. The file is mono and the engine mixes stereo: each ear gets the
+    // whole sound, not a share of it.
+    REQUIRE(full == doctest::Approx(0.282F).epsilon(0.03));
     CHECK(peakOfPlay(engine, 0.5F) == doctest::Approx(0.5F * full).epsilon(0.01));
     CHECK(peakOfPlay(engine, 0.25F) == doctest::Approx(0.25F * full).epsilon(0.01));
     // Every voice of the sound has now been used at a low volume. A play without
@@ -162,6 +178,35 @@ TEST_CASE("each group has a volume of its own under the master volume") {
     // Out of range numbers are brought into the range, as for the master volume.
     engine.setGroupVolume(SoundGroup::Ambient, 7.0F);
     CHECK(engine.groupVolume(SoundGroup::Ambient) == 1.0F);
+}
+
+TEST_CASE("the music group has a volume of its own and leaves the other two alone") {
+    AudioEngine engine(AudioOutput::None);
+    const std::array<SoundFile, 3> files = {soundFile("flashlight_on.wav"),
+                                            soundFile("flashlight_on.wav", SoundGroup::Ambient),
+                                            soundFile("flashlight_on.wav", SoundGroup::Music)};
+    engine.load(files);
+    const auto peakOf = [&engine](std::size_t index) {
+        engine.play(index);
+        return peak(renderLeft(engine, 0.5));
+    };
+    const float full = peakOf(0);
+    REQUIRE(full > 0.05F);
+    CHECK(engine.groupVolume(SoundGroup::Music) == 1.0F);
+    CHECK(peakOf(2) == doctest::Approx(full).epsilon(0.01));
+
+    engine.setGroupVolume(SoundGroup::Music, 0.36F);
+    CHECK(engine.groupVolume(SoundGroup::Music) == 0.36F);
+    CHECK(peakOf(0) == doctest::Approx(full).epsilon(0.01));
+    CHECK(peakOf(1) == doctest::Approx(full).epsilon(0.01));
+    CHECK(peakOf(2) == doctest::Approx(0.36F * full).epsilon(0.01));
+
+    // The other two do not reach the music, and the master volume does.
+    engine.setGroupVolume(SoundGroup::Effects, 0.0F);
+    engine.setGroupVolume(SoundGroup::Ambient, 0.0F);
+    CHECK(peakOf(2) == doctest::Approx(0.36F * full).epsilon(0.01));
+    engine.setMasterVolume(0.0F);
+    CHECK(peakOf(2) == 0.0F);
 }
 
 TEST_CASE("a loop goes on for longer than its file, and only setLoop ends it") {
@@ -303,4 +348,97 @@ TEST_CASE("the wind of the maze has no tick where its file starts again") {
         CHECK(right > 0.5F * left);
         CHECK(right < 2.0F * left);
     }
+}
+
+TEST_CASE("the theme of the menu is a FLAC file that loads and goes round without a tick") {
+    AudioEngine engine(AudioOutput::None);
+    const std::array<SoundFile, 1> files = {soundFile("menu_theme.flac", SoundGroup::Music)};
+    engine.load(files);
+    // A build of miniaudio without its FLAC decoder fails here.
+    REQUIRE(engine.status().find("1 of 1 sounds loaded") != std::string::npos);
+
+    // One round and a second of the next one, in both channels: they are different
+    // sounds here.
+    engine.setLoop(0, true, 0.0F);
+    const std::vector<float> mixed = engine.render(THEME_FRAMES + RATE);
+    const std::vector<float> left = channelOf(mixed, 0);
+    const std::vector<float> right = channelOf(mixed, 1);
+    // The loudest sample of the file is at -10 dBFS (tools/make_music.py), which is
+    // 0.316. The conversion to the rate of the engine moves that a little.
+    CHECK(peak(mixed) == doctest::Approx(0.316F).epsilon(0.05));
+    // The strings sit left and right, so the two channels are not the same sound.
+    float apart = 0.0F;
+    for (std::size_t i = 0; i < left.size(); ++i) {
+        apart = std::max(apart, std::abs(left[i] - right[i]));
+    }
+    CHECK(apart > 0.02F);
+    // It never falls silent for long: every five seconds of it hold sound.
+    for (std::size_t start = 0; start + 5 * RATE <= left.size(); start += 5 * RATE) {
+        CHECK(peak(std::span(left).subspan(start, 5 * RATE)) > 0.002F);
+    }
+
+    // The seam, asked the way the wind of the maze is asked: the few samples around it
+    // hold no larger step than the whole second before it.
+    constexpr std::size_t AROUND = 64;
+    for (const std::vector<float>* sound : {&left, &right}) {
+        const std::span<const float> samples(*sound);
+        const float before = largestStep(samples.subspan(THEME_FRAMES - RATE, RATE - AROUND));
+        const float across = largestStep(samples.subspan(THEME_FRAMES - AROUND, 2 * AROUND));
+        CHECK(before > 0.0F);
+        CHECK(across <= before);
+        // The piece is quiet at its seam, a moment before the first note: what follows
+        // is neither silence nor louder than the echo before it.
+        const float last = peak(samples.subspan(THEME_FRAMES - RATE / 10, RATE / 10));
+        const float first = peak(samples.subspan(THEME_FRAMES, RATE / 10));
+        CHECK(first > 0.5F * last);
+        CHECK(first < 2.0F * last);
+    }
+}
+
+TEST_CASE("a loop that is switched off and on again goes on from where it stopped") {
+    const std::array<SoundFile, 1> files = {soundFile("maze_wind.wav", SoundGroup::Ambient)};
+    // One engine plays the loop without a break.
+    AudioEngine plain(AudioOutput::None);
+    plain.load(files);
+    plain.setLoop(0, true, 0.0F);
+    const std::vector<float> whole = renderLeft(plain, 6.0);
+
+    // The other one is switched off after two seconds (a night starts, for the theme of
+    // the menu), with a fade of one second, stays off, and is switched on again (the
+    // menu is back).
+    AudioEngine engine(AudioOutput::None);
+    engine.load(files);
+    engine.setLoop(0, true, 0.0F);
+    renderLeft(engine, 2.0);
+    engine.setLoop(0, false, 1.0F);
+    renderLeft(engine, 1.5);
+    CHECK(peak(renderLeft(engine, 2.0)) == 0.0F);
+    engine.setLoop(0, true, 0.0F);
+    const std::vector<float> resumed = renderLeft(engine, 0.5);
+    REQUIRE(peak(resumed) > 0.001F);
+
+    // What comes then is the loop from its fourth second on, not from its first: it
+    // went on for the second of its fade and then stood still. The place is looked for
+    // in the unbroken sound, a hundredth of a second to either side. The first tenth of
+    // a second is left out: the engine brings a voice that starts up to its loudness
+    // over a few milliseconds, also when no fade was asked for.
+    const auto differenceAt = [&](std::size_t start) {
+        float difference = 0.0F;
+        for (std::size_t i = RATE / 10; i < resumed.size(); ++i) {
+            difference = std::max(difference, std::abs(resumed[i] - whole[start + i]));
+        }
+        return difference;
+    };
+    float best = 1.0F;
+    std::size_t place = 0;
+    for (std::size_t start = 3 * RATE - RATE / 100; start <= 3 * RATE + RATE / 100; ++start) {
+        const float difference = differenceAt(start);
+        if (difference < best) {
+            best = difference;
+            place = start;
+        }
+    }
+    CAPTURE(place);
+    CHECK(best < 0.01F * peak(resumed));
+    CHECK(differenceAt(0) > 0.5F * peak(resumed));
 }
