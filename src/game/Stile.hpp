@@ -29,9 +29,9 @@ namespace game {
 /// The side of the start cell whose wall carries the stile. North and West are the outer
 /// border in every maze, so that wall is always there and no lever opens it. North, and
 /// not West: the wall model is not turned on a wall along X, and its far end, where the
-/// notch and the post are, then lies towards the east, the side a player who starts
-/// looking east has in view. A player who starts looking south has the stile behind
-/// them: they came in over it.
+/// notch and the post are, then lies towards the east: a player who starts looking east
+/// has the post at the left edge of the picture. A player who starts looking south has
+/// the stile behind them: they came in over it.
 constexpr Direction STILE_SIDE = Direction::North;
 
 /// The one collision box of the stile, in front of the wall: from the low end of the first
