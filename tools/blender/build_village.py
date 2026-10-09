@@ -346,11 +346,13 @@ def build(shots):
     common.export_obj(NAME)
 
     if shots:
-        # From the eye, with the lens of the review camera, and from nearer and higher.
+        # From the eye, with the lens of the review camera, and from nearer. The second
+        # camera stays below the lane like the eye: from above, the faces that are left
+        # out would be missing.
         common.render_review_shots(
             NAME,
             target=(0.0, LANE_DISTANCE, LANE_HEIGHT + 4.0),
-            camera_positions=[(0.0, 0.0, 0.0), (-20.0, LANE_DISTANCE - 70.0, LANE_HEIGHT + 6.0)],
+            camera_positions=[(0.0, 0.0, 0.0), (-12.0, LANE_DISTANCE - 60.0, LANE_HEIGHT - 4.0)],
         )
 
     for night in range(1, NIGHT_COUNT + 1):
