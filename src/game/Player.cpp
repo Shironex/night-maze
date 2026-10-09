@@ -32,13 +32,22 @@ bool sprintedStep(float metres, float stepSeconds, float walkSpeed, float sprint
     return metres / stepSeconds > (walkSpeed + sprintSpeed) / 2.0F;
 }
 
+void advanceStaminaClocks(Stamina& stamina, float stepSeconds) {
+    // max keeps the last step of a clock from going below 0.
+    if (stamina.heavySecondsLeft > 0.0F) {
+        stamina.heavySecondsLeft = std::max(stamina.heavySecondsLeft - stepSeconds, 0.0F);
+        return;
+    }
+    stamina.noDrainSecondsLeft = std::max(stamina.noDrainSecondsLeft - stepSeconds, 0.0F);
+}
+
 bool advanceStamina(Stamina& stamina, const StaminaSettings& settings, bool wantsSprint,
                     float stepSeconds) {
-    const bool sprinting = wantsSprint && !stamina.winded && stamina.level > 0.0F;
+    // Asked before the clocks run: the step in which the weight runs out is still heavy.
+    const bool sprinting =
+        wantsSprint && !stamina.winded && stamina.level > 0.0F && stamina.heavySecondsLeft <= 0.0F;
 
-    // The tea of a flask runs down with the time, whatever the player does. max keeps
-    // the last step from going below 0.
-    stamina.noDrainSecondsLeft = std::max(stamina.noDrainSecondsLeft - stepSeconds, 0.0F);
+    advanceStaminaClocks(stamina, stepSeconds);
 
     if (sprinting) {
         // While the tea works a sprint costs nothing: the step is sprinted, and the bar
@@ -82,6 +91,18 @@ void drinkFlask(Stamina& stamina, const StaminaSettings& settings) {
     stamina.noDrainSecondsLeft = settings.flaskSeconds;
 }
 
+void carryHeartstone(Stamina& stamina, const StaminaSettings& settings) {
+    stamina.heavySecondsLeft = std::max(settings.heavySeconds, 0.0F);
+}
+
+float heavyFraction(const Stamina& stamina, const StaminaSettings& settings) {
+    // A length of 0 has no parts, and must not be divided by.
+    if (settings.heavySeconds <= 0.0F) {
+        return 0.0F;
+    }
+    return std::clamp(stamina.heavySecondsLeft / settings.heavySeconds, 0.0F, 1.0F);
+}
+
 float flaskEffectFraction(const Stamina& stamina, const StaminaSettings& settings) {
     // A length of 0 (typed into the debug UI) has no parts, and must not be divided by.
     if (settings.flaskSeconds <= 0.0F) {
@@ -92,7 +113,7 @@ float flaskEffectFraction(const Stamina& stamina, const StaminaSettings& setting
 
 bool staminaBarVisible(const Stamina& stamina) {
     return stamina.level < 1.0F || stamina.secondsFull < STAMINA_BAR_LINGER_SECONDS ||
-           stamina.noDrainSecondsLeft > 0.0F;
+           stamina.noDrainSecondsLeft > 0.0F || stamina.heavySecondsLeft > 0.0F;
 }
 
 scene::Aabb Player::box() const {

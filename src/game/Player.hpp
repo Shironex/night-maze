@@ -55,6 +55,10 @@ struct StaminaSettings {
 
     /// How long sprinting costs no stamina after a flask of tea, in seconds (drinkFlask).
     float flaskSeconds = 20.0F;
+
+    /// How long the player cannot sprint after taking the heartstone, in seconds
+    /// (carryHeartstone).
+    float heavySeconds = 30.0F;
 };
 
 /// How long the stamina bar of the HUD stays on the screen after it got full again, in
@@ -82,20 +86,36 @@ struct Stamina {
     /// Seconds for which sprinting still costs nothing: the tea of a flask is working
     /// (drinkFlask). 0 means that no effect runs.
     float noDrainSecondsLeft = 0.0F;
+
+    /// Seconds for which the player is still heavy: the heartstone was just taken
+    /// (carryHeartstone), and sprinting is refused. 0 means that the player is not
+    /// heavy. It is not winded: the bar refills, and nobody breathes hard.
+    float heavySecondsLeft = 0.0F;
 };
+
+/// Runs the two clocks of the stamina by one fixed step: the weight of the heartstone
+/// and the tea of a flask. This function is the whole rule of how the two meet:
+///   - while the player is heavy only the weight runs down. The tea waits: a flask drunk
+///     in that time does not lift the weight (drinkFlask does not touch it), and its
+///     seconds of free sprint start when the weight is gone,
+///   - otherwise the tea runs down, whatever the player does.
+/// Neither clock goes below 0.
+void advanceStaminaClocks(Stamina& stamina, float stepSeconds);
 
 /// Advances the stamina by one fixed step of stepSeconds seconds and returns true when
 /// the player sprints in this step.
 ///
 /// wantsSprint is true when the sprint key is held AND the player is walking somewhere
-/// (Player::update decides that). The player sprints when it wants to, is not winded
-/// and has stamina left.
+/// (Player::update decides that). The player sprints when it wants to, is not winded,
+/// is not heavy (Stamina::heavySecondsLeft) and has stamina left.
 ///
 ///   - Sprinting drains the bar: from full to empty in drainSeconds. The step that
 ///     empties it makes the player winded.
 ///   - Not while the tea of a flask works (Stamina::noDrainSecondsLeft): then the step
 ///     is sprinted and the bar stays as it is. That time runs down in every step,
-///     whether the player sprints, walks or stands.
+///     whether the player sprints, walks or stands, except while the player is heavy
+///     (advanceStaminaClocks).
+///   - A heavy player does not sprint, so the step is walked and the bar refills.
 ///   - Otherwise the bar refills, from empty to full in refillSeconds, but only after
 ///     refillDelaySeconds have passed since the last drain.
 ///   - Winded ends when the refill reaches windedRecovery. Holding the sprint key while
@@ -109,6 +129,16 @@ bool advanceStamina(Stamina& stamina, const StaminaSettings& settings, bool want
 /// beginning: the seconds are set, not added.
 void drinkFlask(Stamina& stamina, const StaminaSettings& settings);
 
+/// The player takes the heartstone: for StaminaSettings::heavySeconds no step is
+/// sprinted. Nothing else changes: the bar, the winded state and the tea stay as they
+/// are, and walking is as fast as ever.
+void carryHeartstone(Stamina& stamina, const StaminaSettings& settings);
+
+/// How much of the weight of the heartstone is left, from 1 (just taken) down to 0 (not
+/// heavy): Stamina::heavySecondsLeft as a part of StaminaSettings::heavySeconds. The
+/// HUD draws its marks with it. Always between 0 and 1.
+float heavyFraction(const Stamina& stamina, const StaminaSettings& settings);
+
 /// How much of the effect of a flask is left, from 1 (just drunk) down to 0 (no effect):
 /// Stamina::noDrainSecondsLeft as a part of StaminaSettings::flaskSeconds. The HUD
 /// draws its bar with it. Always between 0 and 1, also when the debug UI changed the
@@ -117,7 +147,7 @@ float flaskEffectFraction(const Stamina& stamina, const StaminaSettings& setting
 
 /// True while the HUD shows the stamina bar: while it is not full, for
 /// STAMINA_BAR_LINGER_SECONDS after it got full, and for as long as the tea of a flask
-/// works.
+/// works or the player is heavy.
 bool staminaBarVisible(const Stamina& stamina);
 
 /// The player: a box standing on the ground, plus the settings of its movement.
