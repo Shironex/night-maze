@@ -1,6 +1,7 @@
 // StartOptions: what the command line asks the game to start with.
 #pragma once
 
+#include "game/Daily.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/MenuBackground.hpp"
 #include "game/MenuCamera.hpp"
@@ -68,11 +69,16 @@ struct StartOptions {
     /// the same, and the campaign in the settings file is neither read nor changed.
     int night = 0;
 
+    /// The day whose maze the game starts in at once (--daily, game/Daily.hpp), or
+    /// NO_DAILY_DATE for none. Like --night it skips the main menu and shows no title
+    /// card. It is also the day of "Tonight's hedge" for the whole run (fixedDailyDate).
+    std::uint32_t daily = NO_DAILY_DATE;
+
     /// True when one of the switches above was on the command line (--seed, --play,
     /// --menu-camera, --menu-shot, --menu-time, --menu-background, --start-cell,
-    /// --start-yaw, --collect-all, --calm or --night): a tool or a test is driving the game. In
-    /// such a run a campaign begins without the intro (game::campaignIntroPlays): a script that
-    /// starts a night wants the night.
+    /// --start-yaw, --collect-all, --calm, --night or --daily): a tool or a test is driving the
+    /// game. In such a run a campaign begins without the intro (game::campaignIntroPlays): a script
+    /// that starts a night wants the night.
     bool toolSwitch = false;
 
     /// True: never play the intro in this run (--skip-intro), neither at the start nor
@@ -117,11 +123,25 @@ extern const char* const START_OPTIONS_USAGE;
 ///     --collect-all          the first round starts with every crystal collected
 ///     --calm                 no shade in this run (a calm night), settings untouched
 ///     --night <1..5>         start that night of the campaign at once, settings untouched
+///     --daily <YYYYMMDD>     start the maze of that day at once, its best time untouched
 ///     --skip-intro           never play the intro in this run
 ///     --intro                play the intro at the start of this run
 ///
 /// An unknown switch, a missing value or a value that is not a number is an error: the
-/// result then carries a message and the game should not start.
+/// result then carries a message and the game should not start. So are --night and
+/// --daily together: a run starts in one maze.
 StartOptionsResult parseStartOptions(std::span<const char* const> arguments);
+
+/// The day "Tonight's hedge" has in this run when the clock is not to be asked, or
+/// NO_DAILY_DATE when the day is the one of the clock:
+///
+///     --daily <YYYYMMDD>           that day
+///     any other switch of a tool   TOOL_DAILY_DATE
+///     otherwise                    NO_DAILY_DATE
+///
+/// A run a tool drives shows the same pictures on every day, so it never asks the clock.
+/// A day that did not come from the clock is not a day that was played: such a run reads
+/// the best time of its day and never writes one.
+std::uint32_t fixedDailyDate(const StartOptions& options);
 
 } // namespace game

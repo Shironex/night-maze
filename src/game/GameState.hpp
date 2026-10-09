@@ -42,7 +42,8 @@ enum class GameMode {
     /// The question before a new campaign replaces a finished one.
     NewCampaign,
     /// The title card of a night: its number and its name on black, before its round.
-    /// It ends by itself, and any key ends it earlier.
+    /// It ends by itself, and any key ends it earlier. The maze of the day has the same
+    /// card, with its name and its day.
     NightCard,
     /// The ending card: four lines on black after the last night is won, in the place
     /// of the result screen. It ends by itself, and any key ends it earlier.
@@ -75,7 +76,9 @@ enum class GameEvent {
     AskNewCampaign,
     /// A night of the campaign is started: the first entry of the main menu
     /// ("Continue"), a night of the list, or the button "Next night" of the result
-    /// screen. The application says which night.
+    /// screen. The application says which night. The entry "Tonight's hedge" of the main
+    /// menu sends it too: the maze of the day begins with a title card like a night
+    /// (game/Daily.hpp).
     StartNight,
     CardFinished, ///< a title card or the ending card reached its end, or was skipped
     CampaignWon,  ///< the player walked through the gate of the last night
@@ -173,7 +176,7 @@ GameMode nextMode(GameMode mode, GameEvent event);
 /// row that fits decides:
 ///
 ///     --intro without --skip-intro         Intro, whatever else was given
-///     --play, --menu-camera or --night     Playing
+///     --play, --menu-camera, --night or --daily   Playing
 ///     otherwise                            MainMenu
 ///
 /// The game opens with the main menu, also on its very first start: the intro waits for

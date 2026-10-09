@@ -160,8 +160,10 @@ GameMode startMode(const StartOptions& options) {
     }
     // The menu camera is a tool for recording the game: with it the main menu is
     // skipped like with --play, so no menu ever lies over the recorded picture.
-    // A night of the campaign named on the command line starts in its round at once.
-    if (options.play || options.menuCamera.enabled || options.night != 0) {
+    // A night of the campaign named on the command line starts in its round at once, and
+    // so does the maze of a day.
+    if (options.play || options.menuCamera.enabled || options.night != 0 ||
+        options.daily != NO_DAILY_DATE) {
         return GameMode::Playing;
     }
     return GameMode::MainMenu;

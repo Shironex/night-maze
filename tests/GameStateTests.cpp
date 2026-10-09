@@ -526,6 +526,12 @@ TEST_CASE("a run driven by a tool starts in its round or in the main menu") {
     night.toolSwitch = true;
     CHECK(game::startMode(night) == GameMode::Playing);
 
+    // So does the maze of a day (--daily).
+    game::StartOptions daily;
+    daily.daily = 20261009;
+    daily.toolSwitch = true;
+    CHECK(game::startMode(daily) == GameMode::Playing);
+
     // --seed, --menu-shot, --menu-time and --menu-background leave the main menu as the
     // first screen.
     game::StartOptions tool;
@@ -677,4 +683,21 @@ TEST_CASE("the intro and the two cards are films: no round, no menu, no HUD, no 
     CHECK_FALSE(game::isFilm(GameMode::Playing));
     CHECK_FALSE(game::isFilm(GameMode::RoundEnd));
     CHECK_FALSE(game::isFilm(GameMode::Paused));
+}
+
+TEST_CASE("the maze of the day goes from the main menu over a title card into its round") {
+    // "Tonight's hedge" sends StartNight, like a night: the card, then the round.
+    CHECK(game::nextMode(GameMode::MainMenu, GameEvent::StartNight) == GameMode::NightCard);
+    CHECK(game::nextMode(GameMode::NightCard, GameEvent::CardFinished) == GameMode::Playing);
+    // Its result screen is the one of free play: "Play again" starts the same maze
+    // without a card, and "Back to menu" and Escape lead to the main menu.
+    CHECK(game::nextMode(GameMode::Playing, GameEvent::RoundWon) == GameMode::RoundEnd);
+    CHECK(game::nextMode(GameMode::RoundEnd, GameEvent::Restart) == GameMode::Playing);
+    CHECK(game::startsRound(GameMode::RoundEnd, GameEvent::Restart));
+    CHECK(game::nextMode(GameMode::RoundEnd, GameEvent::BackToMenu) == GameMode::MainMenu);
+    CHECK(game::nextMode(GameMode::RoundEnd, GameEvent::Escape) == GameMode::MainMenu);
+    // The entry is a command of the application and no event of its own.
+    GameEvent event = GameEvent::Quit;
+    CHECK_FALSE(game::eventForAction("daily", event));
+    CHECK(event == GameEvent::Quit);
 }

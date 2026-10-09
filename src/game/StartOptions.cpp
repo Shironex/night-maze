@@ -27,6 +27,7 @@ constexpr std::string_view CALM_SWITCH = "--calm";
 constexpr std::string_view SKIP_INTRO_SWITCH = "--skip-intro";
 constexpr std::string_view INTRO_SWITCH = "--intro";
 constexpr std::string_view NIGHT_SWITCH = "--night";
+constexpr std::string_view DAILY_SWITCH = "--daily";
 
 // The two names --menu-shot accepts.
 constexpr std::string_view WALK_SHOT_NAME = "walk";
@@ -101,7 +102,7 @@ const char* const START_OPTIONS_USAGE =
     "Switches: --seed <number>, --play, --menu-camera, --menu-shot <walk|glide>, "
     "--menu-time <seconds>, --menu-background <video|still|scene>, "
     "--start-cell <column>,<row>, --start-yaw <degrees>, --collect-all, --calm, "
-    "--night <1..5>, --skip-intro, --intro";
+    "--night <1..5>, --daily <YYYYMMDD>, --skip-intro, --intro";
 
 StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
     StartOptionsResult result;
@@ -147,7 +148,7 @@ StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
         const bool known = name == SEED_SWITCH || name == MENU_SHOT_SWITCH ||
                            name == MENU_TIME_SWITCH || name == MENU_BACKGROUND_SWITCH ||
                            name == START_CELL_SWITCH || name == START_YAW_SWITCH ||
-                           name == NIGHT_SWITCH;
+                           name == NIGHT_SWITCH || name == DAILY_SWITCH;
         if (!known) {
             result.error = "Unknown switch: " + std::string(name);
             return result;
@@ -158,7 +159,7 @@ StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
         }
         ++i;
         const char* const value = arguments[i];
-        // All seven are switches of a tool.
+        // All eight are switches of a tool.
         options.toolSwitch = true;
 
         bool understood = false;
@@ -182,6 +183,8 @@ StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
             if (understood) {
                 options.night = static_cast<int>(night);
             }
+        } else if (name == DAILY_SWITCH) {
+            understood = parseDailyDate(value, options.daily);
         } else if (name == START_YAW_SWITCH) {
             // A number of degrees is read like a number of seconds: any finite number.
             float degrees = 0.0F;
@@ -202,7 +205,18 @@ StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
             return result;
         }
     }
+    if (options.night != 0 && options.daily != NO_DAILY_DATE) {
+        result.error = "The switches " + std::string(NIGHT_SWITCH) + " and " +
+                       std::string(DAILY_SWITCH) + " cannot be used together";
+    }
     return result;
+}
+
+std::uint32_t fixedDailyDate(const StartOptions& options) {
+    if (options.daily != NO_DAILY_DATE) {
+        return options.daily;
+    }
+    return options.toolSwitch ? TOOL_DAILY_DATE : NO_DAILY_DATE;
 }
 
 } // namespace game

@@ -4,6 +4,7 @@
 #include <doctest/doctest.h>
 
 #include <cstdint>
+#include <initializer_list>
 #include <string>
 #include <vector>
 
@@ -33,6 +34,7 @@ TEST_CASE("without switches the game starts as always") {
     CHECK_FALSE(result.options.collectAll);
     CHECK_FALSE(result.options.calm);
     CHECK(result.options.night == 0);
+    CHECK(result.options.daily == game::NO_DAILY_DATE);
     // Nothing says that a tool drives the game, and nothing about the intro.
     CHECK_FALSE(result.options.toolSwitch);
     CHECK_FALSE(result.options.skipIntro);
@@ -54,6 +56,7 @@ TEST_CASE("each of the eleven switches of a tool marks the run as driven by a to
     CHECK(parse({"--collect-all"}).options.toolSwitch);
     CHECK(parse({"--calm"}).options.toolSwitch);
     CHECK(parse({"--night", "2"}).options.toolSwitch);
+    CHECK(parse({"--daily", "20261009"}).options.toolSwitch);
 }
 
 TEST_CASE("the two switches of the intro set their fields and are no switches of a tool") {
@@ -169,6 +172,7 @@ TEST_CASE("the list of switches names every switch") {
     CHECK(usage.find("--collect-all") != std::string::npos);
     CHECK(usage.find("--calm") != std::string::npos);
     CHECK(usage.find("--night") != std::string::npos);
+    CHECK(usage.find("--daily") != std::string::npos);
     CHECK(usage.find("--skip-intro") != std::string::npos);
     // With the space in front it is not the end of --skip-intro.
     CHECK(usage.find(" --intro") != std::string::npos);
@@ -307,4 +311,56 @@ TEST_CASE("the night switch names a night of the campaign, 1 to 5") {
     CHECK(all.options.seed == 42U);
     CHECK(all.options.seedGiven);
     CHECK(all.options.collectAll);
+}
+
+TEST_CASE("the daily switch names a day of the calendar with eight digits") {
+    const game::StartOptionsResult result = parse({"--daily", "20261009"});
+    CHECK(result.error.empty());
+    CHECK(result.options.daily == 20261009);
+    // It changes nothing else.
+    CHECK(result.options.night == 0);
+    CHECK_FALSE(result.options.seedGiven);
+    CHECK_FALSE(result.options.play);
+    CHECK_FALSE(result.options.calm);
+    CHECK(parse({"--daily", "20280229"}).options.daily == 20280229);
+
+    // A day the calendar does not have, and anything that is not eight digits.
+    for (const char* text :
+         {"20260229", "20261332", "2026109", "202610091", "2026-10-09", "today", "0", ""}) {
+        CAPTURE(text);
+        const game::StartOptionsResult refused = parse({"--daily", text});
+        CHECK_FALSE(refused.error.empty());
+        CHECK(refused.error.find("--daily") != std::string::npos);
+    }
+    CHECK_FALSE(parse({"--daily"}).error.empty());
+
+    // The switches of a picture go with it, a night of the campaign does not: a run
+    // starts in one maze.
+    CHECK(parse({"--daily", "20261009", "--collect-all", "--start-cell", "3,4"}).error.empty());
+    for (const game::StartOptionsResult& both : {parse({"--daily", "20261009", "--night", "2"}),
+                                                 parse({"--night", "2", "--daily", "20261009"})}) {
+        CHECK_FALSE(both.error.empty());
+        CHECK(both.error.find("--daily") != std::string::npos);
+        CHECK(both.error.find("--night") != std::string::npos);
+    }
+}
+
+TEST_CASE("a run with a switch of a tool has a fixed day and never asks the clock") {
+    // The game as a player starts it: the day is the one of the clock.
+    CHECK(game::fixedDailyDate(parse({}).options) == game::NO_DAILY_DATE);
+    // The two switches of the intro are no switches of a tool.
+    CHECK(game::fixedDailyDate(parse({"--skip-intro"}).options) == game::NO_DAILY_DATE);
+    CHECK(game::fixedDailyDate(parse({"--intro"}).options) == game::NO_DAILY_DATE);
+
+    // The day of the command line.
+    CHECK(game::fixedDailyDate(parse({"--daily", "20261224"}).options) == 20261224);
+    CHECK(game::fixedDailyDate(parse({"--daily", "20261224", "--calm"}).options) == 20261224);
+    // Any other switch of a tool: one day for all of them, so a picture of the main
+    // menu is the same on every day.
+    for (const game::StartOptionsResult& tool :
+         {parse({"--seed", "76"}), parse({"--play"}), parse({"--calm"}), parse({"--night", "2"}),
+          parse({"--menu-background", "still"}), parse({"--menu-camera"})}) {
+        CHECK(tool.error.empty());
+        CHECK(game::fixedDailyDate(tool.options) == game::TOOL_DAILY_DATE);
+    }
 }
