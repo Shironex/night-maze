@@ -1,10 +1,8 @@
-# Publishes the website in site/ to GitHub Pages at
-# https://shironex.github.io/night-maze/.
+# Builds the website in site/ (an Astro project) and publishes it to GitHub
+# Pages at https://shironex.github.io/night-maze/.
 #
-# The site is plain files: one page, one script, pictures, a short video, the
-# menu theme and two fonts. Nothing is built, so the folder is uploaded as it
-# is. A pull request that touches the site runs nothing here: there is nothing
-# to check before the files are served.
+# A pull request that touches the site builds and checks it without deploying,
+# so a page that no longer builds fails before it is merged.
 #
 # No job here sees a secret. Actions are GitHub's own, pinned to a commit with
 # the version in a comment, as in ci.yml.
@@ -16,41 +14,85 @@ on:
     branches: [main]
     paths:
       - 'site/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/pages.yml'
+  pull_request:
+    paths:
+      - 'site/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/pages.yml'
   workflow_dispatch: {}
 
 permissions:
   contents: read
 
-# One deploy at a time, and never cancel one halfway through.
+# One run per branch at a time, and never cancel a deploy halfway through.
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  # Corepack must not stop to ask before it downloads pnpm.
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+  ASTRO_TELEMETRY_DISABLED: '1'
+
 jobs:
-  deploy:
-    name: Deploy the site to Pages
+  build:
+    name: Build the site
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Permissions on a job replace the ones above, so the checkout needs its line here too.
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Upload the site folder
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      # Corepack ships with Node 22 and installs the pnpm version that
+      # `packageManager` in package.json names.
+      - name: Set up pnpm
+        run: corepack enable
+
+      # Only the packages of the site: the README picture tooling in the root
+      # package would download a browser nobody needs here.
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter night-maze-site
+
+      - name: Types
+        run: pnpm --filter night-maze-site check
+
+      - name: Tests of the hedge sketch
+        run: pnpm --filter night-maze-site test
+
+      - name: Build
+        run: pnpm --filter night-maze-site build
+
+      - name: Upload the built site
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
-          path: site
+          path: site/dist
 
+  deploy:
+    name: Deploy the site to Pages
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
