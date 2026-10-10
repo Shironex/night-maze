@@ -1,0 +1,54 @@
+# Publishes the website in site/ to GitHub Pages at
+# https://shironex.github.io/night-maze/.
+#
+# The site is plain files: one page, one script, pictures, a short video, the
+# menu theme and two fonts. Nothing is built, so the folder is uploaded as it
+# is. A pull request that touches the site runs nothing here: there is nothing
+# to check before the files are served.
+#
+# No job here sees a secret. Actions are GitHub's own, pinned to a commit with
+# the version in a comment, as in ci.yml.
+
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+# One deploy at a time, and never cancel one halfway through.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy the site to Pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Upload the site folder
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
