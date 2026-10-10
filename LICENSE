@@ -33,4 +33,5 @@ models, textures, sounds, video, user interface art and the story text under
 owner's permission.
 
 The exception is a file that states another licence. Third-party fonts and
-libraries keep their own licences; see `THIRD-PARTY-NOTICES.txt`.
+libraries keep their own licences; see `THIRD-PARTY-NOTICES.txt`, and for the
+two fonts of the website the licence files beside them in `site/fonts/`.
