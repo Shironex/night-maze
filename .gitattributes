@@ -1,3 +1,8 @@
 * text=auto eol=lf
 # The video loop of the main menu: never a text file, whatever its bytes look like.
 *.mp4 binary
+# The media and fonts of the website in site/.
+*.mp3 binary
+*.webp binary
+*.jpg binary
+*.woff2 binary
