@@ -12,4 +12,4 @@
 - [ ] A fix for code that needs no window comes with a doctest case in `tests/` (a new file is also listed in `CMakeLists.txt`).
 - [ ] If I changed a dependency in `cmake/Dependencies.cmake`: I ran `node tools/build-notices.mjs --deps build/release/_deps` and committed `THIRD-PARTY-NOTICES.txt`.
 - [ ] I did not edit `CHANGELOG.md` or the version in `CMakeLists.txt`. I write those at release time.
-- [ ] I did not change anything under `assets/` or `docs/story/`. Those are not open to pull requests.
+- [ ] I did not change a model, texture, sound, the music, the video, interface art or anything in `docs/story/`. Those are not open to pull requests. Shaders and the menu documents under `assets/` are code and are fine.
