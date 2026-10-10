@@ -32,7 +32,9 @@ jobs:
     name: Deploy the site to Pages
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Permissions on a job replace the ones above, so the checkout needs its line here too.
     permissions:
+      contents: read
       pages: write
       id-token: write
     environment:
