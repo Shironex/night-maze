@@ -10,7 +10,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/Shironex/night-maze/ci.yml?branch=main&style=flat&label=ci)](https://github.com/Shironex/night-maze/actions/workflows/ci.yml)
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-56d6ca?style=flat)](LICENSE)
 
-[Play it](#play-it) · [The launcher](https://github.com/Shironex/night-maze-launcher) · [Changelog](CHANGELOG.md) · [Build it](#build-from-source)
+[Website](https://shironex.github.io/night-maze/) · [Play it](#play-it) · [The launcher](https://github.com/Shironex/night-maze-launcher) · [Changelog](CHANGELOG.md) · [Build it](#build-from-source)
 
 > The moon sees every corridor. You see one.
 
@@ -215,6 +215,7 @@ The full steps, the prerequisites and what `make check` does are in [docs/buildi
 | `assets/` | Shaders, textures, models, skybox, menu documents, fonts, sounds and the menu video. All of it ships with the game |
 | `tests/` | Unit tests |
 | `tools/` | Scripts that make assets (sounds, the menu loop, Blender scripts), the release notes and the README pictures |
+| `site/` | The [website](https://shironex.github.io/night-maze/): plain files, published to GitHub Pages by `.github/workflows/pages.yml` |
 | `docs/` | The architecture overview, the build guide, the asset notes and the decision records, all in English, plus course material in Polish |
 
 The launcher that installs and updates the game has its own repository: [night-maze-launcher](https://github.com/Shironex/night-maze-launcher).
@@ -245,6 +246,10 @@ The kit cannot start a native game, so the capture is a script of mine. It start
 
 The pictures live in `docs/showcase/` and not under `assets/`, because everything under `assets/` is packed into the game.
 
+## Contributing
+
+Bug reports, crash reports and ideas are welcome: the [issue forms](https://github.com/Shironex/night-maze/issues/new/choose) are for what is broken, and [Discussions](https://github.com/Shironex/night-maze/discussions) are for ideas, feedback and questions. For a code fix, open an issue first. The story, models, textures, sounds and art are not open to pull requests. [CONTRIBUTING.md](CONTRIBUTING.md) has the details, and [SECURITY.md](SECURITY.md) says where a vulnerability goes.
+
 ## Licence
 
-The code is MIT, see [LICENSE](LICENSE). The assets are not covered by it: the models, textures, sounds, video, user interface art and story text under `assets/` and `docs/story/`, and the pictures of this README under `docs/showcase/`, remain all rights reserved, and reusing them needs my permission. Third-party libraries and fonts keep their own licences, listed in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
+The code is MIT, see [LICENSE](LICENSE). The assets are not covered by it: the models, textures, sounds, video, user interface art and story text under `assets/` and `docs/story/`, the pictures of this README under `docs/showcase/`, and the pictures, video and music of the website under `site/`, remain all rights reserved, and reusing them needs my permission. Third-party libraries and fonts keep their own licences, listed in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
