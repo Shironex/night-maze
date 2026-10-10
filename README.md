@@ -215,7 +215,7 @@ The full steps, the prerequisites and what `make check` does are in [docs/buildi
 | `assets/` | Shaders, textures, models, skybox, menu documents, fonts, sounds and the menu video. All of it ships with the game |
 | `tests/` | Unit tests |
 | `tools/` | Scripts that make assets (sounds, the menu loop, Blender scripts), the release notes and the README pictures |
-| `site/` | The [website](https://shironex.github.io/night-maze/): plain files, published to GitHub Pages by `.github/workflows/pages.yml` |
+| `site/` | The [website](https://shironex.github.io/night-maze/): an Astro project, built and published to GitHub Pages by `.github/workflows/pages.yml`. `pnpm install`, then `pnpm --filter night-maze-site dev` |
 | `docs/` | The architecture overview, the build guide, the asset notes and the decision records, all in English, plus course material in Polish |
 
 The launcher that installs and updates the game has its own repository: [night-maze-launcher](https://github.com/Shironex/night-maze-launcher).
