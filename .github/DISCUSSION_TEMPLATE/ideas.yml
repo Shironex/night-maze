@@ -1,0 +1,28 @@
+# The form of the Ideas category in Discussions. The file name has to be the
+# slug of the category. Something that is broken goes to the issue forms.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        An idea for the game: a feature you miss, or something that should work in another way. If something is broken, use the [issue forms](https://github.com/Shironex/night-maze/issues/new/choose) instead.
+        I read every idea. I make the game alone, so I cannot build all of them, and some will not fit the story.
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What should the game do? One idea per discussion is easiest to talk about.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What happened in a night that made you want this? Too easy, too hard, boring, confusing?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Game version (optional)
+      description: The launcher shows it on the Launch line of its main window.
+      placeholder: 0.14.1
