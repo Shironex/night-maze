@@ -1,0 +1,19 @@
+# Template chooser for github.com/Shironex/night-maze/issues/new/choose.
+# Blank issues stay on: a small thing that fits no form should not be forced
+# into one. There is no idea or feature form on purpose. Ideas, feedback on
+# balance and questions go to Discussions, so that an issue always means
+# "something is broken" and the issue list stays a list of work.
+blank_issues_enabled: true
+contact_links:
+  - name: Ideas and feedback
+    url: https://github.com/Shironex/night-maze/discussions/categories/ideas
+    about: A new feature, a change to the balance, or how a night felt. A new feature starts as a discussion here, not as a pull request.
+  - name: Questions
+    url: https://github.com/Shironex/night-maze/discussions/categories/q-a
+    about: How something works, or whether something is a bug. Ask here first if you are not sure.
+  - name: Installing or updating the game
+    url: https://github.com/Shironex/night-maze-launcher/issues/new/choose
+    about: The launcher downloads and updates the game. If it will not install, update or start, report it in the launcher repository.
+  - name: The website
+    url: https://shironex.github.io/night-maze/
+    about: What the game is, pictures of it, and how to get it.

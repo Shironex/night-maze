@@ -1,0 +1,60 @@
+name: Crash or start problem
+description: The game does not start, closes by itself, freezes, or shows a black window.
+labels: ["crash"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form when the game never gets to a playable round: it does not start, it closes by itself, it freezes, or the window is black.
+        If the game runs but something in it is wrong, use the bug form. If the launcher cannot download or install the game, report it in the launcher repository.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What happens
+      options:
+        - the game does not start
+        - the window opens and stays black
+        - the game closes by itself
+        - the game freezes
+        - something else
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: The log
+      description: |
+        The launcher keeps the output of the last run in `%LOCALAPPDATA%\NightMaze\data\logs\last-run.log`. In the launcher, open Settings, then Downloads and updates, then "Open log folder". Each start replaces the file, so copy it before you start the game again. After a failed start there is also `failed-<version>.log` in the same folder.
+        Paste the whole file. A failed start prints a line that begins `Fatal:`. The first lines also name your graphics card.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: when
+    attributes:
+      label: When it happens
+      description: Right at the start, in the menu, or in a round? What did you do just before? Does it happen every time?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Game version
+      description: The launcher shows it on the Launch line of its main window.
+      placeholder: 0.14.1
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Windows and graphics card
+      description: "Settings, System, About shows Windows. The graphics card and its driver are in Device Manager, under Display adapters. The game needs OpenGL 4.1, so an old driver or a remote desktop session can be the cause."
+      placeholder: Windows 11 23H2, Intel UHD 630, driver 31.0.101.2125
+    validations:
+      required: true
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else (optional)
+      description: |
+        If it only happens in one maze, give the seed (pause menu, bottom line). If you have night-maze-settings.txt from %LOCALAPPDATA%\NightMaze\data, you can attach it. It holds your settings and campaign progress, nothing private.

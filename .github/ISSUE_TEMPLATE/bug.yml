@@ -1,0 +1,50 @@
+name: Bug
+description: The game runs, but something in it is wrong.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This form is for a game that runs but does the wrong thing: a wall you walk through, a gate that stays shut, a sound that is missing, a menu that is cut off.
+        If the game does not start, closes by itself, freezes or shows a black window, use the crash form instead. For an idea or a question about balance, use Discussions. For a problem with installing or updating, report it in the launcher repository.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected
+      description: Say what you saw and what you thought would happen. A screenshot helps.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen again
+      description: The steps, short. If it only happens sometimes, say how often.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: maze
+    attributes:
+      label: Which maze
+      description: "The maze is the reproduction. Open the pause menu with Esc: the line at the bottom reads like \"Normal, seed 1234\". In a campaign night it names the night, and in Tonight's hedge it says \"Tonight's hedge\" (then add the date of the day you played)."
+      placeholder: "Lamp's Back, seed 2284119011 / Normal, seed 7 / Tonight's hedge, 2026-10-09"
+  - type: input
+    id: version
+    attributes:
+      label: Game version
+      description: The game does not show its version. The launcher shows it on the Launch line of its main window.
+      placeholder: 0.14.1
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Windows and graphics card
+      description: "Optional. Settings, System, About shows Windows. The graphics card is in Device Manager, under Display adapters."
+      placeholder: Windows 11 23H2, NVIDIA GeForce GTX 1060
+  - type: textarea
+    id: settings
+    attributes:
+      label: Settings file (optional)
+      description: |
+        For a bug about the campaign, the keys or the settings, attach night-maze-settings.txt. With the launcher it is in %LOCALAPPDATA%\NightMaze\data. It holds your settings and your progress in the campaign, nothing private. You can drag the file into this box.
