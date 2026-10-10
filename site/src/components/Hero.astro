@@ -1,0 +1,29 @@
+---
+const base = import.meta.env.BASE_URL;
+---
+<header class="hero">
+  <video autoplay muted loop playsinline preload="metadata" poster={`${base}media/maze-poster.jpg`} aria-hidden="true" tabindex="-1">
+    <source src={`${base}media/maze-loop.mp4`} type="video/mp4">
+  </video>
+  <div class="wrap nav">
+    <a class="brand" href="#top" aria-label="Night Maze, top of the page"><span class="gem"></span>Night Maze</a>
+    <ul>
+      <li><a href="#night">The night</a></li>
+      <li><a href="#hedge-section">Tonight's hedge</a></li>
+      <li><a href="#nights">Five nights</a></li>
+      <li><a href="#made">How it is made</a></li>
+      <li><a href="#get">Get it</a></li>
+    </ul>
+    <button class="btn quiet" type="button" data-theme-toggle aria-pressed="false">Play the theme</button>
+  </div>
+  <div class="wrap hero-copy" id="top">
+    <h1 class="wordmark">Night Maze</h1>
+    <p class="subtitle">The Last Lamp</p>
+    <p class="tagline voice">The moon sees every corridor. You see one.</p>
+    <p class="what">A first person maze game for Windows, written without a game engine in C++20 and OpenGL 4.1. Free, and made by one person.</p>
+    <div class="cta">
+      <a class="btn lamp" href="https://github.com/Shironex/night-maze-launcher/releases/latest">Get the launcher</a>
+      <a class="btn" href="https://github.com/Shironex/night-maze">Read the source</a>
+    </div>
+  </div>
+</header>

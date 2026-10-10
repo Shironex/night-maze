@@ -1,0 +1,48 @@
+---
+import { Image } from 'astro:assets';
+import shade from '../assets/img/shade.webp';
+import gate from '../assets/img/gate.webp';
+
+const hearing = [
+  { label: 'A sprint', m: 14 },
+  { label: 'A lever', m: 10 },
+  { label: 'A pickup', m: 8 },
+  { label: 'A walk', m: 6 },
+  { label: 'By sight', m: 12, sight: true },
+];
+---
+<section id="night">
+  <div class="wrap night-grid">
+    <div class="night-intro reveal">
+      <h2>Keep the lamp lit.</h2>
+      <p class="lead">You stand in a stone maze at night with a flashlight. Crystals lie in the corridors, each one a small sliver of the moon. Carry enough of them and the gate at the far end opens.</p>
+      <div class="rule">
+        <h3>The lamp</h3>
+        <p>The battery drains only while the light is on, and each crystal gives back a quarter of it. Under 20 % the light flickers. At zero it goes out until you find a crystal.</p>
+      </div>
+      <div class="rule">
+        <h3>The gate</h3>
+        <p>It opens by itself once you carry enough: 70 % of the crystals on the first three nights, 80 % on the last two. It never asks for all. Then its lanterns turn from cold blue to warm, and a bell tolls every 6 seconds.</p>
+      </div>
+    </div>
+    <figure class="night-shade reveal">
+      <Image src={shade} width={1280} height={720} alt="A dark hooded figure stands at the end of a stone corridor, with stars inside its hood." loading="lazy" decoding="async" />
+      <figcaption>The shadow, held in the beam. It has the night sky in its hood, and the stars there flare while the light burns it.</figcaption>
+    </figure>
+    <figure class="night-gate reveal">
+      <Image src={gate} width={1280} height={720} alt="The gatehouse seen from below under the moon, its lanterns warm and a brass bell in its roof." loading="lazy" decoding="async" />
+      <figcaption>The Lamplighter's Gate, open. The bell swings with every toll, louder the nearer you are.</figcaption>
+    </figure>
+    <div class="night-shadow reveal">
+      <h3>The shadow</h3>
+      <p style="margin-top:0.6rem">It wanders the maze and listens. It walks to the place of a noise, and when it sees you it runs: faster than you walk, slower than you sprint. While your beam is on it, it stands still. Hold the beam for 2.5 seconds and it is burned away for 20 seconds, at three times the battery.</p>
+      <div class="hearing" role="img" aria-label="How far the shadow notices you: a sprint from 14 metres, a lever from 10, a pickup from 8, a walk from 6, and by sight up to 12 metres.">
+        {hearing.map((h) => (
+          <div class={h.sight ? 'sight' : undefined}><span>{h.label}</span><b style={`--m:${h.m}`}>{h.m} m</b></div>
+        ))}
+      </div>
+      <p>How far it hears you, measured along the corridors, and how far it sees along a straight one.</p>
+      <p style="margin-top:1.6rem">If it reaches you it does not hurt you. It carries you back to the start and the night begins again. No clock runs against you, and in free play a switch called Calm night takes the shadow out of the maze.</p>
+    </div>
+  </div>
+</section>

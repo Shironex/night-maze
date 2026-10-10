@@ -1,0 +1,23 @@
+<section class="hedge" id="hedge-section">
+  <div class="wrap hedge-grid">
+    <canvas id="hedge" width="580" height="580" tabindex="0" role="application" aria-label="A maze in the dark. The arrow keys walk the lamp through it." aria-describedby="hedge-status"></canvas>
+    <div class="reveal">
+      <h2>Tonight's hedge</h2>
+      <p class="lead">In the game, one maze a day takes the date as its seed, so every player walks the same hedge that day. This one is a sketch of the idea, drawn by this page from your date. It is not the maze the game makes, and it is a calm night: nothing hunts you here.</p>
+      <p style="margin-top:1rem">Your pointer is the lamp. It can only go where its light already falls. The arrow keys walk it too, and on a phone you tap a lit cell.</p>
+      <dl class="hud">
+        <div><dt>The date</dt><dd id="hedge-date">Today</dd></div>
+        <div><dt>The seed</dt><dd id="hedge-seed">The date</dd></div>
+        <div><dt>Crystals, of 26</dt><dd id="hedge-count">0 / 19</dd></div>
+      </dl>
+      <p id="hedge-status" role="status">The hedge needs JavaScript to grow.</p>
+      <div class="cta">
+        <button class="btn" type="button" id="hedge-moon" aria-pressed="false">Ask the moon</button>
+        <button class="btn" type="button" id="hedge-again">Begin again</button>
+      </div>
+    </div>
+  </div>
+</section>
+<script>
+  import '../scripts/hedge.ts';
+</script>

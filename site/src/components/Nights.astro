@@ -1,0 +1,29 @@
+---
+import { Image } from 'astro:assets';
+import village from '../assets/img/village.webp';
+
+const nights = [
+  { n: 1, title: 'First Frost', size: '10 x 10', line: 'The near lamps are lit. The village slept a little.', lights: 5 },
+  { n: 2, title: "The Shepherds' Gates", size: '13 x 13', line: 'The lane is lit as far as the well.', lights: 7 },
+  { n: 3, title: "Lamp's Back", size: '16 x 16', line: 'It followed you to the gate and stopped at the lamplight.', lights: 8 },
+  { n: 4, title: 'What the Moon Misses', size: '19 x 19', line: 'Lamps to the edge of the village. One window still dark.', lights: 11 },
+  { n: 5, title: 'The Last Lamp', size: '22 x 22', line: 'Every lamp in the village has its splinter now.', lights: 1 },
+];
+---
+<section id="nights">
+  <div class="wrap">
+    <div class="reveal">
+      <h2>Five nights, and a village to light.</h2>
+      <p class="lead">Each night is a bigger maze with a shorter battery. When you win one, the camera rises over the gate and turns to the village on the far ridge, and more of its windows are lit.</p>
+    </div>
+    <figure class="village reveal">
+      <Image src={village} width={1280} height={210} alt="A row of small houses and a chapel tower on a dark ridge, every window lit amber under the stars." loading="lazy" decoding="async" />
+    </figure>
+    <ol class="nights">
+      {nights.map((night) => (
+        <li class="reveal"><span class="n">Night {night.n}</span><span class="t">{night.title}</span><span class="m">{night.size}</span><span class="l voice">{night.line}</span><span class="w" role="img" aria-label={night.lights === 1 ? 'Lights the last window' : `Lights ${night.lights} windows and lamps`}>{Array.from({ length: night.lights }, () => <i></i>)}</span></li>
+      ))}
+    </ol>
+    <p class="nights-note">The size of each maze in cells, the line the game shows when you win the night (for the fifth, the first line of the ending card), and the windows and lamps that night lights in the village. The first night has no shadow, so you can learn the walk.</p>
+  </div>
+</section>

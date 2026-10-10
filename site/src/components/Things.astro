@@ -1,0 +1,31 @@
+---
+import { Image } from 'astro:assets';
+import chalk from '../assets/img/chalk.webp';
+import heartstone from '../assets/img/heartstone.webp';
+import ledger from '../assets/img/ledger.webp';
+import sheep from '../assets/img/sheep.webp';
+import lever from '../assets/img/lever.webp';
+import crown from '../assets/img/crown.webp';
+
+const things = [
+  { cls: 'a', src: chalk, alt: 'A corridor with a chalk arrow on the lit wall and a crystal glowing at its end.', caption: 'Chalk on the stone. A small lamp is a line of the story, and an arrow leans the way a hint points.' },
+  { cls: 'b', src: heartstone, alt: 'A large glowing splinter in a dead end, with a chalk lamp on the wall beside it.', caption: 'A heartstone. It counts as three crystals and fills the battery, but it is heavy: no sprint for 30 seconds.' },
+  { cls: 'c', src: ledger, alt: 'The ledger screen of the game: ten lines of the story written out under the first two nights, and ruled blanks under the other three.', caption: "The lamplighter's ledger. The story has 24 lines. The ones whose note you opened are written out, and the others are blanks." },
+  { cls: undefined, src: sheep, alt: 'A small stone sheep standing in a dead end of the maze.', caption: 'Stone sheep stand in dead ends and corners. They all face the gate.' },
+  { cls: undefined, src: lever, alt: "A shepherd's crook mounted on a board on a wall, lit by the flashlight.", caption: "A lever is a shepherd's crook. Pull it and a wall somewhere else sinks into the ground." },
+  { cls: undefined, src: crown, alt: 'A wall topped with twigs of stone against a sky full of stars.', caption: 'Some walls are crowned with twigs of stone. The seed decides which.' },
+];
+---
+<section id="things" style="padding-top:0">
+  <div class="wrap">
+    <h2 class="reveal">Small things in the hedge</h2>
+    <div class="things">
+      {things.map((thing) => (
+        <figure class:list={[thing.cls, 'reveal']}>
+          <Image src={thing.src} width={1280} height={720} alt={thing.alt} loading="lazy" decoding="async" />
+          <figcaption>{thing.caption}</figcaption>
+        </figure>
+      ))}
+    </div>
+  </div>
+</section>

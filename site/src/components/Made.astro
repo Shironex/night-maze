@@ -1,0 +1,25 @@
+---
+const facts = [
+  { term: 'C++20', text: 'On OpenGL 4.1, core profile: Blinn-Phong lighting, two shadow maps, HDR with ACES tone mapping, bloom and fog.' },
+  { term: '1000+', text: 'More than 1000 test cases. The rules are plain structs and free functions that touch no window, file or clock, so they are tested without one.' },
+  { term: '15', text: 'Blender scripts build the models, from the gatehouse to the stone sheep. A loader of my own reads them.' },
+  { term: '23', text: 'Sounds, computed by a script from sine waves and noise. The menu theme is computed too: a piano, soft strings and a music box.', theme: true },
+];
+---
+<section id="made">
+  <div class="wrap made-grid">
+    <div class="reveal">
+      <h2>How I make it</h2>
+      <p class="lead">I write Night Maze to learn how real time graphics work. It began as a university project and I kept going.</p>
+      <p style="margin-top:1rem">There is no game engine underneath. The lighting, the shadows, the fog and the glow are written by hand on top of OpenGL. Small libraries do the window, the math, the menus and the sound.</p>
+    </div>
+    <dl class="facts reveal">
+      {facts.map((fact) => (
+        <div>
+          <dt>{fact.term}</dt>
+          <dd>{fact.text}{fact.theme && <><br /><button class="btn quiet" type="button" data-theme-toggle aria-pressed="false">Play the theme</button></>}</dd>
+        </div>
+      ))}
+    </dl>
+  </div>
+</section>

@@ -1,0 +1,21 @@
+{
+  "name": "night-maze-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "test": "node --test \"src/scripts/*.test.ts\""
+  },
+  "dependencies": {
+    "@fontsource/atkinson-hyperlegible-next": "^5.2.0",
+    "@fontsource/cormorant-garamond": "^5.2.0",
+    "astro": "^7.3.3"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "typescript": "^5.9.0"
+  }
+}

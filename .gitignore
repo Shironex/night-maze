@@ -32,3 +32,7 @@ node_modules/
 
 # Raw pictures of tools/capture_showcase.py. The framed ones in docs/showcase/ are committed.
 showcase-out/
+
+# Build output and cache of the website in site/
+site/dist/
+site/.astro/

@@ -1,7 +1,9 @@
-# One package. This file exists for the setting below, which pnpm reads from
-# here so that it travels with the repository.
+# Two packages: the root (the README picture tooling) and the website in site/.
+# This file also holds the setting below, which pnpm reads from here so that it
+# travels with the repository.
 packages:
   - '.'
+  - 'site'
 
 # No version younger than 7 days (in minutes) is installed, on any machine.
 minimumReleaseAge: 10080
