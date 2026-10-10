@@ -24,7 +24,7 @@ body:
     attributes:
       label: The log
       description: |
-        The launcher keeps the output of the last run in `%LOCALAPPDATA%\NightMaze\data\logs\last-run.log`. In the launcher, open Settings, then Downloads and updates, then "Open log folder". Each start replaces the file, so copy it before you start the game again. After a failed start there is also `failed-<version>.log` in the same folder.
+        The launcher keeps the output of the last run in `%LOCALAPPDATA%\NightMaze\data\logs\last-run.log`. In the launcher, open Settings, then About, then "Open log folder". Each start replaces the file, so copy it before you start the game again. After a failed start there is also `failed-<version>.log` in the same folder.
         Paste the whole file. A failed start prints a line that begins `Fatal:`. The first lines also name your graphics card.
       render: text
     validations:
