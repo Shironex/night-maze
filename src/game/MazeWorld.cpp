@@ -93,6 +93,28 @@ float groundHeightAt(const MazeWorld& world, MazeCell cell) {
     return world.terrain.heightAt(center.x, center.z);
 }
 
+std::vector<bool> leverWallFlags(const MazeWorld& world) {
+    std::vector<bool> flags(world.walls.size(), false);
+    for (const std::size_t wall : world.leverWalls) {
+        if (wall < flags.size()) {
+            flags[wall] = true;
+        }
+    }
+    return flags;
+}
+
+bool wallInPart(MazeParts part, bool leverWall) {
+    switch (part) {
+    case MazeParts::Fixed:
+        return !leverWall;
+    case MazeParts::LeverWalls:
+        return leverWall;
+    case MazeParts::All:
+        break;
+    }
+    return true;
+}
+
 void placeOnTerrain(MazeWorld& world, const Heightmap& heightmap, float heightScale) {
     world.terrain = Terrain(world.maze.width(), world.maze.height(), heightmap, heightScale);
     const Terrain& terrain = world.terrain;

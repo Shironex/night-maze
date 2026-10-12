@@ -187,6 +187,29 @@ float groundHeightAt(const MazeWorld& world, MazeCell cell);
 /// game::MAX_FLASK_COUNT are every cell a flask of this world can ever lie in.
 std::vector<MazeCell> flaskCells(const MazeWorld& world, int wantedCount);
 
+/// Which part of the maze MazeRenderer::draw draws. The scene draws all of it. The shadow
+/// map of the moon draws the two parts apart: what never moves once, and what can move
+/// in every frame (game::StaticShadowKey).
+enum class MazeParts {
+    /// Every wall, every pillar, the post of the stile and the stone sheep.
+    All,
+    /// What stands where the world has put it for as long as the world is not built
+    /// again: the walls no lever lowers, the pillars, the stone sheep, and the post of
+    /// the stile when its wall is one of those.
+    Fixed,
+    /// The rest: the walls that a lever lowers (MazeWorld::leverWalls), pulled or not,
+    /// and the post of the stile when it stands on one of them.
+    LeverWalls,
+};
+
+/// One flag per wall of the world, in the order of MazeWorld::walls: true for a wall
+/// that a lever lowers when it is pulled. These are the only walls whose matrix can
+/// differ from MazeWorld::wallMatrices during a round (game::roundWallMatrices).
+std::vector<bool> leverWallFlags(const MazeWorld& world);
+
+/// Whether a wall is drawn as a piece of part. leverWall is its flag of leverWallFlags.
+bool wallInPart(MazeParts part, bool leverWall);
+
 /// Builds the terrain of the world from the heightmap and puts everything on it: the
 /// walls, the pillars and the gate are lowered to the lowest ground under them, their
 /// matrices and collision boxes follow (the box of the stile with its wall), and the start, the

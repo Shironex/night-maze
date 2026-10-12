@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <vector>
 
 namespace game {
 
@@ -101,11 +102,19 @@ MazeRenderer::MazeRenderer(assets::AssetCache& assets)
 }
 
 void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world,
-                        std::span<const glm::mat4> wallMatrices, bool wallVariants) const {
+                        std::span<const glm::mat4> wallMatrices, bool wallVariants,
+                        MazeParts parts) const {
     setModelSamplers(shader);
     // Stone gives off no light of its own. A uniform keeps its value from one draw call
     // to the next, and the crystals set this one, so it is set back in every frame.
     shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
+
+    // Which walls a lever lowers. A wall the list has no flag for (a matrix list of
+    // another world) counts as one that stands.
+    const std::vector<bool> leverWalls = leverWallFlags(world);
+    const auto drawsWall = [&leverWalls, parts](std::size_t wall) {
+        return wallInPart(parts, wall < leverWalls.size() && leverWalls[wall]);
+    };
 
     // The walls: one draw call per wall, with the mesh and the textures of its look. The
     // matrices are the ones of the round and the looks the ones of the world. Both lists
@@ -117,6 +126,9 @@ void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world,
         const std::size_t withLook =
             wallVariants ? std::min(wallMatrices.size(), world.wallVariants.size()) : 0;
         for (std::size_t i = 0; i < wallMatrices.size(); ++i) {
+            if (!drawsWall(i)) {
+                continue;
+            }
             const WallVariant variant = i < withLook ? world.wallVariants[i] : WallVariant::Plain;
             // The stile is not a look that can be switched off: its collision box stands
             // there whatever is drawn.
@@ -126,12 +138,16 @@ void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world,
             drawMesh(shader, look.model->mesh, *look.color, *look.normalMap, tint, wallMatrices[i]);
         }
     }
-    drawModel(shader, m_pillar, world.pillarMatrices);
-    // The post of the stile stands where its wall stands.
-    if (world.stileWall && *world.stileWall < wallMatrices.size()) {
+    // The post of the stile stands where its wall stands, so it is a piece of the part
+    // its wall is in.
+    if (world.stileWall && *world.stileWall < wallMatrices.size() && drawsWall(*world.stileWall)) {
         drawModel(shader, m_stilePost, wallMatrices.subspan(*world.stileWall, 1));
     }
-    drawModel(shader, m_stoneSheep, world.sheepMatrices);
+    // The pillars and the stone sheep never move.
+    if (parts != MazeParts::LeverWalls) {
+        drawModel(shader, m_pillar, world.pillarMatrices);
+        drawModel(shader, m_stoneSheep, world.sheepMatrices);
+    }
 }
 
 } // namespace game

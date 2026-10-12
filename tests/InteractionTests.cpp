@@ -365,6 +365,51 @@ TEST_CASE("pull all levers opens every wall and counts them") {
           world.colliders.size() + 1 - static_cast<std::size_t>(levers));
 }
 
+TEST_CASE("only the walls of the levers leave their place during a round") {
+    const game::MazeWorld world = defaultWorld();
+    const game::GameplaySettings settings;
+    game::Round round = game::startRound(world, settings);
+    REQUIRE_FALSE(world.leverWalls.empty());
+
+    // One flag per wall, set for the wall of every lever and for no other.
+    const std::vector<bool> flags = game::leverWallFlags(world);
+    REQUIRE(flags.size() == world.walls.size());
+    std::size_t flagged = 0;
+    for (const bool flag : flags) {
+        flagged += flag ? 1 : 0;
+    }
+    CHECK(flagged == world.leverWalls.size());
+    for (const std::size_t wall : world.leverWalls) {
+        CHECK(flags[wall]);
+    }
+
+    // Every lever pulled and every wall half way down: a wall without the flag has the
+    // matrix of the world, number for number, and a wall with it has not. This is what
+    // the still layer of the shadow map of the moon relies on (game::StaticShadowKey).
+    game::pullAllLevers(round, world);
+    bool flashlightOn = false;
+    constexpr int HALF_OPEN_STEPS = 90;
+    for (int i = 0; i < HALF_OPEN_STEPS; ++i) {
+        game::updateRound(round, world, settings, NOWHERE, flashlightOn, STEP);
+    }
+    const std::vector<glm::mat4> matrices = game::roundWallMatrices(world, round);
+    REQUIRE(matrices.size() == world.wallMatrices.size());
+    for (std::size_t i = 0; i < matrices.size(); ++i) {
+        CHECK((matrices[i] == world.wallMatrices[i]) == !flags[i]);
+    }
+}
+
+TEST_CASE("the fixed part and the lever walls together are the whole maze") {
+    for (const bool leverWall : {false, true}) {
+        CHECK(game::wallInPart(game::MazeParts::All, leverWall));
+        // Each wall is in exactly one of the two parts.
+        CHECK(game::wallInPart(game::MazeParts::Fixed, leverWall) !=
+              game::wallInPart(game::MazeParts::LeverWalls, leverWall));
+    }
+    CHECK(game::wallInPart(game::MazeParts::Fixed, false));
+    CHECK(game::wallInPart(game::MazeParts::LeverWalls, true));
+}
+
 TEST_CASE("the minimap drops an opened wall and marks levers and notes") {
     const game::MazeWorld world = defaultWorld();
     game::Round round = game::startRound(world, game::GameplaySettings{});

@@ -2,6 +2,7 @@
 // their models.
 #pragma once
 
+#include "game/MazeWorld.hpp"
 #include "game/WallVariants.hpp"
 
 #include <glm/glm.hpp>
@@ -20,8 +21,6 @@ class Texture2D;
 } // namespace gfx
 
 namespace game {
-
-struct MazeWorld;
 
 /// What the scene shows: its colours or one of two debug views. The numbers are the
 /// values of the uniform uViewMode in textured.frag, skybox.frag and grass.frag, so the
@@ -67,8 +66,13 @@ public:
     ///
     /// wallVariants false draws every wall as a plain wall, whatever look the world
     /// chose for it (MazeWorld::wallVariants).
+    ///
+    /// parts chooses what is drawn (game::MazeParts): all of the maze, or only what
+    /// never moves, or only the walls of the levers. Fixed and LeverWalls together make
+    /// exactly the draw calls of All.
     void draw(const gfx::Shader& shader, const MazeWorld& world,
-              std::span<const glm::mat4> wallMatrices, bool wallVariants) const;
+              std::span<const glm::mat4> wallMatrices, bool wallVariants,
+              MazeParts parts = MazeParts::All) const;
 
 private:
     // Not owned. nullptr when the model could not be loaded.
