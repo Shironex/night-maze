@@ -1,10 +1,11 @@
-// GameplayRenderer: draws the things of a round, the crystals, the flasks and the gate with
-// its gatehouse, with their models.
+// GameplayRenderer: draws the things of a round, the crystals, the flasks, the gate with
+// its gatehouse and the lamp in the hand of the player, with their models.
 #include "game/GameplayRenderer.hpp"
 
 #include "assets/AssetCache.hpp"
 #include "core/Paths.hpp"
 #include "game/GateLamp.hpp"
+#include "game/Lighting.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/ModelDraw.hpp"
 #include "game/Round.hpp"
@@ -56,6 +57,14 @@ constexpr const char* FLASK_MODEL_FILE = "models/flask.obj";
 constexpr const char* SHADE_MODEL_FILE = "models/shade.obj";
 constexpr const char* SHADE_HOLLOW_MODEL_FILE = "models/shade_hollow.obj";
 
+// The lamp the player holds: a tin flashlight 0.22 m long, in metres, lying along -Z with
+// its origin in the middle of its butt and its window on top. It comes as three files
+// that fit into each other, because each glows by itself: the body, the lens and the
+// glass of the window.
+constexpr const char* HELD_LAMP_MODEL_FILE = "models/lamp_held.obj";
+constexpr const char* HELD_LAMP_LENS_MODEL_FILE = "models/lamp_held_lens.obj";
+constexpr const char* HELD_LAMP_WINDOW_MODEL_FILE = "models/lamp_held_window.obj";
+
 } // namespace
 
 GameplayRenderer::GameplayRenderer(assets::AssetCache& assets)
@@ -69,7 +78,10 @@ GameplayRenderer::GameplayRenderer(assets::AssetCache& assets)
       m_gateArch(assets.model(core::assetPath(GATE_ARCH_MODEL_FILE))),
       m_gateLantern(assets.model(core::assetPath(GATE_LANTERN_MODEL_FILE))),
       m_gateBell(assets.model(core::assetPath(GATE_BELL_MODEL_FILE))),
-      m_milestone(assets.model(core::assetPath(MILESTONE_MODEL_FILE))) {}
+      m_milestone(assets.model(core::assetPath(MILESTONE_MODEL_FILE))),
+      m_heldLamp(assets.model(core::assetPath(HELD_LAMP_MODEL_FILE))),
+      m_heldLampLens(assets.model(core::assetPath(HELD_LAMP_LENS_MODEL_FILE))),
+      m_heldLampWindow(assets.model(core::assetPath(HELD_LAMP_WINDOW_MODEL_FILE))) {}
 
 void GameplayRenderer::draw(const gfx::Shader& shader, const MazeWorld& world, const Round& round,
                             const glm::vec3& crystalGlow, const glm::vec3& lampGlow,
@@ -207,6 +219,22 @@ void GameplayRenderer::drawShadeHollow(const gfx::Shader& shader,
     // sky there, and every other program the dark of the picture.
     shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
     drawModel(shader, m_shadeHollow, std::span<const glm::mat4>(&modelMatrix, 1));
+}
+
+void GameplayRenderer::drawHeldLamp(const gfx::Shader& shader, const glm::mat4& modelMatrix,
+                                    const HeldLampGlow& glow) const {
+    setModelSamplers(shader);
+    const std::span<const glm::mat4> matrix(&modelMatrix, 1);
+    // Tin, tape and iron give off no light.
+    shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
+    drawModel(shader, m_heldLamp, matrix);
+    // The lens and the window are pale pieces of the picture, so their glow shows.
+    shader.setVec3(EMISSIVE_UNIFORM, glow.lens);
+    drawModel(shader, m_heldLampLens, matrix);
+    shader.setVec3(EMISSIVE_UNIFORM, glow.window);
+    drawModel(shader, m_heldLampWindow, matrix);
+    // Back to black: what is drawn next with this program must not glow by accident.
+    shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
 }
 
 } // namespace game

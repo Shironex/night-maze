@@ -689,6 +689,25 @@ private:
     /// keep the eyes of the player.
     bool villageRevealShown() const;
 
+    /// Draws the lamp in the hand of the player on top of the finished scene, while the
+    /// picture is taken from the eyes of the player (game::showsHeldLamp) and the switch
+    /// of the debug UI is on. view and projection are the ones of the frame, frameLighting
+    /// the lighting the frame was drawn with, and lights the lights that were built from
+    /// it.
+    ///
+    /// The lamp lies on the axis of its beam (game::heldLampMatrix) and is drawn with the
+    /// program of the lighting mode, like the maze, with a field of view of its own
+    /// (game::heldLampProjection). It is in no shadow map. Its own beam does not light
+    /// it: the function fills the buffer of the lights again without the flashlight, so
+    /// it must come after everything else that is lit in the frame.
+    ///
+    /// It cannot sink into a wall the player stands against: its depths are squeezed
+    /// into the nearest hundredth of the depth range, in front of everything the scene
+    /// can hold. The depth buffer is not cleared, because the fog of the composite pass
+    /// reads the depths of the scene.
+    void drawHeldLamp(const glm::mat4& view, const glm::mat4& projection,
+                      const LightingSettings& frameLighting, const scene::LightSet& lights) const;
+
     /// Draws the village on the ridge and its lights into the scene, centred on the eye
     /// like the sky and with real depth. view and projection are the ones of the frame,
     /// farPlane the far plane of its camera. nightsLit and newestStrength are what
@@ -957,9 +976,11 @@ private:
 
     /// Copies the lights of the frame to the graphics card: the moon, the flashlight in
     /// its pose and the point lights nearest to eye (crystals, the heartstone, the lamp
-    /// of the gate).
-    void uploadLights(const LightingSettings& frameLighting, const FlashlightPose& flashlight,
-                      const GateLampFrame& lamp, const glm::vec3& eye);
+    /// of the gate). It returns them, for the one pass that fills the buffer again
+    /// (drawHeldLamp).
+    scene::LightSet uploadLights(const LightingSettings& frameLighting,
+                                 const FlashlightPose& flashlight, const GateLampFrame& lamp,
+                                 const glm::vec3& eye);
 
     /// Draws the village with as many nights lit as this frame shows
     /// (game::villageNightsLit) and the newest lights as far as the reveal has brought

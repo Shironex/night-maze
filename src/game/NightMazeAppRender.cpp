@@ -160,7 +160,7 @@ void NightMazeApp::onRender(double alpha) {
     if (!beginScenePass(framebuffer)) {
         return;
     }
-    uploadLights(frameLighting, flashlight, lamp, frame.eye);
+    const scene::LightSet lights = uploadLights(frameLighting, flashlight, lamp, frame.eye);
 
     drawMaze(frame.view, frame.projection);
     drawGrass(frame.view, frame.projection);
@@ -193,6 +193,9 @@ void NightMazeApp::onRender(double alpha) {
     if (m_skyboxSettings.enabled) {
         m_skybox.draw(m_skyboxShader, frame.view, frame.projection, m_skyboxSettings, m_viewMode);
     }
+
+    // The lamp in the hand, on top of the scene and in front of every wall.
+    drawHeldLamp(frame.view, frame.projection, frameLighting, lights);
 
     // The scene is complete. The passes that read it bring it to the window.
     finishPicture(framebuffer, frame);
@@ -621,9 +624,9 @@ bool NightMazeApp::beginScenePass(core::Size framebuffer) {
     return true;
 }
 
-void NightMazeApp::uploadLights(const LightingSettings& frameLighting,
-                                const FlashlightPose& flashlight, const GateLampFrame& lamp,
-                                const glm::vec3& eye) {
+scene::LightSet NightMazeApp::uploadLights(const LightingSettings& frameLighting,
+                                           const FlashlightPose& flashlight,
+                                           const GateLampFrame& lamp, const glm::vec3& eye) {
     // The lights of this frame, from the lighting and the flashlight pose computed
     // before the shadow passes. The point lights hang above the crystals that are still
     // there: the ones nearest to the eye of this frame, because a large maze has more
@@ -658,6 +661,7 @@ void NightMazeApp::uploadLights(const LightingSettings& frameLighting,
     const std::vector<PointLightSpot> frameLights = nearestPointLightSpots(pointLights, eye);
     const scene::LightSet lights = buildLightSet(frameLighting, flashlight, frameLights);
     m_lightRig.upload(lights, eye);
+    return lights;
 }
 
 void NightMazeApp::drawVillageForFrame(const FrameScreen& screen, const FrameView& frame) const {

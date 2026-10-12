@@ -1,5 +1,5 @@
-// GameplayRenderer: draws the things of a round, the crystals, the flasks and the gate with
-// its gatehouse, with their models.
+// GameplayRenderer: draws the things of a round, the crystals, the flasks, the gate with
+// its gatehouse and the lamp in the hand of the player, with their models.
 #pragma once
 
 #include "game/Crystals.hpp"
@@ -20,6 +20,7 @@ class Shader;
 
 namespace game {
 
+struct HeldLampGlow;
 struct MazeWorld;
 struct Round;
 
@@ -34,8 +35,8 @@ struct Round;
 class GameplayRenderer {
 public:
     /// Asks the cache for the two crystal models, the flask model, the two shade models, the
-    /// gate model and the four models that stand around the gate (the gatehouse, its
-    /// lantern, its bell and the milestone).
+    /// gate model, the four models that stand around the gate (the gatehouse, its
+    /// lantern, its bell and the milestone) and the three models of the held lamp.
     /// A model that fails to load is logged by the cache and simply not drawn.
     explicit GameplayRenderer(assets::AssetCache& assets);
 
@@ -96,6 +97,14 @@ public:
     /// then). The shadow passes call both. uEmissive is set to black.
     void drawShadeHollow(const gfx::Shader& shader, const glm::mat4& modelMatrix) const;
 
+    /// Draws the lamp the player holds once, with the given model matrix
+    /// (game::heldLampMatrix): its tin body, then its lens and the window in its body,
+    /// each with a glow of its own (game::heldLampGlow). shader is prepared as for draw.
+    /// uEmissive is black for the body and is put back to black at the end. No shadow
+    /// pass calls it: the lamp lies in its own beam and would darken it.
+    void drawHeldLamp(const gfx::Shader& shader, const glm::mat4& modelMatrix,
+                      const HeldLampGlow& glow) const;
+
 private:
     // Not owned. nullptr when the model could not be loaded. One crystal model per
     // variant: the number of a variant is its index here.
@@ -110,6 +119,9 @@ private:
     const assets::LoadedModel* m_gateLantern;
     const assets::LoadedModel* m_gateBell;
     const assets::LoadedModel* m_milestone;
+    const assets::LoadedModel* m_heldLamp;
+    const assets::LoadedModel* m_heldLampLens;
+    const assets::LoadedModel* m_heldLampWindow;
 };
 
 } // namespace game

@@ -73,6 +73,16 @@ constexpr float SHADE_HOOD_SKY_TURN = 0.35F;
 constexpr float SHADE_HOOD_SKY_SPREAD = 1.0F;
 constexpr glm::vec3 SHADE_HOOD_CENTRE{0.0F, 1.81F, 0.15F};
 
+// The highlight of the tin of the held lamp: bare metal, brighter than the one of the
+// rough stone.
+constexpr float HELD_LAMP_SPECULAR_STRENGTH = 0.6F;
+
+// The part of the depth range the held lamp is drawn into, from 0 (the near plane) up to
+// this. With the planes of the camera (0.1 m and 100 m) the scene has a depth below it
+// only within a tenth of a millimetre behind the near plane, so the lamp is in front of
+// every wall, and the fog of the composite pass reads its pixels as 0.1 m away: no fog.
+constexpr double HELD_LAMP_DEPTH_RANGE = 0.01;
+
 } // namespace
 
 void NightMazeApp::drawMoonShadowMap() {
@@ -454,6 +464,72 @@ void NightMazeApp::drawVillage(const glm::mat4& view, const glm::mat4& projectio
         m_texturedShader,
         villageMatrix(villageSide(m_mazeWorld), farPlane, m_villageSettings.elevationDegrees),
         nightsLit, newestStrength);
+}
+
+void NightMazeApp::drawHeldLamp(const glm::mat4& view, const glm::mat4& projection,
+                                const LightingSettings& frameLighting,
+                                const scene::LightSet& lights) const {
+    if (!m_lighting.heldLampShown ||
+        !showsHeldLamp(m_mode, m_menuCamera.enabled, villageRevealShown())) {
+        return;
+    }
+    // The program of the lighting mode, chosen as drawMaze chooses it.
+    const bool unlit = m_lighting.mode == LightingMode::Unlit || m_viewMode != ViewMode::Textured;
+    const gfx::Shader& lit =
+        m_lighting.mode == LightingMode::Gouraud ? m_gouraudShader : m_litShader;
+    const gfx::Shader& shader = unlit ? m_texturedShader : lit;
+    if (!shader.isValid()) {
+        return;
+    }
+
+    // The camera of the frame, read back from its view matrix: the eye is the last
+    // column of the inverse, and the rows of the rotation are the right vector, the up
+    // vector and the direction against the look.
+    const glm::vec3 eye{glm::inverse(view)[3]};
+    const glm::vec3 right{view[0][0], view[1][0], view[2][0]};
+    const glm::vec3 forward{-view[0][2], -view[1][2], -view[2][2]};
+
+    // The lamp lies in its own beam, a third of a metre in front of the light, and the
+    // lit programs would paint the cone on its back. So the lights of the frame are sent
+    // again without the flashlight. Nothing that is lit is drawn after the lamp, and the
+    // next frame fills the buffer anew.
+    scene::LightSet lampLights = lights;
+    lampLights.spotEnabled = false;
+    m_lightRig.upload(lampLights, eye);
+
+    // The state this draw relies on, said here: the puddles are blended and write no
+    // depth.
+    GL_CHECK(glEnable(GL_DEPTH_TEST));
+    GL_CHECK(glDepthMask(GL_TRUE));
+    GL_CHECK(glDisable(GL_BLEND));
+    GL_CHECK(glDepthRange(0.0, HELD_LAMP_DEPTH_RANGE));
+
+    shader.use();
+    shader.setMat4(VIEW_UNIFORM, view);
+    shader.setMat4(PROJECTION_UNIFORM, heldLampProjection(projection));
+    shader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
+    if (unlit) {
+        shader.setInt(VIEW_MODE_UNIFORM, static_cast<int>(m_viewMode));
+    } else {
+        // The material and the shadow maps, as drawLitMaze sets them. The moon shadow
+        // falls on the lamp like on everything else.
+        shader.setInt(SPECULAR_MODEL_UNIFORM, static_cast<int>(specularModelOf(m_lighting.mode)));
+        shader.setFloat(SPECULAR_STRENGTH_UNIFORM, HELD_LAMP_SPECULAR_STRENGTH);
+        shader.setFloat(SHININESS_UNIFORM, m_lighting.shininess);
+        setShadowUniformsOf(shader);
+    }
+
+    // The window shows the charge of the battery and flickers with the beam.
+    const float flicker = flashlightFlicker(m_round.battery, m_round.animationSeconds, m_gameplay);
+    m_gameplayRenderer.drawHeldLamp(shader, heldLampMatrix(frameLighting, eye, forward, right),
+                                    heldLampGlow(frameLighting, m_round.battery, flicker));
+
+    // Put back for whatever draws next: the whole depth range, and the highlight of the
+    // stone.
+    GL_CHECK(glDepthRange(0.0, 1.0));
+    if (!unlit) {
+        shader.setFloat(SPECULAR_STRENGTH_UNIFORM, m_lighting.specularStrength);
+    }
 }
 
 void NightMazeApp::drawGrass(const glm::mat4& view, const glm::mat4& projection) const {
