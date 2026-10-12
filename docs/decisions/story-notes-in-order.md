@@ -1,6 +1,6 @@
 # Story notes are read in order, nearest to the start first, from a saved place
 Status: accepted (2026-10-07)
-Code: src/game/Interactables.hpp, src/game/Interactables.cpp, src/game/Settings.hpp, src/game/NightMazeApp.cpp, src/game/Campaign.cpp
+Code: src/game/Interactables.hpp, src/game/Interactables.cpp, src/game/Settings.hpp, src/game/NightMazeApp.cpp, src/game/NightMazeAppMenus.cpp, src/game/Campaign.cpp
 
 Context: Notes tell the lamplighter's story, so their order matters.
 Decision: The story notes of a maze, ranked by passages from the start, show consecutive lines of a table of 24. The next unread line is saved in the settings and moves on when a maze is finished. In a calm night the 8 lines about the shadow are skipped.

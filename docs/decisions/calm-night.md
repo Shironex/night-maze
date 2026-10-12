@@ -1,6 +1,6 @@
 # Calm night is a switch in free play, not a fourth difficulty
 Status: accepted (2026-10-08)
-Code: src/game/Settings.hpp, src/game/NightMazeApp.cpp, assets/ui/free_play.rml
+Code: src/game/Settings.hpp, src/game/NightMazeApp.cpp, src/game/NightMazeAppCampaign.cpp, src/game/NightMazeAppMenus.cpp, assets/ui/free_play.rml
 
 Context: some players want the mazes without an enemy, and the difficulty table has three rows that set maze size and crystal count.
 Decision: calm night is a saved on/off setting on the free play screen. It removes the shade on every difficulty and leaves out the notes about it. The campaign ignores it.

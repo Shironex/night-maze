@@ -1,6 +1,6 @@
 # The ledger lists the story lines whose note was opened, kept as codes in one settings line
 Status: accepted (2026-10-09)
-Code: src/game/Ledger.hpp, src/game/Ledger.cpp, src/game/Settings.cpp, src/game/GameState.cpp, src/game/NightMazeApp.cpp, src/ui/UiLayer.cpp, assets/ui/ledger.rml, assets/ui/menu.rcss, tests/LedgerTests.cpp
+Code: src/game/Ledger.hpp, src/game/Ledger.cpp, src/game/Settings.cpp, src/game/GameState.cpp, src/game/NightMazeAppMenus.cpp, src/ui/UiLayer.cpp, assets/ui/ledger.rml, assets/ui/menu.rcss, tests/LedgerTests.cpp
 
 Context: a note is read once on a card and then gone, and the story counter only knows the next line, not which lines were read.
 Decision: a line is read when the card of its note comes up, in any mode. The set is one line of the settings file, `story_read`, holding the codes of the story draft (`N01 N04 N22`). The page "Ledger" of the main menu and of the pause menu shows the 24 lines under the night that tells them, a ruled blank in one of three fixed widths for a line not read yet, and a counter. A file without the line is older than the ledger: it gets the lines before its story counter that are not about the shadow, and every line of every won night. A new campaign and "Reset defaults" leave the set alone, and a run with a tool switch never writes it.
