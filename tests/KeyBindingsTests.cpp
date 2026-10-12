@@ -207,7 +207,7 @@ TEST_CASE("a key line in the file sets the key of its action") {
 
 TEST_CASE("a name the game does not know leaves the action on its default key") {
     const game::GameSettings settings =
-        game::parseSettings("key_forward = Banana\nkey_use = Mouse 4\nkey_flashlight = L\n");
+        game::parseSettings("key_forward = Banana\nkey_use = Mouse 3\nkey_flashlight = L\n");
     CHECK(game::boundKey(settings.keys, KeyAction::Forward) == GLFW_KEY_W);
     CHECK(game::boundKey(settings.keys, KeyAction::Use) == GLFW_KEY_E);
     // The line that can be read still counts.
@@ -243,4 +243,65 @@ TEST_CASE("a file that puts two actions on one key still gives every action its 
     CHECK(game::boundKey(two.keys, KeyAction::Map) == GLFW_KEY_C);
     CHECK(game::boundKey(two.keys, KeyAction::Use) == GLFW_KEY_M);
     CHECK(allKeysDiffer(two.keys));
+}
+
+TEST_CASE("the two side buttons of the mouse are bindings with names") {
+    CHECK(game::MOUSE_4_CODE == core::MOUSE_BINDING_BASE + GLFW_MOUSE_BUTTON_4);
+    CHECK(game::MOUSE_5_CODE == core::MOUSE_BINDING_BASE + GLFW_MOUSE_BUTTON_5);
+    CHECK(game::keyName(game::MOUSE_4_CODE) == "Mouse 4");
+    CHECK(game::keyName(game::MOUSE_5_CODE) == "Mouse 5");
+    CHECK(game::keyFromName("Mouse 4") == game::MOUSE_4_CODE);
+    CHECK(game::keyFromName("mouse 5") == game::MOUSE_5_CODE);
+    CHECK(game::canBindKey(game::MOUSE_4_CODE));
+    CHECK(game::canBindKey(game::MOUSE_5_CODE));
+    // The left, right and middle buttons are not bindable, and neither is a button past 5.
+    for (const int button : {GLFW_MOUSE_BUTTON_LEFT, GLFW_MOUSE_BUTTON_RIGHT,
+                             GLFW_MOUSE_BUTTON_MIDDLE, GLFW_MOUSE_BUTTON_6}) {
+        const int code = core::MOUSE_BINDING_BASE + button;
+        CHECK(game::keyName(code).empty());
+        CHECK_FALSE(game::canBindKey(code));
+        KeyBindings keys = game::defaultKeyBindings();
+        CHECK_FALSE(game::bindKey(keys, KeyAction::Use, code).accepted);
+        CHECK(keys == game::defaultKeyBindings());
+    }
+    CHECK(game::keyFromName("Mouse 1") == game::NO_KEY);
+}
+
+TEST_CASE("a side button is bound like a key, and swaps with an action that has it") {
+    KeyBindings keys = game::defaultKeyBindings();
+    const game::BindResult first = game::bindKey(keys, KeyAction::Sprint, game::MOUSE_4_CODE);
+    CHECK(first.accepted);
+    CHECK_FALSE(first.swappedWith.has_value());
+    CHECK(game::boundKey(keys, KeyAction::Sprint) == game::MOUSE_4_CODE);
+    CHECK(game::boundKeyName(keys, KeyAction::Sprint) == "Mouse 4");
+
+    // Use takes Mouse 4: sprint gets the key use had.
+    const game::BindResult swap = game::bindKey(keys, KeyAction::Use, game::MOUSE_4_CODE);
+    CHECK(swap.accepted);
+    CHECK(swap.swappedWith == KeyAction::Sprint);
+    CHECK(game::boundKey(keys, KeyAction::Sprint) == GLFW_KEY_E);
+    CHECK(game::keySwappedLine(keys, KeyAction::Sprint) == "Sprint is now on E.");
+    CHECK(allKeysDiffer(keys));
+
+    // The defaults stay on the keyboard.
+    for (const game::KeyActionInfo& info : game::keyActions()) {
+        CHECK(info.defaultKey < core::MOUSE_BINDING_BASE);
+    }
+}
+
+TEST_CASE("a side button is written by name and read back, and a bad name falls back") {
+    game::GameSettings settings;
+    game::bindKey(settings.keys, KeyAction::Sprint, game::MOUSE_4_CODE);
+    game::bindKey(settings.keys, KeyAction::Map, game::MOUSE_5_CODE);
+
+    const std::string text = game::formatSettings(settings);
+    CHECK(text.find("key_sprint = Mouse 4\n") != std::string::npos);
+    CHECK(text.find("key_map = Mouse 5\n") != std::string::npos);
+    CHECK(game::parseSettings(text) == settings);
+    CHECK(game::formatSettings(game::parseSettings(text)) == text);
+
+    // The other mouse buttons are not names: those lines are skipped.
+    const game::GameSettings bad = game::parseSettings("key_use = Mouse 1\nkey_map = Mouse 6\n");
+    CHECK(game::boundKey(bad.keys, KeyAction::Use) == GLFW_KEY_E);
+    CHECK(game::boundKey(bad.keys, KeyAction::Map) == GLFW_KEY_M);
 }
