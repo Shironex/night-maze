@@ -3,6 +3,7 @@
 
 #include "gfx/Mesh.hpp"
 #include "gfx/Texture2D.hpp"
+#include "scene/Collider.hpp"
 
 #include <glm/glm.hpp>
 
@@ -76,6 +77,11 @@ struct LoadedModel {
     /// Numbers for the debug panel. The mesh itself does not keep its vertex count.
     std::size_t vertexCount = 0;
     std::size_t triangleCount = 0;
+
+    /// The box around every vertex of the model, in its local space
+    /// (assets::vertexBounds). Computed once here, while the vertices are still in
+    /// memory: after the load they only exist on the graphics card.
+    scene::Aabb bounds;
 };
 
 /// Loads models and textures on first request and keeps them until it is destroyed.

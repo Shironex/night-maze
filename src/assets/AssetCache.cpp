@@ -141,6 +141,7 @@ const LoadedModel* AssetCache::model(const std::filesystem::path& path) {
         .parts = std::move(parts),
         .vertexCount = source.vertices.size(),
         .triangleCount = source.indices.size() / INDICES_PER_TRIANGLE,
+        .bounds = vertexBounds(source.vertices),
     });
     core::logInfo("Loaded model: " + core::pathText(key));
     return &loaded;

@@ -609,4 +609,18 @@ bool loadObj(const std::filesystem::path& path, ObjModel& model, std::string& er
     return true;
 }
 
+scene::Aabb vertexBounds(std::span<const gfx::Vertex> vertices) {
+    if (vertices.empty()) {
+        return {};
+    }
+    // The first vertex starts the box, every other one can only make it larger.
+    scene::Aabb bounds{.min = vertices.front().position, .max = vertices.front().position};
+    for (const gfx::Vertex& vertex : vertices) {
+        // glm::min and glm::max work on the three components separately.
+        bounds.min = glm::min(bounds.min, vertex.position);
+        bounds.max = glm::max(bounds.max, vertex.position);
+    }
+    return bounds;
+}
+
 } // namespace assets

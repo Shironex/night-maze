@@ -2,12 +2,14 @@
 #pragma once
 
 #include "gfx/Vertex.hpp"
+#include "scene/Collider.hpp"
 
 #include <glm/glm.hpp>
 
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -108,5 +110,15 @@ bool parseMtl(std::string_view text, std::vector<ObjMaterial>& materials, std::s
 /// text into error, leaves model unchanged and returns false. It does not throw.
 /// A model with mirrored triangles loads, with a warning in the log.
 bool loadObj(const std::filesystem::path& path, ObjModel& model, std::string& error);
+
+/// The bounds of a model: the smallest axis-aligned box that holds the position of every
+/// vertex, in the local space of the model. Everything the model draws lies inside it,
+/// also a crown or a foot that sticks out past the collision box of the game. An empty
+/// list gives a box of size 0 at the origin.
+///
+/// The box is what a pass asks to learn whether an object can be seen at all
+/// (scene::canBeSeen), after the model matrix of the object has moved it into the world
+/// (scene::transformedBounds).
+scene::Aabb vertexBounds(std::span<const gfx::Vertex> vertices);
 
 } // namespace assets

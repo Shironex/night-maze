@@ -1308,3 +1308,39 @@ TEST_CASE("loadObj: lamp_held.obj, lamp_held_lens.obj and lamp_held_window.obj")
     }
     CHECK(highestUnderGlass < windowBounds.min.y);
 }
+
+TEST_CASE("vertexBounds: the box around every vertex of a model") {
+    // Without a vertex there is nothing to hold: a box of size 0 at the origin.
+    const scene::Aabb empty = assets::vertexBounds({});
+    CHECK(empty.min == glm::vec3{0.0F});
+    CHECK(empty.max == glm::vec3{0.0F});
+
+    // Three vertices: each axis takes its smallest and its largest value from whichever
+    // vertex has it.
+    std::vector<gfx::Vertex> vertices(3);
+    vertices[0].position = {1.0F, -2.0F, 0.5F};
+    vertices[1].position = {-3.0F, 4.0F, 0.0F};
+    vertices[2].position = {0.0F, 0.0F, -6.0F};
+    const scene::Aabb bounds = assets::vertexBounds(vertices);
+    CHECK(bounds.min == glm::vec3{-3.0F, -2.0F, -6.0F});
+    CHECK(bounds.max == glm::vec3{1.0F, 4.0F, 0.5F});
+}
+
+TEST_CASE("vertexBounds: the crowned wall is drawn higher than the plain one") {
+    // What a pass tests before it draws a wall is the box of the drawn model, not the
+    // collision box of the game, which is the same for every wall. The crown is the
+    // reason: its stones stand on top of the wall.
+    assets::ObjModel plain;
+    assets::ObjModel crowned;
+    std::string error;
+    REQUIRE(assets::loadObj(modelsDirectory() / "wall_straight.obj", plain, error));
+    REQUIRE(assets::loadObj(modelsDirectory() / "wall_straight_crown.obj", crowned, error));
+
+    const scene::Aabb plainBounds = assets::vertexBounds(plain.vertices);
+    const scene::Aabb crownedBounds = assets::vertexBounds(crowned.vertices);
+    CHECK(crownedBounds.max.y > plainBounds.max.y);
+    // The helper of this file and the function of the loader agree.
+    const Bounds expected = boundsOf(crowned);
+    CHECK(crownedBounds.min == expected.min);
+    CHECK(crownedBounds.max == expected.max);
+}
