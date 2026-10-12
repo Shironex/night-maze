@@ -117,7 +117,7 @@ Render, once (`NightMazeApp::onRender`, then `DebugNightMazeApp::onRender`):
 4. Blend the eye position, build the view and projection matrices, cast the picking ray (`pickForFrame`, `handleInteraction`).
 5. Shadow maps: `drawMoonShadowMap` and `drawFlashlightShadowMap` draw the shadow casters with `assets/shaders/shadow_depth.vert` into two depth textures.
 6. Scene, into the HDR framebuffer (`PostProcess::beginScene`): `LightRig::upload` fills the uniform buffer of the lights, `drawMaze` draws terrain, walls, gate, flasks, shade, crystals, levers and notes with `assets/shaders/lit.frag` (or `assets/shaders/gouraud.frag`, or `assets/shaders/textured.frag` in the unlit and debug views), then `drawGrass` uses `assets/shaders/grass.geom`.
-7. Reflections: `drawReflections` draws the crystals, the night in the hood of the shade and the puddles with `assets/shaders/reflect.frag`, which samples the sky cubemap. Then `drawVillage` draws the village on the ridge with `assets/shaders/textured.frag`, centred on the eye like the sky but with real depth. The skybox itself comes last (`assets/shaders/skybox.frag`).
+7. Reflections: `drawReflections` draws the crystals, the night in the hood of the shade and the puddles with `assets/shaders/reflect.frag`, which samples the sky cubemap. Then `drawVillage` draws the village on the ridge with `assets/shaders/textured.frag`, centred on the eye like the sky but with real depth. The skybox comes after it (`assets/shaders/skybox.frag`). Last, `drawHeldLamp` draws the lamp in the hand of the player in front of everything, with the program of step 6, while the picture is taken from the eyes of the player (`game::showsHeldLamp`).
 8. Bloom: `PostProcess::drawBloom` runs `assets/shaders/post/bright.frag` and then `assets/shaders/post/blur.frag` back and forth over half size targets.
 9. Composite: `PostProcess::composite` draws to the window with `assets/shaders/post/composite.frag`. Fog, bloom, exposure, tone mapping, vignette and sRGB encoding all happen in this one pass.
 10. The map, while its key is held: `drawMinimap` (`assets/shaders/post/minimap.frag`, then `assets/shaders/post/minimap_overlay.frag`).
@@ -134,7 +134,7 @@ flowchart TD
     background["MenuBackgroundRenderer draw"]
     shadows["Shadow maps: moon, then flashlight"]
     scene["Scene into HDR framebuffer: drawMaze, drawGrass"]
-    reflect["drawReflections, the village, then skybox"]
+    reflect["drawReflections, the village, skybox, then the held lamp"]
     bloom["PostProcess drawBloom: bright pass, blur"]
     composite["PostProcess composite: fog, bloom, tone mapping, vignette, sRGB"]
     map["drawMinimap, while the map key is held"]
