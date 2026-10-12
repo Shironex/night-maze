@@ -16,6 +16,7 @@ Status words: `accepted (date)` means the code does this today. `superseded by <
 - [what-the-moon-shadow-covers](what-the-moon-shadow-covers.md): moon light only, per fragment
 - [flashlight-in-hand](flashlight-in-hand.md): held lamp aimed ahead of the eye
 - [flashlight-shadow-bias](flashlight-shadow-bias.md): bias in world space
+- [held-lamp](held-lamp.md): lamp model on the beam, in front of walls
 - [grass-lighting](grass-lighting.md): fixed up normal
 - [tangents-on-load](tangents-on-load.md): computed once per OBJ
 - [reflections-and-puddles](reflections-and-puddles.md): own pass, puddles follow ground
