@@ -79,8 +79,8 @@ constexpr float HELD_LAMP_SPECULAR_STRENGTH = 0.6F;
 
 // The part of the depth range the held lamp is drawn into, from 0 (the near plane) up to
 // this. With the planes of the camera (0.1 m and 100 m) the scene has a depth below it
-// only within a tenth of a millimetre behind the near plane, so the lamp is in front of
-// every wall, and the fog of the composite pass reads its pixels as 0.1 m away: no fog.
+// only within a millimetre behind the near plane, so the lamp is in front of every wall,
+// and the fog of the composite pass reads its pixels as 0.1 m away: no fog.
 constexpr double HELD_LAMP_DEPTH_RANGE = 0.01;
 
 } // namespace
