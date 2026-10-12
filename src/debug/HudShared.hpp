@@ -3,6 +3,7 @@
 #pragma once
 
 #include "game/Interaction.hpp"
+#include "game/KeyBindings.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/Player.hpp"
 #include "game/Round.hpp"
@@ -81,8 +82,7 @@ void drawSpacedText(const Canvas& canvas, ImVec2 position, float size, const ImV
                     std::string_view text);
 
 /// The lamp gauge at the bottom left.
-void drawLampGauge(Canvas canvas, const game::Round& round,
-                   const game::GameplaySettings& settings);
+void drawLampGauge(Canvas canvas, const game::Round& round, const game::GameplaySettings& settings);
 /// The crystal counter at the top right.
 void drawCrystalCounter(const Canvas& canvas, const game::Round& round);
 /// The stamina line at the bottom, in the middle.
@@ -96,5 +96,18 @@ void drawHintLine(Canvas canvas, const game::Round& round, const game::Player& p
 /// The name of the night at the top left.
 void drawNightName(Canvas canvas, const game::Round& round, int playedNight,
                    std::uint32_t playedDaily);
+
+/// The card in the middle of the window, shown once the round is won.
+void drawWinCard(const game::Round& round, const game::KeyBindings& keys, float scale,
+                 float fontSize);
+/// The crosshair in the middle of the window.
+void drawCrosshair(const Canvas& canvas, const game::PickState& pick);
+/// The prompt near the bottom of the window, while there is something to use.
+void drawPrompt(const Canvas& canvas, const game::PickState& pick, const game::KeyBindings& keys);
+/// The card of the note that is being read.
+void drawNoteCard(const game::MazeWorld& world, const game::Round& round,
+                  const game::KeyBindings& keys, float scale);
+/// The line the player reads after the shade carried them back.
+void drawCaughtLine(const game::Round& round);
 
 } // namespace debug
