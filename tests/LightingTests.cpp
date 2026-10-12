@@ -2,12 +2,14 @@
 #include "game/Lighting.hpp"
 
 #include "game/Player.hpp"
+#include "game/SoundCues.hpp"
 #include "gfx/ColorSpace.hpp"
 #include "scene/Camera.hpp"
 #include "scene/LightSpace.hpp"
 
 #include <doctest/doctest.h>
 
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <vector>
@@ -744,4 +746,279 @@ TEST_CASE("the held lamp is drawn without the flashlight and with a spill on its
     CHECK(crowded.pointCount == scene::MAX_POINT_LIGHTS);
     checkVector(crowded.points[scene::MAX_POINT_LIGHTS - 1].position, spill.position);
     checkVector(crowded.points[0].position, frame.points[0].position);
+}
+
+TEST_CASE("the held lamp of a player who stands is at rest") {
+    // A new sway, and one that stopped in the middle of a step: both amounts are 0, so
+    // the count of the steps does not matter.
+    game::HeldLampSway stopped;
+    stopped.steps = 0.5F;
+    for (const game::HeldLampSway& sway : {game::HeldLampSway{}, stopped}) {
+        const game::HeldLampPose pose = game::heldLampSwayPose(sway);
+        checkVector(pose.offset, glm::vec3{0.0F});
+        CHECK(pose.pitchDegrees == doctest::Approx(0.0F));
+        CHECK(pose.yawDegrees == doctest::Approx(0.0F));
+        CHECK(pose.rollDegrees == doctest::Approx(0.0F));
+
+        // The pose at rest changes nothing of the matrix of the lamp.
+        const glm::mat4 matrix = game::heldLampSwayMatrix(pose);
+        for (int column = 0; column < 4; ++column) {
+            for (int row = 0; row < 4; ++row) {
+                CHECK(matrix[column][row] == doctest::Approx(column == row ? 1.0F : 0.0F));
+            }
+        }
+    }
+}
+
+TEST_CASE("the held lamp swings to both sides with the steps and wider in a sprint") {
+    game::HeldLampSway walk;
+    walk.walkAmount = 1.0F;
+    game::HeldLampSway sprint = walk;
+    sprint.sprintAmount = 1.0F;
+
+    // In the middle of the first step the lamp is furthest to one side, in the middle of
+    // the second step furthest to the other side, and both times at its own height.
+    walk.steps = 0.5F;
+    const game::HeldLampPose right = game::heldLampSwayPose(walk);
+    checkVector(right.offset, glm::vec3{game::HELD_LAMP_WALK_SIDE, 0.0F, 0.0F});
+    CHECK(right.rollDegrees == doctest::Approx(game::HELD_LAMP_WALK_ROLL_DEGREES));
+    walk.steps = 1.5F;
+    const game::HeldLampPose left = game::heldLampSwayPose(walk);
+    checkVector(left.offset, glm::vec3{-game::HELD_LAMP_WALK_SIDE, 0.0F, 0.0F});
+    CHECK(left.rollDegrees == doctest::Approx(-game::HELD_LAMP_WALK_ROLL_DEGREES));
+
+    // Between two steps, when a foot comes down, it is in the middle and lowest. It
+    // never comes above its place at rest.
+    walk.steps = 1.0F;
+    const game::HeldLampPose down = game::heldLampSwayPose(walk);
+    checkVector(down.offset, glm::vec3{0.0F, -game::HELD_LAMP_WALK_DIP, 0.0F});
+    for (int twentieth = 0; twentieth < 40; ++twentieth) {
+        walk.steps = static_cast<float>(twentieth) / 20.0F;
+        CHECK(game::heldLampSwayPose(walk).offset.y <= 0.0F);
+    }
+
+    // A sprint: the same swing, wider and deeper.
+    sprint.steps = 0.5F;
+    const game::HeldLampPose fast = game::heldLampSwayPose(sprint);
+    checkVector(fast.offset, glm::vec3{game::HELD_LAMP_SPRINT_SIDE, 0.0F, 0.0F});
+    CHECK(fast.offset.x > right.offset.x);
+    CHECK(fast.rollDegrees > right.rollDegrees);
+    sprint.steps = 1.0F;
+    checkVector(game::heldLampSwayPose(sprint).offset,
+                glm::vec3{0.0F, -game::HELD_LAMP_SPRINT_DIP, 0.0F});
+    CHECK(game::HELD_LAMP_SPRINT_DIP > game::HELD_LAMP_WALK_DIP);
+
+    // Half way into the walk it is half the swing: the amount blends, it does not switch.
+    walk.steps = 0.5F;
+    walk.walkAmount = 0.5F;
+    checkVector(game::heldLampSwayPose(walk).offset, right.offset / 2.0F);
+    walk.steps = 1.0F;
+    checkVector(game::heldLampSwayPose(walk).offset, down.offset / 2.0F);
+
+    // The lamp stays within centimetres of the beam it stands for, and never moves
+    // along it.
+    CHECK(game::HELD_LAMP_SPRINT_SIDE < 0.02F);
+    CHECK(game::HELD_LAMP_SPRINT_DIP < 0.02F);
+    CHECK(fast.offset.z == doctest::Approx(0.0F));
+}
+
+TEST_CASE("the sway of the held lamp follows the feet and settles when they stop") {
+    const float walkSpeed = game::Player::WALK_SPEED;
+    const float sprintSpeed = game::Player::SPRINT_SPEED;
+    constexpr float FRAME = 1.0F / 60.0F;
+    // One blend and a little more, in frames.
+    const int blendFrames =
+        static_cast<int>(std::ceil(game::HELD_LAMP_SWAY_BLEND_SECONDS / FRAME)) + 1;
+    game::HeldLampSwayStep step{
+        .seconds = FRAME, .speed = walkSpeed, .walkSpeed = walkSpeed, .sprintSpeed = sprintSpeed};
+    game::HeldLampSway sway;
+
+    // Setting off: the bob comes in over the blend time and does not jump in.
+    game::advanceHeldLampSway(sway, step);
+    CHECK(sway.walkAmount == doctest::Approx(FRAME / game::HELD_LAMP_SWAY_BLEND_SECONDS));
+    CHECK(sway.sprintAmount == doctest::Approx(0.0F));
+    // The count of the steps is the way divided by the stride of the steps that sound.
+    CHECK(sway.steps == doctest::Approx(walkSpeed * FRAME / game::FOOTSTEP_WALK_METRES));
+    for (int frame = 0; frame < blendFrames; ++frame) {
+        game::advanceHeldLampSway(sway, step);
+    }
+    CHECK(sway.walkAmount == doctest::Approx(1.0F));
+    CHECK(sway.sprintAmount == doctest::Approx(0.0F));
+
+    // The count stays between 0 and 2 however far the player walks.
+    for (int frame = 0; frame < 600; ++frame) {
+        game::advanceHeldLampSway(sway, step);
+        CHECK(sway.steps >= 0.0F);
+        CHECK(sway.steps < 2.0F);
+    }
+
+    // A sprint is the speed of the feet, as for the sound of the steps: faster than half
+    // way between the two speeds. A player who sprints into a wall and slides walks.
+    step.speed = sprintSpeed;
+    for (int frame = 0; frame < blendFrames; ++frame) {
+        game::advanceHeldLampSway(sway, step);
+    }
+    CHECK(sway.sprintAmount == doctest::Approx(1.0F));
+    CHECK(sway.walkAmount == doctest::Approx(1.0F));
+    // The steps of a sprint come faster although they are longer.
+    CHECK(sprintSpeed / game::FOOTSTEP_SPRINT_METRES > walkSpeed / game::FOOTSTEP_WALK_METRES);
+
+    // Half the walking speed is half the bob.
+    step.speed = walkSpeed / 2.0F;
+    for (int frame = 0; frame < blendFrames; ++frame) {
+        game::advanceHeldLampSway(sway, step);
+    }
+    CHECK(sway.walkAmount == doctest::Approx(0.5F));
+    CHECK(sway.sprintAmount == doctest::Approx(0.0F));
+
+    // Stopping in the middle of a step: the count stands still and the lamp goes back to
+    // its place at rest without a jump, a little nearer with every frame.
+    sway.walkAmount = 1.0F;
+    sway.steps = 0.5F;
+    step.speed = 0.0F;
+    float distance = glm::length(game::heldLampSwayPose(sway).offset);
+    REQUIRE(distance > 0.0F);
+    for (int frame = 0; frame < blendFrames; ++frame) {
+        game::advanceHeldLampSway(sway, step);
+        const float now = glm::length(game::heldLampSwayPose(sway).offset);
+        CHECK(now < distance + 0.000001F);
+        CHECK(distance - now < 0.001F);
+        distance = now;
+    }
+    CHECK(sway.steps == doctest::Approx(0.5F));
+    CHECK(distance == doctest::Approx(0.0F));
+
+    // A jump of the player (a new round puts the feet elsewhere) counts as a sprint, not
+    // as a hundred steps in one frame.
+    game::HeldLampSway jumped;
+    step.speed = 1000.0F;
+    game::advanceHeldLampSway(jumped, step);
+    CHECK(jumped.steps < sprintSpeed * FRAME / game::FOOTSTEP_WALK_METRES + 0.0001F);
+
+    // A frame without time moves nothing.
+    game::HeldLampSway frozen = sway;
+    step.seconds = 0.0F;
+    step.speed = sprintSpeed;
+    game::advanceHeldLampSway(frozen, step);
+    CHECK(frozen.steps == doctest::Approx(sway.steps));
+    CHECK(frozen.walkAmount == doctest::Approx(sway.walkAmount));
+    CHECK(frozen.sprintAmount == doctest::Approx(sway.sprintAmount));
+}
+
+TEST_CASE("the held lamp falls a little behind a camera that turns and catches up") {
+    constexpr float FRAME = 1.0F / 60.0F;
+    game::HeldLampSwayStep step{.seconds = FRAME,
+                                .walkSpeed = game::Player::WALK_SPEED,
+                                .sprintSpeed = game::Player::SPRINT_SPEED};
+    game::HeldLampSway sway;
+
+    // A turn of 3 degrees to the right and 1 degree up in one frame: the lamp is left
+    // behind by a share of it, so its lens points to the left of its place and below it.
+    step.yawDegrees = 3.0F;
+    step.pitchDegrees = 1.0F;
+    game::advanceHeldLampSway(sway, step);
+    CHECK(sway.lagDegrees.x > 0.0F);
+    CHECK(sway.lagDegrees.x < 3.0F * game::HELD_LAMP_LAG_SHARE);
+    CHECK(sway.lagDegrees.y > 0.0F);
+    const game::HeldLampPose pose = game::heldLampSwayPose(sway);
+    CHECK(pose.yawDegrees == doctest::Approx(sway.lagDegrees.x));
+    CHECK(pose.pitchDegrees == doctest::Approx(-sway.lagDegrees.y));
+    checkVector(pose.offset, glm::vec3{0.0F});
+    // In the axes of the lamp, -Z is the beam: the lens moved to -X (left) and down.
+    const glm::vec4 lens{0.0F, 0.0F, -game::HELD_LAMP_LENS_OUT, 1.0F};
+    const glm::vec4 moved = game::heldLampSwayMatrix(pose) * lens;
+    CHECK(moved.x < 0.0F);
+    CHECK(moved.y < 0.0F);
+    // The lamp turns about its butt, which stays where the wrist would be.
+    checkVector(glm::vec3{game::heldLampSwayMatrix(pose) * glm::vec4{0.0F, 0.0F, 0.0F, 1.0F}},
+                glm::vec3{0.0F});
+
+    // The camera stands still again: the lamp catches up, and is there within a second.
+    float before = sway.lagDegrees.x;
+    for (int frame = 0; frame < 60; ++frame) {
+        game::advanceHeldLampSway(sway, step);
+        CHECK(sway.lagDegrees.x < before);
+        before = sway.lagDegrees.x;
+    }
+    CHECK(sway.lagDegrees.x < 0.01F);
+    CHECK(sway.lagDegrees.y < 0.01F);
+
+    // However fast the camera spins, the lamp is never further behind than the limit.
+    for (int frame = 0; frame < 30; ++frame) {
+        step.yawDegrees -= 40.0F;
+        step.pitchDegrees -= 5.0F;
+        game::advanceHeldLampSway(sway, step);
+        CHECK(sway.lagDegrees.x >= -game::HELD_LAMP_MAX_LAG_DEGREES);
+        CHECK(sway.lagDegrees.y >= -game::HELD_LAMP_MAX_LAG_DEGREES);
+    }
+    CHECK(sway.lagDegrees.x == doctest::Approx(-game::HELD_LAMP_MAX_LAG_DEGREES));
+
+    // The yaw is taken the short way round: from 359 to 1 degree is a turn of 2 degrees
+    // to the right, not of 358 to the left.
+    game::HeldLampSway wrapped;
+    wrapped.yawDegrees = 359.0F;
+    step.yawDegrees = 1.0F;
+    step.pitchDegrees = 0.0F;
+    game::advanceHeldLampSway(wrapped, step);
+    CHECK(wrapped.lagDegrees.x > 0.0F);
+    CHECK(wrapped.lagDegrees.x < 2.0F * game::HELD_LAMP_LAG_SHARE);
+    CHECK(wrapped.yawDegrees == doctest::Approx(1.0F));
+}
+
+TEST_CASE("the swaying held lamp stays in the lower right and keeps its butt out of the picture") {
+    const game::LightingSettings settings;
+    const glm::vec3 eye{3.0F, 1.7F, 5.0F};
+    constexpr float ASPECT_RATIO = 16.0F / 9.0F;
+    const glm::vec4 lens{0.0F, 0.0F, -game::HELD_LAMP_LENS_OUT, 1.0F};
+    // The two highest corners of the cap of the butt (tools/blender/build_lamp_held.py:
+    // a ring of eight corners, 0.0195 m from the axis and 0.012 m out, with a flat side
+    // on top, so its upper corners are 22.5 degrees to each side of the top).
+    const float capAngle = glm::radians(22.5F);
+    const std::array<glm::vec4, 2> cap{
+        glm::vec4{0.0195F * std::sin(capAngle), 0.0195F * std::cos(capAngle), -0.012F, 1.0F},
+        glm::vec4{-0.0195F * std::sin(capAngle), 0.0195F * std::cos(capAngle), -0.012F, 1.0F}};
+    scene::Camera camera;
+    camera.yawDegrees = 220.0F;
+    const glm::mat4 toClip = game::heldLampProjection(camera.projectionMatrix(ASPECT_RATIO)) *
+                             camera.viewMatrix(eye) *
+                             game::heldLampMatrix(settings, eye, camera.forward(), camera.right());
+    const glm::vec4 restClip = toClip * lens;
+    const glm::vec2 rest = glm::vec2{restClip} / restClip.w;
+
+    // The widest poses there are: a sprint in the middle of a step to either side and at
+    // a footfall, with the lamp as far behind the camera as it gets, in all four
+    // directions.
+    const float limit = game::HELD_LAMP_MAX_LAG_DEGREES;
+    for (const float steps : {0.0F, 0.5F, 1.0F, 1.5F}) {
+        for (const float lagYaw : {-limit, 0.0F, limit}) {
+            for (const float lagPitch : {-limit, 0.0F, limit}) {
+                CAPTURE(steps);
+                CAPTURE(lagYaw);
+                CAPTURE(lagPitch);
+                game::HeldLampSway sway;
+                sway.steps = steps;
+                sway.walkAmount = 1.0F;
+                sway.sprintAmount = 1.0F;
+                sway.lagDegrees = {lagYaw, lagPitch};
+                const glm::mat4 swayed =
+                    toClip * game::heldLampSwayMatrix(game::heldLampSwayPose(sway));
+
+                // The lens: still right of the middle and in the lowest third, and not
+                // far from where it is at rest (the picture is 2 wide and 2 high).
+                const glm::vec4 clip = swayed * lens;
+                const glm::vec2 place = glm::vec2{clip} / clip.w;
+                CHECK(place.x > 0.2F);
+                CHECK(place.x < 0.8F);
+                CHECK(place.y < -0.5F);
+                CHECK(place.y > -0.9F);
+                CHECK(glm::distance(place, rest) < 0.08F);
+
+                // The butt, where an arm would begin: below the lower edge.
+                for (const glm::vec4& corner : cap) {
+                    const glm::vec4 capClip = swayed * corner;
+                    CHECK(capClip.y / capClip.w < -1.0F);
+                }
+            }
+        }
+    }
 }

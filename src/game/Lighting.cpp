@@ -1,7 +1,11 @@
 // Lighting of the game: the settings of the moon, the flashlight and the point lights.
 #include "game/Lighting.hpp"
 
+#include "game/SoundCues.hpp"
 #include "gfx/ColorSpace.hpp"
+
+#include <glm/gtc/constants.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -125,6 +129,68 @@ scene::LightSet heldLampLights(const scene::LightSet& frameLights,
     };
     lights.pointCount = index + 1;
     return lights;
+}
+
+void advanceHeldLampSway(HeldLampSway& sway, const HeldLampSwayStep& step) {
+    // How far the camera turned since the frame before. The yaw is not kept inside one
+    // turn, so the difference is taken the short way round.
+    const glm::vec2 turned{std::remainder(step.yawDegrees - sway.yawDegrees, 360.0F),
+                           step.pitchDegrees - sway.pitchDegrees};
+    sway.yawDegrees = step.yawDegrees;
+    sway.pitchDegrees = step.pitchDegrees;
+    if (step.seconds <= 0.0F) {
+        return;
+    }
+
+    // A jump of the player (a new round) is not a walk: no step is faster than a sprint.
+    const float speed = std::clamp(step.speed, 0.0F, std::max(step.sprintSpeed, 0.0F));
+    const float walkTarget = step.walkSpeed > 0.0F ? std::min(speed / step.walkSpeed, 1.0F) : 0.0F;
+    const float sprintTarget = speed > (step.walkSpeed + step.sprintSpeed) / 2.0F ? 1.0F : 0.0F;
+    const float blendStep = step.seconds / HELD_LAMP_SWAY_BLEND_SECONDS;
+    sway.walkAmount += std::clamp(walkTarget - sway.walkAmount, -blendStep, blendStep);
+    sway.sprintAmount += std::clamp(sprintTarget - sway.sprintAmount, -blendStep, blendStep);
+
+    // The steps the feet took in this frame, with the stride of the sound of the steps,
+    // so the lamp swings as often as a step is heard.
+    const float stride = glm::mix(FOOTSTEP_WALK_METRES, FOOTSTEP_SPRINT_METRES, sway.sprintAmount);
+    sway.steps = std::fmod(sway.steps + speed * step.seconds / stride, 2.0F);
+
+    // The lamp falls behind by a share of the turn and catches up: what is left of the
+    // lag shrinks by the same part in every moment, the faster the shorter
+    // HELD_LAMP_LAG_SECONDS is.
+    const glm::vec2 lag = (sway.lagDegrees + turned * HELD_LAMP_LAG_SHARE) *
+                          std::exp(-step.seconds / HELD_LAMP_LAG_SECONDS);
+    sway.lagDegrees = glm::clamp(lag, glm::vec2{-HELD_LAMP_MAX_LAG_DEGREES},
+                                 glm::vec2{HELD_LAMP_MAX_LAG_DEGREES});
+}
+
+HeldLampPose heldLampSwayPose(const HeldLampSway& sway) {
+    const float walk = std::clamp(sway.walkAmount, 0.0F, 1.0F);
+    const float sprint = std::clamp(sway.sprintAmount, 0.0F, 1.0F);
+    // Half a swing per step: to one side with one foot and to the other with the next.
+    // The lamp is lowest when a foot comes down, between two swings, and back at its
+    // height in the middle of a step: one smooth dip per step.
+    const float swing = std::sin(glm::pi<float>() * sway.steps);
+    const float side = glm::mix(HELD_LAMP_WALK_SIDE, HELD_LAMP_SPRINT_SIDE, sprint);
+    const float dip = glm::mix(HELD_LAMP_WALK_DIP, HELD_LAMP_SPRINT_DIP, sprint);
+    const float roll = glm::mix(HELD_LAMP_WALK_ROLL_DEGREES, HELD_LAMP_SPRINT_ROLL_DEGREES, sprint);
+    return {.offset = {walk * side * swing, walk * dip * (swing * swing - 1.0F), 0.0F},
+            // Behind a camera that turned upwards the lens hangs low, and behind one that
+            // turned to the right it points to the left.
+            .pitchDegrees = -sway.lagDegrees.y,
+            .yawDegrees = sway.lagDegrees.x,
+            // The top tips to the side the lamp swings away from, like a hand that
+            // carries it.
+            .rollDegrees = walk * roll * swing};
+}
+
+glm::mat4 heldLampSwayMatrix(const HeldLampPose& pose) {
+    // Read from the right, as a point of the model meets them: the three turns about the
+    // origin of the model, which is its butt, and then the move by the offset.
+    glm::mat4 matrix = glm::translate(glm::mat4{1.0F}, pose.offset);
+    matrix = glm::rotate(matrix, glm::radians(pose.yawDegrees), glm::vec3{0.0F, 1.0F, 0.0F});
+    matrix = glm::rotate(matrix, glm::radians(pose.pitchDegrees), glm::vec3{1.0F, 0.0F, 0.0F});
+    return glm::rotate(matrix, glm::radians(pose.rollDegrees), glm::vec3{0.0F, 0.0F, 1.0F});
 }
 
 std::vector<PointLightSpot> nearestPointLights(std::span<const glm::vec3> positions,

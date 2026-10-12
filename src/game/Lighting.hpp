@@ -311,6 +311,97 @@ constexpr float HELD_LAMP_SPILL_RADIUS = 0.1F;
 scene::LightSet heldLampLights(const scene::LightSet& frameLights,
                                const LightingSettings& frameLighting, const glm::mat4& lampMatrix);
 
+/// How the drawn lamp moves with the steps of the player and with the turns of the
+/// camera. Drawing only: the light, its shadow map and flashlightPose never see it, so the
+/// beam stands still and the lamp moves by centimetres around the place the beam leaves
+/// from. The numbers are in metres and degrees and can be tuned here.
+///
+/// The bob: the lamp swings to one side with one step and to the other with the next,
+/// sinks a little each time a foot comes down and rolls a little with the swing. It never
+/// comes above its place at rest: its butt lies just below the lower edge of the picture
+/// and must stay there, because no arm holds it. A sprint swings wider, and faster
+/// because the steps come faster.
+constexpr float HELD_LAMP_WALK_SIDE = 0.008F;
+constexpr float HELD_LAMP_WALK_DIP = 0.005F;
+constexpr float HELD_LAMP_WALK_ROLL_DEGREES = 1.0F;
+constexpr float HELD_LAMP_SPRINT_SIDE = 0.014F;
+constexpr float HELD_LAMP_SPRINT_DIP = 0.01F;
+constexpr float HELD_LAMP_SPRINT_ROLL_DEGREES = 2.0F;
+
+/// How long the bob takes to come in when the player sets off, to change between a walk
+/// and a sprint and to settle when the player stops, in seconds.
+constexpr float HELD_LAMP_SWAY_BLEND_SECONDS = 0.25F;
+
+/// The lag: the lamp falls behind a camera that turns by this share of the turn, catches
+/// up within about this many seconds, and is never further behind than the limit.
+constexpr float HELD_LAMP_LAG_SHARE = 0.2F;
+constexpr float HELD_LAMP_LAG_SECONDS = 0.1F;
+constexpr float HELD_LAMP_MAX_LAG_DEGREES = 2.0F;
+
+/// The sway of the lamp between two frames. It belongs to the drawing and is advanced
+/// with the frame time (advanceHeldLampSway), not with the fixed steps of the rules.
+struct HeldLampSway {
+    /// Steps walked, counted in steps and kept between 0 and 2: the bob repeats after
+    /// a step to each side. It counts metres, not seconds, so the swing follows the feet
+    /// at every speed and stands where it is when they stop.
+    float steps = 0.0F;
+    /// From 0 (the player stands) to 1 (walks at full walking speed or faster).
+    float walkAmount = 0.0F;
+    /// From 0 (a walk) to 1 (a sprint).
+    float sprintAmount = 0.0F;
+    /// How far the lamp is behind the camera, in degrees: x to the left of it after
+    /// a turn to the right, y below it after a turn upwards.
+    glm::vec2 lagDegrees{0.0F};
+    /// The two angles of the camera in the frame before, to know how far it turned.
+    float yawDegrees = 0.0F;
+    float pitchDegrees = 0.0F;
+};
+
+/// What one frame tells the sway.
+struct HeldLampSwayStep {
+    /// The time of the frame in seconds.
+    float seconds = 0.0F;
+    /// How fast the feet of the player move over the ground, in metres per second: the
+    /// speed they really had, 0 for a player who stands, flies or pushes against a wall.
+    float speed = 0.0F;
+    /// Player::walkSpeed and Player::sprintSpeed. Faster than half way between the two
+    /// is a sprint, as for the sound of the steps (game::sprintedStep).
+    float walkSpeed = 0.0F;
+    float sprintSpeed = 0.0F;
+    /// The two angles of the camera in this frame, in degrees.
+    float yawDegrees = 0.0F;
+    float pitchDegrees = 0.0F;
+};
+
+/// Advances the sway by one frame: the count of the steps by the way the feet went, the
+/// two amounts towards what the speed says, each by at most the share of
+/// HELD_LAMP_SWAY_BLEND_SECONDS the frame took, and the lag by the turn of the camera
+/// since the frame before. A frame without time changes nothing but the remembered
+/// angles. The caller leaves it out while the round stands still (a pause, the result
+/// screen), so the lamp stands still there too.
+void advanceHeldLampSway(HeldLampSway& sway, const HeldLampSwayStep& step);
+
+/// Where the sway puts the drawn lamp, measured in the axes of the lamp itself
+/// (heldLampMatrix): x to its right, y to its top, z against the beam.
+struct HeldLampPose {
+    /// Metres from its place at rest.
+    glm::vec3 offset{0.0F};
+    /// Degrees about the butt of the lamp, where the wrist would be, so the butt stays
+    /// below the edge of the picture: the lens up, the lens to the left, and a roll
+    /// about the axis that tips the top to the left.
+    float pitchDegrees = 0.0F;
+    float yawDegrees = 0.0F;
+    float rollDegrees = 0.0F;
+};
+
+/// The pose of a sway. Pure: the same sway always gives the same pose. A sway at rest
+/// (both amounts 0, no lag) gives the pose at rest, whatever the count of the steps is.
+HeldLampPose heldLampSwayPose(const HeldLampSway& sway);
+
+/// The pose as a matrix. The lamp is drawn with heldLampMatrix(...) * this, so the pose
+/// moves the lamp in its own axes. The pose at rest is the unit matrix.
+glm::mat4 heldLampSwayMatrix(const HeldLampPose& pose);
+
 /// One point light of a frame: where it hangs and how much of its brightness it has.
 struct PointLightSpot {
     glm::vec3 position{0.0F};
