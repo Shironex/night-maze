@@ -2,9 +2,11 @@
 #include "assets/ObjLoader.hpp"
 
 #include "assets/Tangents.hpp"
+#include "game/Lighting.hpp"
 
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -1224,4 +1226,85 @@ TEST_CASE("loadObj: a file that does not exist is reported, not thrown") {
     CHECK(startsWith(error, "OBJ file cannot be opened: "));
     CHECK(error.find("no_such_model.obj") != std::string::npos);
     CHECK(model.vertices.empty());
+}
+
+TEST_CASE("loadObj: lamp_held.obj, lamp_held_lens.obj and lamp_held_window.obj") {
+    // The lamp the player holds, as three models that fit into each other. The body: 13
+    // bands of eight sides and the butt in tin, three sleeves of tape, and the four bars
+    // of the window and the switch without their undersides. The lens is a fan of eight
+    // triangles and the glass of the window one face.
+    struct Part {
+        std::string file;
+        std::size_t triangles;
+    };
+    for (const Part& part : {Part{.file = "lamp_held.obj", .triangles = 314U},
+                             Part{.file = "lamp_held_lens.obj", .triangles = 8U},
+                             Part{.file = "lamp_held_window.obj", .triangles = 2U}}) {
+        CAPTURE(part.file);
+        // Not through loadGameModel, for the same reason as the flask: slanted faces.
+        assets::ObjModel model;
+        std::string error;
+        const bool ok = assets::loadObj(modelsDirectory() / part.file, model, error);
+        CAPTURE(error);
+        REQUIRE(ok);
+        CHECK(model.unknownLineCount == 0U);
+        for (const gfx::Vertex& vertex : model.vertices) {
+            CHECK(glm::length(vertex.normal) == doctest::Approx(1.0F).epsilon(0.001));
+        }
+
+        // One material and one picture for all three.
+        REQUIRE(model.parts.size() == 1U);
+        CHECK(model.parts[0].material == "lamp_held");
+        REQUIRE(model.materials.size() == 1U);
+        CHECK(model.materials[0].diffuseTexture.filename() == "lamp_held.png");
+        CHECK(model.materials[0].normalTexture.filename() == "lamp_held_normal.png");
+        CHECK(std::filesystem::exists(model.materials[0].diffuseTexture));
+        CHECK(std::filesystem::exists(model.materials[0].normalTexture));
+        CHECK(model.indices.size() == part.triangles * 3U);
+        // The picture goes around the tube and is not a mirror image on any face.
+        CHECK(model.mirroredTriangleCount == 0U);
+    }
+
+    assets::ObjModel body;
+    assets::ObjModel lens;
+    assets::ObjModel window;
+    std::string error;
+    REQUIRE(assets::loadObj(modelsDirectory() / "lamp_held.obj", body, error));
+    REQUIRE(assets::loadObj(modelsDirectory() / "lamp_held_lens.obj", lens, error));
+    REQUIRE(assets::loadObj(modelsDirectory() / "lamp_held_window.obj", window, error));
+
+    // The body lies along -Z from its butt at the origin, 0.224 m long, and its axis
+    // runs through the origin: the head is as wide to the left as to the right and as
+    // far down as up.
+    const Bounds bodyBounds = boundsOf(body);
+    CHECK(bodyBounds.max.z == doctest::Approx(0.0F));
+    CHECK(bodyBounds.min.z == doctest::Approx(-0.224F));
+    CHECK(bodyBounds.min.x == doctest::Approx(-bodyBounds.max.x));
+    CHECK(bodyBounds.min.y == doctest::Approx(-bodyBounds.max.y));
+    CHECK(bodyBounds.max.x < 0.0335F);
+
+    // The lens is a flat disc where the game takes it to be, inside the rim of the head.
+    const Bounds lensBounds = boundsOf(lens);
+    CHECK(lensBounds.min.z == doctest::Approx(-game::HELD_LAMP_LENS_OUT));
+    CHECK(lensBounds.max.z == doctest::Approx(-game::HELD_LAMP_LENS_OUT));
+    CHECK(lensBounds.min.z > bodyBounds.min.z);
+    for (const gfx::Vertex& vertex : lens.vertices) {
+        CHECK(vertex.normal.z == doctest::Approx(-1.0F));
+    }
+
+    // The glass of the window looks up and lies above the tube, and neither the tin nor
+    // the tape under it reaches through it.
+    const Bounds windowBounds = boundsOf(window);
+    CHECK(windowBounds.min.y == doctest::Approx(windowBounds.max.y));
+    CHECK(windowBounds.min.y > 0.0182F);
+    for (const gfx::Vertex& vertex : window.vertices) {
+        CHECK(vertex.normal.y == doctest::Approx(1.0F));
+    }
+    float highestUnderGlass = 0.0F;
+    for (const gfx::Vertex& vertex : body.vertices) {
+        if (vertex.position.z < windowBounds.max.z && vertex.position.z > windowBounds.min.z) {
+            highestUnderGlass = std::max(highestUnderGlass, vertex.position.y);
+        }
+    }
+    CHECK(highestUnderGlass < windowBounds.min.y);
 }
