@@ -1,4 +1,5 @@
-// The Night Maze application: game state and rendering of a frame.
+// The Night Maze application: how it is put together at the start, its settings and its
+// sounds.
 #include "game/NightMazeApp.hpp"
 
 #include "assets/ImageLoader.hpp"
