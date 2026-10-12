@@ -102,7 +102,7 @@ The classes in `src/gfx` (`Shader`, `Buffer`, `VertexArray`, `Mesh`, `Texture2D`
 
 ## 4. One frame
 
-Update, for each fixed step (`NightMazeApp::onUpdate`). It returns early unless `updatesRound(mode)` is true and the menu camera is off, so the round stands still under every menu.
+Update, for each fixed step (`NightMazeApp::onUpdate`). It returns early unless `updatesRound(mode)` is true and the menu camera is off, so the round stands still under every menu. Steps 1 to 3 below are `movePlayer`, `stepRoundRules` and `stepShade`.
 
 1. Build a `PlayerInput` from the bound keys and call `Player::update` (movement, collision, stamina). `advanceFootsteps` may ask for a step sound.
 2. Take a `soundSnapshot`, call `updateRound` (battery, crystals, flasks, gate, exit), then play what `roundStepCues` returns, plus the low battery pulse and the winded breath when their clocks are due.
