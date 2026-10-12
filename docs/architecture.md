@@ -22,7 +22,7 @@ Inside `engine`, `src/core` includes only itself, `src/gfx` uses `src/core`, `sr
 
 `src/game` is split between two targets. The files that need no window are in `game_logic`. The files that draw (`NightMazeApp`, the `*Renderer` classes, `PostProcess`, `ShadowMap`, `Skybox`, `LightRig`) are in the executable.
 
-What runs without a window or an OpenGL context: all of `game_logic`, the math in `src/scene`, the file loaders and shader text functions in `engine`, and the audio engine when it is made with `audio::AudioOutput::None`. The 57 test files in `tests` cover that.
+What runs without a window or an OpenGL context: all of `game_logic`, the math in `src/scene`, the file loaders and shader text functions in `engine`, and the audio engine when it is made with `audio::AudioOutput::None`. The 59 test files in `tests` cover that.
 
 | Library | Version | Used by |
 |---|---|---|
@@ -37,8 +37,8 @@ What runs without a window or an OpenGL context: all of `game_logic`, the math i
 
 Directory map:
 
-- `src/core`: `Application`, `Window`, `Input`, `Time`, logging, `GL_CHECK`, paths.
-- `src/gfx`: wrappers of OpenGL objects and the shader loader with its `#include` step.
+- `src/core`: `Application`, `Window`, `Input`, `Time`, `PeriodicAverage`, logging, `GL_CHECK`, paths.
+- `src/gfx`: wrappers of OpenGL objects, the shader loader with its `#include` step, and the counters of a frame (`RenderStats`).
 - `src/scene`: `Camera`, `Transform`, colliders, ray casts, lights as plain data.
 - `src/assets`: OBJ and image loaders, `AssetCache`.
 - `src/game`: the rules, the renderers and the application class.
@@ -98,7 +98,7 @@ The class is one header and seven source files, split by what the functions do: 
 
 `src/main.cpp` holds the only class that knows both the game and the debug code: `DebugNightMazeApp` derives from `NightMazeApp`, owns `debug::DebugUI`, and draws it after the frame of the game. It hands the debug window a `debug::DebugContext`, a struct of references.
 
-The classes in `src/gfx` (`Shader`, `Buffer`, `VertexArray`, `Mesh`, `Texture2D`, `Cubemap`, `Framebuffer`, `UniformBuffer`) follow one rule: the constructor creates the OpenGL object, the destructor deletes it, copying is deleted and moving is allowed. `FrameTexture` and `ComparisonSampler` can be neither copied nor moved. All of them need a live context, so they are members of the application and die before the window does.
+The classes in `src/gfx` (`Shader`, `Buffer`, `VertexArray`, `Mesh`, `Texture2D`, `Cubemap`, `Framebuffer`, `UniformBuffer`, `TimerQuery`) follow one rule: the constructor creates the OpenGL object, the destructor deletes it, copying is deleted and moving is allowed. `FrameTexture` and `ComparisonSampler` can be neither copied nor moved. All of them need a live context, so they are members of the application and die before the window does.
 
 ## 4. One frame
 
@@ -122,6 +122,12 @@ Render, once (`NightMazeApp::onRender`, then `DebugNightMazeApp::onRender`):
 9. Composite: `PostProcess::composite` draws to the window with `assets/shaders/post/composite.frag`. Fog, bloom, exposure, tone mapping, vignette and sRGB encoding all happen in this one pass.
 10. The map, while its key is held: `drawMinimap` (`assets/shaders/post/minimap.frag`, then `assets/shaders/post/minimap_overlay.frag`).
 11. UI layers: `UiLayer::draw` (RmlUi), then `DebugUI::draw` (the HUD and the debug window). Then the buffers are swapped.
+
+A frame is measured in three ways, and the Diagnostics category of the debug window shows all of them. The numbers that are times are averaged over the half second of the FPS display (`core::PeriodicAverage`, published when `Time::fpsRefreshed` is true).
+
+- CPU: `Application::run` times the fixed steps, `onRender` and `Window::swapBuffers` with `std::chrono::steady_clock` (`core::CpuTimes`). With vsync on, the wait for the screen is inside the swap. `Window::setVsync` switches it off for a measurement, and the swap is then the wait for the graphics card.
+- Counters: `gfx/RenderStats.hpp` counts draw calls, triangles, uniform lookups and texture binds. `Mesh::draw`, the setters of `Shader` and the bind functions of the textures count themselves, and the five `glDrawArrays` calls in `src/game` call `gfx::countDraw`. `onRender` resets the counters at its start. RmlUi and Dear ImGui draw with their own OpenGL code and are not counted.
+- GPU: `game::GpuPassTimers` (`src/game/GpuPasses.hpp`) holds one `gfx::TimerQuery` (`GL_TIME_ELAPSED`) for each of eight passes: moon shadow, flashlight shadow, scene, grass, reflections and sky, bloom, composite, minimap. OpenGL 4.1 runs one timer query at a time, so the passes are ranges that follow each other, and the scene pass of step 6 and 7 is three of them. An answer is read in a later frame and only when the card has it, so measuring never waits. A pass without a draw call counts as not run. On an Apple GPU the scene and the grass report one shared time (see the decision record `frame-measurement`).
 
 `onRender` reads as this list: the steps are functions of their own, declared together in `src/game/NightMazeApp.hpp` under "The parts of onRender" (`updateScreens`, `updateFocus`, `handleRoundRequests`, `readRoundKeys`, `drawMenuBackgroundFrame`, `frameView`, `placeShade`, `frameLightingFor`, `beginScenePass`, `uploadLights`, `finishPicture`). `FrameScreen` and `FrameView` carry what the steps share: which screen the frame is for, and where it is seen from.
 
