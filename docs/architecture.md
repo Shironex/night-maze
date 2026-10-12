@@ -194,7 +194,7 @@ They share one pattern. State is plain structs. Behaviour is free functions that
 
 I use two UI libraries on purpose. RmlUi draws what a player meets outside a round: menus, settings and story cards. The documents are `assets/ui/*.rml` with the style sheet `assets/ui/menu.rcss`. `ui::UiLayer` shows one document at a time and reports by name: an element with `data-action` puts its name on a list (`takeActions`), a control with `data-setting` reports its new value (`takeChanges`). `NightMazeApp::handleMenuActions` maps a name to a `GameEvent` with `eventForAction`, or to a command such as a difficulty. `showScreen` picks the document for the current mode. One page scrolls, the ledger: the wheel is handled by RmlUi, and the arrow keys, Page Up, Page Down, Home and End by `NightMazeApp::scrollLedger` through `UiLayer::scrollBy`.
 
-Dear ImGui draws the debug window (key left of 1) and the HUD of a round: counters, bars, crosshair, prompt and the card of a note. The HUD is in `src/debug/Hud.cpp` because only that folder may include ImGui.
+Dear ImGui draws the debug window (key left of 1) and the HUD of a round: counters, bars, crosshair, prompt and the card of a note. The HUD is in the `src/debug/Hud*.cpp` files because only that folder may include ImGui.
 
 Input routing:
 
