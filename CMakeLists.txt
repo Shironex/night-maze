@@ -371,6 +371,7 @@ add_executable(night_maze
     src/game/ModelDraw.hpp
     src/game/NightMazeApp.cpp
     src/game/NightMazeApp.hpp
+    src/game/NightMazeAppShared.hpp
     src/game/PostProcess.cpp
     src/game/PostProcess.hpp
     src/game/PuddleRenderer.cpp
