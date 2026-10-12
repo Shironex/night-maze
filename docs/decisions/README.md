@@ -26,6 +26,7 @@ Status words: `accepted (date)` means the code does this today. `superseded by <
 - [darker-night-defaults](darker-night-defaults.md): darker values and the fog cap
 - [worn-walls-from-the-seed](worn-walls-from-the-seed.md): wall variants, painted niches
 - [crowned-and-broken-walls](crowned-and-broken-walls.md): two wall models, new top edge
+- [frame-measurement](frame-measurement.md): CPU split, global counters, a timer query a pass
 
 ## World and gameplay
 - [collision-aabb-sliding](collision-aabb-sliding.md): own boxes, one axis at a time
@@ -57,6 +58,7 @@ Status words: `accepted (date)` means the code does this today. `superseded by <
 
 ## Interface
 - [debug-window](debug-window.md): one window, HUD at the top
+- [vsync-switch](vsync-switch.md): a debug switch, not a setting
 - [menu-in-rmlui](menu-in-rmlui.md): menu in RmlUi
 - [menu-flow](menu-flow.md): Escape pauses and goes back
 - [menu-background-video](menu-background-video.md): recorded loop behind the menu
