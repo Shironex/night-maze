@@ -4,6 +4,7 @@
 #include "gfx/ColorSpace.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 
 namespace game {
@@ -15,6 +16,30 @@ constexpr glm::vec3 WORLD_UP{0.0F, 1.0F, 0.0F};
 
 // A vector shorter than this cannot be brought to length 1 (see scene/LightBlock.cpp).
 constexpr float MIN_DIRECTION_LENGTH = 0.0001F;
+
+// A hand that holds the flashlight flashlightHandRight to the right of the eye and
+// flashlightHandDown below it, where "below" is against the direction up, and aims it at
+// the point of the line of view the settings name.
+FlashlightPose poseOfHand(const LightingSettings& settings, const glm::vec3& eye,
+                          const glm::vec3& forward, const glm::vec3& right, const glm::vec3& up) {
+    const glm::vec3 position =
+        eye + right * settings.flashlightHandRight - up * settings.flashlightHandDown;
+
+    // The point on the line of view the beam is aimed at.
+    const float convergeDistance =
+        std::max(settings.flashlightConvergeDistance, MIN_FLASHLIGHT_CONVERGE_DISTANCE);
+    const glm::vec3 target = eye + forward * convergeDistance;
+
+    // From the hand to that point. The two fall together in one case only: a camera that
+    // looks straight down and a hand exactly as far below the eye as the point is in
+    // front of it. A vector of length 0 has no direction, so the beam then simply
+    // points where the camera looks.
+    const glm::vec3 toTarget = target - position;
+    if (glm::length(toTarget) < MIN_DIRECTION_LENGTH) {
+        return {.position = position, .direction = forward};
+    }
+    return {.position = position, .direction = glm::normalize(toTarget)};
+}
 
 } // namespace
 
@@ -35,23 +60,50 @@ FlashlightPose flashlightPose(const LightingSettings& settings, const glm::vec3&
     // The hand: to the right of the eye and below it. The right vector of the camera is
     // level and "below" is straight down, so the first offset is the whole horizontal
     // distance from the eye and the second the whole vertical one.
-    const glm::vec3 position =
-        eye + right * settings.flashlightHandRight - WORLD_UP * settings.flashlightHandDown;
+    return poseOfHand(settings, eye, forward, right, WORLD_UP);
+}
 
-    // The point on the line of view the beam is aimed at.
-    const float convergeDistance =
-        std::max(settings.flashlightConvergeDistance, MIN_FLASHLIGHT_CONVERGE_DISTANCE);
-    const glm::vec3 target = eye + forward * convergeDistance;
+glm::mat4 heldLampMatrix(const LightingSettings& settings, const glm::vec3& eye,
+                         const glm::vec3& forward, const glm::vec3& right) {
+    // The hand of the picture: below the eye along the up vector of the camera, so it
+    // turns with the look. With a level look that is the hand of the light itself.
+    const FlashlightPose hand =
+        poseOfHand(settings, eye, forward, right, glm::cross(right, forward));
 
-    // From the hand to that point. The two fall together in one case only: a camera that
-    // looks straight down and a hand exactly as far below the eye as the point is in
-    // front of it. A vector of length 0 has no direction, so the beam then simply
-    // points where the camera looks.
-    const glm::vec3 toTarget = target - position;
-    if (glm::length(toTarget) < MIN_DIRECTION_LENGTH) {
-        return {.position = position, .direction = forward};
+    // The three axes of the lamp in the world. The model points along its own -Z, so
+    // its +Z is the direction against the beam. Its top is at right angles to the beam
+    // and to the right vector of the camera, and its own right follows from the two.
+    const glm::vec3 back = -hand.direction;
+    const glm::vec3 top = glm::normalize(glm::cross(right, hand.direction));
+    const glm::vec3 side = glm::cross(hand.direction, top);
+    const glm::vec3 butt = hand.position + hand.direction * HELD_LAMP_REACH;
+
+    // A matrix is filled column by column: the three axes, then the place of the origin.
+    return {glm::vec4{side, 0.0F}, glm::vec4{top, 0.0F}, glm::vec4{back, 0.0F},
+            glm::vec4{butt, 1.0F}};
+}
+
+glm::mat4 heldLampProjection(const glm::mat4& sceneProjection) {
+    // The two numbers of a perspective matrix that hold the field of view: [1][1] is
+    // 1 / tan(half of it) and [0][0] the same divided by the aspect ratio. Both are
+    // scaled by the same factor, so the aspect ratio stays.
+    const float zoom = 1.0F / std::tan(glm::radians(HELD_LAMP_FOV_DEGREES) / 2.0F);
+    const float factor = zoom / sceneProjection[1][1];
+    glm::mat4 projection = sceneProjection;
+    projection[0][0] *= factor;
+    projection[1][1] *= factor;
+    return projection;
+}
+
+HeldLampGlow heldLampGlow(const LightingSettings& frameLighting, float charge, float flicker) {
+    HeldLampGlow glow;
+    if (frameLighting.flashlightOn) {
+        glow.lens = gfx::srgbToLinear(frameLighting.flashlightColor) *
+                    (frameLighting.flashlightIntensity * HELD_LAMP_LENS_GLOW);
     }
-    return {.position = position, .direction = glm::normalize(toTarget)};
+    glow.window = gfx::srgbToLinear(frameLighting.pointColor) *
+                  (HELD_LAMP_WINDOW_GLOW * std::clamp(charge, 0.0F, 1.0F) * flicker);
+    return glow;
 }
 
 std::vector<PointLightSpot> nearestPointLights(std::span<const glm::vec3> positions,

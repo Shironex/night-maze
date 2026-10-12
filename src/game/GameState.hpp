@@ -302,6 +302,18 @@ bool showsMap(GameMode mode, const MapRequest& request);
 /// scene is always drawn.
 bool usesMenuCamera(GameMode mode);
 
+/// True while the lamp in the hand of the player is part of the picture: on the screens
+/// whose picture is taken from the eyes of the player. Those are a round that is played,
+/// the pause menu with the settings and the ledger opened from it, and the result
+/// screen.
+///
+/// menuCameraOn is the switch of the recording tool, which takes the picture of any
+/// screen from a camera of its own. villageReveal is true while the camera has left the
+/// player to look at the village (after a won night of the campaign): the result screen
+/// has no hand in its picture then. The main menu and its pages, the intro, the title
+/// card of a night, the look at the village and the ending card never have one.
+bool showsHeldLamp(GameMode mode, bool menuCameraOn, bool villageReveal);
+
 /// True when the scene has to be drawn. fullscreenBackground tells whether the menu
 /// has a picture of its own that covers the whole window (a video). The main menu with
 /// such a background hides the scene completely, so its passes can be left out, and so

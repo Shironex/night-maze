@@ -287,6 +287,15 @@ bool usesMenuCamera(GameMode mode) {
            mode == GameMode::NewCampaign || mode == GameMode::LedgerFromMenu;
 }
 
+bool showsHeldLamp(GameMode mode, bool menuCameraOn, bool villageReveal) {
+    if (menuCameraOn || villageReveal) {
+        return false;
+    }
+    return mode == GameMode::Playing || mode == GameMode::Paused ||
+           mode == GameMode::SettingsFromPause || mode == GameMode::LedgerFromPause ||
+           mode == GameMode::RoundEnd;
+}
+
 bool drawsScene(GameMode mode, bool fullscreenBackground) {
     return !(usesMenuCamera(mode) && fullscreenBackground);
 }

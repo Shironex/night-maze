@@ -119,6 +119,9 @@ struct LightingSettings {
     /// and close to the middle on every wall that is not much nearer. 4 m is two
     /// cells of the maze: a usual distance to the wall the player walks towards.
     float flashlightConvergeDistance = 4.0F;
+    /// Whether the lamp itself is drawn in the hand (heldLampMatrix). A switch of the
+    /// debug UI: the light, its shadows and the battery do not depend on it.
+    bool heldLampShown = true;
 
     /// The point lights of the crystals: one hangs just above every crystal that has not
     /// been collected yet. They all share these settings. A cyan-teal: the colour the
@@ -194,6 +197,86 @@ struct FlashlightPose {
 /// this function, so the light and its shadows can never disagree.
 FlashlightPose flashlightPose(const LightingSettings& settings, const glm::vec3& eye,
                               const glm::vec3& forward, const glm::vec3& right);
+
+/// The lamp the player holds, the three models of tools/blender/build_lamp_held.py: it
+/// lies along -Z with its origin in the middle of its butt, and the middle of its lens
+/// is this many metres out along its axis (LENS_OUT in that script).
+constexpr float HELD_LAMP_LENS_OUT = 0.219F;
+
+/// How far the butt of the drawn lamp is from the hand, along the beam, in metres.
+///
+/// The light stands in the hand, 0.25 m below the eye, and no picture shows that place:
+/// with a field of view of 60 degrees the lower edge of the picture reaches 0.25 m below
+/// the eye only 0.43 m in front of it. So the lamp is drawn further along its own beam,
+/// where the picture begins, and far enough that the window in its body is in the
+/// picture too. The light is not moved (see LightingSettings::flashlightHandRight for
+/// why it must stay inside the body of the player).
+constexpr float HELD_LAMP_REACH = 0.35F;
+
+/// The vertical field of view the lamp is drawn with, in degrees: the default one of
+/// the game (DEFAULT_FIELD_OF_VIEW_DEGREES in game/Settings.hpp), whatever the player
+/// has set. A wider view would push the lamp towards the middle of the picture and
+/// a narrower one out of it.
+constexpr float HELD_LAMP_FOV_DEGREES = 60.0F;
+
+/// How bright the lens of the lamp glows, as a factor on the colour of the beam times
+/// its intensity. Above 1 on purpose: the lens is the source of the light, so it has to
+/// be the brightest thing of the picture and take part in the bloom.
+constexpr float HELD_LAMP_LENS_GLOW = 3.0F;
+
+/// How bright the window of the lamp glows with a full battery, as a factor on the
+/// colour of the crystal lights.
+constexpr float HELD_LAMP_WINDOW_GLOW = 1.6F;
+
+/// The model matrix of the lamp the player holds, from the camera of this frame: eye,
+/// forward and right as for flashlightPose.
+///
+/// The lamp lies on the axis of the beam of a player who looks straight ahead: its
+/// origin is HELD_LAMP_REACH metres from the hand along the beam and its lens looks
+/// along it, so the cone of light and the tube share one line and the beam leaves the
+/// lamp through its lens, for every setting of the hand.
+///
+/// The one difference from flashlightPose: "below the eye" is measured along the up
+/// vector of the camera here, not straight down in the world. The lamp is a part of the
+/// picture, like the hand that would hold it, so it keeps its place in the lower right
+/// when the camera looks up or down. With the hand of the light it would drift into the
+/// middle of the picture of a player who looks at the ground, and hang there without an
+/// arm. It still aims at the point the beam aims at, flashlightConvergeDistance in front
+/// of the eye, so it points at the middle of the spot of light whatever the pitch is.
+///
+/// The top of the lamp, where its window is, stands at right angles to the beam and to
+/// right, so the window faces the player and never rolls. The beam never runs along
+/// right (its target is at least MIN_FLASHLIGHT_CONVERGE_DISTANCE in front of the eye),
+/// so the top is always defined.
+glm::mat4 heldLampMatrix(const LightingSettings& settings, const glm::vec3& eye,
+                         const glm::vec3& forward, const glm::vec3& right);
+
+/// The projection matrix the lamp is drawn with: sceneProjection, the perspective
+/// projection of the frame, with its field of view replaced by HELD_LAMP_FOV_DEGREES.
+/// The aspect ratio and the two planes stay. So the lamp has the same place and size in
+/// the picture whatever field of view the player has chosen, and with the default one
+/// the result is sceneProjection itself.
+glm::mat4 heldLampProjection(const glm::mat4& sceneProjection);
+
+/// The two glows of the lamp the player holds, as linear colours for uEmissive.
+struct HeldLampGlow {
+    /// The lens: black while the flashlight is off.
+    glm::vec3 lens{0.0F};
+    /// The window in the body, where the splinter that feeds the lamp shows.
+    glm::vec3 window{0.0F};
+};
+
+/// The glows of the lamp in one frame.
+///
+/// frameLighting is the lighting the frame is drawn with (game::lightingForFrame): the
+/// lens glows in the colour of the beam times its intensity, which already holds the
+/// flicker of a low battery, and not at all while the flashlight is off or empty.
+///
+/// The window is the battery: it glows in the colour of the crystals, as bright as the
+/// charge (1 is full, 0 is empty and dark), also while the lamp is switched off. flicker
+/// is the factor of the beam at this moment (game::flashlightFlicker), so under a low
+/// battery the window flickers together with the beam.
+HeldLampGlow heldLampGlow(const LightingSettings& frameLighting, float charge, float flicker);
 
 /// One point light of a frame: where it hangs and how much of its brightness it has.
 struct PointLightSpot {
