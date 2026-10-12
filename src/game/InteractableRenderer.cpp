@@ -42,8 +42,10 @@ constexpr const char* CHALK_CROOK_MODEL_FILE = "models/chalk_crook.obj";
 
 // Draws a model once. drawModel takes a list of matrices. A span made of a pointer and
 // a count of 1 is a list with this one matrix in it.
-void drawOne(const gfx::Shader& shader, const assets::LoadedModel* model, const glm::mat4& matrix) {
-    drawModel(shader, model, std::span<const glm::mat4>(&matrix, 1));
+// frustum is handed on as it is: the frustum of the pass, or nullptr.
+void drawOne(const gfx::Shader& shader, const assets::LoadedModel* model, const glm::mat4& matrix,
+             const scene::Frustum* frustum) {
+    drawModel(shader, model, std::span<const glm::mat4>(&matrix, 1), frustum);
 }
 
 } // namespace
@@ -60,7 +62,7 @@ InteractableRenderer::InteractableRenderer(assets::AssetCache& assets)
 
 void InteractableRenderer::draw(const gfx::Shader& shader, const MazeWorld& world,
                                 const Round& round, const PickState& pick,
-                                const glm::vec3& highlight) const {
+                                const glm::vec3& highlight, const scene::Frustum* frustum) const {
     setModelSamplers(shader);
 
     // Wood, rope and iron give off no light. Only the picked lever glows: the highlight.
@@ -78,9 +80,10 @@ void InteractableRenderer::draw(const gfx::Shader& shader, const MazeWorld& worl
         // seen through a matrix of its own, which tilts it by how far the pull has come.
         const glm::mat4 onWall = mountModelMatrix(levers[i].position, levers[i].mount.side);
         const float pulled = leverHandleProgress(round, i);
-        drawOne(shader, m_leverPost, onWall);
-        drawOne(shader, leverRopeTaut(pulled) ? m_leverRopeTaut : m_leverRopeSlack, onWall);
-        drawOne(shader, m_leverHandle, leverHandleMatrix(levers[i], pulled));
+        drawOne(shader, m_leverPost, onWall, frustum);
+        drawOne(shader, leverRopeTaut(pulled) ? m_leverRopeTaut : m_leverRopeSlack, onWall,
+                frustum);
+        drawOne(shader, m_leverHandle, leverHandleMatrix(levers[i], pulled), frustum);
     }
 
     // The ring on both faces of the wall each lever opens. It is a sign and not a thing
@@ -88,7 +91,7 @@ void InteractableRenderer::draw(const gfx::Shader& shader, const MazeWorld& worl
     shader.setVec3(EMISSIVE_UNIFORM, NO_GLOW);
     for (std::size_t i = 0; i < levers.size(); ++i) {
         const std::array<glm::mat4, 2> rings = slabRingMatrices(world, round, i);
-        drawModel(shader, m_slabRing, std::span<const glm::mat4>(rings));
+        drawModel(shader, m_slabRing, std::span<const glm::mat4>(rings), frustum);
     }
 
     // The crook beside every lever: a sign, not a thing to use, so it is never the
@@ -97,7 +100,8 @@ void InteractableRenderer::draw(const gfx::Shader& shader, const MazeWorld& worl
     for (const Lever& lever : levers) {
         drawOne(shader, m_chalkCrook,
                 glm::translate(mountModelMatrix(lever.position, lever.mount.side),
-                               {CHALK_CROOK_OFFSET, 0.0F, 0.0F}));
+                               {CHALK_CROOK_OFFSET, 0.0F, 0.0F}),
+                frustum);
     }
 
     // A hint leans towards what it names now, so the crystals that are left are asked
@@ -113,12 +117,12 @@ void InteractableRenderer::draw(const gfx::Shader& shader, const MazeWorld& worl
         const std::optional<Compass> lean = noteLean(notes[i], world.exitCell, crystalCells);
         if (!lean) {
             // A line of the story, or a hint with nothing left to point at.
-            drawOne(shader, m_chalkLamp, onWall);
+            drawOne(shader, m_chalkLamp, onWall, frustum);
             continue;
         }
         // The arrow is turned around the axis that stands on the wall (+Z of the model).
         const float turn = glm::radians(chalkArrowDegrees(*lean, notes[i].mount.side));
-        drawOne(shader, m_chalkArrow, glm::rotate(onWall, turn, {0.0F, 0.0F, 1.0F}));
+        drawOne(shader, m_chalkArrow, glm::rotate(onWall, turn, {0.0F, 0.0F, 1.0F}), frustum);
     }
 
     // Back to black for whatever is drawn next with this program.

@@ -161,6 +161,9 @@ void NightMazeApp::uploadGround() {
     // the pillars as they were. It is not drawn here: the number goes into the key the
     // next shadow pass compares (drawMoonShadowMap), also when the shadows are off now.
     ++m_groundVersion;
+    // The boxes the culling tests: the walls, the pillars and the stone sheep stand
+    // where the new world has put them, so their boxes are computed again, once, here.
+    m_mazeBounds = m_mazeRenderer.bounds(m_mazeWorld);
 }
 
 void NightMazeApp::layPuddles() {

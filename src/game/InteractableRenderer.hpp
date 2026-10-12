@@ -13,6 +13,10 @@ namespace gfx {
 class Shader;
 } // namespace gfx
 
+namespace scene {
+struct Frustum;
+} // namespace scene
+
 namespace game {
 
 struct MazeWorld;
@@ -49,8 +53,13 @@ public:
     /// object. The other chalk marks are drawn with game::CHALK_GLOW, the levers with
     /// uEmissive black. The shadow pass gives an
     /// empty PickState: a depth program has no colours to highlight.
+    ///
+    /// frustum is the frustum of the pass, made from the uView and uProjection the
+    /// program has: a piece that lies outside of it is not drawn (game::drawModel).
+    /// nullptr: everything is drawn.
     void draw(const gfx::Shader& shader, const MazeWorld& world, const Round& round,
-              const PickState& pick, const glm::vec3& highlight) const;
+              const PickState& pick, const glm::vec3& highlight,
+              const scene::Frustum* frustum = nullptr) const;
 
 private:
     // Not owned. nullptr when the model could not be loaded.

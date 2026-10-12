@@ -18,6 +18,10 @@ namespace gfx {
 class Shader;
 } // namespace gfx
 
+namespace scene {
+struct Frustum;
+} // namespace scene
+
 namespace game {
 
 struct HeldLampGlow;
@@ -52,9 +56,14 @@ public:
     /// crystals and the lanterns, and to black for the gate, the stone and the bell.
     /// bellSwingDegrees is how far the bell of the gatehouse is out of the middle at this
     /// moment (game::BellSwing::degrees).
+    ///
+    /// frustum, here and in the functions below, is the frustum of the pass, made from
+    /// the uView and uProjection the program has: a thing that lies outside of it is
+    /// not drawn (game::drawModel). These things move, bob or turn, so their boxes are
+    /// computed from their matrices in every call. nullptr: everything is drawn.
     void draw(const gfx::Shader& shader, const MazeWorld& world, const Round& round,
-              const glm::vec3& crystalGlow, const glm::vec3& lampGlow,
-              float bellSwingDegrees) const;
+              const glm::vec3& crystalGlow, const glm::vec3& lampGlow, float bellSwingDegrees,
+              const scene::Frustum* frustum = nullptr) const;
 
     /// The two halves of draw, for a frame that draws the gate with one program and
     /// the crystals with another (the reflect program, which shows the sky on them).
@@ -70,9 +79,10 @@ public:
     /// slowly, with crystalGlow times HEARTSTONE_GLOW_FACTOR. So every pass that draws
     /// the crystals draws it, with the same program.
     void drawGate(const gfx::Shader& shader, const MazeWorld& world, const Round& round,
-                  const glm::vec3& lampGlow, float bellSwingDegrees) const;
+                  const glm::vec3& lampGlow, float bellSwingDegrees,
+                  const scene::Frustum* frustum = nullptr) const;
     void drawCrystals(const gfx::Shader& shader, const MazeWorld& world, const Round& round,
-                      const glm::vec3& crystalGlow) const;
+                      const glm::vec3& crystalGlow, const scene::Frustum* frustum = nullptr) const;
 
     /// Draws every flask of the round that is not picked up yet: floating low over the
     /// ground of its cell, bobbing and turning slowly like a crystal, so it reads as
@@ -81,21 +91,24 @@ public:
     /// done. It is a call of its own and not a part of draw: the shadow passes and the
     /// scene call it once each, with whatever program draws the walls. The flasks
     /// never take the reflect program of the crystals.
-    void drawFlasks(const gfx::Shader& shader, const MazeWorld& world, const Round& round) const;
+    void drawFlasks(const gfx::Shader& shader, const MazeWorld& world, const Round& round,
+                    const scene::Frustum* frustum = nullptr) const;
 
     /// Draws the shade once, with the given model matrix: where it stands, turned
     /// towards the player (the application builds the matrix for the frame). shader is
     /// prepared as for draw. The shade gives off no light: uEmissive is set to black.
     /// Like drawFlasks it is called once by each shadow pass and once by the scene.
     /// Whether a frame has a shade at all is decided by the caller.
-    void drawShade(const gfx::Shader& shader, const glm::mat4& modelMatrix) const;
+    void drawShade(const gfx::Shader& shader, const glm::mat4& modelMatrix,
+                   const scene::Frustum* frustum = nullptr) const;
 
     /// Draws what drawShade leaves out, with the same matrix: the oval of night on the
     /// front of the hood and the openings of the two cuffs. It is a call of its own because the
     /// scene draws these faces with the reflect program, which shows the night sky on them, when it
     /// has one, and with the program of the walls when it has not (they are dark cloth
     /// then). The shadow passes call both. uEmissive is set to black.
-    void drawShadeHollow(const gfx::Shader& shader, const glm::mat4& modelMatrix) const;
+    void drawShadeHollow(const gfx::Shader& shader, const glm::mat4& modelMatrix,
+                         const scene::Frustum* frustum = nullptr) const;
 
     /// Draws the lamp the player holds once, with the given model matrix
     /// (game::heldLampMatrix): its tin body, then its lens and the window in its body,

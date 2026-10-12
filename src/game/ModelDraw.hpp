@@ -15,6 +15,11 @@ class Shader;
 class Texture2D;
 } // namespace gfx
 
+namespace scene {
+struct Aabb;
+struct Frustum;
+} // namespace scene
+
 namespace game {
 
 // The maze (MazeRenderer) and the things of a round (GameplayRenderer) are drawn the
@@ -39,8 +44,33 @@ void setModelSamplers(const gfx::Shader& shader);
 /// conversion: every model of the game has a white Kd, which is 1 in any colour space. The textured
 /// program has no uNormalMatrix. A model that is nullptr (it failed to load, the error is in the
 /// log) is not drawn.
+///
+/// frustum is the frustum of the pass that is being drawn (view frustum culling): the
+/// one of the very matrices the program in use has as uView and uProjection. An object
+/// whose box lies outside of it is not drawn (drawnInPass). The box of an object is
+/// the bounds of the model moved into the world by the matrix of the object
+/// (scene::transformedBounds), computed here for every call: that fits things that
+/// move, turn or are few. nullptr: every object is drawn and nothing is tested.
 void drawModel(const gfx::Shader& shader, const assets::LoadedModel* model,
-               std::span<const glm::mat4> modelMatrices);
+               std::span<const glm::mat4> modelMatrices, const scene::Frustum* frustum = nullptr);
+
+/// The same for objects that never move: worldBoxes holds the box of every object in
+/// world space, computed once when the world was built, in the order of modelMatrices.
+/// An object the list has no box for is tested with the box the function above
+/// computes.
+void drawModel(const gfx::Shader& shader, const assets::LoadedModel* model,
+               std::span<const glm::mat4> modelMatrices, std::span<const scene::Aabb> worldBoxes,
+               const scene::Frustum* frustum);
+
+/// Whether a pass draws the object with this box (in world space). frustum is the
+/// frustum of the pass, or nullptr for a pass that draws everything: the answer is then
+/// true and nothing is counted. Otherwise the box is tested (scene::canBeSeen) and the
+/// object is counted for the Diagnostics category (gfx::countCullTest).
+///
+/// Only the draw call depends on the answer. Whatever a caller sets for the objects
+/// that follow (a texture, a uniform) it sets all the same, so the picture is the one
+/// that is drawn without the test.
+bool drawnInPass(const scene::Frustum* frustum, const scene::Aabb& worldBox);
 
 /// Draws a whole mesh once, with the given colour texture and normal map. For a mesh
 /// that does not come from a model file, like the terrain, and for a model that is

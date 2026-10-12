@@ -4,9 +4,14 @@
 #include "assets/AssetCache.hpp"
 #include "game/ShaderUniforms.hpp"
 #include "gfx/Mesh.hpp"
+#include "gfx/RenderStats.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/Texture2D.hpp"
+#include "scene/Collider.hpp"
+#include "scene/Frustum.hpp"
 #include "scene/Transform.hpp"
+
+#include <cstddef>
 
 namespace game {
 
@@ -25,8 +30,24 @@ void setModelSamplers(const gfx::Shader& shader) {
     shader.setInt(NORMAL_MAP_UNIFORM, static_cast<int>(NORMAL_MAP_UNIT));
 }
 
+bool drawnInPass(const scene::Frustum* frustum, const scene::Aabb& worldBox) {
+    if (frustum == nullptr) {
+        return true;
+    }
+    const bool seen = scene::canBeSeen(*frustum, worldBox);
+    gfx::countCullTest(seen);
+    return seen;
+}
+
 void drawModel(const gfx::Shader& shader, const assets::LoadedModel* model,
-               std::span<const glm::mat4> modelMatrices) {
+               std::span<const glm::mat4> modelMatrices, const scene::Frustum* frustum) {
+    // No list of boxes: the box of every object is computed from its matrix.
+    drawModel(shader, model, modelMatrices, std::span<const scene::Aabb>{}, frustum);
+}
+
+void drawModel(const gfx::Shader& shader, const assets::LoadedModel* model,
+               std::span<const glm::mat4> modelMatrices, std::span<const scene::Aabb> worldBoxes,
+               const scene::Frustum* frustum) {
     // The load error is in the log. The rest of the scene is still drawn.
     if (model == nullptr) {
         return;
@@ -42,7 +63,26 @@ void drawModel(const gfx::Shader& shader, const assets::LoadedModel* model,
         part.texture->bind(TEXTURE_UNIT);
         shader.setVec3(TINT_UNIFORM, part.color);
 
-        for (const glm::mat4& modelMatrix : modelMatrices) {
+        // An object is counted once, with its first part, however many parts it has.
+        const bool counted = &part == &model->parts.front();
+
+        for (std::size_t i = 0; i < modelMatrices.size(); ++i) {
+            const glm::mat4& modelMatrix = modelMatrices[i];
+            // View frustum culling: an object that lies outside of what the pass sees is
+            // skipped before anything is sent to the graphics card for it. Its box is
+            // the stored one, or the bounds of the model moved by its matrix.
+            if (frustum != nullptr) {
+                const scene::Aabb box = i < worldBoxes.size()
+                                            ? worldBoxes[i]
+                                            : scene::transformedBounds(model->bounds, modelMatrix);
+                const bool seen = scene::canBeSeen(*frustum, box);
+                if (counted) {
+                    gfx::countCullTest(seen);
+                }
+                if (!seen) {
+                    continue;
+                }
+            }
             shader.setMat4(MODEL_UNIFORM, modelMatrix);
             // The lit programs turn the normals with a matrix of their own, derived
             // from the model matrix. It is computed here, on the CPU, once per object:

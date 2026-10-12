@@ -8,6 +8,7 @@
 #include "game/ModelDraw.hpp"
 #include "game/ShaderUniforms.hpp"
 #include "gfx/ColorSpace.hpp"
+#include "scene/Frustum.hpp"
 #include "scene/Transform.hpp"
 
 #include <GLFW/glfw3.h>
@@ -102,6 +103,12 @@ void NightMazeApp::drawMoonShadowMap() {
         return;
     }
 
+    // The moon does not cull. Its box is fitted around the bounds of the whole land in
+    // every frame (the first lines of this function), so every caster lies inside it and
+    // a frustum test would cost time and reject nothing. Its fixed casters are not even
+    // drawn in most frames: they are in the still layer.
+    constexpr const scene::Frustum* NO_CULLING = nullptr;
+
     // Everything the casters that never move are drawn from. Because the camera is not
     // part of the box of the moon, this key stays the same from frame to frame until
     // one of its fields changes: the Lights panel moves the moon, another resolution is
@@ -123,14 +130,14 @@ void NightMazeApp::drawMoonShadowMap() {
             m_gpuPasses.end();
             return;
         }
-        drawFixedShadowCasters(m_moonLightSpace);
+        drawFixedShadowCasters(m_moonLightSpace, NO_CULLING);
     }
     // The map of this frame: the still layer, and on top of it what can move.
     if (!m_moonShadowMap.beginDepthPassOverStatic()) {
         m_gpuPasses.end();
         return;
     }
-    drawMovingShadowCasters(m_moonLightSpace);
+    drawMovingShadowCasters(m_moonLightSpace, NO_CULLING);
     m_gpuPasses.end();
     m_moonShadowDrawn = true;
 
@@ -198,11 +205,20 @@ void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const 
     // The flashlight draws both halves in every frame: its pyramid moves with the hand,
     // so nothing stands still in its map. The moon calls the halves apart
     // (drawMoonShadowMap).
-    drawFixedShadowCasters(lightSpace);
-    drawMovingShadowCasters(lightSpace);
+    //
+    // View frustum culling with the frustum of THIS light: the six planes of the very
+    // matrix the casters are drawn with. A caster outside of them is outside the shadow
+    // map and would leave no texel in it. The frustum of the camera must not be used
+    // here: a pillar behind the player is not in the picture, but with the lamp aimed
+    // past it its shadow would be, and that shadow would go missing.
+    const scene::Frustum frustum = scene::frustumFromMatrix(lightSpace.matrix());
+    const scene::Frustum* culling = m_frustumCulling ? &frustum : nullptr;
+    drawFixedShadowCasters(lightSpace, culling);
+    drawMovingShadowCasters(lightSpace, culling);
 }
 
-void NightMazeApp::drawFixedShadowCasters(const scene::LightSpace& lightSpace) const {
+void NightMazeApp::drawFixedShadowCasters(const scene::LightSpace& lightSpace,
+                                          const scene::Frustum* frustum) const {
     // The classes that draw the scene are used as they are, with another program and
     // the matrices of the light in place of the ones of the camera. So everything
     // stands in the shadow map exactly where it stands in the picture. The depth program
@@ -220,10 +236,11 @@ void NightMazeApp::drawFixedShadowCasters(const scene::LightSpace& lightSpace) c
     // of the round: the two lists are the same for these walls (game::leverWallFlags),
     // and read from the world this function depends on no round.
     m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_mazeWorld.wallMatrices,
-                        m_mazeSettings.wallVariants, MazeParts::Fixed);
+                        m_mazeSettings.wallVariants, MazeParts::Fixed, m_mazeBounds, frustum);
 }
 
-void NightMazeApp::drawMovingShadowCasters(const scene::LightSpace& lightSpace) const {
+void NightMazeApp::drawMovingShadowCasters(const scene::LightSpace& lightSpace,
+                                           const scene::Frustum* frustum) const {
     // The program and the matrices again: the moon draws this half without the other
     // one in most frames. Here the casters stand as the round has them at this moment:
     // the gate and the walls of pulled levers as far as they have sunk, every crystal
@@ -237,21 +254,21 @@ void NightMazeApp::drawMovingShadowCasters(const scene::LightSpace& lightSpace) 
     // needs no moment at which the still layer has to learn that it started to move or
     // came to rest.
     m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_wallMatrices,
-                        m_mazeSettings.wallVariants, MazeParts::LeverWalls);
+                        m_mazeSettings.wallVariants, MazeParts::LeverWalls, m_mazeBounds, frustum);
     // The gatehouse, the milestone and the lanterns never move, but they are drawn by
     // the same call as the door and the bell, which do: they stay on this side.
     m_gameplayRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, crystalEmissive(),
-                            m_gateLampGlow, m_bellSwing.degrees);
-    m_gameplayRenderer.drawFlasks(m_shadowDepthShader, m_mazeWorld, m_round);
+                            m_gateLampGlow, m_bellSwing.degrees, frustum);
+    m_gameplayRenderer.drawFlasks(m_shadowDepthShader, m_mazeWorld, m_round, frustum);
     // The shade casts a shadow like everything that stands in the maze.
     if (m_shadeDrawn) {
-        m_gameplayRenderer.drawShade(m_shadowDepthShader, m_shadeMatrix);
-        m_gameplayRenderer.drawShadeHollow(m_shadowDepthShader, m_shadeMatrix);
+        m_gameplayRenderer.drawShade(m_shadowDepthShader, m_shadeMatrix, frustum);
+        m_gameplayRenderer.drawShadeHollow(m_shadowDepthShader, m_shadeMatrix, frustum);
     }
     // The levers and the notes cast shadows too. An empty PickState: nothing is
     // highlighted, the depth program has no colours.
     m_interactableRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, PickState{},
-                                glm::vec3{0.0F});
+                                glm::vec3{0.0F}, frustum);
     // The grass is left out. A blade is 4 cm wide at its root and thinner above, and
     // a texel of the map of the moon is about 3 cm, so its shadow would be a flicker of
     // single texels that moves with the wind, on ground the tuft itself hides. The map
@@ -268,18 +285,29 @@ glm::vec3 NightMazeApp::crystalEmissive() const {
 }
 
 void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) const {
+    // View frustum culling: the six planes around what this pass sees, read from the
+    // two matrices it draws with (in the order a vertex shader applies them, the view
+    // first). They are made here, in every frame, from the arguments and not from any
+    // stored camera: the picture of the player, of the menu camera, of the intro and of
+    // the reveal of the village all come through this function with their own matrices,
+    // so the planes can never belong to another camera or to an earlier frame. With the
+    // switch of the debug UI off no frustum is handed on and everything is drawn.
+    const scene::Frustum frustum = scene::frustumFromMatrix(projection * view);
+    const scene::Frustum* culling = m_frustumCulling ? &frustum : nullptr;
+
     // The two debug views (normals and texture coordinates as colours) only exist in the
     // textured program, and they show data, not light. So they are drawn without
     // lighting whatever the lighting mode is. The view of the normals still follows the
     // lighting in one thing: it shows the normals the chosen mode shades with.
     if (m_lighting.mode == LightingMode::Unlit || m_viewMode != ViewMode::Textured) {
-        drawUnlitMaze(view, projection);
+        drawUnlitMaze(view, projection, culling);
     } else {
-        drawLitMaze(view, projection);
+        drawLitMaze(view, projection, culling);
     }
 }
 
-void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& projection) const {
+void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& projection,
+                                 const scene::Frustum* frustum) const {
     // Without a shader program there is nothing to draw with. The load error was logged
     // once, when the shader was created, and the rest of the frame is still drawn.
     if (!m_texturedShader.isValid()) {
@@ -297,19 +325,22 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
     m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
     // The ground first, then what stands on it. The order does not change the picture
-    // (the depth test sorts it out), it only follows the way the scene is built.
+    // (the depth test sorts it out), it only follows the way the scene is built. The
+    // terrain is one mesh and one draw call: it is never left out.
     m_terrainRenderer.draw(m_texturedShader, m_terrainSettings.wireframe);
-    m_mazeRenderer.draw(m_texturedShader, m_mazeWorld, m_wallMatrices, m_mazeSettings.wallVariants);
+    m_mazeRenderer.draw(m_texturedShader, m_mazeWorld, m_wallMatrices, m_mazeSettings.wallVariants,
+                        MazeParts::All, m_mazeBounds, frustum);
     // The crystals and the gate, with the same program: they show up in the debug
     // views like the walls do. (In the picture without lighting the crystals may be
     // left to the reflection pass, see drawGateAndCrystals.)
-    drawGateAndCrystals(m_texturedShader);
+    drawGateAndCrystals(m_texturedShader, frustum);
     // The levers and the notes. The highlight of the picked one shows in the picture
     // without lighting. The two debug views show data and ignore it.
-    drawInteractables(m_texturedShader);
+    drawInteractables(m_texturedShader, frustum);
 }
 
-void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projection) const {
+void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projection,
+                               const scene::Frustum* frustum) const {
     // Gouraud has a program of its own (the light is computed in its vertex shader).
     // Phong and Blinn-Phong share the other one and differ in one uniform.
     const gfx::Shader& shader =
@@ -336,30 +367,34 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
 
     // The ground first, then what stands on it, as in drawUnlitMaze.
     m_terrainRenderer.draw(shader, m_terrainSettings.wireframe);
-    m_mazeRenderer.draw(shader, m_mazeWorld, m_wallMatrices, m_mazeSettings.wallVariants);
+    m_mazeRenderer.draw(shader, m_mazeWorld, m_wallMatrices, m_mazeSettings.wallVariants,
+                        MazeParts::All, m_mazeBounds, frustum);
     // The crystals and the gate, with the same program and so the same lighting mode.
     // The crystals glow in the colour of their lights. (The crystals may be left to the
     // reflection pass, see drawGateAndCrystals.)
-    drawGateAndCrystals(shader);
+    drawGateAndCrystals(shader, frustum);
     // The levers and the notes, lit like the walls they hang on.
-    drawInteractables(shader);
+    drawInteractables(shader, frustum);
 }
 
-void NightMazeApp::drawInteractables(const gfx::Shader& shader) const {
+void NightMazeApp::drawInteractables(const gfx::Shader& shader,
+                                     const scene::Frustum* frustum) const {
     // The highlight pulses on the animation clock of the round, which never stops.
     m_interactableRenderer.draw(shader, m_mazeWorld, m_round, m_pick,
-                                highlightGlow(m_round.animationSeconds));
+                                highlightGlow(m_round.animationSeconds), frustum);
 }
 
 bool NightMazeApp::crystalsReflect() const {
     return m_environment.enabled && m_viewMode == ViewMode::Textured && m_reflectShader.isValid();
 }
 
-void NightMazeApp::drawGateAndCrystals(const gfx::Shader& shader) const {
-    m_gameplayRenderer.drawGate(shader, m_mazeWorld, m_round, m_gateLampGlow, m_bellSwing.degrees);
+void NightMazeApp::drawGateAndCrystals(const gfx::Shader& shader,
+                                       const scene::Frustum* frustum) const {
+    m_gameplayRenderer.drawGate(shader, m_mazeWorld, m_round, m_gateLampGlow, m_bellSwing.degrees,
+                                frustum);
     // The flasks, always with the program of the walls: they are brass, not glass, and
     // show no sky.
-    m_gameplayRenderer.drawFlasks(shader, m_mazeWorld, m_round);
+    m_gameplayRenderer.drawFlasks(shader, m_mazeWorld, m_round, frustum);
     // The shade, with the program of the walls too: it is lit like them, so the beam of
     // the flashlight shows it and the dark hides it. Its cloth has almost no highlight:
     // with the highlight of the stone the flashlight, which shines from where the player
@@ -367,18 +402,18 @@ void NightMazeApp::drawGateAndCrystals(const gfx::Shader& shader) const {
     // put back for what is drawn next. (The textured program has no such uniform.)
     if (m_shadeDrawn) {
         shader.setFloat(SPECULAR_STRENGTH_UNIFORM, SHADE_SPECULAR_STRENGTH);
-        m_gameplayRenderer.drawShade(shader, m_shadeMatrix);
+        m_gameplayRenderer.drawShade(shader, m_shadeMatrix, frustum);
         // The night in its hood and its cuffs are drawn exactly once per frame, like the
         // crystals: here as dark cloth, or later by drawReflections as the night sky.
         if (!crystalsReflect()) {
-            m_gameplayRenderer.drawShadeHollow(shader, m_shadeMatrix);
+            m_gameplayRenderer.drawShadeHollow(shader, m_shadeMatrix, frustum);
         }
         shader.setFloat(SPECULAR_STRENGTH_UNIFORM, m_lighting.specularStrength);
     }
     // Every crystal is drawn exactly once per frame: here, with the program of the
     // walls, or later by drawReflections with the reflect program.
     if (!crystalsReflect()) {
-        m_gameplayRenderer.drawCrystals(shader, m_mazeWorld, m_round, crystalEmissive());
+        m_gameplayRenderer.drawCrystals(shader, m_mazeWorld, m_round, crystalEmissive(), frustum);
     }
 }
 
@@ -408,6 +443,11 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
     m_reflectShader.use();
     m_reflectShader.setMat4(VIEW_UNIFORM, view);
     m_reflectShader.setMat4(PROJECTION_UNIFORM, projection);
+    // View frustum culling for the crystals and the hood of the shade, with the planes
+    // of the two matrices just set (see drawMaze). The puddles are one mesh and one
+    // draw call and are never left out.
+    const scene::Frustum frustum = scene::frustumFromMatrix(projection * view);
+    const scene::Frustum* culling = m_frustumCulling ? &frustum : nullptr;
 
     // The lighting, as drawLitMaze sets it for the lit program. The reflect program
     // computes the light per fragment in every lit mode, also in the mode Gouraud (the
@@ -449,7 +489,7 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
     m_reflectShader.setFloat(ENVIRONMENT_REFRACTION_RATIO_UNIFORM,
                              m_environment.crystalRefractionRatio);
     m_gameplayRenderer.drawCrystals(m_reflectShader, m_mazeWorld, m_round,
-                                    crystalEmissive() * m_environment.crystalGlowShare);
+                                    crystalEmissive() * m_environment.crystalGlowShare, culling);
 
     // The face in the hood of the shade and its cuffs: a piece of the night. All of
     // their colour is the sky (a strength of 1, so the beam of the flashlight does not
@@ -471,7 +511,7 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
         m_reflectShader.setFloat(ENVIRONMENT_SKY_SPREAD_UNIFORM, SHADE_HOOD_SKY_SPREAD);
         m_reflectShader.setVec3(ENVIRONMENT_SKY_SPREAD_CENTRE_UNIFORM,
                                 glm::vec3{m_shadeMatrix * glm::vec4{SHADE_HOOD_CENTRE, 1.0F}});
-        m_gameplayRenderer.drawShadeHollow(m_reflectShader, m_shadeMatrix);
+        m_gameplayRenderer.drawShadeHollow(m_reflectShader, m_shadeMatrix, culling);
         m_reflectShader.setFloat(ENVIRONMENT_SKY_TURN_UNIFORM, 0.0F);
         m_reflectShader.setFloat(ENVIRONMENT_STAR_BOOST_UNIFORM, 0.0F);
         m_reflectShader.setFloat(ENVIRONMENT_SKY_SPREAD_UNIFORM, 0.0F);

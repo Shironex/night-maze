@@ -6,9 +6,11 @@
 #include "core/Paths.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/ModelDraw.hpp"
+#include "game/Round.hpp"
 #include "game/ShaderUniforms.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/Texture2D.hpp"
+#include "scene/Frustum.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -101,9 +103,66 @@ MazeRenderer::MazeRenderer(assets::AssetCache& assets)
     }
 }
 
+MazeBounds MazeRenderer::bounds(const MazeWorld& world) const {
+    MazeBounds bounds;
+
+    // The walls. Without the wall model no wall is drawn, and the list stays empty.
+    if (m_wall != nullptr && !m_wall->parts.empty()) {
+        const std::vector<bool> leverWalls = leverWallFlags(world);
+        bounds.walls.reserve(world.wallMatrices.size());
+        for (std::size_t i = 0; i < world.wallMatrices.size(); ++i) {
+            // In the local space of the model first: the plain wall, together with the
+            // model of the look this wall has. Both, because the switch of the wall
+            // variants chooses between them in any frame. A painted look is the plain
+            // model, so for it the box does not grow.
+            scene::Aabb local = m_wall->bounds;
+            if (i < world.wallVariants.size()) {
+                const WallLook& look =
+                    m_wallLooks.at(static_cast<std::size_t>(world.wallVariants[i]));
+                local = scene::boundsOfBoth(local, look.model->bounds);
+            }
+            // The wall of the stile is drawn with the stile model, and its post with
+            // the same matrix: one box for both.
+            if (world.stileWall == i) {
+                local = scene::boundsOfBoth(local, m_stileLook.model->bounds);
+                if (m_stilePost != nullptr) {
+                    local = scene::boundsOfBoth(local, m_stilePost->bounds);
+                }
+            }
+
+            // Into the world, with the matrix of the wall as it stands.
+            scene::Aabb box = scene::transformedBounds(local, world.wallMatrices[i]);
+            // A wall that a lever lowers moves straight down and never farther than
+            // GATE_SINK_DEPTH (game::roundWallMatrices). One box from its top while it
+            // stands to its base when it is down holds it at every moment, so the box
+            // needs no update while the wall sinks.
+            if (i < leverWalls.size() && leverWalls[i]) {
+                box.min.y -= GATE_SINK_DEPTH;
+            }
+            bounds.walls.push_back(box);
+        }
+    }
+
+    // The pillars and the stone sheep: the bounds of their model, moved by the matrix of
+    // each. A sheep is turned by any angle, so its box is a little larger than the sheep.
+    if (m_pillar != nullptr) {
+        bounds.pillars.reserve(world.pillarMatrices.size());
+        for (const glm::mat4& matrix : world.pillarMatrices) {
+            bounds.pillars.push_back(scene::transformedBounds(m_pillar->bounds, matrix));
+        }
+    }
+    if (m_stoneSheep != nullptr) {
+        bounds.sheep.reserve(world.sheepMatrices.size());
+        for (const glm::mat4& matrix : world.sheepMatrices) {
+            bounds.sheep.push_back(scene::transformedBounds(m_stoneSheep->bounds, matrix));
+        }
+    }
+    return bounds;
+}
+
 void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world,
-                        std::span<const glm::mat4> wallMatrices, bool wallVariants,
-                        MazeParts parts) const {
+                        std::span<const glm::mat4> wallMatrices, bool wallVariants, MazeParts parts,
+                        const MazeBounds& bounds, const scene::Frustum* frustum) const {
     setModelSamplers(shader);
     // Stone gives off no light of its own. A uniform keeps its value from one draw call
     // to the next, and the crystals set this one, so it is set back in every frame.
@@ -114,6 +173,11 @@ void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world,
     const std::vector<bool> leverWalls = leverWallFlags(world);
     const auto drawsWall = [&leverWalls, parts](std::size_t wall) {
         return wallInPart(parts, wall < leverWalls.size() && leverWalls[wall]);
+    };
+    // View frustum culling: whether the pass can see a wall at all. A wall without a box
+    // in the list (the boxes of another world) is drawn.
+    const auto seesWall = [&bounds, frustum](std::size_t wall) {
+        return wall >= bounds.walls.size() || drawnInPass(frustum, bounds.walls[wall]);
     };
 
     // The walls: one draw call per wall, with the mesh and the textures of its look. The
@@ -126,7 +190,7 @@ void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world,
         const std::size_t withLook =
             wallVariants ? std::min(wallMatrices.size(), world.wallVariants.size()) : 0;
         for (std::size_t i = 0; i < wallMatrices.size(); ++i) {
-            if (!drawsWall(i)) {
+            if (!drawsWall(i) || !seesWall(i)) {
                 continue;
             }
             const WallVariant variant = i < withLook ? world.wallVariants[i] : WallVariant::Plain;
@@ -139,14 +203,15 @@ void MazeRenderer::draw(const gfx::Shader& shader, const MazeWorld& world,
         }
     }
     // The post of the stile stands where its wall stands, so it is a piece of the part
-    // its wall is in.
+    // its wall is in. It is tested with the bounds of its own model: the box of its wall
+    // holds it too, but that wall was already counted above.
     if (world.stileWall && *world.stileWall < wallMatrices.size() && drawsWall(*world.stileWall)) {
-        drawModel(shader, m_stilePost, wallMatrices.subspan(*world.stileWall, 1));
+        drawModel(shader, m_stilePost, wallMatrices.subspan(*world.stileWall, 1), frustum);
     }
-    // The pillars and the stone sheep never move.
+    // The pillars and the stone sheep never move: their boxes are the ones of the world.
     if (parts != MazeParts::LeverWalls) {
-        drawModel(shader, m_pillar, world.pillarMatrices);
-        drawModel(shader, m_stoneSheep, world.sheepMatrices);
+        drawModel(shader, m_pillar, world.pillarMatrices, bounds.pillars, frustum);
+        drawModel(shader, m_stoneSheep, world.sheepMatrices, bounds.sheep, frustum);
     }
 }
 

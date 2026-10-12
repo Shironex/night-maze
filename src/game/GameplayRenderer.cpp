@@ -85,14 +85,14 @@ GameplayRenderer::GameplayRenderer(assets::AssetCache& assets)
 
 void GameplayRenderer::draw(const gfx::Shader& shader, const MazeWorld& world, const Round& round,
                             const glm::vec3& crystalGlow, const glm::vec3& lampGlow,
-                            float bellSwingDegrees) const {
-    drawGate(shader, world, round, lampGlow, bellSwingDegrees);
-    drawCrystals(shader, world, round, crystalGlow);
+                            float bellSwingDegrees, const scene::Frustum* frustum) const {
+    drawGate(shader, world, round, lampGlow, bellSwingDegrees, frustum);
+    drawCrystals(shader, world, round, crystalGlow, frustum);
 }
 
 void GameplayRenderer::drawGate(const gfx::Shader& shader, const MazeWorld& world,
                                 const Round& round, const glm::vec3& lampGlow,
-                                float bellSwingDegrees) const {
+                                float bellSwingDegrees, const scene::Frustum* frustum) const {
     // A maze of one cell has no gate, and so no gatehouse.
     if (!world.hasGate) {
         return;
@@ -105,18 +105,18 @@ void GameplayRenderer::drawGate(const gfx::Shader& shader, const MazeWorld& worl
     const GateScenery scenery = gateScenery(world);
     // Stone gives off no light.
     shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
-    drawModel(shader, m_gateArch, std::span<const glm::mat4>(&scenery.arch, 1));
+    drawModel(shader, m_gateArch, std::span<const glm::mat4>(&scenery.arch, 1), frustum);
     if (scenery.hasMilestone) {
-        drawModel(shader, m_milestone, std::span<const glm::mat4>(&scenery.milestone, 1));
+        drawModel(shader, m_milestone, std::span<const glm::mat4>(&scenery.milestone, 1), frustum);
     }
     // The bell, in its opening of the cote, as far out of the middle as it swings at
     // this moment. Cold like the stone: a bell gives off no light.
     const glm::mat4 bellMatrix = gateBellMatrix(scenery.arch, bellSwingDegrees);
-    drawModel(shader, m_gateBell, std::span<const glm::mat4>(&bellMatrix, 1));
+    drawModel(shader, m_gateBell, std::span<const glm::mat4>(&bellMatrix, 1), frustum);
     // The lanterns glow, all three alike. The glass is the pale part of their texture
     // and the iron the dark part, so one glow value lights the glass and not the frame.
     shader.setVec3(EMISSIVE_UNIFORM, lampGlow);
-    drawModel(shader, m_gateLantern, scenery.lanterns);
+    drawModel(shader, m_gateLantern, scenery.lanterns, frustum);
     // Back to black: what is drawn next with this program must not glow by accident.
     shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
 
@@ -132,12 +132,13 @@ void GameplayRenderer::drawGate(const gfx::Shader& shader, const MazeWorld& worl
         shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
         // drawModel takes a list of matrices. A span made of a pointer and a count of
         // 1 is a list with this one matrix in it.
-        drawModel(shader, m_gate, std::span<const glm::mat4>(&gateMatrix, 1));
+        drawModel(shader, m_gate, std::span<const glm::mat4>(&gateMatrix, 1), frustum);
     }
 }
 
 void GameplayRenderer::drawCrystals(const gfx::Shader& shader, const MazeWorld& world,
-                                    const Round& round, const glm::vec3& crystalGlow) const {
+                                    const Round& round, const glm::vec3& crystalGlow,
+                                    const scene::Frustum* frustum) const {
     // Set here too: the crystals may be drawn with another program than the gate.
     setModelSamplers(shader);
 
@@ -161,7 +162,7 @@ void GameplayRenderer::drawCrystals(const gfx::Shader& shader, const MazeWorld& 
         const glm::mat4 crystalMatrix = transform.matrix();
 
         drawModel(shader, m_crystals[static_cast<std::size_t>(crystal.variant)],
-                  std::span<const glm::mat4>(&crystalMatrix, 1));
+                  std::span<const glm::mat4>(&crystalMatrix, 1), frustum);
     }
 
     // The heartstone, while it is there: the same picture with a stronger glow, turning
@@ -172,12 +173,12 @@ void GameplayRenderer::drawCrystals(const gfx::Shader& shader, const MazeWorld& 
         transform.rotationDegrees = {0.0F, heartstoneSpinDegrees(round.animationSeconds), 0.0F};
         const glm::mat4 heartstoneMatrix = transform.matrix();
         shader.setVec3(EMISSIVE_UNIFORM, crystalGlow * HEARTSTONE_GLOW_FACTOR);
-        drawModel(shader, m_heartstone, std::span<const glm::mat4>(&heartstoneMatrix, 1));
+        drawModel(shader, m_heartstone, std::span<const glm::mat4>(&heartstoneMatrix, 1), frustum);
     }
 }
 
 void GameplayRenderer::drawFlasks(const gfx::Shader& shader, const MazeWorld& world,
-                                  const Round& round) const {
+                                  const Round& round, const scene::Frustum* frustum) const {
     setModelSamplers(shader);
 
     // A dim warm glow, the same for every flask and steady: it does not pulse.
@@ -198,27 +199,28 @@ void GameplayRenderer::drawFlasks(const gfx::Shader& shader, const MazeWorld& wo
         transform.rotationDegrees = {0.0F, crystalSpinDegrees(index, round.animationSeconds), 0.0F};
         const glm::mat4 flaskMatrix = transform.matrix();
 
-        drawModel(shader, m_flask, std::span<const glm::mat4>(&flaskMatrix, 1));
+        drawModel(shader, m_flask, std::span<const glm::mat4>(&flaskMatrix, 1), frustum);
     }
     // Back to black: what is drawn next with this program must not glow by accident.
     shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
 }
 
-void GameplayRenderer::drawShade(const gfx::Shader& shader, const glm::mat4& modelMatrix) const {
+void GameplayRenderer::drawShade(const gfx::Shader& shader, const glm::mat4& modelMatrix,
+                                 const scene::Frustum* frustum) const {
     setModelSamplers(shader);
     // No light of its own: it is seen by the light that falls on it, or as a darker
     // shape against the dark.
     shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
-    drawModel(shader, m_shade, std::span<const glm::mat4>(&modelMatrix, 1));
+    drawModel(shader, m_shade, std::span<const glm::mat4>(&modelMatrix, 1), frustum);
 }
 
-void GameplayRenderer::drawShadeHollow(const gfx::Shader& shader,
-                                       const glm::mat4& modelMatrix) const {
+void GameplayRenderer::drawShadeHollow(const gfx::Shader& shader, const glm::mat4& modelMatrix,
+                                       const scene::Frustum* frustum) const {
     setModelSamplers(shader);
     // The night in the hood is not a glow of the surface: the reflect program shows the
     // sky there, and every other program the dark of the picture.
     shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
-    drawModel(shader, m_shadeHollow, std::span<const glm::mat4>(&modelMatrix, 1));
+    drawModel(shader, m_shadeHollow, std::span<const glm::mat4>(&modelMatrix, 1), frustum);
 }
 
 void GameplayRenderer::drawHeldLamp(const gfx::Shader& shader, const glm::mat4& modelMatrix,

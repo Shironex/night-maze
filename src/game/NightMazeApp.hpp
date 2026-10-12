@@ -43,6 +43,7 @@
 #include "gfx/Shader.hpp"
 #include "scene/Camera.hpp"
 #include "scene/Collider.hpp"
+#include "scene/Frustum.hpp"
 #include "scene/LightSpace.hpp"
 #include "ui/UiLayer.hpp"
 
@@ -347,6 +348,11 @@ protected:
     /// UI can switch it live.
     bool& drawColliders() { return m_drawColliders; }
 
+    /// Whether the scene pass and the shadow pass of the flashlight leave out what lies
+    /// outside of their frustum (view frustum culling), exposed so the debug UI can
+    /// switch it live: off, every object is handed to the graphics card as before.
+    bool& frustumCulling() { return m_frustumCulling; }
+
     /// The picking of the last frame (the ray, what it hit and what the interaction key
     /// does), read only: the HUD shows the crosshair and the prompt from it, the debug UI
     /// its numbers.
@@ -453,7 +459,8 @@ private:
     /// Copies what stands on the ground of m_mazeWorld to the graphics card: the mesh of
     /// the terrain and the points of the grass (plantGrass). Every function that gives
     /// m_mazeWorld a new maze or a new terrain calls it. It counts m_groundVersion up, so
-    /// the still layer of the shadow map of the moon is drawn again for the new world.
+    /// the still layer of the shadow map of the moon is drawn again for the new world,
+    /// and computes the boxes the culling tests (m_mazeBounds) for it.
     void uploadGround();
 
     /// Chooses the places of the grass tufts again (game::placeGrass) and copies them to
@@ -831,6 +838,12 @@ private:
     /// Draws everything that casts a shadow with the depth program, as the light with
     /// the given view and projection sees it: the two halves below, one after the other.
     /// The grass casts no shadow. The target (a shadow map) must be bound already.
+    ///
+    /// Only the flashlight calls it, and it culls: a caster that lies outside the
+    /// pyramid of the light leaves no texel in its map, so it is not drawn. The frustum
+    /// is made here from lightSpace itself, the matrices the casters are drawn with.
+    /// It is never the frustum of the camera: a wall behind the player is outside the
+    /// picture and can still throw its shadow into it.
     void drawShadowCasters(const scene::LightSpace& lightSpace) const;
 
     /// The casters that stand where the world has put them until the world is built
@@ -838,14 +851,20 @@ private:
     /// and the stone sheep (MazeParts::Fixed). Nothing here reads the round or a clock,
     /// which is what lets the moon keep them in the still layer of its map. What they
     /// do depend on is in game::StaticShadowKey.
-    void drawFixedShadowCasters(const scene::LightSpace& lightSpace) const;
+    ///
+    /// frustum, here and below, is the frustum of lightSpace (view frustum culling), or
+    /// nullptr to draw every caster. The moon passes nullptr: its box is fitted around
+    /// the whole land, so no caster lies outside of it and a test could reject nothing.
+    void drawFixedShadowCasters(const scene::LightSpace& lightSpace,
+                                const scene::Frustum* frustum) const;
 
     /// Every other caster, as it is in this frame: the walls of the levers (as far as
     /// they have sunk), the gate (as far as it has sunk) with its gatehouse and the
     /// swinging bell, the crystals and the flasks where they float, the shade, the
     /// levers and the notes. A caster belongs here as soon as anything of a round can
     /// move it or take it away, also when it stands still most of the time.
-    void drawMovingShadowCasters(const scene::LightSpace& lightSpace) const;
+    void drawMovingShadowCasters(const scene::LightSpace& lightSpace,
+                                 const scene::Frustum* frustum) const;
 
     /// Sets the uniforms of both shadow maps (the moon and the flashlight) in the
     /// program shader, which must be in use and must include common/shadows.glsl:
@@ -858,9 +877,17 @@ private:
     /// the gate, the levers and the notes, and has two ways to do it: without lighting (the
     /// textured program, also used for the debug views of the normals and the texture coordinates)
     /// and with lighting. drawGrass draws the grass with its own program.
+    ///
+    /// drawMaze makes the frustum of the pass from the view and the projection it is
+    /// given (scene::frustumFromMatrix) and hands it to the way it chose, so whatever camera the
+    /// frame is drawn with (the player, the menu camera, the intro, the reveal of the
+    /// village) is the one that is culled with. The terrain and the grass are one draw
+    /// call each and are never left out.
     void drawMaze(const glm::mat4& view, const glm::mat4& projection) const;
-    void drawUnlitMaze(const glm::mat4& view, const glm::mat4& projection) const;
-    void drawLitMaze(const glm::mat4& view, const glm::mat4& projection) const;
+    void drawUnlitMaze(const glm::mat4& view, const glm::mat4& projection,
+                       const scene::Frustum* frustum) const;
+    void drawLitMaze(const glm::mat4& view, const glm::mat4& projection,
+                     const scene::Frustum* frustum) const;
     void drawGrass(const glm::mat4& view, const glm::mat4& projection) const;
     void drawColliderLines(const glm::mat4& view, const glm::mat4& projection) const;
 
@@ -870,8 +897,8 @@ private:
     void drawPickLines(const glm::mat4& view, const glm::mat4& projection) const;
 
     /// Draws the levers and the notes with the given program of the maze, the picked
-    /// one highlighted (game::highlightGlow).
-    void drawInteractables(const gfx::Shader& shader) const;
+    /// one highlighted (game::highlightGlow). frustum is the one of drawMaze.
+    void drawInteractables(const gfx::Shader& shader, const scene::Frustum* frustum) const;
 
     /// The reflection pass, after the maze and the grass and before the sky: the
     /// crystals and the puddles, drawn with the reflect program, which shows the sky on
@@ -886,8 +913,9 @@ private:
     bool crystalsReflect() const;
 
     /// Draws the gate with the given program of the maze, and the crystals too unless
-    /// drawReflections draws them in this frame (crystalsReflect).
-    void drawGateAndCrystals(const gfx::Shader& shader) const;
+    /// drawReflections draws them in this frame (crystalsReflect). frustum is the one
+    /// of drawMaze.
+    void drawGateAndCrystals(const gfx::Shader& shader, const scene::Frustum* frustum) const;
 
     /// The light the crystals give off by themselves at this moment, as a linear colour
     /// for the uniform uEmissive: game::crystalGlow of the colour of the crystal lights.
@@ -1229,6 +1257,15 @@ private:
     ViewMode m_viewMode = ViewMode::Textured;
     // Whether the collision boxes and spheres are drawn as lines on top of the scene.
     bool m_drawColliders = false;
+
+    // View frustum culling: whether a pass leaves out the objects that lie outside of
+    // what it sees. A switch of the debug UI, on by default. Off, every pass draws
+    // everything, which is the picture to compare with.
+    bool m_frustumCulling = true;
+    // The boxes of the walls, the pillars and the stone sheep of m_mazeWorld, which the
+    // culling tests (game::MazeBounds). Computed by uploadGround, so for every new maze
+    // and every new terrain, and only read while a frame is drawn.
+    MazeBounds m_mazeBounds;
 
     // Whether the sky is drawn and how bright it is.
     SkyboxSettings m_skyboxSettings;
