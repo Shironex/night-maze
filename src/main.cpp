@@ -75,6 +75,7 @@ protected:
             .vsync = m_vsync,
             .renderCounters = gfx::renderCounters(),
             .gpuPasses = gpuPasses(),
+            .frustumCulling = frustumCulling(),
             .clearColor = clearColor(),
             .camera = camera(),
             .mouseSensitivity = mouseSensitivity(),

@@ -1,8 +1,8 @@
 // "Diagnostics" category of the debug window: frame statistics and driver info, the
-// vsync switch, the draw calls of a frame and the time the graphics card needs for
-// every pass, the sound device with the last sound cue, the shader programs with
-// a reload button and their errors, the collision boxes and the picking ray, and the
-// loaded models and textures.
+// vsync switch, the draw calls of a frame, the switch of the frustum culling with what
+// it left out, the time the graphics card needs for every pass, the sound device with the last
+// sound cue, the shader programs with a reload button and their errors, the collision boxes and the
+// picking ray, and the loaded models and textures.
 #include "debug/categories/DiagnosticsCategory.hpp"
 
 #include "assets/AssetCache.hpp"
@@ -93,8 +93,22 @@ void drawFrame(Page& page, const DebugContext& context) {
     page.endCard();
 }
 
-// What the game asked of OpenGL in the frame it has just drawn.
-void drawRenderWork(Page& page, const gfx::RenderCounters& counters) {
+// One line of the culling: how many of the objects a pass tested against its frustum
+// it then drew.
+void drawCulledPass(Page& page, const char* label, const game::GpuPassReading& reading) {
+    if (reading.cullTested == 0) {
+        // The pass did not run, or the culling is switched off.
+        page.stat(label, "nothing tested");
+        return;
+    }
+    page.stat(label, "%d of %d drawn", static_cast<int>(reading.cullDrawn),
+              static_cast<int>(reading.cullTested));
+}
+
+// What the game asked of OpenGL in the frame it has just drawn, and what the culling
+// kept away from it.
+void drawRenderWork(Page& page, const DebugContext& context) {
+    const gfx::RenderCounters& counters = context.renderCounters;
     page.beginCard("Draw work");
     page.stat("Draw calls", "%d", static_cast<int>(counters.drawCalls));
     page.stat("Triangles", "%d", static_cast<int>(counters.triangles));
@@ -103,6 +117,18 @@ void drawRenderWork(Page& page, const gfx::RenderCounters& counters) {
     page.note("One frame of the game, without this window and the menu. Triangles are the "
               "ones handed to the card: the blades of the grass are made there and not "
               "counted.");
+    page.toggle("Frustum culling", &context.frustumCulling,
+                "On: a wall, a pillar or another object whose box lies outside of what "
+                "a pass sees is not drawn in that pass. The scene tests against the "
+                "camera, the shadow map of the flashlight against the pyramid of the "
+                "flashlight. Off: everything is drawn. The picture is the same either "
+                "way, only the draw calls and the triangles above change.");
+    // The objects of the three passes that cull. The moon does not: its box holds the
+    // whole land.
+    const game::GpuPassTimers& passes = context.gpuPasses;
+    drawCulledPass(page, "Scene objects", passes.reading(game::GpuPass::Scene));
+    drawCulledPass(page, "Flashlight objects", passes.reading(game::GpuPass::FlashlightShadow));
+    drawCulledPass(page, "Reflection objects", passes.reading(game::GpuPass::Reflections));
     page.endCard();
 }
 
@@ -254,7 +280,7 @@ void drawFrameAndShadersTab(Page& page, const DebugContext& context) {
     page.setPlace("Diagnostics / Frame and shaders");
     page.beginColumns();
     drawFrame(page, context);
-    drawRenderWork(page, context.renderCounters);
+    drawRenderWork(page, context);
     drawGpuPasses(page, context.gpuPasses);
     drawAudio(page, context);
     page.nextColumn();

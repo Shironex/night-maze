@@ -85,10 +85,10 @@ inline constexpr std::array<CategoryInfo, CATEGORY_COUNT> CATEGORIES = {{
      .tabCount = 0,
      .tabs = {}},
     {.name = "Diagnostics",
-     .description = "Frame statistics and GPU times, the sound device, shader programs, "
-                    "collision and picking, loaded assets.",
+     .description = "Frame statistics and GPU times, the frustum culling switch, the "
+                    "sound device, shader programs, collision and picking, loaded assets.",
      .icon = Icon::Diagnostics,
-     .controlCount = 6,
+     .controlCount = 7,
      .tabCount = 3,
      .tabs = {"Frame and shaders", "Collision and picking", "Assets"}},
 }};
@@ -116,9 +116,10 @@ constexpr int totalControlCount() {
 // distances, the sight, the search time, three of the burn and the quiet time) 143,
 // and the five sliders of the gate (the glow of its lamp, the two ends of its ember, the
 // reach of its light and the wait of its bell) 148, and the switch and the elevation of
-// the village 150, and the switch of the lamp in the hand 151, and the vsync switch 152.
+// the village 150, and the switch of the lamp in the hand 151, and the vsync switch 152,
+// and the switch of the frustum culling 153.
 // A control that is added or removed changes this number and the count of its category
 // above.
-static_assert(totalControlCount() == 152);
+static_assert(totalControlCount() == 153);
 
 } // namespace debug

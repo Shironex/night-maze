@@ -87,6 +87,9 @@ struct DebugContext {
     /// The time the graphics card worked on every pass and the draw calls of each,
     /// read only.
     const game::GpuPassTimers& gpuPasses;
+    /// Whether the passes leave out what lies outside of their frustum (view frustum
+    /// culling), editable. The game reads it in the next frame.
+    bool& frustumCulling;
     /// Clear color (red, green, blue in the range 0 to 1), editable: the background
     /// where the sky is not drawn.
     std::array<float, 3>& clearColor;
