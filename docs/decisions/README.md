@@ -29,6 +29,7 @@ Status words: `accepted (date)` means the code does this today. `superseded by <
 - [crowned-and-broken-walls](crowned-and-broken-walls.md): two wall models, new top edge
 - [frame-measurement](frame-measurement.md): CPU split, global counters, a timer query a pass
 - [uniform-locations-remembered](uniform-locations-remembered.md): asked once per name, forgotten on reload
+- [view-frustum-culling](view-frustum-culling.md): six planes from the matrix of each pass, boxes of the drawn models
 
 ## World and gameplay
 - [collision-aabb-sliding](collision-aabb-sliding.md): own boxes, one axis at a time
