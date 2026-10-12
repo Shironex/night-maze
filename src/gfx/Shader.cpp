@@ -14,6 +14,7 @@
 #include <fstream>
 #include <span>
 #include <sstream>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -262,10 +263,14 @@ Shader::Shader(Shader&& other) noexcept
       m_geometryPath(std::move(other.m_geometryPath)),
       m_program(other.m_program),
       m_lastError(std::move(other.m_lastError)),
-      m_blockBindings(std::move(other.m_blockBindings)) {
+      m_blockBindings(std::move(other.m_blockBindings)),
+      m_uniformLocations(std::move(other.m_uniformLocations)) {
     // Two objects must never hold the same id. With 0 the destructor of other
     // deletes nothing.
     other.m_program = 0;
+    // The locations went with the program. The standard does not promise that a map
+    // is empty after it was moved from, so it is emptied by hand.
+    other.m_uniformLocations.clear();
 }
 
 // Move assignment: this object already owns a program, which has to go first.
@@ -285,7 +290,11 @@ Shader& Shader::operator=(Shader&& other) noexcept {
     m_program = other.m_program;
     m_lastError = std::move(other.m_lastError);
     m_blockBindings = std::move(other.m_blockBindings);
+    // The locations of the deleted program are replaced by the ones of the program
+    // taken over, and other keeps none (see the move constructor).
+    m_uniformLocations = std::move(other.m_uniformLocations);
     other.m_program = 0;
+    other.m_uniformLocations.clear();
     return *this;
 }
 
@@ -309,6 +318,9 @@ bool Shader::reload() {
     // Only now replace the old program (glDeleteProgram(0) is ignored on the first load).
     GL_CHECK(glDeleteProgram(m_program));
     m_program = program;
+    // The new program numbers its uniforms itself, and an edited shader may have other
+    // uniforms than before: the remembered locations are those of the deleted program.
+    m_uniformLocations.clear();
     m_lastError.clear();
     return true;
 }
@@ -317,74 +329,63 @@ void Shader::use() const {
     GL_CHECK(glUseProgram(m_program));
 }
 
-void Shader::setMat4(const char* name, const glm::mat4& matrix) const {
-    // The location is the number of the uniform inside this program. It is looked up on
-    // every call: a few hundred lookups per frame (one per drawn object) are still cheap,
-    // and there is no cache that could go stale after reload(). -1 means the program has
-    // no active uniform with this name.
+GLint Shader::uniformLocation(const char* name) const {
+    // Asking OpenGL for a location compares the name with the names of the uniforms of
+    // the program, and a frame sets several thousand uniforms. The answer cannot change
+    // while the program lives, so it is asked for once and then read from the map.
+    // The string_view is the name with its length, without a copy of the characters.
+    const std::string_view key(name);
+    const auto found = m_uniformLocations.find(key);
+    if (found != m_uniformLocations.end()) {
+        return found->second;
+    }
+
+    // First use of this name with this program. -1 means the program has no active
+    // uniform with this name. That answer is stored like any other: a uniform the
+    // compiler removed is set every frame too and would otherwise be asked for every time.
     GLint location = -1;
     GL_CHECK(location = glGetUniformLocation(m_program, name));
     countUniformLookup();
+    m_uniformLocations.emplace(key, location);
+    return location;
+}
 
+void Shader::setMat4(const char* name, const glm::mat4& matrix) const {
     // 1: one matrix. GL_FALSE: do not transpose, GLM stores a matrix column by column,
     // which is the order OpenGL expects. value_ptr gives the address of its 16 floats.
     // OpenGL ignores location -1 without raising an error.
-    GL_CHECK(glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(matrix)));
+    GL_CHECK(glUniformMatrix4fv(uniformLocation(name), 1, GL_FALSE, glm::value_ptr(matrix)));
 }
 
 void Shader::setInt(const char* name, int value) const {
-    // Same lookup as in setMat4: no cache, -1 for a name the program does not have.
-    GLint location = -1;
-    GL_CHECK(location = glGetUniformLocation(m_program, name));
-    countUniformLookup();
-
     // glUniform1i: one value of type int. A sampler uniform must be set with exactly this
     // function: the float version (glUniform1f) raises GL_INVALID_OPERATION for a sampler.
     // OpenGL ignores location -1 without raising an error.
-    GL_CHECK(glUniform1i(location, value));
+    GL_CHECK(glUniform1i(uniformLocation(name), value));
 }
 
 void Shader::setVec3(const char* name, const glm::vec3& value) const {
-    // Same lookup as in setMat4: no cache, -1 for a name the program does not have.
-    GLint location = -1;
-    GL_CHECK(location = glGetUniformLocation(m_program, name));
-    countUniformLookup();
-
     // 1: one vector (more only for a uniform that is an array). value_ptr gives the
     // address of its 3 floats. OpenGL ignores location -1 without raising an error.
-    GL_CHECK(glUniform3fv(location, 1, glm::value_ptr(value)));
+    GL_CHECK(glUniform3fv(uniformLocation(name), 1, glm::value_ptr(value)));
 }
 
 void Shader::setMat3(const char* name, const glm::mat3& matrix) const {
-    // Same lookup as in setMat4: no cache, -1 for a name the program does not have.
-    GLint location = -1;
-    GL_CHECK(location = glGetUniformLocation(m_program, name));
-    countUniformLookup();
-
     // The 3 x 3 version of the call in setMat4: one matrix, not transposed, 9 floats.
-    GL_CHECK(glUniformMatrix3fv(location, 1, GL_FALSE, glm::value_ptr(matrix)));
+    GL_CHECK(glUniformMatrix3fv(uniformLocation(name), 1, GL_FALSE, glm::value_ptr(matrix)));
 }
 
 void Shader::setFloat(const char* name, float value) const {
-    // Same lookup as in setMat4: no cache, -1 for a name the program does not have.
-    GLint location = -1;
-    GL_CHECK(location = glGetUniformLocation(m_program, name));
-    countUniformLookup();
-
     // glUniform1f: one value of type float. OpenGL ignores location -1 without an error.
-    GL_CHECK(glUniform1f(location, value));
+    GL_CHECK(glUniform1f(uniformLocation(name), value));
 }
 
 void Shader::setFloatArray(const char* name, std::span<const float> values) const {
-    // Same lookup as in setMat4. The name of an array without an index gives the
-    // location of its element 0.
-    GLint location = -1;
-    GL_CHECK(location = glGetUniformLocation(m_program, name));
-    countUniformLookup();
-
+    // The name of an array without an index gives the location of its element 0.
     // glUniform1fv: count values of type float, read from the pointer and written to
-    // the elements of the array, starting with the one at location.
-    GL_CHECK(glUniform1fv(location, static_cast<GLsizei>(values.size()), values.data()));
+    // the elements of the array, starting with the one at that location.
+    GL_CHECK(
+        glUniform1fv(uniformLocation(name), static_cast<GLsizei>(values.size()), values.data()));
 }
 
 void Shader::bindUniformBlock(std::string blockName, GLuint bindingPoint, std::size_t sizeInBytes) {

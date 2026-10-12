@@ -7,6 +7,8 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <functional>
+#include <map>
 #include <span>
 #include <string>
 #include <vector>
@@ -66,7 +68,8 @@ public:
     /// one and the function returns true. On failure (a file cannot be opened, a wrong #include, a
     /// compile error, a link error) the old program stays in use, the error is logged and kept in
     /// lastError(), and the function returns false. The uniform block bindings given to
-    /// bindUniformBlock are set again on the new program.
+    /// bindUniformBlock are set again on the new program, and the remembered locations of
+    /// its uniforms are forgotten: a new program numbers them again.
     bool reload();
 
     /// True when the object owns a linked program.
@@ -80,6 +83,10 @@ public:
     /// The program must be in use: call use() first, because OpenGL writes the value into
     /// the program that is current. A name the program does not have (a typo, or a uniform
     /// the compiler removed because the shader never reads it) is ignored without an error.
+    ///
+    /// The setters are const although each of them may remember a location: what they
+    /// remember is only a faster way to the same answer of OpenGL, not a property of the
+    /// shader that a caller could see.
     void setMat4(const char* name, const glm::mat4& matrix) const;
 
     /// Sets the uniform variable of type int called name to value (glUniform1i). This is
@@ -149,6 +156,12 @@ public:
     const std::filesystem::path& geometryPath() const { return m_geometryPath; }
 
 private:
+    /// The location of the uniform called name in the program: the number the glUniform
+    /// functions take. -1 when the program has no active uniform with this name. OpenGL
+    /// is asked once for every name (glGetUniformLocation), the answer is remembered
+    /// until the program is replaced.
+    GLint uniformLocation(const char* name) const;
+
     std::filesystem::path m_vertexPath;
     std::filesystem::path m_fragmentPath;
     // Empty when the program has no geometry stage.
@@ -158,6 +171,14 @@ private:
     std::string m_lastError;
     // The requests made with bindUniformBlock, repeated on every newly built program.
     std::vector<UniformBlockBinding> m_blockBindings;
+    // The locations uniformLocation has asked OpenGL for so far, by the name of the
+    // uniform. They belong to m_program: every place that replaces or gives up the
+    // program empties the map. A name the program does not have is kept too, with -1.
+    // mutable, because the const setters fill it.
+    // std::less<> lets find() compare the stored names with a std::string_view, so
+    // looking a name up builds no std::string. The default std::less<std::string>
+    // would build one on every call of a setter, and allocate memory for a long name.
+    mutable std::map<std::string, GLint, std::less<>> m_uniformLocations;
 };
 
 } // namespace gfx

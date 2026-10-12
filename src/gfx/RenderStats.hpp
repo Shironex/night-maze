@@ -19,8 +19,9 @@ struct RenderCounters {
     /// Triangles those draw calls handed to the card (trianglesOf). The blades the
     /// geometry shader of the grass makes on the card are not in it.
     std::uint32_t triangles = 0;
-    /// Lookups of a uniform by its name (glGetUniformLocation): one for every call of
-    /// a setter of gfx::Shader.
+    /// Lookups of a uniform by its name (glGetUniformLocation). gfx::Shader remembers
+    /// the answers, so only the first use of a name with a program is one: after the
+    /// first frames the number is 0 until a shader is reloaded.
     std::uint32_t uniformLookups = 0;
     /// Textures bound to a texture unit for a shader to read: the bind functions of
     /// Texture2D, Cubemap, FrameTexture and Framebuffer.
