@@ -3,6 +3,7 @@
 #include "gfx/FrameTexture.hpp"
 
 #include "core/GlCheck.hpp"
+#include "gfx/RenderStats.hpp"
 
 namespace gfx {
 
@@ -85,6 +86,7 @@ void FrameTexture::upload(const unsigned char* pixels, PixelOrder order) {
 void FrameTexture::bind(GLuint unit) const {
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, m_id));
+    countTextureBind();
     // A gfx::Texture2D that was bound to this unit before has left its sampler object
     // there, and a sampler object wins over the parameters of the texture: the picture
     // would repeat and look for mipmaps it does not have. So the unit is cleared.

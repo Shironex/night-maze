@@ -5,6 +5,7 @@
 #include "game/PostProcess.hpp"
 #include "game/ShaderUniforms.hpp"
 #include "game/Shadows.hpp"
+#include "gfx/RenderStats.hpp"
 #include "gfx/Shader.hpp"
 #include "scene/LightSpace.hpp"
 
@@ -110,6 +111,7 @@ void ShadowMap::drawPreview(const gfx::Shader& previewShader, const scene::Light
     m_triangle.bind();
     // No buffer and no attribute: the vertex shader makes the corners from gl_VertexID.
     GL_CHECK(glDrawArrays(GL_TRIANGLES, FIRST_VERTEX, TRIANGLE_VERTEX_COUNT));
+    gfx::countDraw(GL_TRIANGLES, TRIANGLE_VERTEX_COUNT);
 }
 
 void setShadowUniforms(const gfx::Shader& shader, const ShadowUniformNames& names, GLuint unit,

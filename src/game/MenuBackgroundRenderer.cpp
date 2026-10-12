@@ -7,6 +7,7 @@
 #include "core/Log.hpp"
 #include "core/Paths.hpp"
 #include "gfx/CoverFit.hpp"
+#include "gfx/RenderStats.hpp"
 
 #include <filesystem>
 
@@ -173,6 +174,7 @@ void MenuBackgroundRenderer::draw(core::Size framebuffer) const {
     // one without attributes.
     m_vertexArray.bind();
     GL_CHECK(glDrawArrays(GL_TRIANGLES, FIRST_VERTEX, TRIANGLE_VERTEX_COUNT));
+    gfx::countDraw(GL_TRIANGLES, TRIANGLE_VERTEX_COUNT);
 }
 
 } // namespace game

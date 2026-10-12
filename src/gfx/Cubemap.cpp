@@ -3,6 +3,7 @@
 
 #include "core/GlCheck.hpp"
 #include "core/Log.hpp"
+#include "gfx/RenderStats.hpp"
 
 #include <algorithm>
 #include <string>
@@ -138,6 +139,7 @@ void Cubemap::bind(GLuint unit) const {
     // The same three steps as Texture2D::bind, with the cube map binding of the unit.
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
     GL_CHECK(glBindTexture(GL_TEXTURE_CUBE_MAP, m_id));
+    countTextureBind();
     // glBindSampler takes the plain number of the unit (0, 1, 2), not GL_TEXTURE0 + unit.
     GL_CHECK(glBindSampler(unit, m_sampler));
 }

@@ -2,6 +2,7 @@
 #include "gfx/Mesh.hpp"
 
 #include "core/GlCheck.hpp"
+#include "gfx/RenderStats.hpp"
 
 #include <cstddef>
 #include <type_traits>
@@ -75,6 +76,7 @@ void Mesh::draw(std::uint32_t firstIndex, std::uint32_t indexCount) const {
     // The count is a number of indices, not of triangles. Its parameter is a signed type.
     GL_CHECK(
         glDrawElements(m_primitive, static_cast<GLsizei>(indexCount), INDEX_TYPE, offsetAsPointer));
+    countDraw(m_primitive, indexCount);
 }
 
 } // namespace gfx

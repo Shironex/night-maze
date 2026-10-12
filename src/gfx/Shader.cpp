@@ -5,6 +5,7 @@
 #include "core/GlCheck.hpp"
 #include "core/Log.hpp"
 #include "core/Paths.hpp"
+#include "gfx/RenderStats.hpp"
 #include "gfx/ShaderSource.hpp"
 
 #include <glm/gtc/type_ptr.hpp>
@@ -323,6 +324,7 @@ void Shader::setMat4(const char* name, const glm::mat4& matrix) const {
     // no active uniform with this name.
     GLint location = -1;
     GL_CHECK(location = glGetUniformLocation(m_program, name));
+    countUniformLookup();
 
     // 1: one matrix. GL_FALSE: do not transpose, GLM stores a matrix column by column,
     // which is the order OpenGL expects. value_ptr gives the address of its 16 floats.
@@ -334,6 +336,7 @@ void Shader::setInt(const char* name, int value) const {
     // Same lookup as in setMat4: no cache, -1 for a name the program does not have.
     GLint location = -1;
     GL_CHECK(location = glGetUniformLocation(m_program, name));
+    countUniformLookup();
 
     // glUniform1i: one value of type int. A sampler uniform must be set with exactly this
     // function: the float version (glUniform1f) raises GL_INVALID_OPERATION for a sampler.
@@ -345,6 +348,7 @@ void Shader::setVec3(const char* name, const glm::vec3& value) const {
     // Same lookup as in setMat4: no cache, -1 for a name the program does not have.
     GLint location = -1;
     GL_CHECK(location = glGetUniformLocation(m_program, name));
+    countUniformLookup();
 
     // 1: one vector (more only for a uniform that is an array). value_ptr gives the
     // address of its 3 floats. OpenGL ignores location -1 without raising an error.
@@ -355,6 +359,7 @@ void Shader::setMat3(const char* name, const glm::mat3& matrix) const {
     // Same lookup as in setMat4: no cache, -1 for a name the program does not have.
     GLint location = -1;
     GL_CHECK(location = glGetUniformLocation(m_program, name));
+    countUniformLookup();
 
     // The 3 x 3 version of the call in setMat4: one matrix, not transposed, 9 floats.
     GL_CHECK(glUniformMatrix3fv(location, 1, GL_FALSE, glm::value_ptr(matrix)));
@@ -364,6 +369,7 @@ void Shader::setFloat(const char* name, float value) const {
     // Same lookup as in setMat4: no cache, -1 for a name the program does not have.
     GLint location = -1;
     GL_CHECK(location = glGetUniformLocation(m_program, name));
+    countUniformLookup();
 
     // glUniform1f: one value of type float. OpenGL ignores location -1 without an error.
     GL_CHECK(glUniform1f(location, value));
@@ -374,6 +380,7 @@ void Shader::setFloatArray(const char* name, std::span<const float> values) cons
     // location of its element 0.
     GLint location = -1;
     GL_CHECK(location = glGetUniformLocation(m_program, name));
+    countUniformLookup();
 
     // glUniform1fv: count values of type float, read from the pointer and written to
     // the elements of the array, starting with the one at location.

@@ -4,6 +4,7 @@
 
 #include "core/GlCheck.hpp"
 #include "core/Log.hpp"
+#include "gfx/RenderStats.hpp"
 
 #include <string>
 
@@ -249,12 +250,14 @@ void Framebuffer::resize(int width, int height) {
 void Framebuffer::bindColorTexture(GLuint unit) const {
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, m_colorTexture));
+    countTextureBind();
     GL_CHECK(glBindSampler(unit, NO_SAMPLER));
 }
 
 void Framebuffer::bindDepthTexture(GLuint unit) const {
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, m_depthTexture));
+    countTextureBind();
     GL_CHECK(glBindSampler(unit, NO_SAMPLER));
 }
 

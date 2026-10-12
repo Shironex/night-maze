@@ -4,6 +4,7 @@
 #include "core/GlCheck.hpp"
 #include "core/Log.hpp"
 #include "gfx/Extensions.hpp"
+#include "gfx/RenderStats.hpp"
 
 #include <algorithm>
 #include <string>
@@ -221,6 +222,7 @@ void Texture2D::bind(GLuint unit) const {
     // units are numbered by consecutive constants: GL_TEXTURE0 + 1 is GL_TEXTURE1.
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, m_id));
+    countTextureBind();
     // The sampler object goes to the same unit. glBindSampler takes the plain number of
     // the unit (0, 1, 2), not GL_TEXTURE0 + unit, and does not care which unit is active.
     GL_CHECK(glBindSampler(unit, m_sampler));

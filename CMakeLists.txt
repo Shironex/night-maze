@@ -86,6 +86,8 @@ add_library(engine STATIC
     src/gfx/Framebuffer.hpp
     src/gfx/Mesh.cpp
     src/gfx/Mesh.hpp
+    src/gfx/RenderStats.cpp
+    src/gfx/RenderStats.hpp
     src/gfx/Shader.cpp
     src/gfx/Shader.hpp
     src/gfx/ShaderSource.cpp
@@ -486,6 +488,7 @@ add_executable(night_maze_tests
     tests/PlayerTests.cpp
     tests/PuddleTests.cpp
     tests/RaycastTests.cpp
+    tests/RenderStatsTests.cpp
     tests/RoundTests.cpp
     tests/SearchTests.cpp
     tests/SettingsTests.cpp

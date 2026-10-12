@@ -4,6 +4,7 @@
 
 #include "core/GlCheck.hpp"
 #include "game/ShaderUniforms.hpp"
+#include "gfx/RenderStats.hpp"
 #include "gfx/Shader.hpp"
 
 #include <algorithm>
@@ -112,6 +113,7 @@ bool MinimapRenderer::drawMap(const gfx::Shader& shader, std::span<const Minimap
     // No index buffer: the list repeats the corners two triangles share, so the
     // vertices are drawn in the order they lie in, three per triangle.
     GL_CHECK(glDrawArrays(GL_TRIANGLES, FIRST_VERTEX, static_cast<GLsizei>(vertices.size())));
+    gfx::countDraw(GL_TRIANGLES, vertices.size());
     return true;
 }
 
@@ -168,6 +170,7 @@ void MinimapRenderer::drawOverlay(const gfx::Shader& shader, const MinimapRect& 
     m_triangle.bind();
     // No buffer and no attribute: the vertex shader makes the corners from gl_VertexID.
     GL_CHECK(glDrawArrays(GL_TRIANGLES, FIRST_VERTEX, TRIANGLE_VERTEX_COUNT));
+    gfx::countDraw(GL_TRIANGLES, TRIANGLE_VERTEX_COUNT);
 
     if (blendingWasOn == GL_FALSE) {
         GL_CHECK(glDisable(GL_BLEND));

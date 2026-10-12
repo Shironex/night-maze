@@ -6,6 +6,7 @@
 #include "core/GlCheck.hpp"
 #include "game/ShaderUniforms.hpp"
 #include "gfx/ColorSpace.hpp"
+#include "gfx/RenderStats.hpp"
 #include "gfx/Shader.hpp"
 
 #include <algorithm>
@@ -289,6 +290,7 @@ void PostProcess::drawFullscreenTriangle() const {
     m_triangle.bind();
     // No buffer and no attribute: the vertex shader makes the corners from gl_VertexID.
     GL_CHECK(glDrawArrays(GL_TRIANGLES, FIRST_VERTEX, TRIANGLE_VERTEX_COUNT));
+    gfx::countDraw(GL_TRIANGLES, TRIANGLE_VERTEX_COUNT);
 }
 
 } // namespace game
