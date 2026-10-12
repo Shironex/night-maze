@@ -16,6 +16,11 @@ namespace core {
 
 namespace {
 
+// The swap interval is the number of screen refreshes glfwSwapBuffers waits for: one
+// with vsync, none without it.
+constexpr int VSYNC_SWAP_INTERVAL = 1;
+constexpr int NO_VSYNC_SWAP_INTERVAL = 0;
+
 // The least distance between the top edge of a screen and the top edge of the contents
 // of a window that is placed by setWindowedSize, in screen coordinates: room for the
 // title bar, which is above the contents.
@@ -122,7 +127,7 @@ Window::Window(int width, int height, const std::string& title) {
     }
 
     // Vsync: wait for one screen refresh between buffer swaps.
-    glfwSwapInterval(1);
+    glfwSwapInterval(VSYNC_SWAP_INTERVAL);
 
     m_glVersion = glString(GL_VERSION);
     m_glRenderer = glString(GL_RENDERER);
@@ -247,8 +252,18 @@ void Window::setFullscreen(bool fullscreen) {
     }
     m_fullscreen = fullscreen;
     // Some drivers forget the swap interval when the window changes its kind, so the
-    // wait for the screen refresh is asked for again.
-    glfwSwapInterval(1);
+    // one that was chosen (setVsync) is asked for again.
+    glfwSwapInterval(m_vsync ? VSYNC_SWAP_INTERVAL : NO_VSYNC_SWAP_INTERVAL);
+}
+
+void Window::setVsync(bool vsync) {
+    if (vsync == m_vsync) {
+        return;
+    }
+    m_vsync = vsync;
+    // The swap interval belongs to the context that is current, which is the one of
+    // this window.
+    glfwSwapInterval(m_vsync ? VSYNC_SWAP_INTERVAL : NO_VSYNC_SWAP_INTERVAL);
 }
 
 Size Window::desktopSize() const {

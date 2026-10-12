@@ -67,6 +67,16 @@ public:
     /// True while the window is fullscreen (setFullscreen).
     bool isFullscreen() const { return m_fullscreen; }
 
+    /// Switches vsync on or off. On, swapBuffers waits for the next refresh of the
+    /// screen, so the game never draws more frames than the screen shows. Off, it
+    /// returns at once and the frame rate is as high as the computer manages: the way
+    /// to measure what a frame really costs. A window starts with vsync on. Does
+    /// nothing when the state does not change.
+    void setVsync(bool vsync);
+
+    /// True while vsync is on (setVsync).
+    bool vsync() const { return m_vsync; }
+
     /// The resolution of the screen the window is on, in screen coordinates: the largest
     /// window that fits on it. A size of 0 x 0 when it cannot be asked.
     Size desktopSize() const;
@@ -88,6 +98,9 @@ private:
     GLFWwindow* m_handle = nullptr;
     std::string m_glVersion;
     std::string m_glRenderer;
+
+    // Whether swapBuffers waits for the refresh of the screen (setVsync).
+    bool m_vsync = true;
 
     // Fullscreen: whether it is on, and where the window was and how large when it was
     // switched on, in screen coordinates. That is what switching it off goes back to.
