@@ -397,8 +397,10 @@ add_executable(night_maze
     src/debug/DebugWindow.hpp
     src/debug/Hud.cpp
     src/debug/Hud.hpp
+    src/debug/HudCanvas.cpp
     src/debug/HudRules.cpp
     src/debug/HudRules.hpp
+    src/debug/HudShared.hpp
     src/debug/Icons.cpp
     src/debug/Icons.hpp
     src/debug/MazePlan.cpp

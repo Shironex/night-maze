@@ -4,6 +4,7 @@
 #include "debug/Hud.hpp"
 
 #include "debug/HudRules.hpp"
+#include "debug/HudShared.hpp"
 #include "debug/Theme.hpp"
 #include "game/Campaign.hpp"
 #include "game/Daily.hpp"
@@ -31,44 +32,9 @@ namespace debug {
 
 namespace {
 
-// Every size below is a number of pixels in a window 720 pixels high
-// (HUD_REFERENCE_HEIGHT). It is multiplied by the scale of the HUD (debug::hudScale), so
-// the HUD takes the same part of a window of any size. Places are parts of the window.
-
 // Height of the text of the cards and of the line after a catch, the way ImGui
 // measures a text: the height of its line.
 constexpr float CARD_FONT_SIZE = 16.0F;
-
-// The text sizes of everything that is drawn by hand: a sentence and the prompt, the
-// two numbers that matter (the charge of the lamp, the crystals) and the name of the
-// night, the small lines under them (the percent sign, "of 13", the time), the seconds
-// of the tea, and the small labels in capital letters (LAMP, GATE OPEN, NIGHT 2).
-// These are sizes of the letters themselves, the em of the font, which is how the
-// design of the HUD was drawn (FONT_LINE_PER_EM).
-constexpr float HUD_FONT_SIZE = 16.0F;
-constexpr float NUMBER_FONT_SIZE = 20.0F;
-constexpr float SMALL_FONT_SIZE = 12.0F;
-constexpr float TEA_FONT_SIZE = 13.0F;
-constexpr float LABEL_FONT_SIZE = 11.0F;
-
-// ImGui measures a text by the height of its line, from the top of the highest letter
-// to the bottom of the lowest. In the font of the game (Atkinson Hyperlegible) that is
-// 1.24 times the em, the size its letters are designed in: 950 units above the base
-// line and 290 below it, of 1000. A size in em times this number is the size ImGui has
-// to be asked for.
-constexpr float FONT_LINE_PER_EM = 1.24F;
-
-// A small label is written with this much extra room after every letter.
-constexpr float LABEL_SPACING = 2.2F;
-
-// Lines of text that stand above each other are this many em apart, measured from top
-// to top.
-constexpr float LINE_HEIGHT = 1.2F;
-
-// The HUD has no panel behind its text. Every text gets a dark copy of itself this far
-// below it, of this opacity, so it can be read over a bright wall too.
-constexpr float TEXT_SHADOW_OFFSET = 1.0F;
-constexpr float TEXT_SHADOW_OPACITY = 0.85F;
 
 // The empty part of every gauge (the ring, the two lines, a tick that is not lit) is the
 // colour of the text, this faint.
@@ -261,12 +227,6 @@ constexpr float KEY_CAP_GAP = 8.8F;
 // the player stays visible behind it.
 constexpr float CAUGHT_LINE_OPACITY = 0.55F;
 
-constexpr int SECONDS_PER_MINUTE = 60;
-
-// Room for a time written as text: minutes, a colon, two digits of seconds and the
-// closing zero. Far more than a round can last.
-constexpr std::size_t TIME_TEXT_SIZE = 16;
-
 // The flags of the HUD windows. Together they make a window that is only a picture:
 //   NoDecoration        no title bar, no resize grip, no scrollbar
 //   AlwaysAutoResize    exactly as large as its contents, in every frame
@@ -290,121 +250,6 @@ constexpr ImGuiWindowFlags PICTURE_WINDOW_FLAGS =
 constexpr ImGuiWindowFlags STATUS_WINDOW_FLAGS =
     PICTURE_WINDOW_FLAGS | ImGuiWindowFlags_NoBringToFrontOnFocus;
 constexpr ImGuiWindowFlags CARD_WINDOW_FLAGS = PICTURE_WINDOW_FLAGS;
-
-// A time in seconds as text, minutes and seconds: 95.4 becomes "1:35". The fraction of
-// a second is dropped.
-std::array<char, TIME_TEXT_SIZE> timeText(float seconds) {
-    const int wholeSeconds = static_cast<int>(seconds);
-    std::array<char, TIME_TEXT_SIZE> text{};
-    // snprintf never writes more than the size it is given and always ends the text
-    // with a zero. %02d: two digits, with a leading zero.
-    std::snprintf(text.data(), text.size(), "%d:%02d", wholeSeconds / SECONDS_PER_MINUTE,
-                  wholeSeconds % SECONDS_PER_MINUTE);
-    return text;
-}
-
-// The point of the game window that lies at the given part of it (see TOP_CENTER).
-ImVec2 windowPoint(const ImVec2& part) {
-    // The main viewport is the window of the program. WorkPos is its top left corner and
-    // WorkSize its size.
-    const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    return {viewport->WorkPos.x + part.x * viewport->WorkSize.x,
-            viewport->WorkPos.y + part.y * viewport->WorkSize.y};
-}
-
-// What every part of the HUD that is drawn by hand needs: the list of shapes it draws
-// into, the font, the scale of the HUD and how much of the part can be seen (1 fully,
-// 0 nothing). A part that fades or pulses draws with a copy that has a lower opacity.
-struct Canvas {
-    // The background draw list takes shapes in screen coordinates and draws them
-    // behind every ImGui window, so the HUD never covers the debug window or a card.
-    ImDrawList* list = nullptr;
-    ImFont* font = nullptr;
-    float scale = 1.0F;
-    float opacity = 1.0F;
-};
-
-// A colour as the draw list wants it (one number), for something drawn on the canvas:
-// opacity is multiplied with the opacity of the colour and with the one of the canvas.
-ImU32 ink(const Canvas& canvas, const ImVec4& color, float opacity = 1.0F) {
-    return ImGui::ColorConvertFloat4ToU32(
-        {color.x, color.y, color.z, color.w * opacity * canvas.opacity});
-}
-
-// The height of a line of text of the given size (in em) on the screen, in whole
-// pixels: this is the size ImGui is asked for. A whole number of pixels, because
-// letters of such a height are drawn sharp.
-float fontPixels(const Canvas& canvas, float size) {
-    return std::round(size * FONT_LINE_PER_EM * canvas.scale);
-}
-
-// How wide a text of the given size is on the screen, in pixels.
-float textWidth(const Canvas& canvas, float size, std::string_view text) {
-    // The two FLT_MAX and 0 say: no width to cut the text at and no line wrapping.
-    // A string_view has no closing zero, so the end of the text is given too.
-    return canvas.font
-        ->CalcTextSizeA(fontPixels(canvas, size), FLT_MAX, 0.0F, text.data(),
-                        text.data() + text.size())
-        .x;
-}
-
-// How far below the top of a text of the given size its letters stand (their base
-// line), in pixels of the screen. Two texts of different sizes that stand side by side
-// are lined up with it.
-float baseLine(const Canvas& canvas, float size) {
-    // ImGui keeps the measures of a font once for every size it is drawn in.
-    return canvas.font->GetFontBaked(fontPixels(canvas, size))->Ascent;
-}
-
-// How far below the top of its line a text of the given size starts, in pixels of the
-// screen. The room of a line is LINE_HEIGHT em and the text ImGui draws is
-// FONT_LINE_PER_EM em high: the text stands in the middle of its room. The two numbers
-// are nearly the same, so this is a fraction of a pixel.
-float lineInset(const Canvas& canvas, float size) {
-    return size * (LINE_HEIGHT - FONT_LINE_PER_EM) / 2.0F * canvas.scale;
-}
-
-// Draws a text with its top left corner at position, with its dark copy below it.
-void drawText(const Canvas& canvas, const ImVec2& position, float size, const ImVec4& color,
-              std::string_view text) {
-    const float pixels = fontPixels(canvas, size);
-    // Whole pixels again: a text that starts between two pixels is blurred.
-    const ImVec2 corner{std::floor(position.x), std::floor(position.y)};
-    const float shadow = std::max(std::round(TEXT_SHADOW_OFFSET * canvas.scale), 1.0F);
-    // A string_view has no closing zero, so the end of the text is given too.
-    canvas.list->AddText(canvas.font, pixels, {corner.x, corner.y + shadow},
-                         ink(canvas, HUD_SHADOW_COLOR, TEXT_SHADOW_OPACITY), text.data(),
-                         text.data() + text.size());
-    canvas.list->AddText(canvas.font, pixels, corner, ink(canvas, color), text.data(),
-                         text.data() + text.size());
-}
-
-// A small label in capital letters is written with extra room between its letters, like
-// the labels of the menus. ImGui cannot do that by itself, so these two go through the
-// text letter by letter. The labels are plain English: one byte is one letter.
-
-// How wide such a label is, in pixels of the screen. No room is counted after the last
-// letter.
-float spacedTextWidth(const Canvas& canvas, float size, std::string_view text) {
-    float width = 0.0F;
-    for (std::size_t i = 0; i < text.size(); ++i) {
-        width += textWidth(canvas, size, text.substr(i, 1));
-        if (i + 1 < text.size()) {
-            width += LABEL_SPACING * canvas.scale;
-        }
-    }
-    return width;
-}
-
-// Draws such a label with its top left corner at position.
-void drawSpacedText(const Canvas& canvas, ImVec2 position, float size, const ImVec4& color,
-                    std::string_view text) {
-    for (std::size_t i = 0; i < text.size(); ++i) {
-        const std::string_view letter = text.substr(i, 1);
-        drawText(canvas, position, size, color, letter);
-        position.x += textWidth(canvas, size, letter) + LABEL_SPACING * canvas.scale;
-    }
-}
 
 // The lamp gauge at the bottom left: a ring that empties with the battery, the charge
 // as a number and a label. Amber while there is charge, red once it is low.
