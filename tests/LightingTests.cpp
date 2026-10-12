@@ -712,8 +712,8 @@ TEST_CASE("the held lamp is drawn without the flashlight and with a spill on its
           doctest::Approx(scene::BRIGHTNESS_AT_RADIUS));
 
     // It stands at the head: outside the tin (tools/blender/build_lamp_held.py, the head
-    // is 0.0335 m wide), above the axis, on the side of the eye and within a few
-    // centimetres of the lens. Behind the lens, so the lens is not lit by it.
+    // is 0.0335 m wide), above the axis, on the side of the eye and within
+    // a centimetre of the plane of the lens.
     const glm::vec3 place = game::HELD_LAMP_SPILL_PLACE;
     CHECK(glm::length(glm::vec2{place}) > 0.0335F);
     CHECK(place.x < 0.0F);
@@ -963,6 +963,17 @@ TEST_CASE("the held lamp falls a little behind a camera that turns and catches u
     CHECK(wrapped.lagDegrees.x > 0.0F);
     CHECK(wrapped.lagDegrees.x < 2.0F * game::HELD_LAMP_LAG_SHARE);
     CHECK(wrapped.yawDegrees == doctest::Approx(1.0F));
+
+    // A new round puts the camera somewhere else: that is a cut, not a turn, and the lamp
+    // does not swing in behind it.
+    game::HeldLampSway cut;
+    step.yawDegrees = 140.0F;
+    step.pitchDegrees = -20.0F;
+    game::advanceHeldLampSway(cut, step);
+    CHECK(cut.lagDegrees.x == doctest::Approx(0.0F));
+    CHECK(cut.lagDegrees.y == doctest::Approx(0.0F));
+    CHECK(cut.yawDegrees == doctest::Approx(140.0F));
+    CHECK(cut.pitchDegrees == doctest::Approx(-20.0F));
 }
 
 TEST_CASE("the swaying held lamp stays in the lower right and keeps its butt out of the picture") {

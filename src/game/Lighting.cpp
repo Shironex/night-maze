@@ -133,9 +133,13 @@ scene::LightSet heldLampLights(const scene::LightSet& frameLights,
 
 void advanceHeldLampSway(HeldLampSway& sway, const HeldLampSwayStep& step) {
     // How far the camera turned since the frame before. The yaw is not kept inside one
-    // turn, so the difference is taken the short way round.
-    const glm::vec2 turned{std::remainder(step.yawDegrees - sway.yawDegrees, 360.0F),
-                           step.pitchDegrees - sway.pitchDegrees};
+    // turn, so the difference is taken the short way round. A turn too large for one
+    // frame is a cut (a new round puts the camera elsewhere): nothing falls behind it.
+    glm::vec2 turned{std::remainder(step.yawDegrees - sway.yawDegrees, 360.0F),
+                     step.pitchDegrees - sway.pitchDegrees};
+    if (glm::length(turned) > HELD_LAMP_CUT_DEGREES) {
+        turned = glm::vec2{0.0F};
+    }
     sway.yawDegrees = step.yawDegrees;
     sway.pitchDegrees = step.pitchDegrees;
     if (step.seconds <= 0.0F) {

@@ -338,6 +338,10 @@ constexpr float HELD_LAMP_LAG_SHARE = 0.2F;
 constexpr float HELD_LAMP_LAG_SECONDS = 0.1F;
 constexpr float HELD_LAMP_MAX_LAG_DEGREES = 2.0F;
 
+/// A camera that turned further than this in one frame, in degrees, was put somewhere
+/// else and did not turn there: the start of a round. The lamp does not lag behind that.
+constexpr float HELD_LAMP_CUT_DEGREES = 45.0F;
+
 /// The sway of the lamp between two frames. It belongs to the drawing and is advanced
 /// with the frame time (advanceHeldLampSway), not with the fixed steps of the rules.
 struct HeldLampSway {
@@ -376,9 +380,9 @@ struct HeldLampSwayStep {
 /// Advances the sway by one frame: the count of the steps by the way the feet went, the
 /// two amounts towards what the speed says, each by at most the share of
 /// HELD_LAMP_SWAY_BLEND_SECONDS the frame took, and the lag by the turn of the camera
-/// since the frame before. A frame without time changes nothing but the remembered
-/// angles. The caller leaves it out while the round stands still (a pause, the result
-/// screen), so the lamp stands still there too.
+/// since the frame before (none after a cut, HELD_LAMP_CUT_DEGREES). A frame without
+/// time changes nothing but the remembered angles. The caller leaves it out while the round stands
+/// still (a pause, the result screen), so the lamp stands still there too.
 void advanceHeldLampSway(HeldLampSway& sway, const HeldLampSwayStep& step);
 
 /// Where the sway puts the drawn lamp, measured in the axes of the lamp itself
