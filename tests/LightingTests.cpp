@@ -523,3 +523,159 @@ TEST_CASE("choosing among positions and among plain spots gives the same lights"
         CHECK_FALSE(fromPositions[i].ownLook);
     }
 }
+
+TEST_CASE("the held lamp lies on the axis of the beam, with its window on top") {
+    game::LightingSettings settings;
+    const glm::vec3 eye{3.0F, 1.7F, 5.0F};
+    // The lens of the model: on its axis, which is -Z.
+    const glm::vec4 lens{0.0F, 0.0F, -game::HELD_LAMP_LENS_OUT, 1.0F};
+
+    for (const float pitch : {-89.0F, -30.0F, 0.0F, 45.0F, 89.0F}) {
+        for (const float handRight : {0.0F, 0.2F, game::MAX_FLASHLIGHT_HAND_RIGHT}) {
+            for (const float converge : {game::MIN_FLASHLIGHT_CONVERGE_DISTANCE, 4.0F, 20.0F}) {
+                CAPTURE(pitch);
+                CAPTURE(handRight);
+                CAPTURE(converge);
+                settings.flashlightHandRight = handRight;
+                settings.flashlightConvergeDistance = converge;
+                scene::Camera camera;
+                camera.yawDegrees = 140.0F;
+                camera.pitchDegrees = pitch;
+                const glm::vec3 forward = camera.forward();
+                const glm::vec3 right = camera.right();
+
+                const glm::mat4 matrix = game::heldLampMatrix(settings, eye, forward, right);
+                const glm::vec3 butt{matrix[3]};
+                const glm::vec3 along = glm::mat3{matrix} * glm::vec3{0.0F, 0.0F, -1.0F};
+
+                // The lamp aims at the point the beam aims at, whatever the pitch is:
+                // from its butt, the way to that point is the way its lens looks.
+                const glm::vec3 target = eye + forward * converge;
+                checkVector(glm::normalize(target - butt), along);
+
+                // With a level look it lies on the beam itself: the butt is
+                // HELD_LAMP_REACH from the hand of the light and the lens further along
+                // the same line, so the beam leaves the lamp through its lens.
+                if (pitch == 0.0F) {
+                    const game::FlashlightPose pose =
+                        game::flashlightPose(settings, eye, forward, right);
+                    checkVector(butt, pose.position + pose.direction * game::HELD_LAMP_REACH);
+                    checkVector(glm::vec3{matrix * lens},
+                                pose.position + pose.direction * (game::HELD_LAMP_REACH +
+                                                                  game::HELD_LAMP_LENS_OUT));
+                    checkVector(along, pose.direction);
+                }
+
+                // A turn without a scale or a mirror: three axes of length 1 at right
+                // angles, the third the cross product of the first two.
+                const glm::vec3 side{matrix[0]};
+                const glm::vec3 top{matrix[1]};
+                CHECK(glm::length(side) == doctest::Approx(1.0F));
+                CHECK(glm::length(top) == doctest::Approx(1.0F));
+                CHECK(glm::dot(side, top) == doctest::Approx(0.0F));
+                checkVector(glm::cross(side, top), glm::vec3{matrix[2]});
+                // The window does not roll: the top of the lamp has no part along the
+                // right vector of the camera, and it points to the upper half of the
+                // picture.
+                CHECK(glm::dot(top, right) == doctest::Approx(0.0F));
+                CHECK(glm::dot(top, glm::cross(right, forward)) > 0.0F);
+            }
+        }
+    }
+}
+
+TEST_CASE("the held lamp keeps its place in the lower right of the picture") {
+    const game::LightingSettings settings;
+    const glm::vec3 eye{3.0F, 1.7F, 5.0F};
+    constexpr float ASPECT_RATIO = 16.0F / 9.0F;
+    const glm::vec4 lens{0.0F, 0.0F, -game::HELD_LAMP_LENS_OUT, 1.0F};
+    // The end of the window that is nearer to the player (tools/blender/build_lamp_held.py).
+    const glm::vec4 window{0.0F, 0.0182F, -0.082F, 1.0F};
+
+    // Looking down, level and up, with the narrowest, the default and the widest field
+    // of view of the settings.
+    glm::vec2 first{0.0F};
+    bool hasFirst = false;
+    for (const float pitch : {-60.0F, 0.0F, 60.0F}) {
+        for (const float fov : {45.0F, game::HELD_LAMP_FOV_DEGREES, 90.0F}) {
+            CAPTURE(pitch);
+            CAPTURE(fov);
+            scene::Camera camera;
+            camera.yawDegrees = 220.0F;
+            camera.pitchDegrees = pitch;
+            camera.fovDegrees = fov;
+            const glm::mat4 toClip =
+                game::heldLampProjection(camera.projectionMatrix(ASPECT_RATIO)) *
+                camera.viewMatrix(eye) *
+                game::heldLampMatrix(settings, eye, camera.forward(), camera.right());
+
+            // Where the lens is in the picture: -1 to 1 from the left to the right edge
+            // and from the lower to the upper one. In front of the near plane.
+            const glm::vec4 clip = toClip * lens;
+            REQUIRE(clip.w > camera.nearPlane);
+            const glm::vec2 place = glm::vec2{clip} / clip.w;
+
+            // Right of the middle and in the lowest third, with the head inside the
+            // picture.
+            CHECK(place.x > 0.2F);
+            CHECK(place.x < 0.8F);
+            CHECK(place.y < -0.5F);
+            CHECK(place.y > -0.9F);
+            // The window is in the picture too.
+            const glm::vec4 windowClip = toClip * window;
+            CHECK(windowClip.y / windowClip.w > -1.0F);
+            CHECK(windowClip.x / windowClip.w < 1.0F);
+
+            // The same place wherever the camera looks and whatever the player has set.
+            if (!hasFirst) {
+                first = place;
+                hasFirst = true;
+            }
+            CHECK(place.x == doctest::Approx(first.x));
+            CHECK(place.y == doctest::Approx(first.y));
+        }
+    }
+
+    // With the default field of view the projection of the frame is left as it is.
+    scene::Camera camera;
+    camera.fovDegrees = game::HELD_LAMP_FOV_DEGREES;
+    const glm::mat4 scene = camera.projectionMatrix(ASPECT_RATIO);
+    const glm::mat4 lamp = game::heldLampProjection(scene);
+    for (int column = 0; column < 4; ++column) {
+        for (int row = 0; row < 4; ++row) {
+            CHECK(lamp[column][row] == doctest::Approx(scene[column][row]));
+        }
+    }
+}
+
+TEST_CASE("the lens of the held lamp glows with the beam and its window with the battery") {
+    game::LightingSettings settings;
+    const float full = 1.0F;
+    const float steady = 1.0F;
+
+    // On: the colour of the beam, brighter than the light itself.
+    const game::HeldLampGlow on = game::heldLampGlow(settings, full, steady);
+    checkVector(on.lens, gfx::srgbToLinear(settings.flashlightColor) *
+                             (settings.flashlightIntensity * game::HELD_LAMP_LENS_GLOW));
+    // The window has the colour of the crystals.
+    checkVector(on.window, gfx::srgbToLinear(settings.pointColor) * game::HELD_LAMP_WINDOW_GLOW);
+
+    // A dimmed beam (the flicker of a low battery is in the intensity) dims the lens.
+    game::LightingSettings dimmed = settings;
+    dimmed.flashlightIntensity = settings.flashlightIntensity / 2.0F;
+    checkVector(game::heldLampGlow(dimmed, full, steady).lens, on.lens / 2.0F);
+
+    // Off: a dark lens. The window still shows the charge.
+    settings.flashlightOn = false;
+    const game::HeldLampGlow off = game::heldLampGlow(settings, full, steady);
+    checkVector(off.lens, glm::vec3{0.0F});
+    checkVector(off.window, on.window);
+
+    // Half a charge is half the glow, the flicker takes its share, and an empty battery
+    // leaves the window dark. A charge outside of 0 to 1 is taken as the nearer end.
+    checkVector(game::heldLampGlow(settings, 0.5F, steady).window, on.window / 2.0F);
+    checkVector(game::heldLampGlow(settings, 0.5F, 0.5F).window, on.window / 4.0F);
+    checkVector(game::heldLampGlow(settings, 0.0F, steady).window, glm::vec3{0.0F});
+    checkVector(game::heldLampGlow(settings, 2.0F, steady).window, on.window);
+    checkVector(game::heldLampGlow(settings, -1.0F, steady).window, glm::vec3{0.0F});
+}

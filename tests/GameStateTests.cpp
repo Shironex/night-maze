@@ -761,3 +761,26 @@ TEST_CASE("the maze of the day goes from the main menu over a title card into it
     CHECK_FALSE(game::eventForAction("daily", event));
     CHECK(event == GameEvent::Quit);
 }
+
+TEST_CASE("the lamp in the hand is shown only where the player looks through their own eyes") {
+    // A round, the pause over it with its two pages, and the result screen.
+    const std::vector<GameMode> withHand = {GameMode::Playing, GameMode::Paused,
+                                            GameMode::SettingsFromPause, GameMode::LedgerFromPause,
+                                            GameMode::RoundEnd};
+    for (const GameMode mode : ALL_MODES) {
+        CAPTURE(static_cast<int>(mode));
+        bool expected = false;
+        for (const GameMode shown : withHand) {
+            expected = expected || mode == shown;
+        }
+        CHECK(game::showsHeldLamp(mode, false, false) == expected);
+        // The recording camera and the camera that rises to the village are not the
+        // eyes of the player, on whatever screen.
+        CHECK_FALSE(game::showsHeldLamp(mode, true, false));
+        CHECK_FALSE(game::showsHeldLamp(mode, false, true));
+        // No screen of the menu camera and no film has a hand in its picture.
+        if (game::usesMenuCamera(mode) || game::isFilm(mode)) {
+            CHECK_FALSE(game::showsHeldLamp(mode, false, false));
+        }
+    }
+}
