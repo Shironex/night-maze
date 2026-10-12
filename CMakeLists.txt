@@ -373,6 +373,7 @@ add_executable(night_maze
     src/game/NightMazeApp.hpp
     src/game/NightMazeAppPasses.cpp
     src/game/NightMazeAppRender.cpp
+    src/game/NightMazeAppRound.cpp
     src/game/NightMazeAppShared.hpp
     src/game/PostProcess.cpp
     src/game/PostProcess.hpp
