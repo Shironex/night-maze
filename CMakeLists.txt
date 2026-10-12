@@ -105,6 +105,8 @@ add_library(engine STATIC
     src/scene/Camera.hpp
     src/scene/Collider.cpp
     src/scene/Collider.hpp
+    src/scene/Frustum.cpp
+    src/scene/Frustum.hpp
     src/scene/Light.cpp
     src/scene/Light.hpp
     src/scene/LightBlock.cpp
@@ -467,6 +469,7 @@ add_executable(night_maze_tests
     tests/FlaskTests.cpp
     tests/FogTests.cpp
     tests/FramebufferTests.cpp
+    tests/FrustumTests.cpp
     tests/GameStateTests.cpp
     tests/GateLampTests.cpp
     tests/GrassTests.cpp
