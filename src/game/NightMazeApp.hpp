@@ -705,8 +705,13 @@ private:
     /// into the nearest hundredth of the depth range, in front of everything the scene
     /// can hold. The depth buffer is not cleared, because the fog of the composite pass
     /// reads the depths of the scene.
+    ///
+    /// The lamp sways with the steps of the player and falls a little behind the turns
+    /// of the camera (game::advanceHeldLampSway). The function advances that sway by the
+    /// time of the frame while the round runs, which is why it is not const. Only the
+    /// picture of the lamp moves: its light is where the frame put it.
     void drawHeldLamp(const glm::mat4& view, const glm::mat4& projection,
-                      const LightingSettings& frameLighting, const scene::LightSet& lights) const;
+                      const LightingSettings& frameLighting, const scene::LightSet& lights);
 
     /// Draws the village on the ridge and its lights into the scene, centred on the eye
     /// like the sky and with real depth. view and projection are the ones of the frame,
@@ -1130,6 +1135,9 @@ private:
     // How much the drawn shade walks, from 0 (stands) to 1 (walks). It follows the state
     // of the shade over a third of a second, so the pose never jumps (game::shadeSwayPose).
     float m_shadeWalkAmount = 0.0F;
+    // The sway of the lamp in the hand: drawing only, advanced with the frame time while
+    // the round runs (drawHeldLamp).
+    HeldLampSway m_heldLampSway;
     // Seconds since the shade reached the player, or -1 when no catch is going on. While
     // it counts, the round stands still and the player cannot act: the picture fades to
     // black, and at black the round starts again (carryPlayerBack). It counts in fixed

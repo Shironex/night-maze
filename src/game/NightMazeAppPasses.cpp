@@ -468,7 +468,7 @@ void NightMazeApp::drawVillage(const glm::mat4& view, const glm::mat4& projectio
 
 void NightMazeApp::drawHeldLamp(const glm::mat4& view, const glm::mat4& projection,
                                 const LightingSettings& frameLighting,
-                                const scene::LightSet& lights) const {
+                                const scene::LightSet& lights) {
     if (!m_lighting.heldLampShown ||
         !showsHeldLamp(m_mode, m_menuCamera.enabled, villageRevealShown())) {
         return;
@@ -493,7 +493,25 @@ void NightMazeApp::drawHeldLamp(const glm::mat4& view, const glm::mat4& projecti
     // whose beam it lies, and with the light that spills back onto its head
     // (game::heldLampLights). Nothing that is lit is drawn after the lamp, and the next
     // frame fills the buffer anew.
-    const glm::mat4 lampMatrix = heldLampMatrix(frameLighting, eye, forward, right);
+    //
+    // The lamp sways with the steps and lags behind the turns, by centimetres and in the
+    // picture only. The sway goes on with the time of the frame while the round runs:
+    // under the pause menu, on the result screen and during a catch it is left as it
+    // is, so the lamp stands still. The speed is the one the feet had in the last fixed
+    // step, without the height, and a flying player has no steps.
+    if (m_mode == GameMode::Playing && m_catchSeconds < 0.0F) {
+        const glm::vec3 walked = m_player.position - m_previousPlayerPosition;
+        const float metres = m_player.noclip ? 0.0F : glm::length(glm::vec2{walked.x, walked.z});
+        advanceHeldLampSway(m_heldLampSway,
+                            {.seconds = static_cast<float>(time().deltaSeconds()),
+                             .speed = metres / static_cast<float>(core::Time::FIXED_DT),
+                             .walkSpeed = m_player.walkSpeed,
+                             .sprintSpeed = m_player.sprintSpeed,
+                             .yawDegrees = m_camera.yawDegrees,
+                             .pitchDegrees = m_camera.pitchDegrees});
+    }
+    const glm::mat4 lampMatrix = heldLampMatrix(frameLighting, eye, forward, right) *
+                                 heldLampSwayMatrix(heldLampSwayPose(m_heldLampSway));
     m_lightRig.upload(heldLampLights(lights, frameLighting, lampMatrix), eye);
 
     // The state this draw relies on, said here: the puddles are blended and write no
