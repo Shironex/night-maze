@@ -80,4 +80,21 @@ float spacedTextWidth(const Canvas& canvas, float size, std::string_view text);
 void drawSpacedText(const Canvas& canvas, ImVec2 position, float size, const ImVec4& color,
                     std::string_view text);
 
+/// The lamp gauge at the bottom left.
+void drawLampGauge(Canvas canvas, const game::Round& round,
+                   const game::GameplaySettings& settings);
+/// The crystal counter at the top right.
+void drawCrystalCounter(const Canvas& canvas, const game::Round& round);
+/// The stamina line at the bottom, in the middle.
+void drawStaminaLine(Canvas canvas, const game::Stamina& stamina, float flaskFraction,
+                     float heavyFraction, float animationSeconds);
+/// The loudness ticks under the stamina line.
+void drawNoiseTicks(const Canvas& canvas, const game::Round& round,
+                    const game::GameplaySettings& settings);
+/// The sentence that tells the player what has just happened.
+void drawHintLine(Canvas canvas, const game::Round& round, const game::Player& player);
+/// The name of the night at the top left.
+void drawNightName(Canvas canvas, const game::Round& round, int playedNight,
+                   std::uint32_t playedDaily);
+
 } // namespace debug
