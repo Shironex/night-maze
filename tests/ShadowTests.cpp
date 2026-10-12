@@ -251,6 +251,66 @@ TEST_CASE("the shadow map of the moon is fine enough for the walls of the defaul
     CHECK(game::WALL_VISUAL_THICKNESS / fine > 6.0F);
 }
 
+TEST_CASE("the key of the still layer changes with everything the layer is drawn from") {
+    const game::MazeWorld world = game::buildMazeWorld(
+        game::DEFAULT_MAZE_WIDTH, game::DEFAULT_MAZE_HEIGHT, game::DEFAULT_MAZE_SEED);
+    const scene::LightSpace lightSpace = scene::directionalLightSpace(
+        game::shadowCasterBounds(world.terrain), defaultMoonDirection());
+    const game::StaticShadowKey key{.lightView = lightSpace.view,
+                                    .lightProjection = lightSpace.projection,
+                                    .mapSize = game::SHADOW_MAP_SIZE_HIGH,
+                                    .groundVersion = 1,
+                                    .wallVariants = true,
+                                    .depthProgramLoads = 1};
+
+    // The same values again: the layer is kept.
+    const game::StaticShadowKey same = key;
+    CHECK(same == key);
+
+    // One field changed at a time: the layer is drawn again.
+    game::StaticShadowKey other = key;
+    other.mapSize = game::SHADOW_MAP_SIZE_LOW;
+    CHECK_FALSE(other == key);
+    other = key;
+    other.groundVersion = 2;
+    CHECK_FALSE(other == key);
+    other = key;
+    other.wallVariants = false;
+    CHECK_FALSE(other == key);
+    other = key;
+    other.depthProgramLoads = 2;
+    CHECK_FALSE(other == key);
+
+    // The moon turned by one degree in the Lights panel: another view matrix.
+    game::LightingSettings turned;
+    turned.moonYawDegrees += 1.0F;
+    const scene::LightSpace turnedSpace = scene::directionalLightSpace(
+        game::shadowCasterBounds(world.terrain), game::moonDirection(turned));
+    other = key;
+    other.lightView = turnedSpace.view;
+    other.lightProjection = turnedSpace.projection;
+    CHECK_FALSE(other == key);
+
+    // A larger maze: a larger land, and so another box of the light.
+    const game::MazeWorld larger = game::buildMazeWorld(
+        game::DEFAULT_MAZE_WIDTH + 2, game::DEFAULT_MAZE_HEIGHT, game::DEFAULT_MAZE_SEED);
+    const scene::LightSpace largerSpace = scene::directionalLightSpace(
+        game::shadowCasterBounds(larger.terrain), defaultMoonDirection());
+    other = key;
+    other.lightView = largerSpace.view;
+    other.lightProjection = largerSpace.projection;
+    CHECK_FALSE(other == key);
+
+    // Another seed gives other walls on the same land, with the same box of the light.
+    // The matrices cannot tell the two mazes apart: that is what groundVersion is for.
+    const game::MazeWorld reseeded = game::buildMazeWorld(
+        game::DEFAULT_MAZE_WIDTH, game::DEFAULT_MAZE_HEIGHT, game::DEFAULT_MAZE_SEED + 1);
+    const scene::LightSpace reseededSpace = scene::directionalLightSpace(
+        game::shadowCasterBounds(reseeded.terrain), defaultMoonDirection());
+    CHECK(reseededSpace.view == lightSpace.view);
+    CHECK(reseededSpace.projection == lightSpace.projection);
+}
+
 TEST_CASE("the texel size of a shadow map follows its larger side") {
     scene::LightSpace lightSpace;
     lightSpace.extent = {40.0F, 20.0F, 10.0F};

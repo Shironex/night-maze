@@ -3,6 +3,10 @@
 
 #include "scene/Collider.hpp"
 
+#include <glm/glm.hpp>
+
+#include <cstdint>
+
 namespace scene {
 struct LightSpace;
 } // namespace scene
@@ -132,6 +136,38 @@ ShadowSettings flashlightShadowDefaults();
 /// ground and are no higher than the gatehouse, so they are inside. The moon fits its shadow map to
 /// this box (scene::directionalLightSpace).
 scene::Aabb shadowCasterBounds(const Terrain& terrain);
+
+/// What the still layer of a shadow map was drawn from (game::ShadowMap): everything that
+/// decides the depths of the casters that never move during a round. Those are the
+/// terrain, the walls no lever lowers, the pillars, the post of the stile and the stone
+/// sheep (MazeParts::Fixed). The layer is drawn once and copied into the map in every
+/// frame, and it is drawn again when the key of the frame is not the one it was drawn
+/// with.
+///
+/// A key that is compared, and not a flag set by the code that changes one of these
+/// things: a change that forgot the flag would leave the shadow of something that is
+/// gone. What moves during a round is not in the key, because it is not in the layer.
+struct StaticShadowKey {
+    /// From where the light sees the land (scene::LightSpace::view and projection). The
+    /// two angles of the moon and the box around the terrain are in these two.
+    glm::mat4 lightView{1.0F};
+    glm::mat4 lightProjection{1.0F};
+    /// The side of the map in texels (shadowMapSize).
+    int mapSize = 0;
+    /// Which ground the graphics card holds. The application counts it up every time it
+    /// uploads the ground (NightMazeApp::uploadGround): for a new maze, and for the same
+    /// maze on a terrain with another height scale.
+    std::uint32_t groundVersion = 0;
+    /// Whether the shaped walls are drawn with their own models (MazeSettings::wallVariants).
+    /// A crowned or a broken wall has another outline than a plain one.
+    bool wallVariants = true;
+    /// Which depth program drew the layer (gfx::Shader::loadCount): a reload may have
+    /// changed where it puts a vertex.
+    std::uint32_t depthProgramLoads = 0;
+
+    /// Two keys are equal when every field is: the matrices number for number.
+    bool operator==(const StaticShadowKey&) const = default;
+};
 
 /// The bias of a surface in metres:
 ///

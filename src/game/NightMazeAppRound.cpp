@@ -157,6 +157,10 @@ void NightMazeApp::uploadGround() {
     // The puddles lie on the terrain too: new ground means new water levels, and a new
     // maze new cells.
     layPuddles();
+    // The still layer of the shadow map of the moon holds the terrain, the walls and
+    // the pillars as they were. It is not drawn here: the number goes into the key the
+    // next shadow pass compares (drawMoonShadowMap), also when the shadows are off now.
+    ++m_groundVersion;
 }
 
 void NightMazeApp::layPuddles() {

@@ -1,11 +1,14 @@
 // ShadowMap: the depth texture a light draws the scene into, and how the lit shaders read it.
 #pragma once
 
+#include "game/Shadows.hpp"
 #include "gfx/ComparisonSampler.hpp"
 #include "gfx/Framebuffer.hpp"
 #include "gfx/VertexArray.hpp"
 
 #include <glad/gl.h>
+
+#include <optional>
 
 namespace gfx {
 class Shader;
@@ -17,7 +20,6 @@ struct LightSpace;
 
 namespace game {
 
-struct ShadowSettings;
 struct ShadowUniformNames;
 
 /// The OpenGL side of one shadow map: a square framebuffer without a colour texture
@@ -39,6 +41,17 @@ struct ShadowUniformNames;
 /// After that another framebuffer has to be bound (the scene framebuffer): this class
 /// leaves its own bound, and the viewport at the size of the map or of the preview.
 ///
+/// A light that stands still relative to the world (the moon) can split step 1 and 2 in
+/// two, so that the casters that never move are not drawn in every frame. The map then
+/// has a second depth texture of the same size, the still layer:
+///   1a. Only when staticLayerHolds says the layer is out of date: beginStaticPass, and
+///       the game draws the casters that never move into the layer.
+///   1b. beginDepthPassOverStatic: the map becomes the target, filled with a copy of the
+///       layer in place of the clear.
+///   2.  The game draws only the casters that can move. The depth test keeps the nearer
+///       of the two at every texel, exactly as if all of them had been drawn in one pass:
+///       the nearest depth of a set does not depend on the order it is found in.
+///
 /// It owns OpenGL objects, so it must be destroyed before the window.
 class ShadowMap {
 public:
@@ -53,6 +66,30 @@ public:
     /// Returns false when there is nothing to draw into: the framebuffer could not be
     /// created (logged once per size). The shadows must then be skipped for the frame.
     bool beginDepthPass(int size);
+
+    /// True when the still layer holds the casters that never move as key describes
+    /// them: it was drawn with exactly this key and nothing has thrown it away since.
+    /// False before the first beginStaticPass.
+    bool staticLayerHolds(const StaticShadowKey& key) const { return m_staticKey == key; }
+
+    /// Makes the still layer the target of the draw calls that follow: a square of
+    /// key.mapSize texels (created again when that is not the size it has), the viewport
+    /// set to it, the depth test switched on and the depth cleared to 1. The caller then
+    /// draws every caster that never moves, and nothing else. key is remembered as what
+    /// the layer holds from now on (staticLayerHolds).
+    ///
+    /// Returns false when the layer could not be created. It then holds nothing, and
+    /// the shadows must be skipped for the frame.
+    bool beginStaticPass(const StaticShadowKey& key);
+
+    /// beginDepthPass for a map with a still layer: the map becomes the target, at the
+    /// size of the layer, with the depths of the layer copied into it in place of the
+    /// clear (gfx::Framebuffer::copyDepthTo). The caller then draws the casters that can
+    /// move.
+    ///
+    /// Returns false when the layer holds nothing (no beginStaticPass has worked yet) or
+    /// the map could not be created. The shadows must then be skipped for the frame.
+    bool beginDepthPassOverStatic();
 
     /// Binds the depth texture and the comparison sampler to texture unit number unit,
     /// for a sampler2DShadow uniform set to the same number. linearFilter chooses the
@@ -86,11 +123,25 @@ public:
     const gfx::Framebuffer& preview() const { return m_preview; }
 
 private:
+    /// Gives m_target the size asked for: created again when size is not the one the
+    /// last call asked for. Returns false when there is no framebuffer to draw into.
+    bool prepareTarget(int size);
+
     // The depth-only framebuffer: the map.
     gfx::Framebuffer m_target;
-    // The size the last beginDepthPass asked for. Kept apart from the size of m_target,
+    // The size the last depth pass asked for. Kept apart from the size of m_target,
     // so that a creation that failed is not tried again in every frame.
     int m_requestedSize = 0;
+
+    // The still layer: a second depth-only framebuffer of the size of the map, with the
+    // casters that never move. Not valid in a map that is only used with beginDepthPass
+    // (the flashlight): no object is created for it then.
+    gfx::Framebuffer m_static;
+    // The size the last beginStaticPass asked for, kept like m_requestedSize.
+    int m_requestedStaticSize = 0;
+    // What m_static holds: the key of the pass that drew it. Empty while it holds
+    // nothing: before the first pass, and after a pass that could not create it.
+    std::optional<StaticShadowKey> m_staticKey;
 
     // How the lit programs read the map: with a comparison (see the class).
     gfx::ComparisonSampler m_sampler;

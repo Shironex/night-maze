@@ -451,7 +451,9 @@ private:
     void rebuildTerrain();
 
     /// Copies what stands on the ground of m_mazeWorld to the graphics card: the mesh of
-    /// the terrain and the points of the grass (plantGrass).
+    /// the terrain and the points of the grass (plantGrass). Every function that gives
+    /// m_mazeWorld a new maze or a new terrain calls it. It counts m_groundVersion up, so
+    /// the still layer of the shadow map of the moon is drawn again for the new world.
     void uploadGround();
 
     /// Chooses the places of the grass tufts again (game::placeGrass) and copies them to
@@ -803,11 +805,15 @@ private:
     void handleInteraction(bool cursorCaptured);
 
     /// The shadow pass of the moon, the first pass of a frame. It fits the box of the
-    /// moon to the land (m_moonLightSpace), draws the shadow casters into the shadow
-    /// map (drawShadowCasters), binds the map for the lit programs and, while the
-    /// debug UI asks for it, draws its preview picture. With the shadows switched off
-    /// it only computes the box. It leaves a framebuffer of the shadow map bound, so
-    /// the scene framebuffer has to be bound after it.
+    /// moon to the land (m_moonLightSpace) and fills the shadow map in two steps. The
+    /// casters that never move (drawFixedShadowCasters) are in the still layer of the
+    /// map, which is drawn only when its key is not the one of this frame
+    /// (game::StaticShadowKey). The layer is copied into the map, and the casters that
+    /// can move (drawMovingShadowCasters) are drawn on top in every frame. Then it binds
+    /// the map for the lit programs and, while the debug UI asks for it, draws its
+    /// preview picture. With the shadows switched off it only computes the box. It
+    /// leaves a framebuffer of the shadow map bound, so the scene framebuffer has to be
+    /// bound after it.
     void drawMoonShadowMap();
 
     /// The shadow pass of the flashlight, right after the one of the moon. It builds
@@ -823,11 +829,23 @@ private:
                                  const FlashlightPose& flashlight);
 
     /// Draws everything that casts a shadow with the depth program, as the light with
-    /// the given view and projection sees it: the terrain, the walls (a wall opened by
-    /// a lever as far as it has sunk) and the pillars, the gate (as far as it has sunk),
-    /// the crystals, the levers and the notes. The grass casts no shadow.
-    /// The target (a shadow map) must be bound already.
+    /// the given view and projection sees it: the two halves below, one after the other.
+    /// The grass casts no shadow. The target (a shadow map) must be bound already.
     void drawShadowCasters(const scene::LightSpace& lightSpace) const;
+
+    /// The casters that stand where the world has put them until the world is built
+    /// again: the terrain, the walls no lever lowers, the pillars, the post of the stile
+    /// and the stone sheep (MazeParts::Fixed). Nothing here reads the round or a clock,
+    /// which is what lets the moon keep them in the still layer of its map. What they
+    /// do depend on is in game::StaticShadowKey.
+    void drawFixedShadowCasters(const scene::LightSpace& lightSpace) const;
+
+    /// Every other caster, as it is in this frame: the walls of the levers (as far as
+    /// they have sunk), the gate (as far as it has sunk) with its gatehouse and the
+    /// swinging bell, the crystals and the flasks where they float, the shade, the
+    /// levers and the notes. A caster belongs here as soon as anything of a round can
+    /// move it or take it away, also when it stands still most of the time.
+    void drawMovingShadowCasters(const scene::LightSpace& lightSpace) const;
 
     /// Sets the uniforms of both shadow maps (the moon and the flashlight) in the
     /// program shader, which must be in use and must include common/shadows.glsl:
@@ -1188,6 +1206,12 @@ private:
     ShadowSettings m_moonShadow;
     scene::LightSpace m_moonLightSpace;
     bool m_moonShadowDrawn = false;
+
+    // Which ground the graphics card holds: counted up by uploadGround, so by every new
+    // maze and every new terrain. The still layer of the shadow map of the moon is
+    // drawn again when this number is not the one it was drawn with
+    // (StaticShadowKey::groundVersion).
+    std::uint32_t m_groundVersion = 0;
 
     // Whether the map was drawn in the last frame (mapOnScreen). Set in onRender.
     bool m_mapOnScreen = false;

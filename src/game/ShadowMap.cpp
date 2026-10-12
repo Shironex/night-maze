@@ -29,21 +29,30 @@ constexpr int PREVIEW_SIZE = 256;
 constexpr GLint FIRST_VERTEX = 0;
 constexpr GLsizei TRIANGLE_VERTEX_COUNT = 3;
 
+// A square framebuffer of size by size texels without a colour texture: a shadow pass
+// only has to record depths.
+gfx::Framebuffer depthOnlyFramebuffer(int size) {
+    return gfx::Framebuffer({.width = size,
+                             .height = size,
+                             .color = gfx::ColorFormat::None,
+                             .depth = gfx::DepthFormat::Depth24});
+}
+
 } // namespace
 
-bool ShadowMap::beginDepthPass(int size) {
+bool ShadowMap::prepareTarget(int size) {
     // A new size: the first frame, or another resolution was chosen.
     if (size != m_requestedSize) {
         m_requestedSize = size;
-        // No colour texture: the pass only has to record depths. A new object instead
-        // of resize(): it also covers the first frame and a framebuffer that could not
-        // be created at the size before.
-        m_target = gfx::Framebuffer({.width = size,
-                                     .height = size,
-                                     .color = gfx::ColorFormat::None,
-                                     .depth = gfx::DepthFormat::Depth24});
+        // A new object instead of resize(): it also covers the first frame and
+        // a framebuffer that could not be created at the size before.
+        m_target = depthOnlyFramebuffer(size);
     }
-    if (!m_target.isValid()) {
+    return m_target.isValid();
+}
+
+bool ShadowMap::beginDepthPass(int size) {
+    if (!prepareTarget(size)) {
         return false;
     }
 
@@ -55,6 +64,40 @@ bool ShadowMap::beginDepthPass(int size) {
     // the test switched off.
     GL_CHECK(glEnable(GL_DEPTH_TEST));
     GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
+    return true;
+}
+
+bool ShadowMap::beginStaticPass(const StaticShadowKey& key) {
+    // From here until the end of this function the layer holds nothing that could be
+    // copied: it is about to be cleared, or it cannot be created.
+    m_staticKey.reset();
+    if (key.mapSize != m_requestedStaticSize) {
+        m_requestedStaticSize = key.mapSize;
+        m_static = depthOnlyFramebuffer(key.mapSize);
+    }
+    if (!m_static.isValid()) {
+        return false;
+    }
+
+    // The same state as beginDepthPass sets, with the layer as the target.
+    m_static.bind();
+    GL_CHECK(glEnable(GL_DEPTH_TEST));
+    GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
+    m_staticKey = key;
+    return true;
+}
+
+bool ShadowMap::beginDepthPassOverStatic() {
+    if (!m_staticKey.has_value() || !prepareTarget(m_static.width())) {
+        return false;
+    }
+
+    // The copy replaces the clear: every texel of the map gets the depth the layer has
+    // there, which is 1 where no still caster stands. It leaves the map bound with its
+    // viewport, as bind() does.
+    m_static.copyDepthTo(m_target);
+    // What is drawn now is tested against the copied depths (see beginDepthPass).
+    GL_CHECK(glEnable(GL_DEPTH_TEST));
     return true;
 }
 

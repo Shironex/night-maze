@@ -101,14 +101,36 @@ void NightMazeApp::drawMoonShadowMap() {
     if (!m_moonShadow.enabled || !m_shadowDepthShader.isValid()) {
         return;
     }
-    // What the graphics card does from here to end() is the measured pass: the clear
-    // of the map and the draw calls into it, without the preview below.
+
+    // Everything the casters that never move are drawn from. Because the camera is not
+    // part of the box of the moon, this key stays the same from frame to frame until
+    // one of its fields changes: the Lights panel moves the moon, another resolution is
+    // chosen, a maze or a terrain is built, the wall variants are switched, or the
+    // depth program is reloaded. Nothing has to tell this pass about any of them.
+    const StaticShadowKey key{.lightView = m_moonLightSpace.view,
+                              .lightProjection = m_moonLightSpace.projection,
+                              .mapSize = shadowMapSize(m_moonShadow.resolution),
+                              .groundVersion = m_groundVersion,
+                              .wallVariants = m_mazeSettings.wallVariants,
+                              .depthProgramLoads = m_shadowDepthShader.loadCount()};
+
+    // What the graphics card does from here to end() is the measured pass: the copy
+    // into the map and the draw calls into it, without the preview below. In a frame
+    // that draws the still layer again, that is in it too.
     m_gpuPasses.begin(GpuPass::MoonShadow);
-    if (!m_moonShadowMap.beginDepthPass(shadowMapSize(m_moonShadow.resolution))) {
+    if (!m_moonShadowMap.staticLayerHolds(key)) {
+        if (!m_moonShadowMap.beginStaticPass(key)) {
+            m_gpuPasses.end();
+            return;
+        }
+        drawFixedShadowCasters(m_moonLightSpace);
+    }
+    // The map of this frame: the still layer, and on top of it what can move.
+    if (!m_moonShadowMap.beginDepthPassOverStatic()) {
         m_gpuPasses.end();
         return;
     }
-    drawShadowCasters(m_moonLightSpace);
+    drawMovingShadowCasters(m_moonLightSpace);
     m_gpuPasses.end();
     m_moonShadowDrawn = true;
 
@@ -173,11 +195,17 @@ void NightMazeApp::setShadowUniformsOf(const gfx::Shader& shader) const {
 }
 
 void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const {
+    // The flashlight draws both halves in every frame: its pyramid moves with the hand,
+    // so nothing stands still in its map. The moon calls the halves apart
+    // (drawMoonShadowMap).
+    drawFixedShadowCasters(lightSpace);
+    drawMovingShadowCasters(lightSpace);
+}
+
+void NightMazeApp::drawFixedShadowCasters(const scene::LightSpace& lightSpace) const {
     // The classes that draw the scene are used as they are, with another program and
     // the matrices of the light in place of the ones of the camera. So everything
-    // stands in the shadow map exactly where it stands in the picture: the gate and
-    // the walls of pulled levers as far as they have sunk, every crystal where it
-    // floats at this moment. The depth program
+    // stands in the shadow map exactly where it stands in the picture. The depth program
     // has no samplers, no tint and no glow: those uniforms are set all the same and
     // ignored, as every uniform a program does not have.
     m_shadowDepthShader.use();
@@ -188,8 +216,30 @@ void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const 
     // at the ground, and a ground of lines would cast a shadow of lines.
     constexpr bool NO_WIREFRAME = false;
     m_terrainRenderer.draw(m_shadowDepthShader, NO_WIREFRAME);
+    // The walls no lever lowers, from the matrices of the world and not from the ones
+    // of the round: the two lists are the same for these walls (game::leverWallFlags),
+    // and read from the world this function depends on no round.
+    m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_mazeWorld.wallMatrices,
+                        m_mazeSettings.wallVariants, MazeParts::Fixed);
+}
+
+void NightMazeApp::drawMovingShadowCasters(const scene::LightSpace& lightSpace) const {
+    // The program and the matrices again: the moon draws this half without the other
+    // one in most frames. Here the casters stand as the round has them at this moment:
+    // the gate and the walls of pulled levers as far as they have sunk, every crystal
+    // where it floats.
+    m_shadowDepthShader.use();
+    m_shadowDepthShader.setMat4(VIEW_UNIFORM, lightSpace.view);
+    m_shadowDepthShader.setMat4(PROJECTION_UNIFORM, lightSpace.projection);
+
+    // The walls of the levers, in every frame of the round and not only while one
+    // sinks: there are at most MAX_LEVER_COUNT of them, and a wall that is always drawn
+    // needs no moment at which the still layer has to learn that it started to move or
+    // came to rest.
     m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_wallMatrices,
-                        m_mazeSettings.wallVariants);
+                        m_mazeSettings.wallVariants, MazeParts::LeverWalls);
+    // The gatehouse, the milestone and the lanterns never move, but they are drawn by
+    // the same call as the door and the bell, which do: they stay on this side.
     m_gameplayRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, crystalEmissive(),
                             m_gateLampGlow, m_bellSwing.degrees);
     m_gameplayRenderer.drawFlasks(m_shadowDepthShader, m_mazeWorld, m_round);
