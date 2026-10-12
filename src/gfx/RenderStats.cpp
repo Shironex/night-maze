@@ -24,7 +24,9 @@ RenderCounters countersSince(const RenderCounters& now, const RenderCounters& st
     return {.drawCalls = now.drawCalls - start.drawCalls,
             .triangles = now.triangles - start.triangles,
             .uniformLookups = now.uniformLookups - start.uniformLookups,
-            .textureBinds = now.textureBinds - start.textureBinds};
+            .textureBinds = now.textureBinds - start.textureBinds,
+            .cullTested = now.cullTested - start.cullTested,
+            .cullDrawn = now.cullDrawn - start.cullDrawn};
 }
 
 const RenderCounters& renderCounters() {
@@ -46,6 +48,13 @@ void countUniformLookup() {
 
 void countTextureBind() {
     counters.textureBinds += 1;
+}
+
+void countCullTest(bool drawn) {
+    counters.cullTested += 1;
+    if (drawn) {
+        counters.cullDrawn += 1;
+    }
 }
 
 } // namespace gfx

@@ -27,6 +27,8 @@ void GpuPassTimers::beginFrame(bool publish) {
         // Until begin() and end() say otherwise, the pass has not run in this frame.
         slot.reading.ran = false;
         slot.reading.drawCalls = 0;
+        slot.reading.cullTested = 0;
+        slot.reading.cullDrawn = 0;
     }
 }
 
@@ -50,6 +52,8 @@ void GpuPassTimers::end() {
     const gfx::RenderCounters counted =
         gfx::countersSince(gfx::renderCounters(), m_countersAtBegin);
     slot.reading.drawCalls = counted.drawCalls;
+    slot.reading.cullTested = counted.cullTested;
+    slot.reading.cullDrawn = counted.cullDrawn;
     slot.reading.ran = counted.drawCalls > 0;
 
     // end() is true only when begin() really started the query in this frame, so only

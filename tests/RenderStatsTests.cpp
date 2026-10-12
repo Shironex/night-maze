@@ -62,3 +62,23 @@ TEST_CASE("countersSince is what was counted between two readings") {
     CHECK(pass.uniformLookups == 2);
     CHECK(pass.textureBinds == 1);
 }
+
+TEST_CASE("a tested object counts once, and once more when it was drawn") {
+    gfx::resetRenderCounters();
+    gfx::countCullTest(true);
+    const gfx::RenderCounters start = gfx::renderCounters();
+    gfx::countCullTest(true);
+    gfx::countCullTest(false);
+    gfx::countCullTest(false);
+
+    const gfx::RenderCounters& counters = gfx::renderCounters();
+    CHECK(counters.cullTested == 4);
+    CHECK(counters.cullDrawn == 2);
+    const gfx::RenderCounters pass = gfx::countersSince(counters, start);
+    CHECK(pass.cullTested == 3);
+    CHECK(pass.cullDrawn == 1);
+
+    gfx::resetRenderCounters();
+    CHECK(gfx::renderCounters().cullTested == 0);
+    CHECK(gfx::renderCounters().cullDrawn == 0);
+}

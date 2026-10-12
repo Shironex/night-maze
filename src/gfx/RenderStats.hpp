@@ -26,6 +26,12 @@ struct RenderCounters {
     /// Textures bound to a texture unit for a shader to read: the bind functions of
     /// Texture2D, Cubemap, FrameTexture and Framebuffer.
     std::uint32_t textureBinds = 0;
+    /// Objects whose box was tested against the frustum of a pass (view frustum
+    /// culling, scene::canBeSeen), and how many of them passed the test and were drawn.
+    /// The difference is what the card was never asked to draw. Both stay 0 in a pass
+    /// that does not cull, and in every pass while the culling is switched off.
+    std::uint32_t cullTested = 0;
+    std::uint32_t cullDrawn = 0;
 };
 
 /// How many triangles a draw call of count vertices (or indices) hands to the card.
@@ -57,5 +63,9 @@ void countUniformLookup();
 
 /// Counts one texture bound for reading.
 void countTextureBind();
+
+/// Counts one object that was tested against the frustum of a pass. drawn says whether
+/// it passed the test.
+void countCullTest(bool drawn);
 
 } // namespace gfx

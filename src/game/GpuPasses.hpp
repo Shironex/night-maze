@@ -45,6 +45,11 @@ struct GpuPassReading {
     bool ran = false;
     /// How many draw calls it made in the last frame.
     std::uint32_t drawCalls = 0;
+    /// How many objects it tested against its frustum in the last frame, and how many
+    /// of them it drew (gfx::RenderCounters::cullTested and cullDrawn). Both are 0 for
+    /// a pass that does not cull and while the culling is switched off.
+    std::uint32_t cullTested = 0;
+    std::uint32_t cullDrawn = 0;
     /// The time the card worked on it, in milliseconds, averaged over the interval of
     /// the FPS display. Without a value in the first moments of a pass, and on a card
     /// that never answers.
@@ -61,8 +66,8 @@ struct GpuPassReading {
 ///
 /// A time is the answer of the card to the query of an earlier frame, read when it has
 /// arrived (gfx::TimerQuery::takeResult), so measuring never makes the program wait.
-/// The draw calls of a pass are counted with gfx::renderCounters: the difference between
-/// its start and its end.
+/// The draw calls of a pass and the objects it tested against its frustum are counted
+/// with gfx::renderCounters: the difference between its start and its end.
 ///
 /// How finely the card can tell two ranges apart is up to the card. An Apple GPU does
 /// the work of a framebuffer in one go when the framebuffer is left, and its driver
