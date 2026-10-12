@@ -46,6 +46,174 @@ void applyShadeSway(scene::Transform& transform, const ShadePose& pose) {
 } // namespace
 
 void NightMazeApp::onRender(double alpha) {
+    // What the menus, the intro and the cards do in this frame, and the pause of a round
+    // whose window is no longer the active one. All of it comes first, because it can
+    // change the screen the rest of this function draws.
+    updateScreens();
+    updateFocus();
+    buildRequestedMaze();
+
+    // The menu camera: its key, and what has to happen when it was just switched on.
+    updateMenuCameraSwitch();
+    const FrameScreen screen = frameScreen();
+
+    // What the debug UI and the keys of the round asked for: all of it is done here,
+    // between two fixed steps and never inside one.
+    handleRoundRequests(screen.roundInput);
+    readRoundKeys(screen.roundInput);
+
+    // The map: on the screen while its key is held (mapShown). Asked once here for the
+    // whole frame. While it is shown the mouse does not turn the camera and nothing can
+    // be used: looking at the map is a stop, and the round goes on behind it.
+    const bool map = mapShown() && m_catchSeconds < 0.0F;
+    m_mapOnScreen = map;
+
+    // Mouse look. It runs here, once per frame, and not in onUpdate: a mouse delta
+    // describes one frame, and onUpdate runs zero or more times per frame. It comes
+    // before the view matrix is built, so the picture and the picking ray of this frame
+    // already use the new angles. The click that captures a free cursor is read further
+    // down (handleInteraction), because it first has to be known what the click hit.
+    const bool cursorCaptured = input().isCursorCaptured();
+    if (cursorCaptured && screen.roundInput && !map) {
+        // Mouse movement to the right is positive and positive yaw turns right, so x is
+        // used as it is. Screen y grows downwards while pitch grows upwards, hence the
+        // minus sign: moving the mouse up (negative y) looks up.
+        const float yawDelta = static_cast<float>(input().mouseDeltaX()) * m_mouseSensitivity;
+        const float pitchDelta = -static_cast<float>(input().mouseDeltaY()) * m_mouseSensitivity;
+        m_camera.rotate(yawDelta, pitchDelta);
+    }
+
+    // Everything is measured in pixels of the framebuffer of the window, which differs
+    // from the window size on Retina displays. Querying it every frame also handles
+    // window resizing.
+    const core::Size framebuffer = window().framebufferSize();
+
+    // A minimized window can have a framebuffer of size 0 x 0. There is nothing to draw
+    // then, and nothing to draw into: a texture of size 0 cannot be attached to
+    // a framebuffer. The aspect ratio would be 0 / 0, which is NaN (not a number):
+    // glm::perspective stops the program with an assert in a Debug build and returns
+    // a matrix with NaN in it in a Release build. So the whole frame is skipped. The
+    // scene framebuffer keeps its last size and is used again when the window is back.
+    if (framebuffer.width == 0 || framebuffer.height == 0) {
+        return;
+    }
+
+    // The main menu with its video or its still picture is a frame of its own.
+    if (drawMenuBackgroundFrame(framebuffer)) {
+        return;
+    }
+
+    // Where this frame is seen from: the eye, the camera and the two matrices.
+    const FrameView frame = frameView(alpha, screen, framebuffer);
+
+    // Object picking: one ray per frame, what it hits, and then the key or the click
+    // that uses it. This runs once per frame like the other keys. A lever that is
+    // pulled here changes the round between two fixed steps, never inside one.
+    // Under a menu and in the picture of the menu camera nothing is picked and nothing
+    // is used: no lever is highlighted, and a click or the key does not reach the round.
+    // The same while the map is shown: it covers the middle of the picture, so there is
+    // no crosshair, no prompt, and the interaction key does nothing.
+    if (!screen.roundInput || map) {
+        m_pick = pickNothing(m_round);
+    } else {
+        m_pick = pickForFrame(frame.view, frame.projection, frame.eye, cursorCaptured);
+        handleInteraction(cursorCaptured);
+    }
+    // The debug view draws this copy, which stands still while "freeze" is set.
+    if (!m_pickDebug.freezeRay) {
+        m_shownPick = m_pick;
+    }
+
+    // Where the walls stand in this frame: a wall that a lever has opened is on its way
+    // into the ground. One list for the shadow passes and for the scene pass.
+    m_wallMatrices = roundWallMatrices(m_mazeWorld, m_round);
+
+    // The shade, the lighting and the lamp of the gate as this frame shows them.
+    placeShade(alpha, screen, frame);
+    const LightingSettings frameLighting = frameLightingFor(screen);
+    const GateLampFrame lamp = gateLampForFrame(screen);
+
+    // Where the flashlight is and where it points in this frame: in the hand, a little
+    // to the right of the eye and below it, aimed at a point in front of the eye. It is
+    // computed here, after the mouse has turned the camera and from the same eye the
+    // view matrix uses below. From m_camera.position (the last fixed step) the cone
+    // would trail behind the picture while the player moves. It is computed ONCE: the
+    // shadow pass of the flashlight and the lights of the frame both get this result,
+    // so the shadows always belong to the light that is drawn.
+    // During the reveal of the village the lamp stays where the player stands, aimed as
+    // it was: the camera has left the hand that holds it.
+    const FlashlightPose flashlight =
+        frame.reveal
+            ? flashlightPose(frameLighting, frame.playerEye, m_camera.forward(), m_camera.right())
+            : flashlightPose(frameLighting, frame.eye, frame.camera.forward(),
+                             frame.camera.right());
+
+    // The shadow passes come first: the scene as the moon sees it and then as the
+    // flashlight sees it, depths only, each into its own shadow map. The lit programs
+    // of the scene pass read those maps, so they have to be complete before they draw.
+    // Each pass binds a framebuffer and a viewport of its own (the size of its map),
+    // and beginScene below binds the scene framebuffer with its viewport again.
+    drawMoonShadowMap();
+    drawFlashlightShadowMap(frameLighting, flashlight);
+
+    // The HDR framebuffer of the scene, cleared, and the lights of the frame.
+    if (!beginScenePass(framebuffer)) {
+        return;
+    }
+    uploadLights(frameLighting, flashlight, lamp, frame.eye);
+
+    drawMaze(frame.view, frame.projection);
+    drawGrass(frame.view, frame.projection);
+    // The reflection pass: the crystals and the puddles, which show the sky. The
+    // crystals are opaque and write depth like the walls. The puddles are blended over
+    // the ground that is already drawn and write no depth (game::PuddleRenderer), so
+    // they need the ground first. The sky comes after both: the ground under a puddle
+    // has written its depth, so the sky does not show through.
+    drawReflections(frame.view, frame.projection);
+    if (m_drawColliders) {
+        drawColliderLines(frame.view, frame.projection);
+    }
+    if (m_pickDebug.drawShapes) {
+        drawPickLines(frame.view, frame.projection);
+    }
+
+    // The village on the ridge, before the sky and after everything of the maze.
+    drawVillageForFrame(screen, frame);
+
+    // The sky comes LAST, after everything that writes depth. It is drawn at the largest
+    // depth and passes the depth test only where nothing else was drawn. With the walls
+    // and hills already in the depth buffer, the graphics card can reject the hidden sky
+    // fragments before it runs skybox.frag for them (the early depth test, which it may
+    // use here because the shader neither discards nor writes depth). Drawn first, the
+    // whole screen would be shaded and then mostly painted over. The sky does not depend
+    // on the lighting mode: it is not lit, it is the same picture in all four. The debug
+    // views change it, see Skybox::draw. The picture would be the same with the sky
+    // drawn earlier (the depth test sorts opaque things out). Only something that does
+    // not write depth, like a transparent effect, would have to come after the sky.
+    if (m_skyboxSettings.enabled) {
+        m_skybox.draw(m_skyboxShader, frame.view, frame.projection, m_skyboxSettings, m_viewMode);
+    }
+
+    // The scene is complete. The passes that read it bring it to the window.
+    finishPicture(framebuffer, frame);
+
+    // The map comes after the composite pass, on top of the finished picture: it is
+    // a schematic, and the fog, the bloom and the tone mapping must not touch it. It is
+    // shown in the two debug views too, like the HUD. feet is the blended position the
+    // scene was drawn from. Only while the key is held in a round (game::showsMap): the
+    // pause menu, the result screen and the menu camera have no map.
+    if (map) {
+        drawMinimap(framebuffer, frame.feet);
+    }
+
+    // The menu comes last in this function, on top of the finished frame. The debug UI
+    // is drawn after this function returns (main.cpp), so its panels stay usable on top
+    // of a menu. While a round is played no document is shown and this call does
+    // nothing.
+    m_ui.draw(framebuffer);
+}
+
+void NightMazeApp::updateScreens() {
     // The menu buttons that were clicked since the last frame, and the controls of the
     // settings screen that were moved. The clicks arrived while the events of this
     // frame were read, so the screen they lead to is drawn in this very frame.
@@ -74,7 +242,9 @@ void NightMazeApp::onRender(double alpha) {
     } else if (m_mode == GameMode::VillageBeat) {
         updateVillageBeat();
     }
+}
 
+void NightMazeApp::updateFocus() {
     // A player who switches to another program does not want the round to go on: the
     // frame in which the window stops being the active one pauses it (game::nextMode,
     // FocusLost). Asked once per frame and compared with the frame before, so it
@@ -90,7 +260,9 @@ void NightMazeApp::onRender(double alpha) {
     m_windowWasFocused = windowFocused;
     // The wind of the maze: on or off for the screen the game is on now.
     updateAmbience(windowFocused);
+}
 
+void NightMazeApp::buildRequestedMaze() {
     // A new maze asked for by the debug UI is built here, at the start of a frame and
     // outside of the fixed steps, so no step ever sees a half replaced maze. When that
     // happens on the result screen, the screen is left: its numbers belong to the
@@ -102,9 +274,9 @@ void NightMazeApp::onRender(double alpha) {
             handleGameEvent(GameEvent::Restart);
         }
     }
+}
 
-    // The menu camera: its key, and what has to happen when it was just switched on.
-    updateMenuCameraSwitch();
+NightMazeApp::FrameScreen NightMazeApp::frameScreen() const {
     // Two questions the rest of the frame asks. roundInput: do the keys and the mouse
     // of the round work? Only while a round is played and the menu camera is off, so
     // under a menu no key of the round does anything. menuCamera: is the picture taken
@@ -127,7 +299,15 @@ void NightMazeApp::onRender(double alpha) {
     if (intro) {
         menuCameraSettings = introShot.settings;
     }
+    return {.roundInput = roundInput,
+            .intro = intro,
+            .menuCamera = menuCamera,
+            .menuCameraSettings = menuCameraSettings,
+            .introMoment = introMoment,
+            .introShot = introShot};
+}
 
+void NightMazeApp::handleRoundRequests(bool roundInput) {
     // A new round on the same maze, asked for with the restart key or by the debug UI.
     // It is started here for the same reason: between two fixed steps, never inside one.
     // wasKeyPressed is true for one frame, so the key is read once per frame.
@@ -175,7 +355,9 @@ void NightMazeApp::onRender(double alpha) {
         m_environment.replacePuddles = false;
         layPuddles();
     }
+}
 
+void NightMazeApp::readRoundKeys(bool roundInput) {
     // The noclip key. wasKeyPressed is true for one frame, so it is read here, once per
     // frame, and not in onUpdate, which runs zero or more times per frame.
     if (roundInput && input().wasKeyPressed(NOCLIP_KEY)) {
@@ -193,43 +375,9 @@ void NightMazeApp::onRender(double alpha) {
         playCue(flashlightKeyCue(m_round.battery, m_lighting.flashlightOn));
         m_lighting.flashlightOn = !m_lighting.flashlightOn;
     }
+}
 
-    // The map: on the screen while its key is held (mapShown). Asked once here for the
-    // whole frame. While it is shown the mouse does not turn the camera and nothing can
-    // be used: looking at the map is a stop, and the round goes on behind it.
-    const bool map = mapShown() && m_catchSeconds < 0.0F;
-    m_mapOnScreen = map;
-
-    // Mouse look. It runs here, once per frame, and not in onUpdate: a mouse delta
-    // describes one frame, and onUpdate runs zero or more times per frame. It comes
-    // before the view matrix is built, so the picture and the picking ray of this frame
-    // already use the new angles. The click that captures a free cursor is read further
-    // down (handleInteraction), because it first has to be known what the click hit.
-    const bool cursorCaptured = input().isCursorCaptured();
-    if (cursorCaptured && roundInput && !map) {
-        // Mouse movement to the right is positive and positive yaw turns right, so x is
-        // used as it is. Screen y grows downwards while pitch grows upwards, hence the
-        // minus sign: moving the mouse up (negative y) looks up.
-        const float yawDelta = static_cast<float>(input().mouseDeltaX()) * m_mouseSensitivity;
-        const float pitchDelta = -static_cast<float>(input().mouseDeltaY()) * m_mouseSensitivity;
-        m_camera.rotate(yawDelta, pitchDelta);
-    }
-
-    // Everything is measured in pixels of the framebuffer of the window, which differs
-    // from the window size on Retina displays. Querying it every frame also handles
-    // window resizing.
-    const core::Size framebuffer = window().framebufferSize();
-
-    // A minimized window can have a framebuffer of size 0 x 0. There is nothing to draw
-    // then, and nothing to draw into: a texture of size 0 cannot be attached to
-    // a framebuffer. The aspect ratio would be 0 / 0, which is NaN (not a number):
-    // glm::perspective stops the program with an assert in a Debug build and returns
-    // a matrix with NaN in it in a Release build. So the whole frame is skipped. The
-    // scene framebuffer keeps its last size and is used again when the window is back.
-    if (framebuffer.width == 0 || framebuffer.height == 0) {
-        return;
-    }
-
+bool NightMazeApp::drawMenuBackgroundFrame(core::Size framebuffer) {
     // The main menu (and the settings opened from it) with its video or its still
     // picture: that background covers the whole window, so nothing of the scene could
     // be seen and none of it is drawn (game::drawsScene). The frame is the picture and
@@ -241,16 +389,20 @@ void NightMazeApp::onRender(double alpha) {
     if (usesMenuCamera(m_mode)) {
         m_menuBackground.update(time().deltaSeconds());
     }
-    if (!drawsScene(m_mode, coversWindow(m_menuBackground.background()))) {
-        // Nothing is picked under a menu, as in the frames that draw the scene.
-        m_pick = pickNothing(m_round);
-        // The picture goes straight into the window, like the composite pass does.
-        gfx::Framebuffer::bindDefault(framebuffer.width, framebuffer.height);
-        m_menuBackground.draw(framebuffer);
-        m_ui.draw(framebuffer);
-        return;
+    if (drawsScene(m_mode, coversWindow(m_menuBackground.background()))) {
+        return false;
     }
+    // Nothing is picked under a menu, as in the frames that draw the scene.
+    m_pick = pickNothing(m_round);
+    // The picture goes straight into the window, like the composite pass does.
+    gfx::Framebuffer::bindDefault(framebuffer.width, framebuffer.height);
+    m_menuBackground.draw(framebuffer);
+    m_ui.draw(framebuffer);
+    return true;
+}
 
+NightMazeApp::FrameView NightMazeApp::frameView(double alpha, const FrameScreen& screen,
+                                                core::Size framebuffer) {
     // The simulation moves the player in fixed steps, and this frame is drawn at some
     // moment between two of them: alpha (0 to 1) tells how far. Drawing from a point
     // between the position before the last step and the position after it keeps the
@@ -268,29 +420,29 @@ void NightMazeApp::onRender(double alpha) {
     // player are still there when the menu camera is switched off, and the field of
     // view and the two planes are the same in both.
     scene::Camera frameCamera = m_camera;
-    if (intro) {
+    if (screen.intro) {
         // The moment of the shot comes from the script and not from the clock of the
         // menu camera, which stands still meanwhile. The field of view is the default
         // one, not the one of the settings: the shots were picked with it.
-        const MenuCameraPose pose = menuCameraPose(m_menuCameraPath, m_mazeWorld,
-                                                   menuCameraSettings, introShot.menuSeconds);
+        const MenuCameraPose pose = menuCameraPose(
+            m_menuCameraPath, m_mazeWorld, screen.menuCameraSettings, screen.introShot.menuSeconds);
         eye = pose.eye;
         frameCamera.yawDegrees = pose.yawDegrees;
         frameCamera.pitchDegrees = pose.pitchDegrees;
         frameCamera.fovDegrees = DEFAULT_FIELD_OF_VIEW_DEGREES;
-    } else if (menuCamera) {
+    } else if (screen.menuCamera) {
         // The clock of the menu camera follows the real time of the frames, not the
         // fixed steps: the pose is a function of time, so it can be asked for the exact
         // moment of every frame and needs no blending. It is kept inside one loop of
         // the shot, so the number stays small however long the menu is open.
         m_menuCameraSeconds += time().deltaSeconds();
         const double loopSeconds =
-            game::menuCameraLoopSeconds(m_menuCameraPath, m_mazeWorld, menuCameraSettings);
+            game::menuCameraLoopSeconds(m_menuCameraPath, m_mazeWorld, screen.menuCameraSettings);
         if (loopSeconds > 0.0) {
             m_menuCameraSeconds = std::fmod(m_menuCameraSeconds, loopSeconds);
         }
         const MenuCameraPose pose =
-            menuCameraPose(m_menuCameraPath, m_mazeWorld, menuCameraSettings,
+            menuCameraPose(m_menuCameraPath, m_mazeWorld, screen.menuCameraSettings,
                            static_cast<float>(m_menuCameraSeconds));
         eye = pose.eye;
         frameCamera.yawDegrees = pose.yawDegrees;
@@ -301,7 +453,7 @@ void NightMazeApp::onRender(double alpha) {
     // a longer lens. Like the menu camera it changes the copy only. The eyes of the
     // player are kept: the flashlight stays in the hand down in the cell.
     const glm::vec3 playerEye = eye;
-    const bool reveal = villageRevealShown() && !menuCamera;
+    const bool reveal = villageRevealShown() && !screen.menuCamera;
     if (reveal) {
         m_revealSeconds += time().deltaSeconds();
         // Beside the card of the result, or in the middle of a picture without one.
@@ -326,29 +478,16 @@ void NightMazeApp::onRender(double alpha) {
     // through the picture exactly as it will be drawn.
     const glm::mat4 view = frameCamera.viewMatrix(eye);
     const glm::mat4 projection = frameCamera.projectionMatrix(aspectRatio);
+    return {.feet = feet,
+            .eye = eye,
+            .playerEye = playerEye,
+            .camera = frameCamera,
+            .reveal = reveal,
+            .view = view,
+            .projection = projection};
+}
 
-    // Object picking: one ray per frame, what it hits, and then the key or the click
-    // that uses it. This runs once per frame like the other keys. A lever that is
-    // pulled here changes the round between two fixed steps, never inside one.
-    // Under a menu and in the picture of the menu camera nothing is picked and nothing
-    // is used: no lever is highlighted, and a click or the key does not reach the round.
-    // The same while the map is shown: it covers the middle of the picture, so there is
-    // no crosshair, no prompt, and the interaction key does nothing.
-    if (!roundInput || map) {
-        m_pick = pickNothing(m_round);
-    } else {
-        m_pick = pickForFrame(view, projection, eye, cursorCaptured);
-        handleInteraction(cursorCaptured);
-    }
-    // The debug view draws this copy, which stands still while "freeze" is set.
-    if (!m_pickDebug.freezeRay) {
-        m_shownPick = m_pick;
-    }
-
-    // Where the walls stand in this frame: a wall that a lever has opened is on its way
-    // into the ground. One list for the shadow passes and for the scene pass.
-    m_wallMatrices = roundWallMatrices(m_mazeWorld, m_round);
-
+void NightMazeApp::placeShade(double alpha, const FrameScreen& screen, const FrameView& frame) {
     // The shade of this frame: between its place before the last fixed step and after
     // it, like the player, and turned towards the place the frame is drawn from. It is
     // part of the picture only while a round is played and the player is the one who
@@ -359,7 +498,7 @@ void NightMazeApp::onRender(double alpha) {
         shade.position = glm::mix(m_round.shade.previousPosition, m_round.shade.position,
                                   static_cast<float>(alpha));
         // It looks at the player it knows of, and otherwise the way it walks.
-        shade.rotationDegrees = {0.0F, shadeFacingDegrees(m_round.shade, feet), 0.0F};
+        shade.rotationDegrees = {0.0F, shadeFacingDegrees(m_round.shade, frame.feet), 0.0F};
         // Right after a banish the figure is still drawn where it was burned away, and
         // sinks into the ground there: its height is scaled, which needs no shader. The
         // shade of the rules is already in its new cell.
@@ -390,13 +529,13 @@ void NightMazeApp::onRender(double alpha) {
     // towards the camera, and the flashlight of the camera is on it. It is a prop: the
     // shade of the round is not moved or asked, so nothing hums and nobody is caught.
     // A calm night has none (game::introShadeCell).
-    if (intro) {
+    if (screen.intro) {
         if (const std::optional<MazeCell> cell =
-                introShadeCell(introMoment.card, introTellsOfShade())) {
+                introShadeCell(screen.introMoment.card, introTellsOfShade())) {
             scene::Transform shade;
             shade.position = cellCenter(cell->x, cell->z);
             shade.position.y = m_mazeWorld.terrain.heightAt(shade.position.x, shade.position.z);
-            shade.rotationDegrees = {0.0F, shadeYawDegrees(shade.position, eye), 0.0F};
+            shade.rotationDegrees = {0.0F, shadeYawDegrees(shade.position, frame.eye), 0.0F};
             applyShadeSway(shade, shadeSwayPose(0.0F, 0.0F, static_cast<float>(m_introSeconds),
                                                 m_gameplay.shade.sway));
             m_shadeMatrix = shade.matrix();
@@ -405,34 +544,39 @@ void NightMazeApp::onRender(double alpha) {
             m_shadeDrawn = true;
         }
     }
+}
 
+LightingSettings NightMazeApp::frameLightingFor(const FrameScreen& screen) const {
     // The lighting of this frame. The round changes two things for this frame only:
     // a low battery dims the flashlight (an empty one switches it off) and the crystal
     // lights pulse. That happens in a copy, so the settings the debug UI shows stay as
     // they were set.
     LightingSettings frameLighting = lightingForFrame(m_lighting, m_round, m_gameplay);
-    if (menuCamera) {
+    if (screen.menuCamera) {
         // The flashlight of the menu camera is not the one of the round: it does not
         // depend on the switch or on the battery, and it never flickers. In the
         // corridors it is on, at the brightness of the settings: the cone of warm light
         // on the stone is the look of the game. High above the maze it is off: its
         // light does not reach the ground from there, and the moon and the crystals
         // are what that shot shows.
-        frameLighting.flashlightOn = menuCameraSettings.shot == MenuShot::CorridorWalk;
+        frameLighting.flashlightOn = screen.menuCameraSettings.shot == MenuShot::CorridorWalk;
         frameLighting.flashlightIntensity = m_lighting.flashlightIntensity;
         // The script of the intro names the light of every card itself.
-        if (intro) {
-            frameLighting.flashlightOn = introShot.flashlightOn;
+        if (screen.intro) {
+            frameLighting.flashlightOn = screen.introShot.flashlightOn;
         }
     }
+    return frameLighting;
+}
 
+NightMazeApp::GateLampFrame NightMazeApp::gateLampForFrame(const FrameScreen& screen) {
     // The lamp of the gate in this frame: how bright and in which colour, by the rule of
     // the round (game::gateLampStrength: a cold ember while the gate is closed, amber once
     // it is open). The menu camera and the live scene behind the main menu show it fully
     // lit, whatever the round says, so the glide over the maze has its one warm light.
     // The intro does not: it tells that the lamps of the village have gone out, so its
     // pictures keep the cold ember of a night that has not begun.
-    const bool lampShownLit = menuCamera && !intro;
+    const bool lampShownLit = screen.menuCamera && !screen.intro;
     const float lampProgress = lampShownLit ? 1.0F : m_round.gateProgress;
     const float lampStrength = lampShownLit
                                    ? 1.0F
@@ -442,28 +586,10 @@ void NightMazeApp::onRender(double alpha) {
     // crystals (crystalEmissive).
     m_gateLampGlow = gfx::srgbToLinear(gateLampColor(lampProgress)) *
                      (m_gameplay.gate.glowStrength * lampStrength);
+    return {.progress = lampProgress, .strength = lampStrength};
+}
 
-    // Where the flashlight is and where it points in this frame: in the hand, a little
-    // to the right of the eye and below it, aimed at a point in front of the eye. It is
-    // computed here, after the mouse has turned the camera and from the same eye the
-    // view matrix uses below. From m_camera.position (the last fixed step) the cone
-    // would trail behind the picture while the player moves. It is computed ONCE: the
-    // shadow pass of the flashlight and the lights of the frame both get this result,
-    // so the shadows always belong to the light that is drawn.
-    // During the reveal of the village the lamp stays where the player stands, aimed as
-    // it was: the camera has left the hand that holds it.
-    const FlashlightPose flashlight =
-        reveal ? flashlightPose(frameLighting, playerEye, m_camera.forward(), m_camera.right())
-               : flashlightPose(frameLighting, eye, frameCamera.forward(), frameCamera.right());
-
-    // The shadow passes come first: the scene as the moon sees it and then as the
-    // flashlight sees it, depths only, each into its own shadow map. The lit programs
-    // of the scene pass read those maps, so they have to be complete before they draw.
-    // Each pass binds a framebuffer and a viewport of its own (the size of its map),
-    // and beginScene below binds the scene framebuffer with its viewport again.
-    drawMoonShadowMap();
-    drawFlashlightShadowMap(frameLighting, flashlight);
-
+bool NightMazeApp::beginScenePass(core::Size framebuffer) {
     // From here on the draw calls do not land in the window. They land in the HDR
     // framebuffer of the scene, which is created again here when the size of the window
     // has changed. The viewport is set to its size by the same call. Without
@@ -473,7 +599,7 @@ void NightMazeApp::onRender(double alpha) {
     // there.
     if (!m_postProcess.beginScene(framebuffer)) {
         gfx::Framebuffer::bindDefault(framebuffer.width, framebuffer.height);
-        return;
+        return false;
     }
 
     // Depth test: a fragment is kept only if it is nearer to the camera than what is
@@ -492,7 +618,12 @@ void NightMazeApp::onRender(double alpha) {
         gfx::srgbToLinear(glm::vec3{m_clearColor[0], m_clearColor[1], m_clearColor[2]});
     GL_CHECK(glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0F));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+    return true;
+}
 
+void NightMazeApp::uploadLights(const LightingSettings& frameLighting,
+                                const FlashlightPose& flashlight, const GateLampFrame& lamp,
+                                const glm::vec3& eye) {
     // The lights of this frame, from the lighting and the flashlight pose computed
     // before the shadow passes. The point lights hang above the crystals that are still
     // there: the ones nearest to the eye of this frame, because a large maze has more
@@ -521,28 +652,15 @@ void NightMazeApp::onRender(double alpha) {
              .intensity = frameLighting.pointIntensity * HEARTSTONE_LIGHT_INTENSITY_FACTOR});
     }
     if (m_mazeWorld.hasGate) {
-        pointLights.push_back(gateLampLight(gateScenery(m_mazeWorld).lightPosition, lampStrength,
-                                            lampProgress, m_gameplay.gate));
+        pointLights.push_back(gateLampLight(gateScenery(m_mazeWorld).lightPosition, lamp.strength,
+                                            lamp.progress, m_gameplay.gate));
     }
     const std::vector<PointLightSpot> frameLights = nearestPointLightSpots(pointLights, eye);
     const scene::LightSet lights = buildLightSet(frameLighting, flashlight, frameLights);
     m_lightRig.upload(lights, eye);
+}
 
-    drawMaze(view, projection);
-    drawGrass(view, projection);
-    // The reflection pass: the crystals and the puddles, which show the sky. The
-    // crystals are opaque and write depth like the walls. The puddles are blended over
-    // the ground that is already drawn and write no depth (game::PuddleRenderer), so
-    // they need the ground first. The sky comes after both: the ground under a puddle
-    // has written its depth, so the sky does not show through.
-    drawReflections(view, projection);
-    if (m_drawColliders) {
-        drawColliderLines(view, projection);
-    }
-    if (m_pickDebug.drawShapes) {
-        drawPickLines(view, projection);
-    }
-
+void NightMazeApp::drawVillageForFrame(const FrameScreen& screen, const FrameView& frame) const {
     // The village on the ridge, before the sky and after everything of the maze: it lies
     // near the far plane, so the maze has already filled most of the pixels it would
     // cover. How many nights of it are lit is a rule of the campaign. The live scene
@@ -551,28 +669,16 @@ void NightMazeApp::onRender(double alpha) {
     const bool ownNight = m_playedNight != 0 && !usesMenuCamera(m_mode);
     const bool nightWon = m_mode == GameMode::RoundEnd || m_mode == GameMode::VillageBeat ||
                           m_mode == GameMode::EndingCard;
-    const int nightsLit = intro ? 0
-                                : villageNightsLit(ownNight ? m_playedNight : 0, nightWon,
-                                                   m_settings.campaignNight, m_toolRun);
+    const int nightsLit = screen.intro ? 0
+                                       : villageNightsLit(ownNight ? m_playedNight : 0, nightWon,
+                                                          m_settings.campaignNight, m_toolRun);
     // The lights of the night that was just won come on while the reveal looks at them.
     const float newestLight =
-        reveal ? villageNewLightStrength(static_cast<float>(m_revealSeconds)) : 1.0F;
-    drawVillage(view, projection, frameCamera.farPlane, nightsLit, newestLight);
+        frame.reveal ? villageNewLightStrength(static_cast<float>(m_revealSeconds)) : 1.0F;
+    drawVillage(frame.view, frame.projection, frame.camera.farPlane, nightsLit, newestLight);
+}
 
-    // The sky comes LAST, after everything that writes depth. It is drawn at the largest
-    // depth and passes the depth test only where nothing else was drawn. With the walls
-    // and hills already in the depth buffer, the graphics card can reject the hidden sky
-    // fragments before it runs skybox.frag for them (the early depth test, which it may
-    // use here because the shader neither discards nor writes depth). Drawn first, the
-    // whole screen would be shaded and then mostly painted over. The sky does not depend
-    // on the lighting mode: it is not lit, it is the same picture in all four. The debug
-    // views change it, see Skybox::draw. The picture would be the same with the sky
-    // drawn earlier (the depth test sorts opaque things out). Only something that does
-    // not write depth, like a transparent effect, would have to come after the sky.
-    if (m_skyboxSettings.enabled) {
-        m_skybox.draw(m_skyboxShader, view, projection, m_skyboxSettings, m_viewMode);
-    }
-
+void NightMazeApp::finishPicture(core::Size framebuffer, const FrameView& frame) {
     // The scene is complete: its colours and its depth are in the two textures of the
     // scene framebuffer. What follows reads those textures. Passes that are added
     // later (effects computed from the finished scene) belong here, before the
@@ -580,8 +686,8 @@ void NightMazeApp::onRender(double alpha) {
 
     // The pictures of the attachments, only while the debug UI shows them.
     if (m_postProcessSettings.previews) {
-        m_postProcess.drawPreviews(m_previewShader, m_postProcessSettings, frameCamera.nearPlane,
-                                   frameCamera.farPlane);
+        m_postProcess.drawPreviews(m_previewShader, m_postProcessSettings, frame.camera.nearPlane,
+                                   frame.camera.farPlane);
     }
 
     // The two debug views show data as colours (a normal, a texture coordinate), not
@@ -610,27 +716,13 @@ void NightMazeApp::onRender(double alpha) {
     // it needs the way back from the screen to the world: the inverse of the two
     // matrices the scene was drawn with, multiplied in the order a vertex shader applies
     // them (the view first, then the projection), and the eye they were built for.
-    const SceneView sceneView{.inverseViewProjection = glm::inverse(projection * view), .eye = eye};
+    const SceneView sceneView{.inverseViewProjection = glm::inverse(frame.projection * frame.view),
+                              .eye = frame.eye};
 
     // The last pass: back to the window, and the HDR picture goes into it with the fog,
     // the bloom, exposure, tone mapping, the vignette and the sRGB encoding. The debug
     // UI is drawn after this function returns (main.cpp), straight into the window.
     m_postProcess.composite(m_compositeShader, compositeSettings, framebuffer, sceneView);
-
-    // The map comes after the composite pass, on top of the finished picture: it is
-    // a schematic, and the fog, the bloom and the tone mapping must not touch it. It is
-    // shown in the two debug views too, like the HUD. feet is the blended position the
-    // scene was drawn from. Only while the key is held in a round (game::showsMap): the
-    // pause menu, the result screen and the menu camera have no map.
-    if (map) {
-        drawMinimap(framebuffer, feet);
-    }
-
-    // The menu comes last in this function, on top of the finished frame. The debug UI
-    // is drawn after this function returns (main.cpp), so its panels stay usable on top
-    // of a menu. While a round is played no document is shown and this call does
-    // nothing.
-    m_ui.draw(framebuffer);
 }
 
 PickState NightMazeApp::pickForFrame(const glm::mat4& view, const glm::mat4& projection,

@@ -851,6 +851,124 @@ private:
     /// mouse look and the picking and to draw the map.
     bool mapShown();
 
+    /// What onRender knows about the screen before it draws: asked once, after the menus
+    /// and the menu camera switch of the frame, and used by the rest of the frame.
+    struct FrameScreen {
+        /// The keys and the mouse of the round work: a round is played, the menu camera
+        /// is off and no catch is going on.
+        bool roundInput = false;
+        /// The game is on the screen of the intro.
+        bool intro = false;
+        /// The picture is taken by the menu camera: it is switched on, the live scene is
+        /// behind the main menu, or the intro plays.
+        bool menuCamera = false;
+        /// The settings the menu camera uses in this frame: the ones of the intro, the
+        /// high glide of the main menu, or what the recording tool is set to.
+        MenuCameraSettings menuCameraSettings;
+        /// Where the script of the intro is (game::introFrame) and its shot
+        /// (game::introCamera). Used only while intro is true.
+        IntroFrame introMoment;
+        IntroCamera introShot;
+    };
+
+    /// Where a frame is seen from: built once per frame (frameView) and given to the
+    /// parts that draw.
+    struct FrameView {
+        /// The feet of the player, blended between two fixed steps.
+        glm::vec3 feet{0.0F};
+        /// The place the picture is taken from: the eyes of the player, the menu camera
+        /// or the camera of the village reveal.
+        glm::vec3 eye{0.0F};
+        /// The eyes of the player (or of the menu camera) before the reveal moved the
+        /// camera away: the flashlight stays there.
+        glm::vec3 playerEye{0.0F};
+        /// The camera of the frame: a copy of m_camera with the angles and the lens of
+        /// whoever takes the picture.
+        scene::Camera camera;
+        /// The camera of the village reveal takes the picture.
+        bool reveal = false;
+        /// The two matrices everything of the frame is drawn with.
+        glm::mat4 view{1.0F};
+        glm::mat4 projection{1.0F};
+    };
+
+    /// The lamp of the gate in a frame: how far its colour has turned from the cold
+    /// ember to amber, and how bright it is (game::gateLampStrength).
+    struct GateLampFrame {
+        float progress = 0.0F;
+        float strength = 0.0F;
+    };
+
+    /// The parts of onRender, in the order it calls them.
+    ///
+    /// updateScreens: the buttons and controls of the menus, the request for the intro,
+    /// the frame of the intro and of the cards, and what the debug UI asked of the
+    /// campaign. Any of them may change the screen.
+    void updateScreens();
+
+    /// Pauses a round in the frame in which the window stops being the active one, and
+    /// switches the wind of the maze on or off (updateAmbience).
+    void updateFocus();
+
+    /// Builds the maze the debug UI asked for (m_mazeSettings.regenerate), between two
+    /// fixed steps, and leaves the result screen when it does.
+    void buildRequestedMaze();
+
+    /// Answers the questions of FrameScreen for this frame.
+    FrameScreen frameScreen() const;
+
+    /// The requests that change the round or the world between two fixed steps: a new
+    /// round (the restart key or the debug UI), every lever at once, a new height scale,
+    /// new grass and new puddles. roundInput is FrameScreen::roundInput.
+    void handleRoundRequests(bool roundInput);
+
+    /// The two keys of the round that are read once per frame: noclip and the flashlight.
+    void readRoundKeys(bool roundInput);
+
+    /// The frame of the main menu when its video or its still picture covers the window:
+    /// the background and the menu, straight into the window. True when it drew that
+    /// frame, and onRender is done. False when the scene is to be drawn (game::drawsScene).
+    bool drawMenuBackgroundFrame(core::Size framebuffer);
+
+    /// Builds the view of the frame: the blended eye of the player, or the pose of the
+    /// menu camera, of the intro or of the village reveal, and the two matrices for
+    /// a framebuffer of the given size. It advances the clocks of the menu camera and of
+    /// the reveal by the time of the frame.
+    FrameView frameView(double alpha, const FrameScreen& screen, core::Size framebuffer);
+
+    /// Sets where the shade is drawn in this frame and how its hood looks (m_shadeDrawn,
+    /// m_shadeMatrix and the two numbers of the hood): the shade of the round, or the
+    /// one that stands in a card of the intro.
+    void placeShade(double alpha, const FrameScreen& screen, const FrameView& frame);
+
+    /// The lighting of this frame: the settings as the round dims them
+    /// (game::lightingForFrame), with the flashlight of the menu camera or of the intro
+    /// when one of them takes the picture.
+    LightingSettings frameLightingFor(const FrameScreen& screen) const;
+
+    /// The lamp of the gate in this frame, and its glow in m_gateLampGlow.
+    GateLampFrame gateLampForFrame(const FrameScreen& screen);
+
+    /// Binds the HDR framebuffer of the scene, switches the depth test on and clears
+    /// colour and depth. False without a framebuffer: the window is bound again and
+    /// nothing is to be drawn.
+    bool beginScenePass(core::Size framebuffer);
+
+    /// Copies the lights of the frame to the graphics card: the moon, the flashlight in
+    /// its pose and the point lights nearest to eye (crystals, the heartstone, the lamp
+    /// of the gate).
+    void uploadLights(const LightingSettings& frameLighting, const FlashlightPose& flashlight,
+                      const GateLampFrame& lamp, const glm::vec3& eye);
+
+    /// Draws the village with as many nights lit as this frame shows
+    /// (game::villageNightsLit) and the newest lights as far as the reveal has brought
+    /// them up.
+    void drawVillageForFrame(const FrameScreen& screen, const FrameView& frame) const;
+
+    /// Everything after the scene is complete: the previews of the attachments, the
+    /// bloom and the composite pass, which brings the HDR picture to the window.
+    void finishPicture(core::Size framebuffer, const FrameView& frame);
+
     // The colour every frame starts with: a very dark blue, darker than the ambient
     // light on the stone. The sky is drawn over it wherever no wall is, so it shows
     // only when the skybox is switched off or its pictures could not be loaded. It is
