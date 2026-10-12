@@ -120,6 +120,16 @@ public:
     /// GL_NEAREST: depths of two surfaces must not be averaged.
     void bindDepthTexture(GLuint unit) const;
 
+    /// Copies the depth texture of this framebuffer into the one of target, texel for
+    /// texel (glBlitFramebuffer). Both must be valid, have a depth texture and be of the
+    /// same size: a copy between two sizes would have to scale, and depths cannot be
+    /// scaled. Everything target held in its depth texture is replaced. Afterwards
+    /// target is bound as after target.bind(), with the viewport at its size.
+    ///
+    /// The copy obeys the scissor test like a clear does, and nothing else of the
+    /// state of drawing: no depth test and no shader program take part in it.
+    void copyDepthTo(const Framebuffer& target) const;
+
     /// Name (id) of the colour texture, for code that needs the raw number (the preview
     /// in the debug UI). 0 when there is none.
     GLuint colorTextureId() const { return m_colorTexture; }

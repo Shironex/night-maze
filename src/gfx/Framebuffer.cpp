@@ -247,6 +247,20 @@ void Framebuffer::resize(int width, int height) {
     create();
 }
 
+void Framebuffer::copyDepthTo(const Framebuffer& target) const {
+    // A copy reads from one framebuffer and writes into another, so the two binding
+    // points are set apart here. bind() sets both to the same object.
+    GL_CHECK(glBindFramebuffer(GL_READ_FRAMEBUFFER, m_id));
+    GL_CHECK(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target.m_id));
+    // The same rectangle on both sides, the whole picture. GL_NEAREST is the only
+    // filter OpenGL allows for depth, and with equal sizes it copies every texel as
+    // it is.
+    GL_CHECK(glBlitFramebuffer(0, 0, m_spec.width, m_spec.height, 0, 0, m_spec.width, m_spec.height,
+                               GL_DEPTH_BUFFER_BIT, GL_NEAREST));
+    // What is drawn next goes into the copy.
+    target.bind();
+}
+
 void Framebuffer::bindColorTexture(GLuint unit) const {
     GL_CHECK(glActiveTexture(GL_TEXTURE0 + unit));
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, m_colorTexture));
