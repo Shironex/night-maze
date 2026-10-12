@@ -2,6 +2,18 @@
 
 Release notes for Night Maze, newest first.
 
+## 0.15.0 (2026-10-12)
+
+You can see the lamp you carry, and the side buttons of the mouse can be bound.
+
+### What's new
+
+- The lamp is in your hand now: a tin flashlight in the lower right of the picture, with the beam coming out of it. A small window on its top glows in the colour of the crystals for as long as the battery has charge. It dims and flickers when the battery is low and goes dark when it is empty.
+- While the lamp is on, a little warm light falls back on its head, so you can tell on from off by the lamp itself and not only by the beam.
+- The lamp moves with you: it swings a little with every step, more when you sprint, lags slightly behind a quick turn and comes to rest when you stop. The beam and its shadows do not move with it.
+- The lamp never sinks into a wall you stand against. It is not shown in the menus, the intro, the story cards or the look at the village.
+- The two side buttons of a mouse (Mouse 4 and Mouse 5) can be bound to any action on the settings screen, under Controls, the same way as a key. The left, right and middle buttons cannot: they click the menus.
+
 ## 0.14.1 (2026-10-09)
 
 The settings screen fits the window again.
