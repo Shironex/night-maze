@@ -193,6 +193,8 @@ add_library(game_logic STATIC
     src/game/MenuBackground.hpp
     src/game/MenuCamera.cpp
     src/game/MenuCamera.hpp
+    src/game/MenuCameraPath.cpp
+    src/game/MenuCameraShared.hpp
     src/game/Minimap.cpp
     src/game/Minimap.hpp
     src/game/Player.cpp
