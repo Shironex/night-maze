@@ -489,13 +489,12 @@ void NightMazeApp::drawHeldLamp(const glm::mat4& view, const glm::mat4& projecti
     const glm::vec3 right{view[0][0], view[1][0], view[2][0]};
     const glm::vec3 forward{-view[0][2], -view[1][2], -view[2][2]};
 
-    // The lamp lies in its own beam, a third of a metre in front of the light, and the
-    // lit programs would paint the cone on its back. So the lights of the frame are sent
-    // again without the flashlight. Nothing that is lit is drawn after the lamp, and the
-    // next frame fills the buffer anew.
-    scene::LightSet lampLights = lights;
-    lampLights.spotEnabled = false;
-    m_lightRig.upload(lampLights, eye);
+    // The lights of the frame are sent again for the lamp: without the flashlight, in
+    // whose beam it lies, and with the light that spills back onto its head
+    // (game::heldLampLights). Nothing that is lit is drawn after the lamp, and the next
+    // frame fills the buffer anew.
+    const glm::mat4 lampMatrix = heldLampMatrix(frameLighting, eye, forward, right);
+    m_lightRig.upload(heldLampLights(lights, frameLighting, lampMatrix), eye);
 
     // The state this draw relies on, said here: the puddles are blended and write no
     // depth.
@@ -521,7 +520,7 @@ void NightMazeApp::drawHeldLamp(const glm::mat4& view, const glm::mat4& projecti
 
     // The window shows the charge of the battery and flickers with the beam.
     const float flicker = flashlightFlicker(m_round.battery, m_round.animationSeconds, m_gameplay);
-    m_gameplayRenderer.drawHeldLamp(shader, heldLampMatrix(frameLighting, eye, forward, right),
+    m_gameplayRenderer.drawHeldLamp(shader, lampMatrix,
                                     heldLampGlow(frameLighting, m_round.battery, flicker));
 
     // Put back for whatever draws next: the whole depth range, and the highlight of the
