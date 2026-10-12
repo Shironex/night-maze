@@ -262,6 +262,7 @@ Shader::Shader(Shader&& other) noexcept
       m_fragmentPath(std::move(other.m_fragmentPath)),
       m_geometryPath(std::move(other.m_geometryPath)),
       m_program(other.m_program),
+      m_loadCount(other.m_loadCount),
       m_lastError(std::move(other.m_lastError)),
       m_blockBindings(std::move(other.m_blockBindings)),
       m_uniformLocations(std::move(other.m_uniformLocations)) {
@@ -288,6 +289,7 @@ Shader& Shader::operator=(Shader&& other) noexcept {
     m_fragmentPath = std::move(other.m_fragmentPath);
     m_geometryPath = std::move(other.m_geometryPath);
     m_program = other.m_program;
+    m_loadCount = other.m_loadCount;
     m_lastError = std::move(other.m_lastError);
     m_blockBindings = std::move(other.m_blockBindings);
     // The locations of the deleted program are replaced by the ones of the program
@@ -318,6 +320,7 @@ bool Shader::reload() {
     // Only now replace the old program (glDeleteProgram(0) is ignored on the first load).
     GL_CHECK(glDeleteProgram(m_program));
     m_program = program;
+    ++m_loadCount;
     // The new program numbers its uniforms itself, and an edited shader may have other
     // uniforms than before: the remembered locations are those of the deleted program.
     m_uniformLocations.clear();

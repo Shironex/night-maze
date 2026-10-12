@@ -6,6 +6,7 @@
 #include <glm/glm.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <functional>
 #include <map>
@@ -74,6 +75,12 @@ public:
 
     /// True when the object owns a linked program.
     bool isValid() const { return m_program != 0; }
+
+    /// How many programs this object has built so far: 1 after a first load that
+    /// worked, and one more after every successful reload. For code that keeps
+    /// something a program has drawn (the still layer of a shadow map): a number other
+    /// than the remembered one means that it was drawn by a program that is gone.
+    std::uint32_t loadCount() const { return m_loadCount; }
 
     /// Makes this program the one used by the following draw calls (glUseProgram).
     /// Check isValid() first: without a program nothing useful is drawn.
@@ -168,6 +175,8 @@ private:
     std::filesystem::path m_geometryPath;
     // Name (id) of the OpenGL program object. 0 is never a real program: it means "none".
     GLuint m_program = 0;
+    // How many times reload() has replaced m_program (loadCount).
+    std::uint32_t m_loadCount = 0;
     std::string m_lastError;
     // The requests made with bindUniformBlock, repeated on every newly built program.
     std::vector<UniformBlockBinding> m_blockBindings;
