@@ -153,7 +153,8 @@ public:
     void setKeyCapture(bool on);
 
     /// The key that was pressed since the capture started or since the last call, as
-    /// its GLFW key code, or NO_CAPTURED_KEY. It is handed out once. The capture stays
+    /// its GLFW key code (for a side button of the mouse: core::MOUSE_BINDING_BASE plus its
+    /// GLFW button number), or NO_CAPTURED_KEY. It is handed out once. The capture stays
     /// on: the caller ends it when the key is one it can use.
     int takeCapturedKey();
 

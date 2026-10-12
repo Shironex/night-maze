@@ -59,6 +59,16 @@ bool Input::wasMouseButtonPressed(int button) const {
            !m_mousePrevious[button];
 }
 
+bool Input::isBindingDown(int code) const {
+    return code >= MOUSE_BINDING_BASE ? isMouseButtonDown(code - MOUSE_BINDING_BASE)
+                                      : isKeyDown(code);
+}
+
+bool Input::wasBindingPressed(int code) const {
+    return code >= MOUSE_BINDING_BASE ? wasMouseButtonPressed(code - MOUSE_BINDING_BASE)
+                                      : wasKeyPressed(code);
+}
+
 double Input::mouseDeltaX() const {
     return m_mouseBlocked ? 0.0 : m_mouseDeltaX;
 }

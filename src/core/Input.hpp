@@ -7,6 +7,11 @@ struct GLFWwindow;
 
 namespace core {
 
+/// The binding code of a mouse button is this number plus the GLFW button number. It is
+/// above every GLFW key code (GLFW_KEY_LAST is 348), so one whole number can name a key or
+/// a mouse button, for the key bindings of the player.
+constexpr int MOUSE_BINDING_BASE = 1000;
+
 /// Where the cursor is, the answer of Input::cursorPosition.
 struct CursorPosition {
     /// False while the mouse is blocked: x and y mean nothing then.
@@ -53,6 +58,14 @@ public:
     /// Use it only from code that runs once per frame (onRender), not from onUpdate,
     /// which runs zero or more times per frame. isMouseButtonDown is safe in both.
     bool wasMouseButtonPressed(int button) const;
+
+    /// isKeyDown or isMouseButtonDown for a binding code: a GLFW key code, or
+    /// MOUSE_BINDING_BASE plus a GLFW mouse button number.
+    bool isBindingDown(int code) const;
+
+    /// wasKeyPressed or wasMouseButtonPressed for a binding code. Same rule as both: only
+    /// from code that runs once per frame.
+    bool wasBindingPressed(int code) const;
 
     /// Horizontal cursor movement since the previous frame, in screen coordinates
     /// (the units of the window size, not framebuffer pixels). Positive is to the right.

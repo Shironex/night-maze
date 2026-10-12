@@ -2,6 +2,8 @@
 // the keys.
 #pragma once
 
+#include "core/Input.hpp"
+
 #include <array>
 #include <cstddef>
 #include <optional>
@@ -33,6 +35,13 @@ constexpr std::size_t KEY_ACTION_COUNT = 9;
 /// No key at all. It is also what GLFW calls a key it does not know (GLFW_KEY_UNKNOWN).
 constexpr int NO_KEY = -1;
 
+/// The two side buttons of a mouse (GLFW_MOUSE_BUTTON_4 and _5) are bindings too. Their
+/// codes are core::MOUSE_BINDING_BASE plus the GLFW button number, above every key code,
+/// so a binding is still one whole number. The left, right and middle buttons are not
+/// bindable: they click the menus.
+constexpr int MOUSE_4_CODE = core::MOUSE_BINDING_BASE + 3;
+constexpr int MOUSE_5_CODE = core::MOUSE_BINDING_BASE + 4;
+
 /// One row of the table of actions.
 struct KeyActionInfo {
     KeyAction action;
@@ -63,7 +72,7 @@ KeyBindings defaultKeyBindings();
 int boundKey(const KeyBindings& bindings, KeyAction action);
 
 /// The name of a key, short enough for a button and for a prompt of the HUD: "W",
-/// "Left Shift", "Space", "Up", "F5", "Num 4". Empty for a key that has no name here
+/// "Left Shift", "Space", "Up", "F5", "Num 4", "Mouse 4". Empty for a key that has no name here
 /// (Caps Lock, the Windows key and the like): such a key cannot be bound.
 ///
 /// The table is our own. GLFW has glfwGetKeyName, but it answers nothing for keys like

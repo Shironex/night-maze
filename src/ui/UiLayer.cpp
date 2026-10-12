@@ -3,6 +3,7 @@
 
 #include "core/Files.hpp"
 #include "core/GlCheck.hpp"
+#include "core/Input.hpp"
 #include "core/Log.hpp"
 #include "ui/AssetFileInterface.hpp"
 
@@ -494,6 +495,15 @@ void UiLayer::onCursorPos(GLFWwindow* window, double x, double y) {
 
 void UiLayer::onMouseButton(GLFWwindow* window, int button, int action, int mods) {
     UiLayer* layer = layerOf(window);
+    // The two side buttons can be bound like a key. The other buttons click the menus, so
+    // they are never captured.
+    if (layer->m_keyCapture && action == GLFW_PRESS &&
+        (button == GLFW_MOUSE_BUTTON_4 || button == GLFW_MOUSE_BUTTON_5)) {
+        if (layer->m_capturedKey == NO_CAPTURED_KEY) {
+            layer->m_capturedKey = core::MOUSE_BINDING_BASE + button;
+        }
+        return;
+    }
     if (layer->takesMouse()) {
         RmlGLFW::ProcessMouseButtonCallback(layer->m_context, button, action, mods);
     }

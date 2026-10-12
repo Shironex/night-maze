@@ -12,6 +12,11 @@ namespace game {
 
 namespace {
 
+static_assert(MOUSE_4_CODE == core::MOUSE_BINDING_BASE + GLFW_MOUSE_BUTTON_4 &&
+                  MOUSE_5_CODE == core::MOUSE_BINDING_BASE + GLFW_MOUSE_BUTTON_5,
+              "the codes of the side buttons must follow the GLFW button numbers");
+static_assert(core::MOUSE_BINDING_BASE > GLFW_KEY_LAST, "a mouse code must not be a key code");
+
 constexpr std::array<KeyActionInfo, KEY_ACTION_COUNT> KEY_ACTIONS = {{
     {.action = KeyAction::Forward,
      .settingName = "key_forward",
@@ -161,6 +166,12 @@ std::string keyName(int key) {
     if (key >= GLFW_KEY_KP_0 && key <= GLFW_KEY_KP_9) {
         return "Num " + std::to_string(key - GLFW_KEY_KP_0);
     }
+    if (key == MOUSE_4_CODE) {
+        return "Mouse 4";
+    }
+    if (key == MOUSE_5_CODE) {
+        return "Mouse 5";
+    }
     for (const NamedKey& named : NAMED_KEYS) {
         if (named.key == key) {
             return std::string(named.name);
@@ -178,6 +189,11 @@ int keyFromName(std::string_view name) {
     for (int key = GLFW_KEY_SPACE; key <= GLFW_KEY_LAST; ++key) {
         if (sameName(keyName(key), name)) {
             return key;
+        }
+    }
+    for (const int code : {MOUSE_4_CODE, MOUSE_5_CODE}) {
+        if (sameName(keyName(code), name)) {
+            return code;
         }
     }
     return NO_KEY;

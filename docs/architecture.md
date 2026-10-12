@@ -201,7 +201,7 @@ Input routing:
 - `core::Input` is a snapshot polled once per frame. It has two neutral flags, `setKeyboardBlocked` and `setMouseBlocked`. `src/main.cpp` sets them at the end of a frame from `DebugUI::wantsKeyboard`, `DebugUI::wantsMouse` and `UiLayer::wantsKeyboard`, so typing in a text field does not move the player.
 - The debug panels lie on top of the menu and get the mouse first (`UiLayer::setMouseEnabled`).
 - The game reads the keys of a round only while `updatesRound` is true, and moves the player only while the cursor is captured. `showScreen` captures it for a round and releases it for a menu.
-- Rebinding a key goes through `UiLayer::setKeyCapture` and `takeCapturedKey`.
+- Rebinding a key goes through `UiLayer::setKeyCapture` and `takeCapturedKey`. The capture also takes the two side buttons of the mouse; a binding code is a key code or `core::MOUSE_BINDING_BASE` plus the button number, and `Input::isBindingDown` and `wasBindingPressed` read either.
 
 ## 8. Audio
 

@@ -484,13 +484,14 @@ private:
 
     /// The two questions every action of the player is read with, and the one place
     /// that knows which key an action is on (m_settings.keys). actionDown: is its key
-    /// held? actionPressed: did its key go down in this frame? The second one is for
+    /// held? actionPressed: did its key go down in this frame? The key may be a side button
+    /// of the mouse (game::MOUSE_4_CODE). The second one is for
     /// code that runs once per frame, like core::Input::wasKeyPressed.
     bool actionDown(KeyAction action) {
-        return input().isKeyDown(boundKey(m_settings.keys, action));
+        return input().isBindingDown(boundKey(m_settings.keys, action));
     }
     bool actionPressed(KeyAction action) {
-        return input().wasKeyPressed(boundKey(m_settings.keys, action));
+        return input().wasBindingPressed(boundKey(m_settings.keys, action));
     }
 
     /// The part "Controls" of the settings screen while it waits for a key: takes the
