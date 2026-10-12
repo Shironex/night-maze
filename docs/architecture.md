@@ -123,6 +123,8 @@ Render, once (`NightMazeApp::onRender`, then `DebugNightMazeApp::onRender`):
 10. The map, while its key is held: `drawMinimap` (`assets/shaders/post/minimap.frag`, then `assets/shaders/post/minimap_overlay.frag`).
 11. UI layers: `UiLayer::draw` (RmlUi), then `DebugUI::draw` (the HUD and the debug window). Then the buffers are swapped.
 
+`onRender` reads as this list: the steps are functions of their own, declared together in `src/game/NightMazeApp.hpp` under "The parts of onRender" (`updateScreens`, `updateFocus`, `handleRoundRequests`, `readRoundKeys`, `drawMenuBackgroundFrame`, `frameView`, `placeShade`, `frameLightingFor`, `beginScenePass`, `uploadLights`, `finishPicture`). `FrameScreen` and `FrameView` carry what the steps share: which screen the frame is for, and where it is seen from.
+
 ```mermaid
 flowchart TD
     poll["Application run: pollEvents, Input update, Escape"]
