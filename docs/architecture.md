@@ -94,6 +94,8 @@ The loop uses a fixed timestep. `core::Time` collects the real time of each fram
 
 `game::NightMazeApp` (`src/game/NightMazeApp.hpp`) is the game. It owns, as plain members, the shader programs, the `AssetCache`, the renderers, two shadow maps, `PostProcess`, the settings, the current `MazeWorld`, `Round`, `Player`, camera and `GameMode`, the `ui::UiLayer` and the `audio::AudioEngine`. Member order is construction order, and some of it matters: the settings file is read before the first maze is built, and the UI layer exists before the debug UI so that Dear ImGui can chain its GLFW callbacks onto the ones of RmlUi.
 
+The class is one header and seven source files, split by what the functions do: `NightMazeApp.cpp` (the constructor, the settings and the sounds), `NightMazeAppScreens.cpp` (the change of screens, the intro and the cards), `NightMazeAppMenus.cpp` (the menu documents and their controls), `NightMazeAppCampaign.cpp` (the start of a game or a night and the won round), `NightMazeAppRound.cpp` (the maze being built and `onUpdate`), `NightMazeAppRender.cpp` (`onRender`, the picking and the minimap) and `NightMazeAppPasses.cpp` (the shadow passes and the `draw*` functions). The names the code shares with the `.rml` documents are in `NightMazeAppShared.hpp`.
+
 `src/main.cpp` holds the only class that knows both the game and the debug code: `DebugNightMazeApp` derives from `NightMazeApp`, owns `debug::DebugUI`, and draws it after the frame of the game. It hands the debug window a `debug::DebugContext`, a struct of references.
 
 The classes in `src/gfx` (`Shader`, `Buffer`, `VertexArray`, `Mesh`, `Texture2D`, `Cubemap`, `Framebuffer`, `UniformBuffer`) follow one rule: the constructor creates the OpenGL object, the destructor deletes it, copying is deleted and moving is allowed. `FrameTexture` and `ComparisonSampler` can be neither copied nor moved. All of them need a live context, so they are members of the application and die before the window does.
@@ -215,10 +217,10 @@ What the launcher expects from a game build is what `.github/workflows/release.y
 
 ## 10. Where to start reading
 
-- Add a setting: the field and its name in `src/game/Settings.hpp` and `src/game/Settings.cpp`, the control in `assets/ui/settings.rml`, then `fillSettingsDocument` and `handleControlChanges` in `src/game/NightMazeApp.cpp`.
-- Add a sound cue: the enum entry, the count and the table row in `src/game/SoundCues.hpp` and `src/game/SoundCues.cpp`, the sound in `tools/make_sounds.py`, and one `playCue` call in `src/game/NightMazeApp.cpp`.
+- Add a setting: the field and its name in `src/game/Settings.hpp` and `src/game/Settings.cpp`, the control in `assets/ui/settings.rml`, then `fillSettingsDocument` and `handleControlChanges` in `src/game/NightMazeAppMenus.cpp`.
+- Add a sound cue: the enum entry, the count and the table row in `src/game/SoundCues.hpp` and `src/game/SoundCues.cpp`, the sound in `tools/make_sounds.py`, and one `playCue` call in the `src/game/NightMazeApp*.cpp` file where the thing happens.
 - Add a pickup: follow the flask. Placement rules in `src/game/Flasks.cpp`, state and collection in `src/game/Round.cpp` (`startRound`, `updateRound`), drawing in `src/game/GameplayRenderer.cpp`.
 - Add a debug control: a reference in `src/debug/DebugContext.hpp`, filled in `src/main.cpp`, and the widget in one file of `src/debug/categories`. Keep `controlCount` in `src/debug/Categories.hpp` right.
-- Add a menu screen: a mode, its events and predicates in `src/game/GameState.cpp`, a document in `assets/ui` next to `assets/ui/pause.rml`, then `showScreen` and a fill function in `src/game/NightMazeApp.cpp`. Say whether it has the menu theme: a line in `menuThemeScreen` in `src/game/SoundCues.cpp` and in the table of its test. The build stops until the line is there.
+- Add a menu screen: a mode, its events and predicates in `src/game/GameState.cpp`, a document in `assets/ui` next to `assets/ui/pause.rml`, then `showScreen` in `src/game/NightMazeAppScreens.cpp` and a fill function in `src/game/NightMazeAppMenus.cpp`. Say whether it has the menu theme: a line in `menuThemeScreen` in `src/game/SoundCues.cpp` and in the table of its test. The build stops until the line is there.
 
 The matching test files are `tests/SettingsTests.cpp`, `tests/SoundCueTests.cpp`, `tests/FlaskTests.cpp`, `tests/RoundTests.cpp` and `tests/GameStateTests.cpp`.
