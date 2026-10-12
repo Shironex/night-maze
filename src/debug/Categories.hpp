@@ -54,7 +54,7 @@ inline constexpr std::array<CategoryInfo, CATEGORY_COUNT> CATEGORIES = {{
      .description = "Moon, flashlight, crystal lights and the shadows of the moon and of "
                     "the flashlight.",
      .icon = Icon::Light,
-     .controlCount = 34,
+     .controlCount = 35,
      .tabCount = 2,
      .tabs = {"Lights", "Shadows"}},
     {.name = "Post process",
@@ -116,9 +116,9 @@ constexpr int totalControlCount() {
 // distances, the sight, the search time, three of the burn and the quiet time) 143,
 // and the five sliders of the gate (the glow of its lamp, the two ends of its ember, the
 // reach of its light and the wait of its bell) 148, and the switch and the elevation of
-// the village 150.
+// the village 150, and the switch of the lamp in the hand 151.
 // A control that is added or removed changes this number and the count of its category
 // above.
-static_assert(totalControlCount() == 150);
+static_assert(totalControlCount() == 151);
 
 } // namespace debug

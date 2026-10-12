@@ -174,6 +174,9 @@ void drawFlashlight(Page& page, game::LightingSettings& lighting, const game::Ro
                 round.battery <= 0.0F ? "The battery is empty: collect a crystal first."
                                       : "Switches the flashlight, like the F key. With an "
                                         "empty battery it goes off again at once.");
+    page.toggle("Lamp in the hand", &lighting.heldLampShown,
+                "Draws the lamp the player holds. Off: only its light is left, as before "
+                "the lamp had a model.");
     page.color("Beam colour", glm::value_ptr(lighting.flashlightColor),
                "The colour of the light of the flashlight.");
     page.slider("Beam intensity", &lighting.flashlightIntensity, MIN_INTENSITY,
