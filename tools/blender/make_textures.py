@@ -1,9 +1,9 @@
 # Generates the textures of the game into assets/textures: the colour pictures
 # wall_stone.png, wall_cracked.png, wall_mossy.png, wall_damaged.png, ground.png,
 # gate_wood.png, splinter.png, lever_iron.png, lever_brass.png, chalk.png,
-# flask.png, shade.png, lantern.png and stone_sheep.png, and one normal map for each of
-# them (the same name with _normal). All twenty-eight are 512 x 512 pixels, 8 bits per
-# channel, RGB.
+# flask.png, shade.png, lantern.png, stone_sheep.png and lamp_held.png, and one normal map
+# for each of them (the same name with _normal). All thirty are 512 x 512 pixels, 8 bits
+# per channel, RGB.
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/make_textures.py
@@ -17,7 +17,8 @@
 # the flask and of the shade go once around their models, so only their left and right
 # edges meet, the lantern only uses a small piece from the middle of each half of its
 # picture, and the splinter a strip down the middle of each half of its picture, so there
-# only the top and bottom edges meet.
+# only the top and bottom edges meet. lamp_held.png is cut into bands and pieces, and only
+# the left and right edges of its two bands meet.
 # Their noise still wraps around, because it comes from the same helpers.
 #
 # A colour picture and its normal map are made from the same pattern (the same stones, the
@@ -72,6 +73,9 @@ CHALK_SEED = 113
 # of its rind.
 SPLINTER_RIND_SEED = 127
 STONE_SHEEP_SEED = 131
+LAMP_TIN_SEED = 137
+LAMP_TAPE_SEED = 139
+LAMP_IRON_SEED = 149
 
 # The wall model is 3 m high and one repeat of the texture is 2 m, so the lower 1 m of
 # the picture (courses 0 to 3) is seen twice on a wall: at the bottom and again at the
@@ -101,6 +105,23 @@ SHADE_FACE_COLUMN = 384
 SHADE_FACE_HALF_WIDTH = 62
 # The hem of the cloak is frayed and darker below this row.
 SHADE_HEM_ROW = 70
+
+# The picture of the lamp the player holds, in pixel rows from the bottom. The models
+# (build_lamp_held.py) wrap the two lower bands once around the tube, so x goes around the
+# lamp and y along it: the tin below LAMP_TAPE_ROW, the cloth tape of the grip from there
+# to LAMP_PIECE_ROW. Above that row lie three plain pieces side by side, from which a face
+# takes a small part of the middle: the iron of the window frame and of the switch up to
+# the column LAMP_LENS_COLUMN, the lens from there to LAMP_WINDOW_COLUMN, and the glass of
+# the window in the rest.
+LAMP_TAPE_ROW = 320
+LAMP_PIECE_ROW = 384
+LAMP_LENS_COLUMN = 256
+LAMP_WINDOW_COLUMN = 384
+# The scratches of the tin: how many, and how long one is in pixels.
+LAMP_SCRATCH_COUNT = 60
+LAMP_SCRATCH_LENGTH = (24.0, 128.0)
+# One turn of the tape around the grip is this many rows high.
+LAMP_TAPE_TURN_HEIGHT = 10.0
 
 # The rind of a splinter, the left half of its picture. The models (build_splinter.py)
 # show 1.5 pixels per millimetre, so the craters are 0.7 to 2.7 cm across. The colour is
@@ -1236,6 +1257,9 @@ def build():
     # The two pictures of the stone sheep, in a function of their own too.
     build_stone_sheep_textures()
 
+    # The two pictures of the lamp the player holds, in a function of their own too.
+    build_lamp_textures()
+
 
 def build_stone_sheep_textures():
     """Writes stone_sheep.png and its normal map: wool that went to stone, moss in its folds.
@@ -1518,6 +1542,82 @@ def build_splinter_textures():
 
     save_png(color, "splinter.png")
     save_png(normal_map(height), "splinter_normal.png")
+
+
+def build_lamp_textures():
+    """Writes lamp_held.png and its normal map: the lamp the player holds.
+
+    One picture for the three models of build_lamp_held.py, cut as the LAMP_ constants at
+    the top say: scratched tin, the cloth tape of the grip, dark iron, the lens and the
+    glass of the window.
+
+    The lens and the glass are pale and the game draws each as a model of its own, with
+    a glow of its own (uEmissive in lit.frag): the glow of a surface is its colour times
+    that value, so a pale piece is what can shine.
+    """
+    rng = np.random.default_rng(LAMP_TIN_SEED)
+    y, x = np.mgrid[0:SIZE, 0:SIZE]
+
+    # The tin: a pale grey with soft patches, and scratches on it, half of them lighter
+    # than the tin and half darker. A scratch that leaves the picture on one side comes
+    # back on the other, because the band goes once around the lamp. It stays below the
+    # tape: the two ends of the band do not meet.
+    tin = metal_pattern(seed=LAMP_TIN_SEED)
+    light = np.zeros((SIZE, SIZE))
+    dark = np.zeros((SIZE, SIZE))
+    for _ in range(LAMP_SCRATCH_COUNT):
+        start_x = rng.random() * SIZE
+        start_y = rng.random() * LAMP_TAPE_ROW
+        shortest, longest = LAMP_SCRATCH_LENGTH
+        length = shortest + rng.random() * (longest - shortest)
+        angle = rng.random() * np.pi
+        scratch = light if rng.random() < 0.5 else dark
+        # One mark every half pixel along the scratch.
+        steps = np.arange(0.0, length, 0.5)
+        columns = np.round(start_x + np.cos(angle) * steps).astype(int) % SIZE
+        rows = np.round(start_y + np.sin(angle) * steps).astype(int)
+        inside = (rows >= 0) & (rows < LAMP_TAPE_ROW)
+        scratch[rows[inside], columns[inside]] = 1.0
+    tin_picture = metal_color(tin, metal_color=(0.62, 0.655, 0.67), patch_strength=0.16)
+    tin_picture = tin_picture * (1.0 + 0.16 * light - 0.20 * dark)[..., None]
+    # A scratch is a groove, whatever its colour.
+    tin_relief = metal_height(tin, bump_depth=3.0, grain_depth=0.4) - 1.5 * blur(light + dark, 1)
+
+    # The tape: dark cloth wound around the grip, turn beside turn. Each turn is lightest
+    # in its middle and has a dark seam where the next one lies over it.
+    tape = metal_pattern(seed=LAMP_TAPE_SEED)
+    turn = ((y - LAMP_TAPE_ROW) % LAMP_TAPE_TURN_HEIGHT) / LAMP_TAPE_TURN_HEIGHT
+    across = np.sin(np.pi * turn)
+    tape_picture = metal_color(tape, metal_color=(0.235, 0.22, 0.20), patch_strength=0.24)
+    tape_picture = tape_picture * (0.72 + 0.28 * across)[..., None]
+    tape_relief = 1.6 * across + metal_height(tape, bump_depth=1.0, grain_depth=1.2)
+
+    # The iron of the window frame and of the switch, like the iron of the slab ring.
+    iron = metal_pattern(seed=LAMP_IRON_SEED)
+    iron_picture = metal_color(iron, metal_color=(0.17, 0.18, 0.20), patch_strength=0.30)
+    iron_relief = metal_height(iron, bump_depth=5.0, grain_depth=0.6)
+
+    # The lens, a warm white, and the glass of the window, a pale teal: the colour of the
+    # splinter behind it. Both are plain and flat. Neither reaches 1, so the glow of the
+    # game has room above them.
+    lens_picture = np.broadcast_to(np.array((0.94, 0.90, 0.80)), (SIZE, SIZE, 3))
+    window_picture = np.broadcast_to(np.array((0.61, 0.91, 0.87)), (SIZE, SIZE, 3))
+    flat = np.zeros((SIZE, SIZE))
+
+    # From the bottom to the top, and in the top band from the left to the right.
+    color = tin_picture
+    height = tin_relief
+    for part, picture, relief in (
+        (y >= LAMP_TAPE_ROW, tape_picture, tape_relief),
+        (y >= LAMP_PIECE_ROW, iron_picture, iron_relief),
+        ((y >= LAMP_PIECE_ROW) & (x >= LAMP_LENS_COLUMN), lens_picture, flat),
+        ((y >= LAMP_PIECE_ROW) & (x >= LAMP_WINDOW_COLUMN), window_picture, flat),
+    ):
+        color = np.where(part[..., None], picture, color)
+        height = np.where(part, relief, height)
+
+    save_png(np.clip(color, 0.0, 1.0), "lamp_held.png")
+    save_png(normal_map(height), "lamp_held_normal.png")
 
 
 if __name__ == "__main__":
