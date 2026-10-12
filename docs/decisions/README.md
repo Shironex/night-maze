@@ -14,6 +14,7 @@ Status words: `accepted (date)` means the code does this today. `superseded by <
 - [vignette](vignette.md): measured in texture coordinates
 - [moon-shadow-map](moon-shadow-map.md): whole terrain, bias in metres
 - [what-the-moon-shadow-covers](what-the-moon-shadow-covers.md): moon light only, per fragment
+- [moon-shadow-still-layer](moon-shadow-still-layer.md): fixed casters kept, moving ones drawn on top
 - [flashlight-in-hand](flashlight-in-hand.md): held lamp aimed ahead of the eye
 - [flashlight-shadow-bias](flashlight-shadow-bias.md): bias in world space
 - [held-lamp](held-lamp.md): lamp model on the beam, in front of walls
