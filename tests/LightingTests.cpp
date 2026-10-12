@@ -679,3 +679,69 @@ TEST_CASE("the lens of the held lamp glows with the beam and its window with the
     checkVector(game::heldLampGlow(settings, 2.0F, steady).window, on.window);
     checkVector(game::heldLampGlow(settings, -1.0F, steady).window, glm::vec3{0.0F});
 }
+
+TEST_CASE("the held lamp is drawn without the flashlight and with a spill on its head") {
+    game::LightingSettings settings;
+    const glm::vec3 eye{3.0F, 1.7F, 5.0F};
+    scene::Camera camera;
+    camera.yawDegrees = 140.0F;
+    const glm::mat4 matrix = game::heldLampMatrix(settings, eye, camera.forward(), camera.right());
+
+    // The lights of a frame with two crystals.
+    const std::vector<game::PointLightSpot> crystals{{.position = {1.0F, 1.0F, 1.0F}},
+                                                     {.position = {4.0F, 1.0F, 2.0F}}};
+    const scene::LightSet frame = game::buildLightSet(settings, ANY_POSE, crystals);
+    REQUIRE(frame.spotEnabled);
+    REQUIRE(frame.pointCount == 2);
+
+    // On: the beam is taken out and one point light is added behind the crystals, in the
+    // colour of the beam and a part of its intensity.
+    const scene::LightSet on = game::heldLampLights(frame, settings, matrix);
+    CHECK_FALSE(on.spotEnabled);
+    REQUIRE(on.pointCount == 3);
+    checkVector(on.points[0].position, frame.points[0].position);
+    checkVector(on.points[1].position, frame.points[1].position);
+    const scene::PointLight& spill = on.points[2];
+    checkVector(spill.color, gfx::srgbToLinear(settings.flashlightColor));
+    CHECK(spill.intensity == doctest::Approx(settings.flashlightIntensity * game::HELD_LAMP_SPILL));
+    // Weaker than the beam, and nearly gone at the window, a hand further back.
+    CHECK(spill.intensity < settings.flashlightIntensity);
+    CHECK(scene::attenuationFactor(spill.attenuation, game::HELD_LAMP_SPILL_RADIUS) ==
+          doctest::Approx(scene::BRIGHTNESS_AT_RADIUS));
+
+    // It stands at the head: outside the tin (tools/blender/build_lamp_held.py, the head
+    // is 0.0335 m wide), above the axis, on the side of the eye and within a few
+    // centimetres of the lens. Behind the lens, so the lens is not lit by it.
+    const glm::vec3 place = game::HELD_LAMP_SPILL_PLACE;
+    CHECK(glm::length(glm::vec2{place}) > 0.0335F);
+    CHECK(place.x < 0.0F);
+    CHECK(place.y > 0.0F);
+    CHECK(place.z > -game::HELD_LAMP_LENS_OUT - 0.01F);
+    CHECK(place.z < -game::HELD_LAMP_LENS_OUT + 0.01F);
+    checkVector(spill.position, glm::vec3{matrix * glm::vec4{place, 1.0F}});
+    const glm::vec3 lens{matrix * glm::vec4{0.0F, 0.0F, -game::HELD_LAMP_LENS_OUT, 1.0F}};
+    CHECK(glm::distance(spill.position, eye) < glm::distance(lens, eye));
+
+    // The flicker of a low battery is in the intensity of the frame, so the spill
+    // flickers with the beam.
+    game::LightingSettings dimmed = settings;
+    dimmed.flashlightIntensity = settings.flashlightIntensity / 2.0F;
+    CHECK(game::heldLampLights(frame, dimmed, matrix).points[2].intensity ==
+          doctest::Approx(spill.intensity / 2.0F));
+
+    // Off or empty (game::lightingForFrame switches an empty lamp off): no spill, and
+    // still no beam.
+    settings.flashlightOn = false;
+    const scene::LightSet off = game::heldLampLights(frame, settings, matrix);
+    CHECK_FALSE(off.spotEnabled);
+    CHECK(off.pointCount == 2);
+    settings.flashlightOn = true;
+
+    // A full list: the spill takes the place of the last light, the farthest one.
+    scene::LightSet full = frame;
+    full.pointCount = scene::MAX_POINT_LIGHTS;
+    const scene::LightSet crowded = game::heldLampLights(full, settings, matrix);
+    CHECK(crowded.pointCount == scene::MAX_POINT_LIGHTS);
+    checkVector(crowded.points[scene::MAX_POINT_LIGHTS - 1].position, spill.position);
+    checkVector(crowded.points[0].position, frame.points[0].position);
+}

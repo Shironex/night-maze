@@ -106,6 +106,27 @@ HeldLampGlow heldLampGlow(const LightingSettings& frameLighting, float charge, f
     return glow;
 }
 
+scene::LightSet heldLampLights(const scene::LightSet& frameLights,
+                               const LightingSettings& frameLighting, const glm::mat4& lampMatrix) {
+    scene::LightSet lights = frameLights;
+    lights.spotEnabled = false;
+    if (!frameLighting.flashlightOn) {
+        return lights;
+    }
+    // One more point light, or the last one of a full list: the list is sorted from the
+    // nearest to the farthest (nearestPointLightSpots), and the last is the faintest on
+    // a lamp that is a step in front of the eye.
+    const int index = std::clamp(lights.pointCount, 0, scene::MAX_POINT_LIGHTS - 1);
+    lights.points[static_cast<std::size_t>(index)] = {
+        .position = glm::vec3{lampMatrix * glm::vec4{HELD_LAMP_SPILL_PLACE, 1.0F}},
+        .color = gfx::srgbToLinear(frameLighting.flashlightColor),
+        .intensity = frameLighting.flashlightIntensity * HELD_LAMP_SPILL,
+        .attenuation = scene::attenuationForRadius(HELD_LAMP_SPILL_RADIUS),
+    };
+    lights.pointCount = index + 1;
+    return lights;
+}
+
 std::vector<PointLightSpot> nearestPointLights(std::span<const glm::vec3> positions,
                                                const glm::vec3& eye, int maxCount) {
     // Every position becomes a spot of full strength with the look of the settings: the

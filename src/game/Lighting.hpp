@@ -278,6 +278,39 @@ struct HeldLampGlow {
 /// battery the window flickers together with the beam.
 HeldLampGlow heldLampGlow(const LightingSettings& frameLighting, float charge, float flicker);
 
+/// The light that spills back onto the head of the lamp while it is on: one weak point
+/// light for the draw of the lamp only. It stands just outside the rim of the head, above
+/// it and on the side of the player, where the model has this place: 2.5 cm to the left
+/// of the axis, 6 cm above it and 1 mm in front of the rim. From there it grazes the rim
+/// and the top of the head and has nearly left the tin where the head narrows to the
+/// body, so the head looks touched by its own light and nothing glows.
+///
+/// A light in the lens itself would not do it: every face of the head the player sees
+/// looks away from the lens.
+constexpr glm::vec3 HELD_LAMP_SPILL_PLACE{-0.025F, 0.06F, -0.225F};
+
+/// How strong the spill is, as a factor on the intensity of the beam, and how far it
+/// reaches in metres (scene::attenuationForRadius). Both small on purpose: it is light
+/// that leaks back, and at the window of the body it is gone.
+constexpr float HELD_LAMP_SPILL = 0.6F;
+constexpr float HELD_LAMP_SPILL_RADIUS = 0.1F;
+
+/// The lights the lamp in the hand is drawn with: frameLights, the lights of the frame,
+/// without the flashlight, and with the spill on the head of the lamp as one more point
+/// light.
+///
+/// The flashlight is taken out because the lamp lies in its own beam, a third of a metre
+/// in front of the light, and the lit programs would paint the cone on its back.
+///
+/// The spill has the colour of the beam and its intensity times HELD_LAMP_SPILL, so it
+/// flickers with a low battery like the beam (frameLighting is the lighting of the frame,
+/// game::lightingForFrame). It is left out while the flashlight is off or empty.
+/// lampMatrix is the matrix the lamp is drawn with, so the spill moves with the lamp.
+/// With a full list of point lights it takes the place of the last one, the farthest
+/// from the eye.
+scene::LightSet heldLampLights(const scene::LightSet& frameLights,
+                               const LightingSettings& frameLighting, const glm::mat4& lampMatrix);
+
 /// One point light of a frame: where it hangs and how much of its brightness it has.
 struct PointLightSpot {
     glm::vec3 position{0.0F};
