@@ -101,10 +101,15 @@ void NightMazeApp::drawMoonShadowMap() {
     if (!m_moonShadow.enabled || !m_shadowDepthShader.isValid()) {
         return;
     }
+    // What the graphics card does from here to end() is the measured pass: the clear
+    // of the map and the draw calls into it, without the preview below.
+    m_gpuPasses.begin(GpuPass::MoonShadow);
     if (!m_moonShadowMap.beginDepthPass(shadowMapSize(m_moonShadow.resolution))) {
+        m_gpuPasses.end();
         return;
     }
     drawShadowCasters(m_moonLightSpace);
+    m_gpuPasses.end();
     m_moonShadowDrawn = true;
 
     // The map goes to its texture unit once, and stays there while the scene is drawn.
@@ -137,10 +142,14 @@ void NightMazeApp::drawFlashlightShadowMap(const LightingSettings& frameLighting
         !m_shadowDepthShader.isValid()) {
         return;
     }
+    // Measured like the pass of the moon.
+    m_gpuPasses.begin(GpuPass::FlashlightShadow);
     if (!m_flashlightShadowMap.beginDepthPass(shadowMapSize(m_flashlightShadow.resolution))) {
+        m_gpuPasses.end();
         return;
     }
     drawShadowCasters(m_flashlightLightSpace);
+    m_gpuPasses.end();
     m_flashlightShadowDrawn = true;
 
     // The map goes to its own texture unit, next to the one of the moon.

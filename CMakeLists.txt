@@ -94,6 +94,8 @@ add_library(engine STATIC
     src/gfx/ShaderSource.hpp
     src/gfx/Texture2D.cpp
     src/gfx/Texture2D.hpp
+    src/gfx/TimerQuery.cpp
+    src/gfx/TimerQuery.hpp
     src/gfx/UniformBuffer.cpp
     src/gfx/UniformBuffer.hpp
     src/gfx/Vertex.hpp
@@ -350,7 +352,7 @@ night_maze_enable_warnings(audio)
 # ---- night_maze: the application and its debug UI -------------------------------------
 # NightMazeApp and the classes that draw (MazeRenderer, GameplayRenderer,
 # InteractableRenderer, TerrainRenderer, GrassRenderer, ColliderLines, LightRig, Skybox,
-# PostProcess, ShadowMap, MinimapRenderer, MenuBackgroundRenderer,
+# PostProcess, ShadowMap, MinimapRenderer, MenuBackgroundRenderer, GpuPassTimers,
 # with the shared ModelDraw) stay in the executable: they need a window and an OpenGL
 # context, so they are not something a test can run.
 add_executable(night_maze
@@ -359,6 +361,8 @@ add_executable(night_maze
     src/game/ColliderLines.hpp
     src/game/GameplayRenderer.cpp
     src/game/GameplayRenderer.hpp
+    src/game/GpuPasses.cpp
+    src/game/GpuPasses.hpp
     src/game/VillageRenderer.cpp
     src/game/VillageRenderer.hpp
     src/game/GrassRenderer.cpp

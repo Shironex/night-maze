@@ -12,6 +12,7 @@
 #include "game/GameState.hpp"
 #include "game/GameplayRenderer.hpp"
 #include "game/GateLamp.hpp"
+#include "game/GpuPasses.hpp"
 #include "game/Grass.hpp"
 #include "game/GrassRenderer.hpp"
 #include "game/InteractableRenderer.hpp"
@@ -281,6 +282,10 @@ protected:
     /// The framebuffers of the frame, read only: the debug UI shows their sizes, their
     /// formats and pictures of their attachments.
     const PostProcess& postProcess() const { return m_postProcess; }
+
+    /// The time the graphics card worked on every pass of the last frame and the draw
+    /// calls of each, read only: the debug UI shows them.
+    const GpuPassTimers& gpuPasses() const { return m_gpuPasses; }
 
     /// The height scale and the wireframe switch of the terrain, exposed so the debug UI
     /// can edit them live.
@@ -1061,6 +1066,8 @@ private:
     Skybox m_skybox;
     // The HDR framebuffer of the scene and the passes after the scene.
     PostProcess m_postProcess;
+    // The timer queries of the passes of a frame.
+    GpuPassTimers m_gpuPasses;
     // The depth texture the scene is drawn into from the direction of the moon.
     ShadowMap m_moonShadowMap;
     // The depth texture the scene is drawn into from the flashlight.
