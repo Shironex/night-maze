@@ -265,6 +265,37 @@ void NightMazeApp::onUpdate(double fixedDt) {
         return;
     }
 
+    // The step itself, in the order that matters: the player moves, the rules of the
+    // round see where the player is now, and the shade comes last, because it needs the
+    // battery of this step.
+    const float walkedMetres = movePlayer(fixedDt);
+    const bool pickedUp = stepRoundRules(fixedDt);
+    const bool caught = stepShade(fixedDt, walkedMetres, pickedUp);
+
+    // Caught: back to the start of the same maze. A player who flies (noclip, a tool for
+    // looking around) is left alone. The steps that may follow in the same frame play
+    // the new round.
+    if (caught && !m_player.noclip) {
+        m_catchSeconds = 0.0F;
+        // The shade stands still from now on, so the picture of it must too: its last step
+        // was drawn between two places (the frames blend them), and without this the
+        // figure would swing between them for the whole fade.
+        m_round.shade.previousPosition = m_round.shade.position;
+        playCue(SoundCue::Caught);
+        return;
+    }
+
+    // This step took the player through the open gate: the result screen comes up. The
+    // steps that may follow in the same frame then find the round stopped.
+    if (m_round.state == RoundState::Won) {
+        // One full toll for walking through, whatever the clock of the bell says.
+        playCue(SoundCue::GateBell, GATE_BELL_NEAR_VOLUME);
+        tollBellSwing(m_bellSwing);
+        finishRound();
+    }
+}
+
+float NightMazeApp::movePlayer(double fixedDt) {
     // The keys reach the player only while the cursor is captured. It is captured when
     // a round starts or goes on (showScreen). Showing the debug panels gives it back, and
     // one click in the scene then switches on both mouse look and movement again.
@@ -327,7 +358,10 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // The camera stands where the eyes of the player are. onRender does not draw from
     // this position directly (it blends two steps), but the debug UI shows it.
     m_camera.position = m_player.eyePosition();
+    return walkedMetres;
+}
 
+bool NightMazeApp::stepRoundRules(double fixedDt) {
     // The rules of the round, with the position the player has after this step: the
     // battery, the crystals within reach, the gate and the exit. The switch of the
     // flashlight goes in by reference, because an empty battery turns it off.
@@ -376,7 +410,12 @@ void NightMazeApp::onUpdate(double fixedDt) {
     if (gateBlocks(m_mazeWorld, m_round) != gateBlockedBefore) {
         m_obstacles = roundObstacles(m_mazeWorld, m_round);
     }
+    // Whether a crystal or a flask was picked up in this step: the shade may hear it.
+    return m_round.collectedCount > soundBefore.collectedCount ||
+           m_round.flasksCollected > flasksBefore;
+}
 
+bool NightMazeApp::stepShade(double fixedDt, float walkedMetres, bool pickedUp) {
     // The shade, after the rules of the round: it needs the battery of this step (an
     // empty one gives no light). The flashlight is where the hand holds it now, built
     // from the eyes of this step and the angles of the camera, the same way onRender
@@ -388,16 +427,14 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // What the shade can hear of this step: the feet by the speed they really had,
     // a crystal or a flask that was picked up, and a lever pulled since the step before
     // (game::playerNoise). A player who stands or reads the map is silent.
-    const Noise noise =
-        playerNoise({.metres = walkedMetres,
-                     .stepSeconds = static_cast<float>(fixedDt),
-                     .walkSpeed = m_player.walkSpeed,
-                     .sprintSpeed = m_player.sprintSpeed,
-                     .flying = m_player.noclip,
-                     .pickedUp = m_round.collectedCount > soundBefore.collectedCount ||
-                                 m_round.flasksCollected > flasksBefore,
-                     .pulledLever = m_leverPulled},
-                    m_gameplay.shade);
+    const Noise noise = playerNoise({.metres = walkedMetres,
+                                     .stepSeconds = static_cast<float>(fixedDt),
+                                     .walkSpeed = m_player.walkSpeed,
+                                     .sprintSpeed = m_player.sprintSpeed,
+                                     .flying = m_player.noclip,
+                                     .pickedUp = pickedUp,
+                                     .pulledLever = m_leverPulled},
+                                    m_gameplay.shade);
     m_leverPulled = false;
     const ShadeEvents shadeEvents =
         updateRoundShade(m_round, m_mazeWorld, m_gameplay, m_player.position,
@@ -417,30 +454,11 @@ void NightMazeApp::onUpdate(double fixedDt) {
         playCue(SoundCue::ShadeNear);
     }
     // Its steps, while it walks and is near: quieter the farther it still has to go.
+    CuePlay step;
     if (advanceShadeSteps(m_shadeSteps, m_round, step)) {
         playCue(step.cue, step.volume);
     }
-    // Caught: back to the start of the same maze. A player who flies (noclip, a tool for
-    // looking around) is left alone. The steps that may follow in the same frame play
-    // the new round.
-    if (caught && !m_player.noclip) {
-        m_catchSeconds = 0.0F;
-        // The shade stands still from now on, so the picture of it must too: its last step
-        // was drawn between two places (the frames blend them), and without this the
-        // figure would swing between them for the whole fade.
-        m_round.shade.previousPosition = m_round.shade.position;
-        playCue(SoundCue::Caught);
-        return;
-    }
-
-    // This step took the player through the open gate: the result screen comes up. The
-    // steps that may follow in the same frame then find the round stopped.
-    if (m_round.state == RoundState::Won) {
-        // One full toll for walking through, whatever the clock of the bell says.
-        playCue(SoundCue::GateBell, GATE_BELL_NEAR_VOLUME);
-        tollBellSwing(m_bellSwing);
-        finishRound();
-    }
+    return caught;
 }
 
 void NightMazeApp::measureExitDistances() {

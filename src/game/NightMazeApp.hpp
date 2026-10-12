@@ -757,6 +757,26 @@ private:
     /// move and nothing is written to the settings file.
     void carryPlayerBack();
 
+    /// The three parts of a fixed step of a round that is played, in the order onUpdate
+    /// calls them.
+    ///
+    /// movePlayer: reads the keys of the player, moves the player by one step
+    /// (Player::update), plays the footsteps and sets the camera to the eyes. It returns
+    /// the metres the feet moved over the ground in this step.
+    float movePlayer(double fixedDt);
+
+    /// The rules of the round for the place the player has now (game::updateRound), what
+    /// a flask or the heartstone does to the stamina, and the sounds of the step: the
+    /// cues of the round, the low battery, the winded breath and the bell of the gate.
+    /// The obstacle list loses the gate when it opens. True when a crystal or a flask was
+    /// picked up in this step.
+    bool stepRoundRules(double fixedDt);
+
+    /// The shade of this step (game::updateRoundShade) with what it can hear, walkedMetres
+    /// and pickedUp of the two parts before, and its sounds. True when it caught the
+    /// player.
+    bool stepShade(double fixedDt, float walkedMetres, bool pickedUp);
+
     /// The picking ray of this frame and what it hits (game::pickInRound). The ray goes
     /// through the middle of the picture while the cursor is captured and through the
     /// cursor while it is free, and it is built from view and projection, the two
