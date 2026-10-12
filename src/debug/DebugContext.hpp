@@ -2,6 +2,7 @@
 #pragma once
 
 #include "game/KeyBindings.hpp"
+#include "gfx/RenderStats.hpp"
 
 #include <array>
 #include <cstddef>
@@ -16,6 +17,7 @@ class AudioEngine;
 } // namespace audio
 
 namespace core {
+struct CpuTimes;
 class Time;
 class Window;
 } // namespace core
@@ -26,6 +28,7 @@ enum class GameMode;
 enum class ViewMode;
 struct EnvironmentSettings;
 struct GameplaySettings;
+class GpuPassTimers;
 struct GrassSettings;
 struct LightingSettings;
 struct MazeSettings;
@@ -72,6 +75,18 @@ struct DebugContext {
     const core::Time& time;
     /// Window, read only: sizes and OpenGL driver info.
     const core::Window& window;
+    /// Where the CPU time of a frame goes (update, render, swap), read only.
+    const core::CpuTimes& cpuTimes;
+    /// Whether the buffer swap waits for the screen, editable: main.cpp hands the
+    /// value to the window after the debug UI was drawn (core::Window::setVsync).
+    bool& vsync;
+    /// The draw calls, triangles, uniform lookups and texture binds of the frame the
+    /// game has just drawn. Plain numbers, copied when the context is built, so what
+    /// the debug UI itself draws afterwards is not in them.
+    gfx::RenderCounters renderCounters;
+    /// The time the graphics card worked on every pass and the draw calls of each,
+    /// read only.
+    const game::GpuPassTimers& gpuPasses;
     /// Clear color (red, green, blue in the range 0 to 1), editable: the background
     /// where the sky is not drawn.
     std::array<float, 3>& clearColor;

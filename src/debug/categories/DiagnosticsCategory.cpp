@@ -1,11 +1,13 @@
 // "Diagnostics" category of the debug window: frame statistics and driver info, the
-// sound device with the last sound cue, the shader programs with a reload button and
-// their errors, the collision boxes and the picking ray, and the loaded models and
-// textures.
+// vsync switch, the draw calls of a frame and the time the graphics card needs for
+// every pass, the sound device with the last sound cue, the shader programs with
+// a reload button and their errors, the collision boxes and the picking ray, and the
+// loaded models and textures.
 #include "debug/categories/DiagnosticsCategory.hpp"
 
 #include "assets/AssetCache.hpp"
 #include "audio/AudioEngine.hpp"
+#include "core/Application.hpp"
 #include "core/Paths.hpp"
 #include "core/Time.hpp"
 #include "core/Window.hpp"
@@ -13,6 +15,7 @@
 #include "debug/RawTextureSampler.hpp"
 #include "debug/Theme.hpp"
 #include "debug/Widgets.hpp"
+#include "game/GpuPasses.hpp"
 #include "game/Interactables.hpp"
 #include "game/Interaction.hpp"
 #include "game/MazeLayout.hpp"
@@ -44,6 +47,24 @@ constexpr std::uint32_t INDICES_PER_TRIANGLE = 3;
 // Side of the square preview of a texture, in pixels at 100 % display scaling.
 constexpr float TEXTURE_PREVIEW_SIZE = 128.0F;
 
+// A measured pass and the name its line has in the card.
+struct GpuPassName {
+    game::GpuPass pass;
+    const char* name;
+};
+
+// The measured passes in the order a frame draws them.
+constexpr std::array<GpuPassName, game::GPU_PASS_COUNT> GPU_PASS_NAMES = {{
+    {.pass = game::GpuPass::MoonShadow, .name = "Moon shadow"},
+    {.pass = game::GpuPass::FlashlightShadow, .name = "Flashlight shadow"},
+    {.pass = game::GpuPass::Scene, .name = "Scene"},
+    {.pass = game::GpuPass::Grass, .name = "Grass"},
+    {.pass = game::GpuPass::Reflections, .name = "Reflections and sky"},
+    {.pass = game::GpuPass::Bloom, .name = "Bloom"},
+    {.pass = game::GpuPass::Composite, .name = "Composite"},
+    {.pass = game::GpuPass::Minimap, .name = "Minimap"},
+}};
+
 // ---- Frame and shaders -----------------------------------------------------------------
 
 // The frame clock, the sizes of the window and what the graphics driver says it is.
@@ -54,10 +75,59 @@ void drawFrame(Page& page, const DebugContext& context) {
     page.beginCard("Frame");
     page.stat("FPS", "%.1f", context.time.fps());
     page.stat("Frame time", "%.2f ms", context.time.frameTimeMs());
+    // Where the frame time goes on the CPU, averaged like the two lines above. Render
+    // includes the menu and this window. With vsync on, the wait for the screen is in
+    // the swap. With vsync off, the swap is the wait for the graphics card.
+    page.stat("CPU update", "%.2f ms", context.cpuTimes.update.value());
+    page.stat("CPU render", "%.2f ms", context.cpuTimes.render.value());
+    page.stat("CPU swap", "%.2f ms", context.cpuTimes.swap.value());
+    page.toggle("Vsync", &context.vsync,
+                "On: the buffer swap waits for the screen, so the frame rate stops at its "
+                "refresh rate and the wait shows up as CPU swap. Off: frames are drawn as "
+                "fast as the computer can, which is what a measurement needs, and CPU swap "
+                "is the wait for the graphics card. Not saved: every run starts with it on.");
     page.stat("Framebuffer", "%d x %d px", framebuffer.width, framebuffer.height);
     page.stat("Window", "%d x %d", windowSize.width, windowSize.height);
     page.stat("OpenGL", "%s", context.window.glVersion().c_str());
     page.stat("GPU", "%s", context.window.glRenderer().c_str());
+    page.endCard();
+}
+
+// What the game asked of OpenGL in the frame it has just drawn.
+void drawRenderWork(Page& page, const gfx::RenderCounters& counters) {
+    page.beginCard("Draw work");
+    page.stat("Draw calls", "%d", static_cast<int>(counters.drawCalls));
+    page.stat("Triangles", "%d", static_cast<int>(counters.triangles));
+    page.stat("Uniform lookups", "%d", static_cast<int>(counters.uniformLookups));
+    page.stat("Texture binds", "%d", static_cast<int>(counters.textureBinds));
+    page.note("One frame of the game, without this window and the menu. Triangles are the "
+              "ones handed to the card: the blades of the grass are made there and not "
+              "counted.");
+    page.endCard();
+}
+
+// The time the graphics card worked on every pass, and the draw calls of each.
+void drawGpuPasses(Page& page, const game::GpuPassTimers& passes) {
+    page.beginCard("GPU passes");
+    // No line with the sum: on a card that reports a shared time to two passes (see the
+    // note below) the sum would count that time twice.
+    for (const GpuPassName& entry : GPU_PASS_NAMES) {
+        const game::GpuPassReading& reading = passes.reading(entry.pass);
+        if (!reading.ran) {
+            page.stat(entry.name, "not run");
+        } else if (!reading.milliseconds.hasValue()) {
+            // The first answers of the card have not arrived yet, or it gives none.
+            page.stat(entry.name, "no time yet, %d draw calls",
+                      static_cast<int>(reading.drawCalls));
+        } else {
+            page.stat(entry.name, "%.3f ms, %d draw calls", reading.milliseconds.value(),
+                      static_cast<int>(reading.drawCalls));
+        }
+    }
+    page.note("Measured by the card itself (timer queries) and averaged like the FPS. The "
+              "grass is a pass of its own between two parts of the scene pass. An Apple "
+              "GPU works on a framebuffer as a whole, so there Scene and Grass both show "
+              "the time of the two together.");
     page.endCard();
 }
 
@@ -184,6 +254,8 @@ void drawFrameAndShadersTab(Page& page, const DebugContext& context) {
     page.setPlace("Diagnostics / Frame and shaders");
     page.beginColumns();
     drawFrame(page, context);
+    drawRenderWork(page, context.renderCounters);
+    drawGpuPasses(page, context.gpuPasses);
     drawAudio(page, context);
     page.nextColumn();
     drawShaders(page, context);

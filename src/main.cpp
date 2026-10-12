@@ -3,6 +3,7 @@
 #include "debug/DebugContext.hpp"
 #include "debug/DebugUI.hpp"
 #include "game/NightMazeApp.hpp"
+#include "gfx/RenderStats.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -70,6 +71,10 @@ protected:
         m_debugUI.draw(debug::DebugContext{
             .time = time(),
             .window = window(),
+            .cpuTimes = cpuTimes(),
+            .vsync = m_vsync,
+            .renderCounters = gfx::renderCounters(),
+            .gpuPasses = gpuPasses(),
             .clearColor = clearColor(),
             .camera = camera(),
             .mouseSensitivity = mouseSensitivity(),
@@ -140,6 +145,10 @@ protected:
             .campaignRequest = campaignRequest(),
         });
 
+        // The vsync switch of the Diagnostics category. The window does nothing when
+        // the value is the one it has.
+        window().setVsync(m_vsync);
+
         // ImGui now knows whether it is using the keyboard (a text field is being edited
         // or a widget is active) and the mouse (the cursor is over a panel or a widget is
         // being dragged). Block each device for the game from the next frame on, so typing
@@ -163,6 +172,11 @@ private:
     // shown when it was switched on: that is the state they return to.
     bool m_menuCameraWasOn = false;
     bool m_panelsVisibleBeforeMenuCamera = true;
+
+    // Whether the buffer swap waits for the screen. A switch of the debug UI for
+    // measuring, so it lives here and not in the settings of the player: every run
+    // starts with vsync on.
+    bool m_vsync = true;
 };
 
 } // namespace
