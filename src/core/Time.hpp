@@ -49,6 +49,11 @@ public:
     /// Average time of one frame in milliseconds, over the same interval as fps().
     double frameTimeMs() const { return m_frameTimeMs; }
 
+    /// True in the frame whose beginFrame() has refreshed fps() and frameTimeMs(). Other
+    /// averages that are shown next to them (core::PeriodicAverage) publish in that
+    /// frame, so all of them cover the same interval.
+    bool fpsRefreshed() const { return m_fpsRefreshed; }
+
 private:
     using Clock = std::chrono::steady_clock;
 
@@ -61,6 +66,7 @@ private:
     int m_fpsFrameCount = 0;
     double m_fps = 0.0;
     double m_frameTimeMs = 0.0;
+    bool m_fpsRefreshed = false;
 };
 
 } // namespace core

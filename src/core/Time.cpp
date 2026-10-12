@@ -20,11 +20,13 @@ void Time::beginFrame() {
     // The FPS display uses the real, unclamped time.
     m_fpsElapsed += realDelta;
     m_fpsFrameCount += 1;
+    m_fpsRefreshed = false;
     if (m_fpsElapsed >= FPS_REFRESH_INTERVAL) {
         m_fps = m_fpsFrameCount / m_fpsElapsed;
         m_frameTimeMs = 1000.0 * m_fpsElapsed / m_fpsFrameCount;
         m_fpsElapsed = 0.0;
         m_fpsFrameCount = 0;
+        m_fpsRefreshed = true;
     }
 
     // The simulation uses the clamped time.

@@ -62,6 +62,8 @@ add_library(engine STATIC
     src/core/Log.hpp
     src/core/Paths.cpp
     src/core/Paths.hpp
+    src/core/PeriodicAverage.cpp
+    src/core/PeriodicAverage.hpp
     src/core/Time.cpp
     src/core/Time.hpp
     src/core/Window.cpp
@@ -480,6 +482,7 @@ add_executable(night_maze_tests
     tests/MenuCameraTests.cpp
     tests/MinimapTests.cpp
     tests/ObjLoaderTests.cpp
+    tests/PeriodicAverageTests.cpp
     tests/PlayerTests.cpp
     tests/PuddleTests.cpp
     tests/RaycastTests.cpp
