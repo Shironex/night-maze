@@ -1,6 +1,8 @@
 * text=auto eol=lf
 # The video loop of the main menu: never a text file, whatever its bytes look like.
 *.mp4 binary
+# A model that a tool generated, kept as the source of a Blender script (tools/blender/sources).
+*.glb binary
 # The media and fonts of the website in site/.
 *.mp3 binary
 *.webp binary
