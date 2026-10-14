@@ -1155,17 +1155,21 @@ def build_flask_textures():
 
 
 def save_png(color, file_name):
-    """Saves a SIZE x SIZE x 3 array of colors from 0 to 1 as an 8-bit RGB PNG."""
+    """Saves a height x width x 3 array of colors from 0 to 1 as an 8-bit RGB PNG.
+
+    The pictures of this file are SIZE x SIZE. build_shade.py writes larger ones.
+    """
+    height, width, _ = color.shape
     # Round to the 256 levels of an 8-bit channel here, so the bytes in the file do not
     # depend on how Blender rounds.
     levels = np.round(color * 255.0) / 255.0
 
     # A Blender image without alpha is still filled with 4 values per pixel. The fourth
     # one stays 1 (opaque) and is not written to the file.
-    rgba = np.ones((SIZE, SIZE, 4), dtype=np.float32)
+    rgba = np.ones((height, width, 4), dtype=np.float32)
     rgba[..., :3] = levels
 
-    image = bpy.data.images.new(file_name, SIZE, SIZE, alpha=False)
+    image = bpy.data.images.new(file_name, width, height, alpha=False)
     image.pixels.foreach_set(rgba.ravel())
 
     os.makedirs(common.TEXTURES_DIR, exist_ok=True)
