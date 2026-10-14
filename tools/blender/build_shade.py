@@ -1,387 +1,423 @@
 # Builds the two models of the shade: the tall hooded figure that follows the player through
-# the maze whenever the flashlight is not on it. shade is the cloth: a cloak from the ground
-# to the shoulders whose hem is torn into tongues, two sleeves that hang to the knees with
-# nothing in them, and a pointed hood. shade_hollow is what the cloth is wrapped around:
-# an oval where a face would be, and the two openings of the cuffs. The game draws those
-# faces as a piece of the night sky and not as cloth.
-# Output: assets/models/shade.obj, shade.mtl, shade_hollow.obj and shade_hollow.mtl.
+# the maze whenever the flashlight is not on it. Unlike every other model here, the figure
+# is not built in this script. Its source is a model that Tripo generated,
+# tools/blender/sources/shade_tripo.glb: a hooded figure in a long robe, with a dark
+# mannequin's face in the hood and dark mannequin's hands in the sleeves, one material with
+# a bright blue colour picture and a normal map, about 0.98 m tall. This script cleans it
+# up and writes the game files, the same bytes on every run.
+#
+# shade is the cloth: the robe without the hands, scaled to the height of the shade.
+# shade_hollow is what the cloth is wrapped around: a curved sheet in front of the face in
+# the hood, and lids over the places in the sleeves where the hands were. The game draws
+# those faces as a piece of the night sky and not as cloth.
+# Output: assets/models/shade.obj, shade.mtl, shade_hollow.obj and shade_hollow.mtl, and
+# the pictures assets/textures/shade.png and shade_normal.png.
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/build_shade.py
 # Add "-- --shots" at the end to also write review renders to the temporary folder.
-import math
 import os
 import sys
 
+import bmesh
+import bpy
+import numpy as np
 from mathutils import Vector
+from mathutils.bvhtree import BVHTree
 
 # Blender does not add the folder of the script to the module search path, so the helper
-# module next to this file would not be found without this line.
+# modules next to this file would not be found without this line.
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import blender_common as common
+import make_textures
 
 NAME = "shade"
 HOLLOW_NAME = "shade_hollow"
 
+SOURCE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources",
+                           "shade_tripo.glb")
+
 # All sizes are in metres. The geometry is written in Blender space, where Z is the height.
 # After export Z becomes the game Y axis, and the front of the figure (Blender -Y) looks
 # along the game +Z axis: the game turns the model around the vertical axis from there.
+# The source already stands on Blender Z = 0 and looks along Blender -Y.
 # The figure is 2.1 m tall, taller than the player (1.8 m), and its origin is on the
 # ground in the middle of its base.
 HEIGHT = 2.1
 
-# The cloak goes this far below the origin. The ground of the maze is uneven, and a hem
-# that ended exactly at the origin would hang in the air on the low side.
+# The robe goes this far below the origin. The source ends on the ground in a pool of
+# folds. The ground of the maze is uneven (up to about a tenth of a metre per metre), and
+# the walk of the shade lifts it by up to 4 cm: a hem that ended exactly at the origin
+# would hang in the air on the low side. So the figure is scaled to HEIGHT + HEM_DEPTH and
+# lowered by HEM_DEPTH. The flat pool of the folds lies under the ground then.
 HEM_DEPTH = 0.1
 
-# The figure is built like the flask, ring over ring: every ring of its outline has this
-# many corners.
-SIDES = 16
+# Two corners of the source closer than this (in its own units, about a metre for the
+# whole figure) are one corner. The file has a corner of its own for every face that
+# meets at a seam of the picture, and without this the faces of one surface would not
+# know that they are neighbours: not for the smooth normals and not for the islands.
+MERGE_DISTANCE = 0.000001
 
-# The outline from the hem to the tip of the hood, one ring per line: the height of the
-# ring, its radius along X (from side to side), how much narrower it is along Y (from
-# front to back, 1 = round) and how far it is moved along Y (negative = forwards).
-# The body is wide and flat like a person seen from the front, the hood is round, and
-# its tip leans back.
-RINGS = (
-    (-HEM_DEPTH, 0.46, 0.84, 0.00),  # the hem, in the ground
-    (0.00, 0.45, 0.84, 0.00),
-    (0.35, 0.40, 0.82, 0.00),
-    (0.80, 0.34, 0.76, 0.00),
-    (1.20, 0.31, 0.70, 0.00),
-    (1.46, 0.37, 0.60, 0.00),  # the shoulders, the widest place of the upper body
-    (1.58, 0.31, 0.72, -0.01),  # the hood lies on them like a cowl: there is no neck
-    (1.69, 0.255, 0.96, -0.03),
-    (1.81, 0.24, 1.06, -0.05),  # the hood at its widest
-    (1.92, 0.21, 1.10, -0.04),
-    (2.01, 0.15, 1.10, -0.01),
-    (2.07, 0.08, 1.10, 0.03),
-    (HEIGHT, 0.03, 1.00, 0.07),  # the tip of the hood
-)
+# The mannequin. Its face and its hands are nearly black and grey in the picture, and the
+# robe is blue, so a face of the model belongs to the mannequin when the texel at the
+# middle of its UVs is this dark (all three channels below MANNEQUIN_DARK, sRGB) and this
+# grey (the channels at most MANNEQUIN_GREY apart). Below MANNEQUIN_HANDS_SHARE of the
+# height those are the hands, above it the face.
+MANNEQUIN_DARK = 0.08
+MANNEQUIN_GREY = 0.05
+MANNEQUIN_HANDS_SHARE = 0.65
 
-# The folds of the cloak: the radius of a ring swings by this share around the figure,
-# FOLD_COUNT times, and the swing fades out towards the shoulders. With flat faces this
-# is what gives the cloak ridges that catch the light.
-FOLD_DEPTH = 0.07
-FOLD_COUNT = 4
-FOLD_TOP = 1.46
+# The pictures of the source are 2048 pixels wide. The game gets them at a quarter of the
+# pixels, every texel the average of 2 by 2 of the source: the figure is seen from a metre
+# away at the closest, and two pictures of 2048 would be 32 MB on the graphics card for
+# one figure.
+TEXTURE_SIZE = 1024
 
-# The torn hem. Every corner of the two lowest rings is lifted by its number of this list,
-# in metres, and pulled in by a quarter of that. Where the number is near 0 the cloth
-# still goes into the ground: a tongue. Between two tongues the hem hangs up to 12 cm
-# over the ground, and the dark under the cloak shows.
-HEM_LIFT = (0.0, 0.14, 0.04, 0.2, 0.02, 0.12, 0.22, 0.05, 0.17, 0.0, 0.1, 0.19, 0.03, 0.15, 0.01,
-            0.09)
-HEM_LIFT_RINGS = 2
-HEM_PULL_IN = 0.25
+# The colour. The source is a bright royal blue. The game wants a blue so dark that it is
+# nearly black: a black picture would show a hole in the beam of the flashlight and not a
+# shape. The brightest channel of a texel of the source (sRGB) becomes a brightness, and
+# the brightness a dark blue, so the folds and the seams the source painted stay. The
+# numbers are chosen in the game: the flashlight is warm, and a bluish grey in the
+# picture reads as plain grey in its beam.
+COLOUR_FLOOR = 0.05
+COLOUR_RANGE = 0.34
+COLOUR_TINT = (0.18, 0.24, 0.70)
 
-# Under a lifted hem the inside of the cloak is in view, and the game draws no back of
-# a face. So the bands between the lowest rings are built twice: once looking out and
-# once looking in (add_inward_band). This many bands, counted from the ground.
-INWARD_BANDS = 2
-
-# The front of the hood. The corners of the hood rings that look forwards (within
-# FACE_HALF_ANGLE of the front) do not lie on the round outline: they are pulled back onto
-# the straight line between the two corners beside them, FACE_RIM_ANGLE from the front. So
-# the hood is cut off flat where a face would be, under its brow and over its cowl. The
-# rings between the two heights have it.
-FACE_LOW = 1.66
-FACE_HIGH = 1.95
-FACE_HALF_ANGLE = 50.0
-FACE_RIM_ANGLE = 67.5
-
-# The night in the hood: an oval on that flat front, this far in front of the cloth (like
-# a chalk mark on a wall), with its middle at this height and with this many corners. It
-# is the size of a face, and its edge is the only border the night has: no cloth frames
-# it. The middle lies at the height of a ring, where the flat front has a ridge, and no
-# triangle crosses that height, so every triangle lies flat on the cloth behind it. It
-# belongs to the model shade_hollow.
-NIGHT_HEIGHT = 1.81
-NIGHT_HALF_WIDTH = 0.08
-NIGHT_HALF_HEIGHT = 0.1
-NIGHT_SIDES = 16
+# The night in the hood: a curved sheet in front of the face of the mannequin. Seen from
+# the front, the hood frames the face tightly, so the sheet takes its outline from the face:
+# rays go into the hood along Blender +Y every NIGHT_RAY_STEP across and every
+# NIGHT_ROW_STEP up, and every row of the sheet reaches from the leftmost to the
+# rightmost ray that meets the mannequin first, NIGHT_MARGIN further on both sides, with
+# NIGHT_COLUMNS faces across. One row more at the bottom and at the top reaches
+# NIGHT_MARGIN beyond the face. The margin lies behind the brim of the hood, so the edge of
+# the night is the edge of the cloth.
+NIGHT_RAY_STEP = 0.005
+NIGHT_ROW_STEP = 0.01
+NIGHT_MARGIN = 0.01
+NIGHT_COLUMNS = 12
+# The sheet lies NIGHT_GAP in front of the tip of the nose, like a chalk mark in front of
+# a wall, and bends back towards its sides, NIGHT_BEND times the square of the distance
+# from the middle (in metres): the face is narrow and the sides of the brim are deeper than
+# the nose, and a flat sheet would stand in front of them.
 NIGHT_GAP = 0.004
+NIGHT_BEND = 6.0
 
-# The front of the figure, as an angle around Z: -Y.
-FRONT_ANGLE = 270.0
-
-# A sleeve: a tube of this many sides from the shoulder past the elbow to the knee, as
-# three points for the right arm (the left one is its mirror image). It gets wider towards
-# the cuff, from the first radius to the second. The rings of the tube are turned by
-# SLEEVE_TURN (radians), so no edge of it points straight at the player.
-SLEEVE_SIDES = 6
-SLEEVE_PATH = ((0.31, -0.02, 1.44), (0.38, -0.05, 1.09), (0.40, -0.08, 0.74))
-SLEEVE_RADIUS_TOP = 0.07
-SLEEVE_RADIUS_GROWTH = 0.045
-SLEEVE_TURN = 0.3
-
-# The cuff holds no hand, only the night: a flat face of this radius closes the sleeve
-# this far above its lower end. It belongs to the model shade_hollow.
-CUFF_RADIUS = 0.1
-CUFF_INSET = 0.03
-
-# The picture shade.png goes once around the figure, with the height on its v axis. The
-# faces of the body are given their place in it corner by corner (add_band). The faces of
-# the sleeves and of the cuffs are projected onto their own plane instead, with this many
-# units of u and v per metre: the density the body has along its height.
-UV_UNITS_PER_METRE = 1.0 / (HEIGHT + HEM_DEPTH)
-# Where the picture is dark: the middle of the front of the hood (make_textures.py,
-# SHADE_FACE_ROWS and SHADE_FACE_COLUMN). The cuffs take their piece from there.
-DARK_UV = (0.75, 0.86)
+# The places of the hands are closed by faces that follow the edge of each hole, looking
+# both ways. Like the sheet in the hood they belong to shade_hollow. Their piece of the
+# picture is a tiny patch of the mannequin's face, which is black: this many UV units per
+# metre around the UV middle of the darkest face of the mannequin.
+DARK_UV_UNITS_PER_METRE = 0.01
 
 
-def add_ring(vertices, number):
-    """Appends the SIDES corners of ring `number` of the outline.
+def import_source():
+    """Imports the GLB and returns its mesh object and its two pictures as arrays.
 
-    Returns the index of its first corner. The corners go counter clockwise as seen from
-    above.
+    The pictures are rows from the bottom, as Blender stores them, with the channels from
+    0 to 1 exactly as the file has them (sRGB for the colour, the directions for the
+    normal map).
     """
-    height, radius, narrow, forward = RINGS[number]
-    first = len(vertices)
-    for corner in range(SIDES):
-        degrees = corner * 360.0 / SIDES
-        angle = math.radians(degrees)
-        reach = radius
-
-        # The folds: deepest at the ground, gone at the shoulders. Every other ring is
-        # turned a little, so a fold does not run down as a straight ruler line.
-        if height < FOLD_TOP:
-            fade = 1.0 - max(height, 0.0) / FOLD_TOP
-            reach *= 1.0 + FOLD_DEPTH * fade * math.cos(FOLD_COUNT * angle + 0.6 * number)
-
-        # The flat front of the hood: as far forward as the corners at its rim.
-        depth = reach * narrow * math.sin(angle)
-        from_front = abs((degrees - FRONT_ANGLE + 180.0) % 360.0 - 180.0)
-        if FACE_LOW <= height <= FACE_HIGH and from_front <= FACE_HALF_ANGLE:
-            depth = front_depth(number) - forward
-
-        # The torn hem: after the folds, which are measured at the height of the outline.
-        lifted = height
-        if number < HEM_LIFT_RINGS:
-            lifted += HEM_LIFT[corner]
-            reach *= 1.0 - HEM_LIFT[corner] * HEM_PULL_IN
-            depth *= 1.0 - HEM_LIFT[corner] * HEM_PULL_IN
-
-        vertices.append((reach * math.cos(angle), forward + depth, lifted))
-    return first
+    common.reset_scene()
+    bpy.ops.import_scene.gltf(filepath=SOURCE_FILE)
+    model = next(item for item in bpy.data.objects if item.type == "MESH")
+    nodes = model.data.materials[0].node_tree.nodes
+    surface = next(node for node in nodes if node.type == "BSDF_PRINCIPLED")
+    colour = surface.inputs["Base Color"].links[0].from_node.image
+    normal_map = next(node for node in nodes if node.type == "NORMAL_MAP")
+    normal = normal_map.inputs["Color"].links[0].from_node.image
+    return model, picture_array(colour), picture_array(normal)
 
 
-def front_depth(number):
-    """The y of the flat front of the hood at ring `number`: that of its rim corners."""
-    _, radius, narrow, forward = RINGS[number]
-    return forward - radius * narrow * math.cos(math.radians(FACE_RIM_ANGLE))
+def picture_array(image):
+    width, height = image.size
+    pixels = np.empty(width * height * 4, dtype=np.float32)
+    image.pixels.foreach_get(pixels)
+    return pixels.reshape(height, width, 4)[..., :3]
 
 
-def picture_height(height):
-    """The v of a height on the figure: 0 at the hem, 1 at the tip of the hood."""
-    return (height + HEM_DEPTH) / (HEIGHT + HEM_DEPTH)
+def texel_at(picture, face, uv_layer):
+    """The colour of the picture at the middle of the UVs of a face."""
+    height, width, _ = picture.shape
+    u = sum(loop[uv_layer].uv.x for loop in face.loops) / len(face.loops)
+    v = sum(loop[uv_layer].uv.y for loop in face.loops) / len(face.loops)
+    column = min(width - 1, max(0, int(u * width)))
+    row = min(height - 1, max(0, int(v * height)))
+    return picture[row, column]
 
 
-def add_band(cloth, rings, number):
-    """Appends the SIDES faces between ring `number` and the ring above it.
+def is_mannequin(texel):
+    return texel.max() < MANNEQUIN_DARK and texel.max() - texel.min() < MANNEQUIN_GREY
 
-    cloth is a pair of lists (faces, uvs). The picture goes once around the figure: u is
-    the number of the corner divided by SIDES, and the last face ends at u = 1 and not at
-    u = 0. v is the height of the outline, also where the hem is lifted: the picture is
-    stretched there, not cut.
+
+def neighbours(face):
+    return [other for edge in face.edges for other in edge.link_faces if other is not face]
+
+
+def largest_island(mesh):
+    """The faces of the largest group of faces that share edges with each other."""
+    mesh.faces.index_update()
+    seen = set()
+    largest = []
+    for first in mesh.faces:
+        if first.index in seen:
+            continue
+        island = [first]
+        seen.add(first.index)
+        # The island grows face by face. The list itself is the queue.
+        for face in island:
+            for other in neighbours(face):
+                if other.index not in seen:
+                    seen.add(other.index)
+                    island.append(other)
+        if len(island) > len(largest):
+            largest = island
+    return largest
+
+
+def boundary_loops(mesh):
+    """The holes of the surface: every closed chain of edges with a face on one side only.
+
+    Each hole is a list of its corners in order, starting at the edge with the lowest
+    index, so the same mesh gives the same lists on every run. Two holes may touch at one
+    corner. So the walk does not go from corner to corner but from face to face: the next
+    edge of a hole is found by turning around the corner through the faces there, until
+    an edge with a face on one side only comes.
     """
-    faces, uvs = cloth
-    lower = rings[number]
-    upper = rings[number + 1]
-    low = picture_height(RINGS[number][0])
-    high = picture_height(RINGS[number + 1][0])
-    for corner in range(SIDES):
-        following = (corner + 1) % SIDES
-        left = corner / SIDES
-        right = (corner + 1) / SIDES
-        # Counter clockwise as seen from outside, so the normal points outwards.
-        faces.append((lower + corner, lower + following, upper + following, upper + corner))
-        uvs.append(((left, low), (right, low), (right, high), (left, high)))
+    mesh.edges.index_update()
+    loops = []
+    done = set()
+    for start in [edge for edge in mesh.edges if edge.is_boundary]:
+        if start.index in done:
+            continue
+        chain = []
+        # The corner of the only face of the edge that lies on it, in the order of the face.
+        loop = start.link_loops[0]
+        while loop.edge.index not in done:
+            done.add(loop.edge.index)
+            chain.append(loop.vert)
+            loop = loop.link_loop_next
+            while not loop.edge.is_boundary:
+                loop = loop.link_loop_radial_next.link_loop_next
+        loops.append(chain)
+    return loops
 
 
-def add_inward_band(cloth, rings, number):
-    """Appends the faces of add_band once more, seen from inside the cloak.
+def give_dark_uvs(face, middle, uv_layer, dark_uv):
+    """Gives a face a tiny piece of the picture around dark_uv.
 
-    rings are corners of their own in the same places: Blender keeps only one of two
-    faces that share all their corners. The corners of a face go the other way round, and
-    u still grows to the right of whoever looks at the face, so the picture is not
-    a mirror image for the normal map.
+    The face is projected onto its own plane, as common.face_project_uvs does: `up` is the
+    height as far as the face allows and `right` points to the right for someone who looks
+    at the face from outside. So the piece is never a mirror image. `middle` is the point
+    that lands on dark_uv.
     """
-    faces, uvs = cloth
-    lower = rings[number]
-    upper = rings[number + 1]
-    low = picture_height(RINGS[number][0])
-    high = picture_height(RINGS[number + 1][0])
-    for corner in range(SIDES):
-        following = (corner + 1) % SIDES
-        left = corner / SIDES
-        right = (corner + 1) / SIDES
-        faces.append((lower + following, lower + corner, upper + corner, upper + following))
-        uvs.append(((left, low), (right, low), (right, high), (left, high)))
-
-
-def add_night(vertices, hollow):
-    """Appends the oval of night on the flat front of the hood to hollow.
-
-    A fan of NIGHT_SIDES triangles around its middle, looking forwards.
-    """
-    faces, uvs = hollow
-    # The flat front, from its lower ring to its upper one: the height and the y of each.
-    front = [(RINGS[number][0], front_depth(number)) for number in range(len(RINGS))
-             if FACE_LOW <= RINGS[number][0] <= FACE_HIGH]
-
-    def depth_at(height):
-        # The y of the cloth at a height: a straight line from ring to ring.
-        for (low, low_depth), (high, high_depth) in zip(front, front[1:]):
-            if low <= height <= high:
-                share = (height - low) / (high - low)
-                return low_depth + share * (high_depth - low_depth)
-        raise ValueError(f"the night in the hood leaves the flat front at {height} m")
-
-    def add_corner(x, height):
-        vertices.append((x, depth_at(height) - NIGHT_GAP, height))
-        # Its place in the picture: around the middle of the dark, to the right and up as
-        # someone sees it who looks at the face.
-        uv = (DARK_UV[0] + x * UV_UNITS_PER_METRE,
-              DARK_UV[1] + (height - NIGHT_HEIGHT) * UV_UNITS_PER_METRE)
-        return len(vertices) - 1, uv
-
-    middle = add_corner(0.0, NIGHT_HEIGHT)
-    rim = []
-    for corner in range(NIGHT_SIDES):
-        angle = corner / NIGHT_SIDES * 2.0 * math.pi
-        # Rounded, so the two corners at the height of the middle lie exactly on it.
-        rim.append(add_corner(NIGHT_HALF_WIDTH * math.cos(angle),
-                              round(NIGHT_HEIGHT + NIGHT_HALF_HEIGHT * math.sin(angle), 6)))
-    for corner in range(NIGHT_SIDES):
-        # Counter clockwise as seen from the front, where +X is to the right.
-        triangle = (middle, rim[corner], rim[(corner + 1) % NIGHT_SIDES])
-        faces.append(tuple(index for index, _ in triangle))
-        uvs.append(tuple(uv for _, uv in triangle))
-
-
-def add_projected_face(vertices, model, corners, inside, uv_centre):
-    """Appends one flat face that looks away from the point `inside`.
-
-    model is a pair of lists (faces, uvs). The piece of the picture lies around
-    `uv_centre`: the face is projected onto its own plane, as common.face_project_uvs
-    does, so the picture is never a mirror image.
-    """
-    faces, uvs = model
-    points = [Vector(vertices[corner]) for corner in corners]
-    centre = sum(points, Vector()) / len(points)
-
-    # The direction the face looks in, as the average over its edges (Newell's method):
-    # the four corners of a side of a bent tube do not lie in one plane.
-    normal = Vector()
-    for place, point in enumerate(points):
-        after = points[(place + 1) % len(points)]
-        normal += Vector(((point.y - after.y) * (point.z + after.z),
-                          (point.z - after.z) * (point.x + after.x),
-                          (point.x - after.x) * (point.y + after.y)))
-    normal.normalize()
-    if normal.dot(centre - Vector(inside)) < 0.0:
-        # The corners went clockwise as seen from outside. Turn them around.
-        corners = corners[::-1]
-        points.reverse()
-        normal = -normal
-
-    # `up` is the height as far as the face allows, `right` points to the right for
-    # someone who looks at the face from outside.
-    up = Vector((0.0, 0.0, 1.0)) - normal * normal.z
+    face.normal_update()
+    up = Vector((0.0, 0.0, 1.0)) - face.normal * face.normal.z
     if up.length < 0.000001:
         up = Vector((0.0, 1.0, 0.0))
     up.normalize()
-    right = up.cross(normal)
-    faces.append(tuple(corners))
-    uvs.append(tuple(
-        (uv_centre[0] + (point - centre).dot(right) * UV_UNITS_PER_METRE,
-         uv_centre[1] + (point - centre).dot(up) * UV_UNITS_PER_METRE)
-        for point in points
-    ))
+    right = up.cross(face.normal)
+    for loop in face.loops:
+        offset = loop.vert.co - middle
+        loop[uv_layer].uv = (dark_uv[0] + offset.dot(right) * DARK_UV_UNITS_PER_METRE,
+                             dark_uv[1] + offset.dot(up) * DARK_UV_UNITS_PER_METRE)
 
 
-def ring_around(vertices, centre, along, radius, sides, turn):
-    """Appends a ring of `sides` corners around `centre`, across the direction `along`.
+def close_hole(mesh, hole, uv_layer, dark_uv):
+    """Closes one hole with faces along its edge, once looking each way. Returns them.
 
-    Returns the indices of the corners.
+    Each side has corners of its own: Blender keeps only one of two faces that share all
+    their corners. The hole is first one face with all its corners, then cut into
+    triangles that stay inside its outline, also where the outline bends inwards.
     """
-    along = along.normalized()
-    # Two directions across `along`. The first is Blender Y as far as `along` allows.
-    side = Vector((0.0, 1.0, 0.0))
-    side = (side - along * side.dot(along)).normalized()
-    other = along.cross(side)
-    ring = []
-    for corner in range(sides):
-        angle = corner / sides * 2.0 * math.pi + turn
-        point = centre + other * (math.cos(angle) * radius) + side * (math.sin(angle) * radius)
-        vertices.append(tuple(point))
-        ring.append(len(vertices) - 1)
-    return ring
+    middle = sum((corner.co for corner in hole), Vector()) / len(hole)
+    closed = []
+    for ring in (hole, hole[::-1]):
+        lid = mesh.faces.new([mesh.verts.new(corner.co) for corner in ring])
+        triangles = bmesh.ops.triangulate(mesh, faces=[lid], quad_method="BEAUTY",
+                                          ngon_method="BEAUTY")["faces"]
+        for face in triangles:
+            give_dark_uvs(face, middle, uv_layer, dark_uv)
+        closed.extend(triangles)
+    return closed
 
 
-def add_sleeve(vertices, cloth, hollow, mirror):
-    """Appends one sleeve to cloth and the opening of its cuff to hollow.
+def mannequin_rows(mesh, mannequin):
+    """Finds the face of the mannequin as the rays from the front see it.
 
-    mirror is 1 for the right arm (Blender +X) and -1 for the left one.
+    Returns one (height, left, right) per row of NIGHT_ROW_STEP in which a ray meets the
+    mannequin before any cloth, from the bottom up, and the y of the tip of the nose.
     """
-    path = [Vector((mirror * x, y, z)) for x, y, z in SLEEVE_PATH]
-    last = len(path) - 1
-
-    # One ring per point of the path, across the direction the path has there.
-    rings = []
-    for number, point in enumerate(path):
-        along = path[min(last, number + 1)] - path[max(0, number - 1)]
-        radius = SLEEVE_RADIUS_TOP + SLEEVE_RADIUS_GROWTH * number / last
-        rings.append(ring_around(vertices, point, along, radius, SLEEVE_SIDES, SLEEVE_TURN))
-
-    for number in range(last):
-        inside = (path[number] + path[number + 1]) / 2.0
-        for side in range(SLEEVE_SIDES):
-            following = (side + 1) % SLEEVE_SIDES
-            corners = [rings[number][side], rings[number][following],
-                       rings[number + 1][following], rings[number + 1][side]]
-            # Every side shows another strip of the folds, at the height it hangs at.
-            uv_centre = ((side + 0.5) / SLEEVE_SIDES, picture_height(inside.z))
-            add_projected_face(vertices, cloth, corners, inside, uv_centre)
-
-    # The upper end sticks a few centimetres out of the shoulder, so it gets a lid. The
-    # player looks down on it, and without the lid would look into the tube.
-    add_projected_face(vertices, cloth, list(rings[0]), path[1],
-                       (0.5 / SLEEVE_SIDES, picture_height(path[0].z)))
-
-    # The opening of the cuff: a flat face a little way up the sleeve, looking out of it.
-    along = (path[last] - path[last - 1]).normalized()
-    centre = path[last] - along * CUFF_INSET
-    cuff = ring_around(vertices, centre, along, CUFF_RADIUS, SLEEVE_SIDES, 0.0)
-    add_projected_face(vertices, hollow, cuff, centre - along, DARK_UV)
+    tree = BVHTree.FromBMesh(mesh)
+    mesh.faces.ensure_lookup_table()
+    heights = [face.calc_center_median().z for face in mannequin]
+    reach = max(abs(corner.co.x) for face in mannequin for corner in face.verts)
+    columns = round(reach / NIGHT_RAY_STEP)
+    rows = []
+    nose = 0.0
+    row = round(min(heights) / NIGHT_ROW_STEP)
+    while row * NIGHT_ROW_STEP <= max(heights):
+        height = row * NIGHT_ROW_STEP
+        seen = []
+        for column in range(-columns, columns + 1):
+            x = column * NIGHT_RAY_STEP
+            point, _, number, _ = tree.ray_cast(Vector((x, -1.0, height)),
+                                                Vector((0.0, 1.0, 0.0)))
+            if point is not None and mesh.faces[number] in mannequin:
+                seen.append(x)
+                nose = min(nose, point.y)
+        if seen:
+            rows.append((height, min(seen), max(seen)))
+        row += 1
+    return rows, nose
 
 
-def finish(name, vertices, model, shots):
-    """Turns the lists of one model into a textured mesh and exports it."""
+def night_depth(x, nose):
+    """The y of the sheet of night at x: in front of the nose, bending back to the sides."""
+    return nose - NIGHT_GAP + NIGHT_BEND * x * x
+
+
+def add_night(mesh, mannequin, uv_layer, dark_uv):
+    """Adds the sheet of night in front of the face of the mannequin.
+
+    Returns its faces and its middle.
+    """
+    rows, nose = mannequin_rows(mesh, mannequin)
+    # The outline with its margin, and one row more under and over the face.
+    outline = [(height, left - NIGHT_MARGIN, right + NIGHT_MARGIN)
+               for height, left, right in rows]
+    outline.insert(0, (rows[0][0] - NIGHT_MARGIN,) + outline[0][1:])
+    outline.append((rows[-1][0] + NIGHT_MARGIN,) + outline[-1][1:])
+
+    # A grid of corners, row by row from the bottom, from left to right in every row.
+    grid = []
+    for height, left, right in outline:
+        corners = []
+        for column in range(NIGHT_COLUMNS + 1):
+            x = left + (right - left) * column / NIGHT_COLUMNS
+            corners.append(mesh.verts.new((x, night_depth(x, nose), height)))
+        grid.append(corners)
+
+    middle = Vector((0.0, night_depth(0.0, nose), (outline[0][0] + outline[-1][0]) / 2.0))
+    sheet = []
+    for lower, upper in zip(grid, grid[1:]):
+        for column in range(NIGHT_COLUMNS):
+            # Counter clockwise as seen from the front, where +X is to the right.
+            face = mesh.faces.new((lower[column], lower[column + 1], upper[column + 1],
+                                   upper[column]))
+            give_dark_uvs(face, middle, uv_layer, dark_uv)
+            sheet.append(face)
+    return sheet, middle
+
+
+def clean(model, colour):
+    """Returns the cleaned surface as a bmesh, the set of its hollow faces and the middle
+    of the night in the hood."""
+    mesh = bmesh.new()
+    mesh.from_mesh(model.data)
+    # The object of the import is moved by a millimetre or two. That goes into the corners.
+    bmesh.ops.transform(mesh, matrix=model.matrix_world, verts=mesh.verts)
+    bmesh.ops.remove_doubles(mesh, verts=mesh.verts, dist=MERGE_DISTANCE)
+    uv_layer = mesh.loops.layers.uv.active
+    top = max(corner.co.z for corner in mesh.verts)
+
+    # The hands come out. What is left of the sleeves is open where they were.
+    mannequin = [face for face in mesh.faces if is_mannequin(texel_at(colour, face, uv_layer))]
+    hands = [face for face in mannequin
+             if face.calc_center_median().z < MANNEQUIN_HANDS_SHARE * top]
+    hand_corners = {tuple(corner.co) for face in hands for corner in face.verts}
+    bmesh.ops.delete(mesh, geom=hands, context="FACES")
+
+    # Taking out the hands leaves bits of them that hang on nothing, and the source has
+    # specks of a few millimetres of its own. Only the largest island stays: the figure.
+    figure = set(largest_island(mesh))
+    bmesh.ops.delete(mesh, geom=[face for face in mesh.faces if face not in figure],
+                     context="FACES")
+    mesh.faces.index_update()
+    mesh.verts.index_update()
+
+    # The holes the hands left. The source has a few small holes of its own, in the pool
+    # of the hem under the ground and at the back of the hood, and they stay open: the
+    # hole of a hand is one with a corner that was a corner of the hand. A hole of two
+    # edges is a slit that has nothing to close.
+    hand_holes = [hole for hole in boundary_loops(mesh) if len(hole) > 2 and
+                  any(tuple(corner.co) in hand_corners for corner in hole)]
+
+    # The size of the game: the hem HEM_DEPTH under the ground and the tip of the hood
+    # HEIGHT over it, the middle of the base on the origin.
+    scale = (HEIGHT + HEM_DEPTH) / top
+    low = Vector((min(corner.co.x for corner in mesh.verts),
+                  min(corner.co.y for corner in mesh.verts), 0.0))
+    high = Vector((max(corner.co.x for corner in mesh.verts),
+                   max(corner.co.y for corner in mesh.verts), 0.0))
+    middle = (low + high) / 2.0
+    for corner in mesh.verts:
+        corner.co = (corner.co - middle) * scale - Vector((0.0, 0.0, HEM_DEPTH))
+
+    # The face of the mannequin stays in the cloth, black, behind the night. Its darkest
+    # face lends its black to the night where the game shows no sky.
+    face = {each for each in mesh.faces if is_mannequin(texel_at(colour, each, uv_layer))}
+    darkest = min(sorted(face, key=lambda each: each.index),
+                  key=lambda each: texel_at(colour, each, uv_layer).max())
+    dark_uv = (sum(loop[uv_layer].uv.x for loop in darkest.loops) / len(darkest.loops),
+               sum(loop[uv_layer].uv.y for loop in darkest.loops) / len(darkest.loops))
+
+    sheet, night_middle = add_night(mesh, face, uv_layer, dark_uv)
+    hollow = set(sheet)
+    for hole in hand_holes:
+        hollow.update(close_hole(mesh, hole, uv_layer, dark_uv))
+    return mesh, hollow, night_middle
+
+
+def write_pictures(colour, normal):
+    """Writes the colour picture, made dark blue, and the normal map at TEXTURE_SIZE."""
+    shrink = colour.shape[0] // TEXTURE_SIZE
+
+    def average(picture):
+        # Every texel is the average of a square of shrink by shrink texels of the source.
+        return picture.reshape(TEXTURE_SIZE, shrink, TEXTURE_SIZE, shrink, 3).mean(axis=(1, 3))
+
+    brightness = COLOUR_FLOOR + COLOUR_RANGE * average(colour).max(axis=-1)
+    make_textures.save_png(brightness[..., None] * np.array(COLOUR_TINT), "shade.png")
+
+    # The directions are averaged as directions: from 0..1 to -1..1, then to length 1 again.
+    directions = average(normal) * 2.0 - 1.0
+    directions /= np.linalg.norm(directions, axis=-1, keepdims=True)
+    make_textures.save_png(directions * 0.5 + 0.5, "shade_normal.png")
+
+
+def export(name, mesh, keep, smooth, shots):
+    """Writes the faces of `mesh` in the set `keep` as one textured model."""
     common.reset_scene()
-    faces, uvs = model
+    part = mesh.copy()
+    part.faces.ensure_lookup_table()
+    # copy() keeps the order of the faces, so the faces of the copy are found by index.
+    numbers = {face.index for face in keep}
+    bmesh.ops.delete(part, geom=[face for face in part.faces if face.index not in numbers],
+                     context="FACES")
+    bmesh.ops.delete(part, geom=[corner for corner in part.verts if not corner.link_faces],
+                     context="VERTS")
 
-    # Only the corners this model uses, in the order they were made: the two models are
-    # built from one list of corners, and a corner without a face must not be exported.
-    used = sorted({corner for face in faces for corner in face})
-    place = {corner: index for index, corner in enumerate(used)}
-    mesh_vertices = [vertices[corner] for corner in used]
-    mesh_faces = [tuple(place[corner] for corner in face) for face in faces]
-
-    mesh = common.create_mesh_object(name, mesh_vertices, mesh_faces)
-
-    # The texture coordinates are written by hand, as for the flask: the picture is used
-    # once and not repeated every few metres.
-    uv_layer = mesh.data.uv_layers.new(name="uv")
-    for polygon, face_uvs in zip(mesh.data.polygons, uvs):
-        for loop_index, uv in zip(polygon.loop_indices, face_uvs):
-            uv_layer.data[loop_index].uv = uv
+    data = bpy.data.meshes.new(name)
+    part.to_mesh(data)
+    part.free()
+    # The cloth is smooth: the exporter writes the normal of every corner as the average
+    # of the faces around it. It has soft folds made of thousands of small faces, and one
+    # normal per face would show every one of them. The hollow is flat, one normal per
+    # face, as in the other models: it shows the sky, which does not depend on the
+    # normal, and a smooth normal over the bent lids of the sleeves would lean the wrong
+    # way on a few faces and turn their picture over for the normal map.
+    if smooth:
+        data.shade_smooth()
+    else:
+        data.shade_flat()
+    # The normal-map node of the material names the UV map "uv".
+    data.uv_layers[0].name = "uv"
+    model = bpy.data.objects.new(name, data)
+    bpy.context.scene.collection.objects.link(model)
 
     # Both models wear the picture of the cloth. The game shows the sky on the hollow and
-    # falls back to this picture, which is dark there, when it draws no sky.
-    common.assign_textured_material(mesh, "shade", "shade.png", "shade_normal.png")
+    # falls back to this picture, which is black there, when it draws no sky.
+    common.assign_textured_material(model, "shade", "shade.png", "shade_normal.png")
     common.export_obj(name)
 
     if shots:
@@ -395,34 +431,18 @@ def finish(name, vertices, model, shots):
 
 
 def build(shots):
-    vertices = []
-    # The two models: the faces of each and, in the same order, their texture coordinates.
-    cloth = ([], [])
-    hollow = ([], [])
+    model, colour, normal = import_source()
+    mesh, hollow, centre = clean(model, colour)
+    mesh.faces.index_update()
+    write_pictures(colour, normal)
 
-    rings = [add_ring(vertices, number) for number in range(len(RINGS))]
-    for number in range(len(RINGS) - 1):
-        add_band(cloth, rings, number)
+    # The middle of the night in the hood, which the game spreads the stars around
+    # (SHADE_HOOD_CENTRE in src/game/NightMazeAppPasses.cpp), in game coordinates.
+    print(f"The night in the hood: middle at ({centre.x:.3f}, {centre.z:.3f}, {-centre.y:.3f})")
 
-    # The tip of the hood is closed by one small face. Its piece of the picture is a
-    # point at the top edge: the face is two centimetres wide.
-    top = tuple(rings[-1] + corner for corner in range(SIDES))
-    cloth[0].append(top)
-    cloth[1].append(tuple((corner / SIDES, 1.0) for corner in range(SIDES)))
-    # The hem has no face under it: it is in the ground.
-
-    # The inside of the cloak above the torn hem.
-    inner_rings = [add_ring(vertices, number) for number in range(INWARD_BANDS + 1)]
-    for number in range(INWARD_BANDS):
-        add_inward_band(cloth, inner_rings, number)
-
-    add_night(vertices, hollow)
-
-    add_sleeve(vertices, cloth, hollow, 1.0)
-    add_sleeve(vertices, cloth, hollow, -1.0)
-
-    finish(NAME, vertices, cloth, shots)
-    finish(HOLLOW_NAME, vertices, hollow, shots)
+    export(NAME, mesh, set(mesh.faces) - hollow, True, shots)
+    export(HOLLOW_NAME, mesh, hollow, False, shots)
+    mesh.free()
 
 
 if __name__ == "__main__":

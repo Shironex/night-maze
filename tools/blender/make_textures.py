@@ -1,9 +1,10 @@
 # Generates the textures of the game into assets/textures: the colour pictures
 # wall_stone.png, wall_cracked.png, wall_mossy.png, wall_damaged.png, ground.png,
 # gate_wood.png, splinter.png, lever_iron.png, lever_brass.png, chalk.png,
-# flask.png, shade.png, lantern.png, stone_sheep.png and lamp_held.png, and one normal map
-# for each of them (the same name with _normal). All thirty are 512 x 512 pixels, 8 bits
-# per channel, RGB.
+# flask.png, lantern.png, stone_sheep.png and lamp_held.png, and one normal map for each
+# of them (the same name with _normal). All twenty-eight are 512 x 512 pixels, 8 bits per
+# channel, RGB. The two pictures of the shade are not made here: build_shade.py takes them
+# from the model it starts from.
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/make_textures.py
@@ -13,11 +14,11 @@
 # the stones and planks divide the image evenly, the noise is smoothed with wrap-around,
 # and the distances between the cells of the crystal and to the stones of the ground are
 # measured across the edges.
-# The exceptions are flask.png, shade.png, lantern.png and splinter.png: the pictures of
-# the flask and of the shade go once around their models, so only their left and right
-# edges meet, the lantern only uses a small piece from the middle of each half of its
-# picture, and the splinter a strip down the middle of each half of its picture, so there
-# only the top and bottom edges meet. lamp_held.png is cut into bands and pieces, and only
+# The exceptions are flask.png, lantern.png and splinter.png: the picture of the flask
+# goes once around its model, so only its left and right edges meet, the lantern only
+# uses a small piece from the middle of each half of its picture, and the splinter a strip
+# down the middle of each half of its picture, so there only the top and bottom edges
+# meet. lamp_held.png is cut into bands and pieces, and only
 # the left and right edges of its two bands meet.
 # Their noise still wraps around, because it comes from the same helpers.
 #
@@ -65,7 +66,6 @@ WALL_CRACKED_SEED = 83
 WALL_MOSSY_SEED = 89
 WALL_DAMAGED_SEED = 97
 FLASK_SEED = 101
-SHADE_SEED = 103
 LANTERN_IRON_SEED = 107
 LANTERN_GLASS_SEED = 109
 CHALK_SEED = 113
@@ -94,17 +94,6 @@ FLASK_CORD_ROWS = (338, 389)
 FLASK_CORD_TURN_HEIGHT = 8.5
 # From this row up the picture shows the cork (the lip ends at 21.2 cm).
 FLASK_CORK_ROW = 433
-
-# The picture of the shade, used like the one of the flask: the model (build_shade.py)
-# puts its height on the y axis of the picture and goes once around it along x. The
-# hollow of the hood, where a face would be, lies between these two pixel rows from the
-# bottom, around the column that is the front of the figure (three quarters of the way
-# across: the front is at 270 degrees), this many columns to each side.
-SHADE_FACE_ROWS = (400, 482)
-SHADE_FACE_COLUMN = 384
-SHADE_FACE_HALF_WIDTH = 62
-# The hem of the cloak is frayed and darker below this row.
-SHADE_HEM_ROW = 70
 
 # The picture of the lamp the player holds, in pixel rows from the bottom. The models
 # (build_lamp_held.py) wrap the two lower bands once around the tube, so x goes around the
@@ -1252,9 +1241,6 @@ def build():
     # own, so they can also be made without writing the pictures above again.
     build_interactable_textures()
 
-    # The two pictures of the shade, in a function of their own for the same reason.
-    build_shade_textures()
-
     # The two pictures of the lantern of the exit gate, in a function of their own too.
     build_lantern_textures()
 
@@ -1363,65 +1349,6 @@ def build_chalk_textures():
 
     # The relief: only the grain, and very little of it. Chalk is a film of dust.
     save_png(normal_map(1.2 * (blur(grain, GRAIN_BLUR_RADIUS) - 0.5)), "chalk_normal.png")
-
-
-def build_shade_textures():
-    """Writes the texture of the shade with its normal map.
-
-    To make only these two pictures, run from the repository root (one line):
-      blender --background --factory-startup --python-expr "import sys;
-      sys.path.append('tools/blender'); import make_textures;
-      make_textures.build_shade_textures()"
-
-    The shade is a hooded figure in a cloak that is nearly black. Nearly, not fully: a
-    black picture would show a hole in the beam of the flashlight and not a shape. So the
-    cloth is a very dark blue-grey, a little lighter on the ridges of its folds, and the
-    folds are in the normal map too, where the light of the flashlight finds them.
-    """
-    rng = np.random.default_rng(SHADE_SEED)
-    y, x = np.mgrid[0:SIZE, 0:SIZE]
-    # One full turn around the figure, as in build_flask_textures.
-    turn = x / SIZE * 2.0 * np.pi
-
-    patches = smooth_noise(rng, 14)
-    grain = smooth_noise(rng, 1)
-
-    # The folds of the cloak: long ridges that run from the shoulders to the ground. Three
-    # sine waves around the figure (whole multiples of the turn, so the left edge meets
-    # the right one), bent sideways a little by the patches so no two ridges are alike.
-    bend = 1.6 * (patches - 0.5)
-    folds = (
-        0.50
-        + 0.26 * np.sin(9.0 * turn + bend + 0.4)
-        + 0.14 * np.sin(17.0 * turn - 2.0 * bend + 1.9)
-        + 0.10 * np.sin(4.0 * turn + 0.7)
-    )
-
-    # The cloth: darkest in the valleys of the folds, lightest on their ridges. The woven
-    # threads are the fine noise drawn out along y.
-    weave = stretch(blur_along(rng.random((SIZE, SIZE)), 6, axis=0))
-    cloth = np.array((0.070, 0.078, 0.110))
-    shade = (0.50 + 0.85 * folds) * (0.85 + 0.30 * weave) * (0.90 + 0.20 * patches)
-
-    # The hem is frayed and wet from the grass: it gets darker towards the ground.
-    hem = smooth_step(np.clip(y / SHADE_HEM_ROW, 0.0, 1.0))
-    shade = shade * (0.45 + 0.55 * hem)
-    color = shade[..., None] * cloth
-
-    # The hollow of the hood: no face, only the dark. Soft at its border, so it reads as
-    # a depth and not as a painted patch.
-    face_low, face_high = SHADE_FACE_ROWS
-    across = np.abs(x - SHADE_FACE_COLUMN) / SHADE_FACE_HALF_WIDTH
-    along = np.abs(y - (face_low + face_high) / 2.0) / ((face_high - face_low) / 2.0)
-    inside = 1.0 - smooth_step(np.clip((np.maximum(across, along) - 0.7) / 0.3, 0.0, 1.0))
-    color = color * (1.0 - 0.9 * inside)[..., None]
-
-    # The relief: the folds stand out, the weave is a fine grain on them, and the hollow
-    # of the hood is flat.
-    height = (9.0 * folds + 0.8 * (blur(grain, GRAIN_BLUR_RADIUS) - 0.5)) * (1.0 - inside)
-
-    save_png(np.clip(color, 0.0, 1.0), "shade.png")
-    save_png(normal_map(height), "shade_normal.png")
 
 
 def build_lantern_textures():

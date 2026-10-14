@@ -68,11 +68,12 @@ constexpr float SEEN_THROUGH_ONLY = 0.0F;
 constexpr float NO_REFRACTION = 1.0F;
 constexpr float SHADE_HOOD_SKY_TURN = 0.35F;
 // The face shows a wider piece of sky than it covers (uSkySpread, per metre from the
-// middle of the face, which is this point of the model shade_hollow.obj): the face is
-// 16 cm wide, and with a spread of 1 its rim reads the sky about 5 degrees further out
-// than the look of the eye alone would.
+// middle of the face, which is this point of the model shade_hollow.obj, printed by
+// tools/blender/build_shade.py): the night in the hood is about 22 cm wide where the hood
+// shows it, and with a spread of 1 its rim reads the sky about 6 degrees further out than
+// the look of the eye alone would.
 constexpr float SHADE_HOOD_SKY_SPREAD = 1.0F;
-constexpr glm::vec3 SHADE_HOOD_CENTRE{0.0F, 1.81F, 0.15F};
+constexpr glm::vec3 SHADE_HOOD_CENTRE{0.0F, 1.80F, 0.204F};
 
 // The highlight of the tin of the held lamp: bare metal, brighter than the one of the
 // rough stone.

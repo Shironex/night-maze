@@ -1057,15 +1057,21 @@ TEST_CASE("loadObj: heartstone.obj") {
 
 TEST_CASE("loadObj: shade.obj and shade_hollow.obj") {
     // The two models the shade is drawn with: the cloth, and the faces that show the night
-    // (an oval where a face would be, and the two cuffs). The cloth: 12 bands of 16 sides,
-    // the tip of the hood, the two lowest bands once more from inside, and two sleeves of
-    // 12 sides with a lid. The hollow: an oval of 16 triangles and two cuffs.
+    // (a curved sheet in front of the face in the hood, and the places of the hands in the
+    // sleeves, closed once from each side). The cloth is the generated robe of
+    // tools/blender/sources/shade_tripo.glb without its hands.
+    // The generated picture of the cloth turns over on a few faces, which the source has
+    // that way (14), and at a few sharp folds where the smooth normal leans over its face
+    // (54): 72 square centimetres of the robe in all, where the normal map is upside down.
+    // The hollow is flat and has none.
     struct Part {
         std::string file;
         std::size_t triangles;
+        std::size_t mirrored;
     };
-    for (const Part& part : {Part{.file = "shade.obj", .triangles = 518U},
-                             Part{.file = "shade_hollow.obj", .triangles = 24U}}) {
+    for (const Part& part :
+         {Part{.file = "shade.obj", .triangles = 14557U, .mirrored = 68U},
+          Part{.file = "shade_hollow.obj", .triangles = 1184U, .mirrored = 0U}}) {
         CAPTURE(part.file);
         // Not through loadGameModel, for the same reason as the flask: slanted faces.
         assets::ObjModel model;
@@ -1078,8 +1084,8 @@ TEST_CASE("loadObj: shade.obj and shade_hollow.obj") {
             CHECK(glm::length(vertex.normal) == doctest::Approx(1.0F).epsilon(0.001));
         }
 
-        // One material, the cloth, for both: the hollow wears its dark patch wherever the
-        // game shows no sky on it.
+        // One material, the cloth, for both: the hollow wears a black patch of the
+        // picture wherever the game shows no sky on it.
         REQUIRE(model.parts.size() == 1U);
         CHECK(model.parts[0].material == "shade");
         REQUIRE(model.materials.size() == 1U);
@@ -1089,13 +1095,11 @@ TEST_CASE("loadObj: shade.obj and shade_hollow.obj") {
         CHECK(std::filesystem::exists(model.materials[0].normalTexture));
         CHECK(model.indices.size() == part.triangles * 3U);
 
-        // The faces that look into the cloak and the sleeves are not mirror images: the
-        // normal map of the cloth is right on them.
-        CHECK(model.mirroredTriangleCount == 0U);
+        CHECK(model.mirroredTriangleCount == part.mirrored);
     }
 
     // The cloth: 2.1 m tall as the rules take the shade to be, a tenth of a metre into
-    // the ground, and no wider than the 0.9 m at which it has caught the player.
+    // the ground, and no wider than the 1.1 m of the pool of its hem.
     assets::ObjModel cloth;
     std::string error;
     REQUIRE(assets::loadObj(modelsDirectory() / "shade.obj", cloth, error));
@@ -1105,24 +1109,25 @@ TEST_CASE("loadObj: shade.obj and shade_hollow.obj") {
     CHECK(clothBounds.min.x > -0.55F);
     CHECK(clothBounds.max.x < 0.55F);
 
-    // The hollow lies inside the outline of the cloth: the oval on the front of the hood,
-    // 16 cm wide and from 1.71 to 1.91 m, and the cuffs at the knees.
+    // The hollow lies inside the outline of the cloth: the night in the hood up to 1.98 m,
+    // and the places of the hands in the sleeves, the lowest at about 0.67 m.
     assets::ObjModel hollow;
     REQUIRE(assets::loadObj(modelsDirectory() / "shade_hollow.obj", hollow, error));
     const Bounds hollowBounds = boundsOf(hollow);
-    CHECK(hollowBounds.max.y == doctest::Approx(1.91F));
+    CHECK(hollowBounds.max.y == doctest::Approx(1.98F));
     CHECK(hollowBounds.min.y > 0.6F);
     CHECK(hollowBounds.min.x > clothBounds.min.x);
     CHECK(hollowBounds.max.x < clothBounds.max.x);
 
-    // The night looks out of the front of the hood only (the front of the model is +Z):
-    // no face of it above the cuffs looks to a side, back or up, so from the side and
-    // from behind the hood is cloth.
+    // The night in the hood looks out of the front (the front of the model is +Z), lies in
+    // front of the middle of the figure and is no wider than a face with a margin, so from
+    // the side and from behind the hood is cloth.
     for (std::size_t i = 0; i < hollow.indices.size(); ++i) {
         const gfx::Vertex& vertex = hollow.vertices[hollow.indices[i]];
         if (vertex.position.y > 1.5F) {
-            CHECK(vertex.normal.z > 0.95F);
-            CHECK(std::abs(vertex.position.x) <= 0.0801F);
+            CHECK(vertex.normal.z > 0.0F);
+            CHECK(vertex.position.z > 0.1F);
+            CHECK(std::abs(vertex.position.x) <= 0.131F);
         }
     }
 }
