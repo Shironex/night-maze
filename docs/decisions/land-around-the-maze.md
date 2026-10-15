@@ -27,10 +27,8 @@ Why: I rejected widening the terrain margin to 40 m: the moon shadow box is fitt
 
 Cost and revisit, the budget: before culling the land adds at most 90 draw calls (about 30 near band models, 40 far versions, 3 landmarks, 1 ring, 1 mesh of field walls and the fold, 1 of hedgerows, up to 6 of lights) and at most 150,000 triangles, against 592,787 a frame today on the 4070 Ti. After culling a corridor view should add 20 to 40 draws. Measure it like the culling record (Release, 1280 x 720, `--play --calm --seed 7`, the 4070 Ti and the M3, standing at the start and on the reveal). I reopen it if the M3 frame grows by more than 1 ms, and then merge the far versions of each side into one mesh. The menu video, the launcher loop and the README pictures are recorded again.
 
-Open questions, as choices:
-1. Night 5: no new land lights, so the player's window is the one light that comes on (default), or the last share of the valley comes on with it.
-2. The hawthorn: only outer trees (default), or one more inside the maze in a free corner cell with the trunk box of the old plan, which joins the exclusion rules of the sheep.
-3. The stream: a dark matte strip (default), or the reflection of the puddles laid along it.
-4. Landmarks a maze: three, one per crest (default), or all five, two on one side.
-5. The map: icons on its edge at the bearing (default), or a wider frame that shows the land around the maze.
-6. The far band: a mill and a church tower (default), or only the village as now, with the credits going to a second tree.
+Decided by the user on 2026-10-15: night 5 lights no land windows, so the player's window is its one new light; three landmarks a maze, one per crest; landmark icons on the edge of the map at the bearing; the far band gets the mill and the church tower.
+
+Still open, with the default the plan assumes:
+1. The hawthorn: only outer trees (default), or one more inside the maze in a free corner cell with the trunk box of the old plan, which joins the exclusion rules of the sheep.
+2. The stream: a dark matte strip (default), or the reflection of the puddles laid along it.
