@@ -29,15 +29,14 @@ constexpr const char* CRYSTAL_A_MODEL_FILE = "models/splinter_a.obj";
 constexpr const char* CRYSTAL_B_MODEL_FILE = "models/splinter_b.obj";
 constexpr const char* GATE_MODEL_FILE = "models/gate.obj";
 
-// What stands around the gate and never moves. The gatehouse is built like the gate:
-// along X, with its origin in the middle of its base, and the same seen from both sides.
-// The lantern is 0.2 m wide and upright, with its origin in the middle of its base, and
-// the same seen from all four sides. The milestone is a knee high stone with its origin
+// What stands around the gate and never moves. The arch is built like the gate: along X,
+// with its origin in the middle of its base, and a hook on both faces of both piers. The
+// lantern is 0.2 m wide and upright, with its origin in the middle of its base, and the
+// same seen from all four sides. The milestone is a knee high stone with its origin
 // on the ground under it.
 constexpr const char* GATE_ARCH_MODEL_FILE = "models/gate_arch.obj";
 constexpr const char* GATE_LANTERN_MODEL_FILE = "models/gate_lantern.obj";
-// The bell of the gatehouse: 0.37 m tall, with its origin at its pivot, the top of its
-// yoke, and the same seen from both sides.
+// The bell of the arch: 0.6 m tall, with its origin at its pivot, the top of its rope.
 constexpr const char* GATE_BELL_MODEL_FILE = "models/gate_bell.obj";
 constexpr const char* MILESTONE_MODEL_FILE = "models/milestone.obj";
 
@@ -109,7 +108,7 @@ void GameplayRenderer::drawGate(const gfx::Shader& shader, const MazeWorld& worl
     if (scenery.hasMilestone) {
         drawModel(shader, m_milestone, std::span<const glm::mat4>(&scenery.milestone, 1), frustum);
     }
-    // The bell, in its opening of the cote, as far out of the middle as it swings at
+    // The bell, under the crown of the arch, as far out of the middle as it swings at
     // this moment. Cold like the stone: a bell gives off no light.
     const glm::mat4 bellMatrix = gateBellMatrix(scenery.arch, bellSwingDegrees);
     drawModel(shader, m_gateBell, std::span<const glm::mat4>(&bellMatrix, 1), frustum);

@@ -39,6 +39,10 @@ glm::mat4 placedAt(const glm::vec3& position, float scale) {
     return transform.matrix();
 }
 
+// The turn of a model about the vertical axis that points its +Z the way a camera with
+// the yaw 0 looks (north, -Z): half a turn. A camera yaw grows the other way round.
+constexpr float MILESTONE_FACING_DEGREES = 180.0F;
+
 // A swing this small, in degrees and in degrees per second, counts as none: the bell is
 // set to rest. At the lip of the bell that is a step of about a millimetre.
 constexpr float BELL_REST_DEGREES = 0.2F;
@@ -165,10 +169,8 @@ GateScenery gateScenery(const MazeWorld& world) {
     const glm::vec3 up{0.0F, 1.0F, 0.0F};
     const glm::vec3 base = world.gate.position;
 
-    // The big lantern, in its opening of the cote. Which end of the gate that is depends
-    // on how the model lies, so its place is a point of the model, moved by the matrix
-    // of the gatehouse: placed along `along` it would hang in the opening of the bell in
-    // half of the mazes.
+    // The big lantern, on the crown of the arch. Its place is a point of the model, moved
+    // by the matrix of the arch, like the pivot of the bell (game::gateBellMatrix).
     const glm::vec3 inCote{
         scenery.arch * glm::vec4{GATE_COTE_LANTERN_ALONG, GATE_COTE_LANTERN_HEIGHT, 0.0F, 1.0F}};
     scenery.lanterns[0] = placedAt(inCote, GATE_COTE_LANTERN_SCALE);
@@ -199,7 +201,12 @@ GateScenery gateScenery(const MazeWorld& world) {
         position.y = world.terrain.heightAt(position.x, position.z);
         scenery.hasMilestone = true;
         scenery.milestoneSide = wallSide;
-        scenery.milestone = placedAt(position, 1.0F);
+        // The model looks along +Z with its broad face, and the moss at the foot of that
+        // face goes into the wall: +Z is turned to point at the wall.
+        scene::Transform transform;
+        transform.position = position;
+        transform.rotationDegrees.y = MILESTONE_FACING_DEGREES - yawTowards(wallSide);
+        scenery.milestone = transform.matrix();
         break;
     }
     return scenery;

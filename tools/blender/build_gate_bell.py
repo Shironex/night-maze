@@ -1,169 +1,136 @@
-# Builds the model gate_bell: the bell that hangs in the double cote of the gatehouse
-# (build_gate_arch.py), beside the big lantern. A yoke, the bell itself, and a clapper in
-# it. The game swings it each time the bell of the open gate tolls.
-# Output: assets/models/gate_bell.obj and gate_bell.mtl.
+# Builds the model gate_bell: the bronze bell that hangs under the crown of the arch of the
+# exit gate (build_gate_arch.py), over the doorway. The bell, its clapper, the loop on its
+# crown and the rope it hangs from. The game swings it each time the bell of the open
+# gate tolls.
+#
+# The bell is not built in this script. Its source is a model that Tripo generated,
+# tools/blender/sources/gate_bell_tripo.glb: a bronze bell with green patina hanging by a
+# short rope from a black iron wall bracket, one material with a colour picture and a
+# normal map, about 0.98 m tall. The game turns the whole model about its pivot, so only
+# what swings stays: the bracket would swing with the bell. The rope is cut where it met
+# the bracket, and that point is the pivot.
+# Output: assets/models/gate_bell.obj and gate_bell.mtl, and the pictures
+# assets/textures/gate_bell.png and gate_bell_normal.png.
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/build_gate_bell.py
 # Add "-- --shots" at the end to also write review renders to the temporary folder.
-import math
 import os
 import sys
 
+import bmesh
+import bpy
+from mathutils import Vector
+
 # Blender does not add the folder of the script to the module search path, so the helper
-# module next to this file would not be found without this line.
+# modules next to this file would not be found without this line.
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import blender_common as common
+import generated_common as generated
+import make_textures
 
 NAME = "gate_bell"
 
+SOURCE_FILE = "gate_bell_tripo.glb"
+
 # All sizes are in metres. The geometry is written in Blender space, where Z is the height.
-# After export Z becomes the game Y axis. The origin is the pivot, the point the bell
-# turns around: the top of the yoke. Everything hangs below it, so every height here is
-# negative. The game puts the pivot 5.47 m up, in the middle of the opening at -X, and
-# turns the model around the axis across the gate (Blender Y), so the bell swings along
-# the gate (GATE_BELL_ALONG, GATE_BELL_HEIGHT and GATE_BELL_SWING_DEGREES in
-# src/game/GateLamp.hpp). The model is the same seen from the front and from the back.
+# After export Z becomes the game Y axis. The origin is the pivot, the top of the rope.
+# Everything hangs below it, so every height is negative. The game puts the pivot under
+# the crown of the arch and turns the model around the axis across the gate (Blender Y),
+# so the bell swings along the gate (GATE_BELL_ALONG, GATE_BELL_HEIGHT and
+# GATE_BELL_SWING_DEGREES in src/game/GateLamp.hpp).
+#
+# From the pivot to the underside of the clapper, the lowest point.
+LENGTH = 0.6
 
-# The yoke: the block the bell hangs from, along the gate.
-YOKE_HALF_LENGTH = 0.13
-YOKE_HALF_THICKNESS = 0.035
-YOKE_BOTTOM = -0.06
+# Two corners of the source closer than this (in its own units) are one corner.
+MERGE_DISTANCE = 0.000001
 
-# The bell: an outline that is turned around the Z axis in BELL_SIDES steps. Each point is
-# (distance from the axis, height). The outline starts on the axis under the yoke, runs
-# down the outside over the shoulder and the waist to the lip, turns around the lip and
-# climbs back up the inside to the axis. So the bell has a wall with two sides: the faces
-# of the inside point inwards, and somebody who looks up into the bell sees them. The
-# renderer draws no back faces, so without them the bell would be a hole from below.
-BELL_SIDES = 12
-BELL_OUTLINE = [
-    (0.0, -0.06),
-    (0.055, -0.06),
-    (0.085, -0.08),
-    (0.1, -0.13),
-    (0.108, -0.2),
-    (0.135, -0.29),
-    (0.172, -0.35),
-    (0.168, -0.365),
-    (0.15, -0.36),
-    (0.122, -0.31),
-    (0.094, -0.22),
-    (0.075, -0.12),
-    (0.0, -0.1),
-]
+# What swings, in the units of the source: the faces whose middle lies below the height
+# where the rope met the bracket (CUT_Z), and above BRACKET_FROM_Z only on the side of
+# the bell (X above KEEP_FROM_X). The beam and the hanger are above CUT_Z, the brace at
+# smaller X and above BRACKET_FROM_Z, where the bell is narrower than lower down at its
+# lip. The middle of the bell is at BELL_X.
+KEEP_FROM_X = 0.1
+BRACKET_FROM_Z = 0.25
+CUT_Z = 0.735
+BELL_X = 0.247
 
-# The clapper: a thin rod from the top of the inside, and a block at its end that hangs
-# a little below the lip. Its underside, 0.37 m under the pivot, is the lowest point.
-ROD_HALF = 0.008
-ROD_TOP = -0.1
-ROD_BOTTOM = -0.32
-CLAPPER_HALF = 0.028
-CLAPPER_TOP = -0.31
-CLAPPER_BOTTOM = -0.37
+# The bell is closed in the source: the inside of its wall has faces of its own that look
+# inwards, so nothing is added for the renderer, which draws no back faces.
 
-# One repeat of the picture covers 0.5 m, the size the brass picture was made for.
-METRES_PER_UV_UNIT = 0.5
+# The source pictures are 2048 pixels wide. The bell is about 0.3 m wide and hangs 3 m up,
+# so 512 is plenty.
+TEXTURE_SIZE = 512
 
 
-def face_normal(points):
-    """The direction a face looks in, for corners listed counter clockwise (Newell)."""
-    normal = [0.0, 0.0, 0.0]
-    for index, (x0, y0, z0) in enumerate(points):
-        x1, y1, z1 = points[(index + 1) % len(points)]
-        normal[0] += (y0 - y1) * (z0 + z1)
-        normal[1] += (z0 - z1) * (x0 + x1)
-        normal[2] += (x0 - x1) * (y0 + y1)
-    return normal
+def clean(model):
+    """Returns the bell, its rope and its clapper as a bmesh, in the size and place of the
+    game."""
+    mesh = bmesh.new()
+    mesh.from_mesh(model.data)
+    bmesh.ops.transform(mesh, matrix=model.matrix_world, verts=mesh.verts)
+    bmesh.ops.remove_doubles(mesh, verts=mesh.verts, dist=MERGE_DISTANCE)
+
+    bracket = []
+    for face in mesh.faces:
+        middle = face.calc_center_median()
+        if middle.z >= CUT_Z or (middle.x <= KEEP_FROM_X and middle.z > BRACKET_FROM_Z):
+            bracket.append(face)
+    bmesh.ops.delete(mesh, geom=bracket, context="FACES")
+    # The cut leaves no pieces of the bracket that hang on nothing, but the source has
+    # specks of its own. Only the largest island stays: the bell on its rope.
+    mesh.faces.index_update()
+    bell = set(generated.largest_island(mesh))
+    bmesh.ops.delete(mesh, geom=[face for face in mesh.faces if face not in bell],
+                     context="FACES")
+    bmesh.ops.delete(mesh, geom=[corner for corner in mesh.verts if not corner.link_faces],
+                     context="VERTS")
+
+    top = max(corner.co.z for corner in mesh.verts)
+    bottom = min(corner.co.z for corner in mesh.verts)
+    scale = LENGTH / (top - bottom)
+    pivot = Vector((BELL_X, 0.0, top))
+    for corner in mesh.verts:
+        corner.co = (corner.co - pivot) * scale
+    return mesh
 
 
-def add_lathe(vertices, faces, outline, sides):
-    """Appends the surface that `outline` sweeps when it is turned around the Z axis.
-
-    `outline` is a list of (radius, height). A point on the axis (radius 0) is one
-    vertex, and the faces that touch it are triangles. Every face looks to the left of
-    the outline as it is walked: for an outline that runs down the outside and back up
-    the inside, that is away from the wall of the bell on both of its sides.
-    """
-    rings = []
-    for radius, height in outline:
-        if radius < 0.000001:
-            vertices.append((0.0, 0.0, height))
-            rings.append([len(vertices) - 1] * sides)
-            continue
-        ring = []
-        for step in range(sides):
-            angle = step / sides * 2.0 * math.pi
-            vertices.append((radius * math.cos(angle), radius * math.sin(angle), height))
-            ring.append(len(vertices) - 1)
-        rings.append(ring)
-
-    for index in range(len(outline) - 1):
-        radius_step = outline[index + 1][0] - outline[index][0]
-        height_step = outline[index + 1][1] - outline[index][1]
-        for step in range(sides):
-            following = (step + 1) % sides
-            corners = []
-            for corner in (
-                rings[index][step],
-                rings[index][following],
-                rings[index + 1][following],
-                rings[index + 1][step],
-            ):
-                # On the axis two corners are the same vertex: it is listed once.
-                if corner not in corners:
-                    corners.append(corner)
-            # The direction the face has to look in: the outline turned a quarter turn
-            # to the left, in the middle of this step around the axis.
-            angle = (step + 0.5) / sides * 2.0 * math.pi
-            out = (-height_step * math.cos(angle), -height_step * math.sin(angle), radius_step)
-            normal = face_normal([vertices[corner] for corner in corners])
-            if sum(a * b for a, b in zip(normal, out)) < 0.0:
-                corners.reverse()
-            faces.append(tuple(corners))
+def check(mesh):
+    """Stops when the bell has a size the game does not expect."""
+    xs = [corner.co.x for corner in mesh.verts]
+    ys = [corner.co.y for corner in mesh.verts]
+    zs = [corner.co.z for corner in mesh.verts]
+    if abs(max(zs)) > 0.0001 or abs(min(zs) + LENGTH) > 0.0001:
+        raise RuntimeError(f"{NAME}: from {max(zs):.4f} down to {min(zs):.4f}, not 0 to "
+                           f"{-LENGTH}")
+    # The lip is the widest part: it should be round and about on the axis of the pivot.
+    if abs(max(xs) + min(xs)) > 0.02 or abs(max(ys) + min(ys)) > 0.02:
+        raise RuntimeError(f"{NAME}: the bell is not under its pivot")
+    print(f"{NAME}: {max(xs) - min(xs):.3f} by {max(ys) - min(ys):.3f} m wide, "
+          f"{len(mesh.faces)} triangles")
 
 
 def build(shots):
+    model, colour, normal = generated.import_source(SOURCE_FILE)
+    mesh = clean(model)
+    check(mesh)
+    make_textures.save_png(generated.shrink(colour, TEXTURE_SIZE), "gate_bell.png")
+    generated.save_normal_map(normal, TEXTURE_SIZE, "gate_bell_normal.png")
+
     common.reset_scene()
-
-    vertices = []
-    faces = []
-
-    # The yoke, all six sides: the bell under it is narrower than it is long.
-    common.add_box(
-        vertices,
-        faces,
-        (-YOKE_HALF_LENGTH, -YOKE_HALF_THICKNESS, YOKE_BOTTOM),
-        (YOKE_HALF_LENGTH, YOKE_HALF_THICKNESS, 0.0),
-    )
-
-    add_lathe(vertices, faces, BELL_OUTLINE, BELL_SIDES)
-
-    # The clapper. The top of the rod is against the inside of the bell and its lower
-    # end is inside the block.
-    common.add_box(
-        vertices,
-        faces,
-        (-ROD_HALF, -ROD_HALF, ROD_BOTTOM),
-        (ROD_HALF, ROD_HALF, ROD_TOP),
-        skip=("-z", "+z"),
-    )
-    common.add_box(
-        vertices,
-        faces,
-        (-CLAPPER_HALF, -CLAPPER_HALF, CLAPPER_BOTTOM),
-        (CLAPPER_HALF, CLAPPER_HALF, CLAPPER_TOP),
-    )
-
-    model = common.create_mesh_object(NAME, vertices, faces)
-    # Every face is projected onto its own plane: the wall of the bell is slanted
-    # everywhere.
-    common.face_project_uvs(model.data, METRES_PER_UV_UNIT)
-    # No picture of its own: the brass the lever handle had before it became a crook.
-    common.assign_textured_material(
-        model, "lever_brass", "lever_brass.png", "lever_brass_normal.png"
-    )
+    data = bpy.data.meshes.new(NAME)
+    mesh.to_mesh(data)
+    mesh.free()
+    # The bronze is smooth: the exporter writes the normal of every corner as the average
+    # of the faces around it.
+    data.shade_smooth()
+    # The normal-map node of the material names the UV map "uv".
+    data.uv_layers[0].name = "uv"
+    bell = bpy.data.objects.new(NAME, data)
+    bpy.context.scene.collection.objects.link(bell)
+    common.assign_textured_material(bell, "gate_bell", "gate_bell.png", "gate_bell_normal.png")
     common.export_obj(NAME)
 
     if shots:
@@ -171,8 +138,8 @@ def build(shots):
         # and from below, into the bell, as the player sees it from the gate.
         common.render_review_shots(
             NAME,
-            target=(0.0, 0.0, -0.2),
-            camera_positions=[(0.5, -0.9, 0.0), (0.25, -0.5, -0.75)],
+            target=(0.0, 0.0, -0.35),
+            camera_positions=[(0.6, -1.1, -0.1), (0.3, -0.6, -1.3)],
         )
 
 

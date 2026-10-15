@@ -216,8 +216,8 @@ TEST_CASE("the caster bounds of the moon hold the land and everything that stand
     CHECK(bounds.min.z == doctest::Approx(world.terrain.minZ()));
     CHECK(bounds.max.z == doctest::Approx(world.terrain.maxZ()));
     CHECK(bounds.min.y == doctest::Approx(world.terrain.minHeight()));
-    // Up to the roof of the gatehouse, which is taller than the pillars: its lantern
-    // cote has to cast a shadow of the moon like everything else.
+    // Up to the top of the gatehouse, which is taller than the pillars: its arch and the
+    // lantern on its crown have to cast a shadow of the moon like everything else.
     CHECK(bounds.max.y == doctest::Approx(world.terrain.maxHeight() + game::GATE_HOUSE_HEIGHT));
     CHECK(game::GATE_HOUSE_HEIGHT > game::PILLAR_HEIGHT);
 

@@ -105,31 +105,32 @@ PointLightSpot gateLampLight(const glm::vec3& position, float strength, float ga
 // base of the gate (MazeWorld::gate, the lowest ground under it), like the model of the
 // gate itself.
 
-/// The lantern model is drawn three times: the big one in the cote on top of the
-/// gatehouse, and two small ones that hang on the piers and face the approach.
+/// The lantern model is drawn three times: the big one on the crown of the arch, and
+/// two small ones that hang from the hooks on the piers and face the approach.
 constexpr int GATE_LANTERN_COUNT = 3;
 
-/// The cote is a double one: two openings under one roof, 0.58 m wide each, with a post
-/// between them over the middle of the gate. The big lantern hangs in the middle of one
-/// and the bell in the middle of the other. Both numbers are measured along the X axis of
-/// the gatehouse model (tools/blender/build_gate_arch.py), so the two are placed with the
-/// matrix of the gatehouse and always end up in their own opening.
-constexpr float GATE_COTE_LANTERN_ALONG = 0.36F;
-constexpr float GATE_BELL_ALONG = -0.36F;
+/// The big lantern stands on the crown of the arch and the bell hangs under it, both in
+/// the middle of the gate. The names keep the cote of the old gatehouse, which held them
+/// side by side. Both numbers are measured along the X axis of the arch model
+/// (tools/blender/build_gate_arch.py), so the two are placed with the matrix of the arch.
+constexpr float GATE_COTE_LANTERN_ALONG = 0.0F;
+constexpr float GATE_BELL_ALONG = 0.0F;
 
-/// The big lantern: how high its base hangs and how many times larger than the model it
-/// is drawn. The model is 0.2 m wide with the middle of its glass 0.13 m above its base,
-/// so the glass of the big one is centred 5.1 m up: 2 m above the walls (WALL_HEIGHT).
-constexpr float GATE_COTE_LANTERN_HEIGHT = 4.84F;
+/// The big lantern: how high its base stands and how many times larger than the model it
+/// is drawn. Its base is on the highest stone of the crown (build_gate_arch.py prints
+/// it), and the model is 0.36 m tall with the middle of its glass 0.126 m above its base,
+/// so the glass of the big one is centred 5.1 m up: 2.1 m above the walls (WALL_HEIGHT).
+constexpr float GATE_COTE_LANTERN_HEIGHT = 4.85F;
 constexpr float GATE_COTE_LANTERN_SCALE = 2.0F;
 
 /// The bell (the model gate_bell, tools/blender/build_gate_bell.py): how high its pivot
-/// hangs, just under the beam of the cote. The origin of the model is the pivot, and the
-/// bell reaches 0.37 m down from it.
-constexpr float GATE_BELL_HEIGHT = 5.47F;
+/// hangs, a centimetre into the stone over the middle of the doorway (build_gate_arch.py
+/// prints it). The origin of the model is the pivot, the top of its rope, and the bell
+/// reaches 0.6 m down from it: 0.62 m above the door (2.4 m).
+constexpr float GATE_BELL_HEIGHT = 3.62F;
 
 /// The furthest the bell swings to each side, in degrees. At this angle its lip is still
-/// clear of the posts of its opening.
+/// 0.3 m clear of the stone of the arch.
 constexpr float GATE_BELL_SWING_DEGREES = 18.0F;
 
 /// The swing as a weight on a spring with a brake, counted in degrees. A toll pushes the
@@ -169,29 +170,34 @@ void tollBellSwing(BellSwing& swing);
 ///     still again until the next toll.
 void advanceBellSwing(BellSwing& swing, float stepSeconds);
 
-/// The model matrix of the bell: its pivot in its opening of the gatehouse (arch is
+/// The model matrix of the bell: its pivot under the crown of the arch (arch is
 /// GateScenery::arch), turned by swingDegrees around the axis across the gate. So the
-/// bell swings along the gate, between its two posts, whichever way the gate stands.
+/// bell swings along the gate, between the piers, whichever way the gate stands.
 glm::mat4 gateBellMatrix(const glm::mat4& arch, float swingDegrees);
 
 /// The two bracket lanterns: how high their bases hang (above the head of the player,
 /// who is 1.8 m tall), how far from the middle of the gate along it, and how far in
-/// front of it on the side of the approach.
+/// front of it on the side of the approach. The arch model has a hook there on both
+/// faces of both piers (HOOK_ALONG, HOOK_OUT and HOOK_LANTERN_HEIGHT in
+/// tools/blender/build_gate_arch.py), and the ring of the lantern hangs on it.
 constexpr float GATE_BRACKET_LANTERN_HEIGHT = 2.22F;
 constexpr float GATE_BRACKET_LANTERN_ALONG = 0.7F;
 constexpr float GATE_BRACKET_LANTERN_OUT = 0.42F;
 
 /// The point light: at the height of the door head, between the two bracket lanterns.
-/// Not up in the cote: a light of 6 m that hangs 5 m up leaves under a tenth of itself
+/// Not up on the crown: a light of 6 m that hangs 5 m up leaves under a tenth of itself
 /// on the floor.
 constexpr float GATE_LIGHT_HEIGHT = 2.5F;
 constexpr float GATE_LIGHT_OUT = 0.45F;
 
 /// The milestone: how far its middle stands from the middle of its cell towards the wall
-/// it leans on, and towards the end of the cell that is far from the gate. With these
-/// numbers the stone (0.25 m wide) is clear of the box of the wall and of the pillar.
+/// it leans on, and towards the end of the cell that is far from the gate. The stone is a
+/// slab 0.54 m wide and 0.28 m thick (tools/blender/build_milestone.py), turned so that
+/// its broad faces look along the wall: with these numbers it is clear of the box of the
+/// wall and of the pillar, and its front is nearer to the wall than the body of the
+/// player can get.
 constexpr float MILESTONE_TO_WALL = 0.7F;
-constexpr float MILESTONE_TO_MOUTH = 0.55F;
+constexpr float MILESTONE_TO_MOUTH = 0.5F;
 
 /// The side of the exit cell the gate stands on: the one way out of the cell.
 /// The world must have a gate (MazeWorld::hasGate).
@@ -209,8 +215,8 @@ struct GateScenery {
     glm::mat4 arch{1.0F};
 
     /// The model matrices of the lanterns: the big one first, then the two on the piers.
-    /// The big one hangs in its opening of the cote, GATE_COTE_LANTERN_ALONG from the
-    /// middle of the gate. The bell in the other opening moves: game::gateBellMatrix.
+    /// The big one stands on the crown of the arch, GATE_COTE_LANTERN_ALONG from the
+    /// middle of the gate. The bell under it moves: game::gateBellMatrix.
     std::array<glm::mat4, GATE_LANTERN_COUNT> lanterns{glm::mat4{1.0F}, glm::mat4{1.0F},
                                                        glm::mat4{1.0F}};
 

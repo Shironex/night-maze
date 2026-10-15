@@ -15,9 +15,11 @@
 #include "game/Round.hpp"
 #include "game/SoundCues.hpp"
 #include "game/Terrain.hpp"
+#include "scene/Camera.hpp"
 #include "scene/Collider.hpp"
 
 #include <doctest/doctest.h>
+#include <glm/gtc/constants.hpp>
 
 #include <algorithm>
 #include <array>
@@ -33,30 +35,56 @@ namespace {
 // The fixed step of the game: core::Time::FIXED_DT as a float.
 constexpr float STEP = 1.0F / 120.0F;
 
-// The lantern model: 0.2 m wide and 0.36 m tall (tools/blender/build_gate_lantern.py).
+// The lantern model: 0.2 m wide at its base and 0.36 m tall to the top of its ring
+// (tools/blender/build_gate_lantern.py).
 constexpr float LANTERN_HALF_WIDTH = 0.1F;
 constexpr float LANTERN_HEIGHT = 0.36F;
-// The widest part of the lantern is its cap, which is a little wider than its base.
+// The widest part of the lantern is its roof, which is a little wider than its base. The
+// placement keeps this much room around a bracket lantern.
 constexpr float LANTERN_CAP_HALF_WIDTH = 0.12F;
 
-// The openings of the double cote of the gatehouse model: each reaches from the post over
-// the middle of the gate to an outer post, this far from the middle, and from the sill
-// up to the beam.
-constexpr float OPENING_NEAR = 0.07F;
-constexpr float OPENING_FAR = 0.65F;
-constexpr float OPENING_BOTTOM = 4.12F;
-constexpr float OPENING_TOP = 5.5F;
+// The bell model reaches this far down from its pivot, the top of its rope
+// (tools/blender/build_gate_bell.py).
+constexpr float BELL_HEIGHT = 0.6F;
+// The top of the rope reaches into the stone over the doorway: the corners this close
+// under the pivot may be inside it.
+constexpr float BELL_ROPE_IN_STONE = 0.03F;
 
-// The bell model reaches this far down from its pivot (tools/blender/build_gate_bell.py).
-constexpr float BELL_HEIGHT = 0.37F;
+// The models are built from generated sources, so their triangle counts and the
+// triangles whose picture is mirrored (charts the generator laid out mirrored, on which
+// the normal map shows its relief the wrong way) are whatever the source gave. They are
+// pinned here, so a rebuild that changes a model is noticed. The arch has some more:
+// the build pushes the stone out around the pillars, which folds a few small faces.
+constexpr std::size_t ARCH_TRIANGLES = 28463;
+constexpr std::size_t ARCH_MIRRORED = 115;
+constexpr std::size_t LANTERN_TRIANGLES = 6167;
+constexpr std::size_t LANTERN_MIRRORED = 8;
+constexpr std::size_t BELL_TRIANGLES = 2450;
+constexpr std::size_t BELL_MIRRORED = 4;
+constexpr std::size_t MILESTONE_TRIANGLES = 7143;
+constexpr std::size_t MILESTONE_MIRRORED = 102;
 
-// The milestone model: 0.25 m wide above its foot (tools/blender/build_milestone.py).
-constexpr float MILESTONE_HALF_WIDTH = 0.125F;
+// The panes of the lantern are its only faces on the square of pale glass in its picture
+// (four panes of two triangles), and everything else in the picture is dark iron, no
+// brighter than this in any channel (IRON_MAX in build_gate_lantern.py, as 8 bits).
+constexpr std::size_t LANTERN_PANE_TRIANGLES = 8;
+constexpr int LANTERN_GLASS_LEAST = 180;
+constexpr int LANTERN_IRON_MOST = 36;
 
-// The piers of the gatehouse model (tools/blender/build_gate_arch.py): they start this
-// far below the base of the gate, and their caps end this far above it.
+// How far the stone of the arch may stand back from a face of a pillar inside it before
+// the pillar shows: the generated stone is uneven, and a sliver this thin is not seen.
+constexpr float PILLAR_PEEK = 0.02F;
+
+// The milestone model above its foot (tools/blender/build_milestone.py): a slab 0.54 m
+// wide along its broad faces and 0.28 m thick, its broad faces turned along its wall.
+constexpr float MILESTONE_HALF_WIDTH = 0.275F;
+constexpr float MILESTONE_HALF_THICKNESS = 0.145F;
+
+// The piers of the arch model (tools/blender/build_gate_arch.py): they start this far
+// below the base of the gate, and up to this height above it they hide a pillar that
+// stands inside them (the model test checks both).
 constexpr float PIER_DEPTH = 0.4F;
-constexpr float PIER_CAP_TOP = 3.65F;
+constexpr float PIER_CAP_TOP = 3.4F;
 
 // Absolute path of the assets directory, compiled in by CMake.
 std::filesystem::path assetsDirectory() {
@@ -114,6 +142,43 @@ std::vector<MazeKind> mazeKinds() {
                          .interactables = game::campaignInteractables(night, {})});
     }
     return kinds;
+}
+
+// The nearest triangle of a model that a ray meets: how far along the ray (direction has
+// length 1) and the direction the triangle looks in. distance is negative when the ray
+// meets none (Moller and Trumbore).
+struct RayHit {
+    float distance = -1.0F;
+    glm::vec3 normal{0.0F};
+};
+
+RayHit castRay(const assets::ObjModel& model, const glm::vec3& origin, const glm::vec3& direction) {
+    RayHit nearest;
+    for (std::size_t i = 0; i + 2 < model.indices.size(); i += 3) {
+        const glm::vec3& a = model.vertices[model.indices[i]].position;
+        const glm::vec3 edge1 = model.vertices[model.indices[i + 1]].position - a;
+        const glm::vec3 edge2 = model.vertices[model.indices[i + 2]].position - a;
+        const glm::vec3 p = glm::cross(direction, edge2);
+        const float determinant = glm::dot(edge1, p);
+        if (std::abs(determinant) < 1.0e-12F) {
+            continue;
+        }
+        const glm::vec3 t = origin - a;
+        const float u = glm::dot(t, p) / determinant;
+        if (u < 0.0F || u > 1.0F) {
+            continue;
+        }
+        const glm::vec3 q = glm::cross(t, edge1);
+        const float v = glm::dot(direction, q) / determinant;
+        if (v < 0.0F || u + v > 1.0F) {
+            continue;
+        }
+        const float distance = glm::dot(edge2, q) / determinant;
+        if (distance > 0.0F && (nearest.distance < 0.0F || distance < nearest.distance)) {
+            nearest = {.distance = distance, .normal = glm::cross(edge1, edge2)};
+        }
+    }
+    return nearest;
 }
 
 // Reads one model of the game.
@@ -351,7 +416,7 @@ TEST_CASE("the gatehouse, the lanterns and the milestone fit every maze the game
             CHECK(scenery.arch == game::wallModelMatrix(world.gate));
 
             // The pillars at the two ends of the gate are inside the piers: not lower
-            // than a pier reaches into the ground, and not higher than its cap.
+            // than a pier reaches into the ground, and not higher than it hides them.
             int pillarsAtGate = 0;
             for (const glm::vec3& pillar : world.pillars) {
                 const float alongGate = std::abs(pillar.x - base.x) + std::abs(pillar.z - base.z);
@@ -367,9 +432,9 @@ TEST_CASE("the gatehouse, the lanterns and the milestone fit every maze the game
             }
             CHECK(pillarsAtGate == 2);
 
-            // The big lantern: in its opening of the cote, where the matrix of the
-            // gatehouse puts that point of the model, its glass above every wall and
-            // every pillar of the maze, and under the roof of the gatehouse.
+            // The big lantern: on the crown of the arch, where the matrix of the arch puts
+            // that point of the model, above every wall and every pillar of the maze, and
+            // under the height the shadow map of the moon reaches.
             const glm::vec3 big = placeOf(scenery.lanterns[0]);
             const glm::vec3 inModel{scenery.arch * glm::vec4{game::GATE_COTE_LANTERN_ALONG,
                                                              game::GATE_COTE_LANTERN_HEIGHT, 0.0F,
@@ -379,9 +444,8 @@ TEST_CASE("the gatehouse, the lanterns and the milestone fit every maze the game
                   doctest::Approx(game::GATE_COTE_LANTERN_ALONG));
             CHECK(big.y == doctest::Approx(base.y + game::GATE_COTE_LANTERN_HEIGHT));
 
-            // The bell: its pivot in the other opening, as far from the middle of the
-            // gate on the other side, and all of it under the roof. Hanging still or
-            // swung out, the pivot stays where it is.
+            // The bell: its pivot under the crown, in the middle of the gate like the big
+            // lantern. Hanging still or swung out, the pivot stays where it is.
             const glm::vec3 pivot = placeOf(game::gateBellMatrix(scenery.arch, 0.0F));
             CHECK(pivot.y == doctest::Approx(base.y + game::GATE_BELL_HEIGHT));
             CHECK(pivot.y < base.y + game::GATE_HOUSE_HEIGHT);
@@ -443,7 +507,14 @@ TEST_CASE("the gatehouse, the lanterns and the milestone fit every maze the game
                 CHECK_FALSE(game::sameWall(note.mount, wall));
             }
             CHECK(stone.y == doctest::Approx(world.terrain.heightAt(stone.x, stone.z)));
-            const scene::Aabb stoneFootprint = footprintAround(stone, MILESTONE_HALF_WIDTH);
+            const bool alongX =
+                wall.side == game::Direction::North || wall.side == game::Direction::South;
+            const scene::Aabb stoneFootprint = scene::Aabb::fromCenter(
+                stone, alongX ? glm::vec3{MILESTONE_HALF_WIDTH, 1.0F, MILESTONE_HALF_THICKNESS}
+                              : glm::vec3{MILESTONE_HALF_THICKNESS, 1.0F, MILESTONE_HALF_WIDTH});
+            // Its broad faces look along the wall: the turned model is as wide along it.
+            const glm::vec3 sideways{scenery.milestone * glm::vec4{1.0F, 0.0F, 0.0F, 0.0F}};
+            CHECK(std::abs(alongX ? sideways.x : sideways.z) == doctest::Approx(1.0F));
             CHECK(stoneFootprint.min.x >= approachSquare.min.x);
             CHECK(stoneFootprint.max.x <= approachSquare.max.x);
             CHECK(stoneFootprint.min.z >= approachSquare.min.z);
@@ -456,10 +527,8 @@ TEST_CASE("the gatehouse, the lanterns and the milestone fit every maze the game
             const glm::vec3 wallMiddle =
                 game::wallSegmentOn(approach.x, approach.z, wall.side).position;
             const float toWall =
-                wall.side == game::Direction::North || wall.side == game::Direction::South
-                    ? std::abs(stone.z - wallMiddle.z)
-                    : std::abs(stone.x - wallMiddle.x);
-            CHECK(toWall + MILESTONE_HALF_WIDTH <
+                alongX ? std::abs(stone.z - wallMiddle.z) : std::abs(stone.x - wallMiddle.x);
+            CHECK(toWall + MILESTONE_HALF_THICKNESS <
                   game::WALL_COLLISION_THICKNESS / 2.0F + game::Player::BODY_WIDTH / 2.0F);
         }
     }
@@ -490,97 +559,183 @@ TEST_CASE("the scenery follows the ground when the terrain is rebuilt") {
     CHECK(high.lightPosition.y == doctest::Approx(world.gate.position.y + game::GATE_LIGHT_HEIGHT));
 }
 
-TEST_CASE("the gatehouse model stays inside the pillars where the player walks") {
+TEST_CASE("the arch model keeps clear of the player, hides the pillars and carries the lanterns") {
     const assets::ObjModel arch = loadModel("gate_arch.obj");
     REQUIRE_FALSE(arch.vertices.empty());
     CHECK(arch.parts.size() == 1);
-    CHECK(arch.mirroredTriangleCount == 0);
-    // A few hundred triangles at most: it is drawn three times per frame.
-    CHECK(arch.indices.size() / 3 <= 300);
+    CHECK(arch.indices.size() / 3 == ARCH_TRIANGLES);
+    CHECK(arch.mirroredTriangleCount == ARCH_MIRRORED);
 
-    // The foot of a pillar is this wide to each side of its middle (its box and the
-    // margin of its model): below the head of the player the piers are no wider, so
-    // the gatehouse adds no stone the player could walk into. Above the head it may be.
-    const float footHalf = game::PILLAR_SIZE / 2.0F + game::FOOTPRINT_MARGIN;
+    // Below the head of the player the arch has no collision box of its own, so its stone
+    // stays where the eye can never come nearer than the near plane of the camera. The
+    // eye is stopped half a body from the box of a pillar or wall: so it stays this far
+    // from the line of the wall, at most this far from the middle in the doorway, and at
+    // least this far from it in an open segment beside the gate.
+    const float nearPlane = scene::Camera{}.nearPlane;
+    const float eyeFromLine = game::PILLAR_SIZE / 2.0F + game::Player::BODY_WIDTH / 2.0F;
+    const float doorwayEye = game::WALL_LENGTH / 2.0F - eyeFromLine;
+    const float besideEye = game::WALL_LENGTH / 2.0F + eyeFromLine;
     float highest = 0.0F;
     for (const gfx::Vertex& vertex : arch.vertices) {
-        highest = std::max(highest, vertex.position.y);
-        if (vertex.position.y > game::Player::BODY_HEIGHT + 0.2F) {
+        const glm::vec3& p = vertex.position;
+        highest = std::max(highest, p.y);
+        if (p.y > game::Player::BODY_HEIGHT + 0.2F) {
             continue;
         }
-        CHECK(std::abs(std::abs(vertex.position.x) - game::WALL_LENGTH / 2.0F) <=
-              footHalf + 0.001F);
-        CHECK(std::abs(vertex.position.z) <= footHalf + 0.001F);
+        CHECK(std::abs(p.z) <= eyeFromLine - nearPlane);
+        CHECK(std::abs(p.x) >= doorwayEye + nearPlane);
+        CHECK(std::abs(p.x) <= besideEye - nearPlane);
     }
-    // Its ridge is the height the shadow map of the moon is fitted to.
-    CHECK(highest <= game::GATE_HOUSE_HEIGHT);
-    CHECK(highest > game::GATE_HOUSE_HEIGHT - 0.1F);
 
-    // The two openings of the cote are empty: no corner of the stone lies inside one, so
-    // the lantern and the bell hang free. The posts and the beam end on their edges.
+    // The pillars at the two ends of the gate stand inside the piers, from the ground up
+    // to PIER_CAP_TOP: rays from the doorway, from outside along the wall and from both
+    // faces meet stone before the faces of a pillar (PILLAR_PEEK).
+    const float pillarHalf = game::PILLAR_SIZE / 2.0F;
+    const float pillarAt = game::WALL_LENGTH / 2.0F;
+    for (const float end : {-1.0F, 1.0F}) {
+        for (int step = 1; static_cast<float>(step) * 0.05F <= PIER_CAP_TOP; ++step) {
+            const float y = static_cast<float>(step) * 0.05F;
+            CAPTURE(end);
+            CAPTURE(y);
+            for (const float across : {-0.14F, -0.07F, 0.0F, 0.07F, 0.14F}) {
+                const RayHit fromDoorway = castRay(arch, {0.0F, y, across}, {end, 0.0F, 0.0F});
+                CHECK(fromDoorway.distance > 0.0F);
+                CHECK(fromDoorway.distance < pillarAt - pillarHalf + PILLAR_PEEK);
+                const RayHit fromBeside =
+                    castRay(arch, {end * (pillarAt + 1.0F), y, across}, {-end, 0.0F, 0.0F});
+                CHECK(fromBeside.distance > 0.0F);
+                CHECK(fromBeside.distance < 1.0F - pillarHalf + PILLAR_PEEK);
+            }
+            for (const float face : {-1.0F, 1.0F}) {
+                for (const float along : {-0.14F, -0.07F, 0.0F, 0.07F, 0.14F}) {
+                    const RayHit fromFace =
+                        castRay(arch, {end * pillarAt + along, y, face}, {0.0F, 0.0F, -face});
+                    CHECK(fromFace.distance > 0.0F);
+                    CHECK(fromFace.distance < 1.0F - pillarHalf + PILLAR_PEEK);
+                }
+            }
+        }
+    }
+
+    // The big lantern stands on the highest stone of the crown under its base, sunk into
+    // it by at most two centimetres, and its ring is the highest point at the gate: the
+    // height the shadow map of the moon reaches.
+    const float bigHalf = LANTERN_HALF_WIDTH * game::GATE_COTE_LANTERN_SCALE;
+    float crown = 0.0F;
     for (const gfx::Vertex& vertex : arch.vertices) {
         const glm::vec3& p = vertex.position;
-        const bool inside = std::abs(p.x) > OPENING_NEAR + 0.001F &&
-                            std::abs(p.x) < OPENING_FAR - 0.001F && p.y > OPENING_BOTTOM + 0.001F &&
-                            p.y < OPENING_TOP - 0.001F;
-        CHECK_FALSE(inside);
+        if (std::abs(p.x - game::GATE_COTE_LANTERN_ALONG) <= bigHalf && std::abs(p.z) <= bigHalf) {
+            crown = std::max(crown, p.y);
+        }
     }
-    // The big lantern, with its cap, fits into its opening and hangs under the beam.
-    const float capHalf = LANTERN_CAP_HALF_WIDTH * game::GATE_COTE_LANTERN_SCALE;
-    CHECK(game::GATE_COTE_LANTERN_ALONG - capHalf > OPENING_NEAR);
-    CHECK(game::GATE_COTE_LANTERN_ALONG + capHalf < OPENING_FAR);
-    CHECK(game::GATE_COTE_LANTERN_HEIGHT > OPENING_BOTTOM);
-    CHECK(game::GATE_COTE_LANTERN_HEIGHT + LANTERN_HEIGHT * game::GATE_COTE_LANTERN_SCALE <=
-          OPENING_TOP + 0.07F);
+    CHECK(game::GATE_COTE_LANTERN_HEIGHT <= crown);
+    CHECK(game::GATE_COTE_LANTERN_HEIGHT > crown - 0.02F);
+    const float bigTop =
+        game::GATE_COTE_LANTERN_HEIGHT + LANTERN_HEIGHT * game::GATE_COTE_LANTERN_SCALE;
+    CHECK(highest < bigTop);
+    CHECK(bigTop <= game::GATE_HOUSE_HEIGHT);
+    CHECK(bigTop > game::GATE_HOUSE_HEIGHT - 0.05F);
 
-    // The same from both sides and from both ends: every corner has a twin mirrored in
-    // x and one mirrored in z. So the matrix of the gate needs no turn.
-    const auto hasVertexAt = [&arch](const glm::vec3& place) {
-        return std::ranges::any_of(arch.vertices, [&place](const gfx::Vertex& vertex) {
-            return glm::distance(vertex.position, place) < 0.001F;
-        });
-    };
-    bool mirrored = true;
-    for (const gfx::Vertex& vertex : arch.vertices) {
-        const glm::vec3& p = vertex.position;
-        mirrored = mirrored && hasVertexAt({-p.x, p.y, p.z}) && hasVertexAt({p.x, p.y, -p.z});
+    // A hook on each face of each pier, its end in the ring of a bracket lantern: the
+    // game hangs the two lanterns on the side of the approach, which can be either face.
+    const float ringTop = game::GATE_BRACKET_LANTERN_HEIGHT + LANTERN_HEIGHT;
+    for (const float end : {-1.0F, 1.0F}) {
+        for (const float face : {-1.0F, 1.0F}) {
+            const glm::vec3 ring{end * game::GATE_BRACKET_LANTERN_ALONG, ringTop,
+                                 face * game::GATE_BRACKET_LANTERN_OUT};
+            CAPTURE(ring);
+            CHECK(std::ranges::any_of(arch.vertices, [&ring](const gfx::Vertex& vertex) {
+                return glm::distance(vertex.position, ring) < 0.07F;
+            }));
+        }
     }
-    CHECK(mirrored);
 }
 
 TEST_CASE("the lantern and the milestone models have the sizes the game places them by") {
     const assets::ObjModel lantern = loadModel("gate_lantern.obj");
     REQUIRE_FALSE(lantern.vertices.empty());
     CHECK(lantern.parts.size() == 1);
-    CHECK(lantern.mirroredTriangleCount == 0);
-    CHECK(lantern.indices.size() / 3 <= 150);
+    CHECK(lantern.indices.size() / 3 == LANTERN_TRIANGLES);
+    CHECK(lantern.mirroredTriangleCount == LANTERN_MIRRORED);
     float top = 0.0F;
-    bool pale = false;
-    bool dark = false;
     for (const gfx::Vertex& vertex : lantern.vertices) {
         CHECK(vertex.position.y >= 0.0F);
         CHECK(std::abs(vertex.position.x) <= LANTERN_CAP_HALF_WIDTH + 0.001F);
         CHECK(std::abs(vertex.position.z) <= LANTERN_CAP_HALF_WIDTH + 0.001F);
         top = std::max(top, vertex.position.y);
-        // The left half of the picture is the pale glass, the right half the dark iron:
-        // every corner lies well inside one of the two, away from the line between them.
-        CHECK(std::abs(vertex.uv.x - 0.5F) > 0.05F);
-        CHECK(vertex.uv.x > 0.0F);
-        CHECK(vertex.uv.x < 1.0F);
-        pale = pale || vertex.uv.x < 0.5F;
-        dark = dark || vertex.uv.x > 0.5F;
     }
     CHECK(top == doctest::Approx(LANTERN_HEIGHT));
-    CHECK(pale);
-    CHECK(dark);
     // The base of the lantern model is 0.2 m wide, the number the placement uses.
     CHECK(LANTERN_HALF_WIDTH * 2.0F == doctest::Approx(0.2F));
+
+    // The game makes the whole lantern glow by its colour, one value for the model. So
+    // the picture has one square of pale glass and is dark iron everywhere else, and the
+    // panes are the only faces on that square.
+    assets::Image picture;
+    std::string error;
+    REQUIRE(assets::loadImage(assetsDirectory() / "textures" / "gate_lantern.png", picture, error));
+    REQUIRE(picture.channels == 3);
+    int glassLeft = picture.width;
+    int glassRight = -1;
+    int glassBottom = picture.height;
+    int glassTop = -1;
+    int glassTexels = 0;
+    int brightestIron = 0;
+    for (int row = 0; row < picture.height; ++row) {
+        for (int column = 0; column < picture.width; ++column) {
+            const auto texel = static_cast<std::size_t>((row * picture.width + column) * 3);
+            const int least = std::min(
+                {picture.pixels[texel], picture.pixels[texel + 1], picture.pixels[texel + 2]});
+            const int most = std::max(
+                {picture.pixels[texel], picture.pixels[texel + 1], picture.pixels[texel + 2]});
+            if (least >= LANTERN_GLASS_LEAST) {
+                ++glassTexels;
+                glassLeft = std::min(glassLeft, column);
+                glassRight = std::max(glassRight, column);
+                glassBottom = std::min(glassBottom, row);
+                glassTop = std::max(glassTop, row);
+            } else {
+                brightestIron = std::max(brightestIron, most);
+            }
+        }
+    }
+    REQUIRE(glassTexels > 0);
+    CHECK(glassTexels == (glassRight - glassLeft + 1) * (glassTop - glassBottom + 1));
+    CHECK(brightestIron <= LANTERN_IRON_MOST);
+
+    const auto onGlass = [&](const gfx::Vertex& vertex) {
+        const float column = vertex.uv.x * static_cast<float>(picture.width);
+        const float row = vertex.uv.y * static_cast<float>(picture.height);
+        return column > static_cast<float>(glassLeft) &&
+               column < static_cast<float>(glassRight + 1) &&
+               row > static_cast<float>(glassBottom) && row < static_cast<float>(glassTop + 1);
+    };
+    std::size_t panes = 0;
+    for (std::size_t i = 0; i + 2 < lantern.indices.size(); i += 3) {
+        const gfx::Vertex& a = lantern.vertices[lantern.indices[i]];
+        const gfx::Vertex& b = lantern.vertices[lantern.indices[i + 1]];
+        const gfx::Vertex& c = lantern.vertices[lantern.indices[i + 2]];
+        const int corners = (onGlass(a) ? 1 : 0) + (onGlass(b) ? 1 : 0) + (onGlass(c) ? 1 : 0);
+        // A face is all on the glass or not on it at all.
+        CHECK((corners == 0 || corners == 3));
+        if (corners != 3) {
+            continue;
+        }
+        ++panes;
+        // A pane stands upright in a window and looks out of the lantern.
+        const glm::vec3 normal =
+            glm::normalize(glm::cross(b.position - a.position, c.position - a.position));
+        const glm::vec3 middle = (a.position + b.position + c.position) / 3.0F;
+        CHECK(std::abs(normal.y) < 0.01F);
+        CHECK(glm::dot(normal, glm::vec3{middle.x, 0.0F, middle.z}) > 0.0F);
+    }
+    CHECK(panes == LANTERN_PANE_TRIANGLES);
 
     const assets::ObjModel milestone = loadModel("milestone.obj");
     REQUIRE_FALSE(milestone.vertices.empty());
     CHECK(milestone.parts.size() == 1);
-    CHECK(milestone.mirroredTriangleCount == 0);
-    CHECK(milestone.indices.size() / 3 <= 60);
+    CHECK(milestone.indices.size() / 3 == MILESTONE_TRIANGLES);
+    CHECK(milestone.mirroredTriangleCount == MILESTONE_MIRRORED);
     float stoneTop = 0.0F;
     for (const gfx::Vertex& vertex : milestone.vertices) {
         stoneTop = std::max(stoneTop, vertex.position.y);
@@ -589,7 +744,6 @@ TEST_CASE("the lantern and the milestone models have the sizes the game places t
     CHECK(stoneTop > 0.4F);
     CHECK(stoneTop < 0.8F);
 }
-
 TEST_CASE("a bell that is never pushed hangs still, and the bell of a shut gate is never pushed") {
     // The gate stays shut for a minute: the clock of the bell gives no toll, so nothing
     // pushes the bell, and it stays exactly where it hangs.
@@ -666,68 +820,80 @@ TEST_CASE("tolls in quick succession never swing the bell past its limit") {
     CHECK(swing.degrees == 0.0F);
 }
 
-TEST_CASE("the bell model hangs from its pivot and swings clear of the posts of its opening") {
+TEST_CASE("the bell model hangs from its pivot and swings clear of the stone and the door") {
     const assets::ObjModel bell = loadModel("gate_bell.obj");
     REQUIRE_FALSE(bell.vertices.empty());
     CHECK(bell.parts.size() == 1);
-    CHECK(bell.mirroredTriangleCount == 0);
-    CHECK(bell.indices.size() / 3 <= 320);
+    CHECK(bell.indices.size() / 3 == BELL_TRIANGLES);
+    CHECK(bell.mirroredTriangleCount == BELL_MIRRORED);
 
-    // Everything hangs under the pivot, the origin, and the clapper is the lowest point.
+    // Everything hangs under the pivot, the origin, around the axis down from it, and
+    // the clapper is the lowest point.
     float lowest = 0.0F;
+    glm::vec2 low{0.0F};
+    glm::vec2 high{0.0F};
     for (const gfx::Vertex& vertex : bell.vertices) {
-        CHECK(vertex.position.y <= 0.0001F);
-        lowest = std::min(lowest, vertex.position.y);
+        const glm::vec3& p = vertex.position;
+        CHECK(p.y <= 0.0001F);
+        lowest = std::min(lowest, p.y);
+        low = glm::min(low, glm::vec2{p.x, p.z});
+        high = glm::max(high, glm::vec2{p.x, p.z});
     }
     CHECK(lowest == doctest::Approx(-BELL_HEIGHT));
-    // At rest it hangs above the sill of its opening.
-    CHECK(game::GATE_BELL_HEIGHT - BELL_HEIGHT > OPENING_BOTTOM);
+    CHECK(std::abs(low.x + high.x) < 0.02F);
+    CHECK(std::abs(low.y + high.y) < 0.02F);
 
-    // Swung out as far as it goes, to either side, every corner is still between the two
-    // posts and above the sill. The matrix is the one the game draws with, for a
-    // gatehouse that stands at the origin. Only the top corners of the yoke may reach
-    // into the beam it hangs from, where nobody sees them.
+    // The bell is open below, and the renderer draws no back faces: somebody who looks
+    // up into it sees faces that look back down at them, the inside of its wall.
+    for (const float radius : {0.06F, 0.1F}) {
+        for (int step = 0; step < 8; ++step) {
+            const float angle = static_cast<float>(step) * glm::quarter_pi<float>();
+            const glm::vec3 below{radius * std::cos(angle), -BELL_HEIGHT - 0.1F,
+                                  radius * std::sin(angle)};
+            const RayHit hit = castRay(bell, below, {0.0F, 1.0F, 0.0F});
+            CAPTURE(below);
+            CHECK(hit.distance > 0.0F);
+            CHECK(hit.normal.y < 0.0F);
+        }
+    }
+
+    // In its opening of the arch, at rest and swung out as far as it goes to either side,
+    // with the matrix the game draws with for an arch at the origin: no stone stands
+    // between the axis of the opening and any corner of the bell (only the top of the
+    // rope reaches into the stone over it), and all of it hangs above the top of the
+    // closed door.
+    const assets::ObjModel arch = loadModel("gate_arch.obj");
+    const assets::ObjModel door = loadModel("gate.obj");
+    float doorTop = 0.0F;
+    for (const gfx::Vertex& vertex : door.vertices) {
+        doorTop = std::max(doorTop, vertex.position.y);
+    }
     for (const float degrees :
          {-game::GATE_BELL_SWING_DEGREES, 0.0F, game::GATE_BELL_SWING_DEGREES}) {
+        CAPTURE(degrees);
         const glm::mat4 matrix = game::gateBellMatrix(glm::mat4{1.0F}, degrees);
         for (const gfx::Vertex& vertex : bell.vertices) {
+            if (vertex.position.y > -BELL_ROPE_IN_STONE) {
+                continue;
+            }
             const glm::vec3 place{matrix * glm::vec4{vertex.position, 1.0F}};
-            CHECK(-place.x > OPENING_NEAR);
-            CHECK(-place.x < OPENING_FAR);
-            CHECK(place.y > OPENING_BOTTOM);
-            CHECK(place.y < OPENING_TOP + 0.05F);
+            CHECK(place.y > doorTop);
+            const float side = place.x < 0.0F ? -1.0F : 1.0F;
+            const RayHit stone = castRay(arch, {0.0F, place.y, place.z}, {side, 0.0F, 0.0F});
+            CHECK((stone.distance < 0.0F || stone.distance > std::abs(place.x)));
         }
     }
 
-    // The same from the front and from the back: every corner has a twin mirrored in z.
-    bool mirrored = true;
-    for (const gfx::Vertex& vertex : bell.vertices) {
-        const glm::vec3 twin{vertex.position.x, vertex.position.y, -vertex.position.z};
-        mirrored =
-            mirrored && std::ranges::any_of(bell.vertices, [&twin](const gfx::Vertex& other) {
-                return glm::distance(other.position, twin) < 0.001F;
-            });
+    // The opening goes through the slab over the door: from both sides of the gate, the
+    // middle of the bell is seen and not the stone.
+    const float middle = game::GATE_BELL_HEIGHT - BELL_HEIGHT / 2.0F;
+    const glm::mat4 still = game::gateBellMatrix(glm::mat4{1.0F}, 0.0F);
+    for (const float face : {-1.0F, 1.0F}) {
+        const glm::vec3 eye{0.0F, middle, face * 2.0F};
+        const glm::vec3 inBell{glm::inverse(still) * glm::vec4{eye, 1.0F}};
+        const RayHit seenBell = castRay(bell, inBell, {0.0F, 0.0F, -face});
+        const RayHit seenStone = castRay(arch, eye, {0.0F, 0.0F, -face});
+        CHECK(seenBell.distance > 0.0F);
+        CHECK((seenStone.distance < 0.0F || seenStone.distance > seenBell.distance));
     }
-    CHECK(mirrored);
-
-    // The bell is open below, and the renderer draws no back faces: so it has faces that
-    // look down and inwards, the inside of its wall. Their corners lie above the lip.
-    int insideFaces = 0;
-    for (std::size_t i = 0; i + 2 < bell.indices.size(); i += 3) {
-        const gfx::Vertex& a = bell.vertices[bell.indices[i]];
-        const gfx::Vertex& b = bell.vertices[bell.indices[i + 1]];
-        const gfx::Vertex& c = bell.vertices[bell.indices[i + 2]];
-        const glm::vec3 middle = (a.position + b.position + c.position) / 3.0F;
-        const glm::vec3 normal = glm::cross(b.position - a.position, c.position - a.position);
-        const glm::vec3 outwards{middle.x, 0.0F, middle.z};
-        // Inside the wall of the bell: between the top of the inside and the lip, away
-        // from the axis (that is the clapper), looking towards the axis.
-        if (middle.y < -0.11F && middle.y > -0.364F && glm::length(outwards) > 0.06F &&
-            glm::dot(normal, outwards) < 0.0F) {
-            ++insideFaces;
-        }
-    }
-    // Four rings of twelve faces of two triangles each, and the clapper block has none
-    // that far out.
-    CHECK(insideFaces >= 4 * 12 * 2);
 }
