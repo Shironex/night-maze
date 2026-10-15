@@ -19,6 +19,14 @@ namespace game {
 // the menu camera, in a chosen maze and at a chosen place, so the picture can be
 // recorded without touching the keyboard.
 
+/// How the intro is told (--intro-style): with painted pictures (game/Storybook.hpp)
+/// when assets/intro/storybook.txt can be read, or always live in the engine
+/// (game/Intro.hpp).
+enum class IntroStyle {
+    Storybook,
+    Classic,
+};
+
 /// How the game starts. Without switches on the command line it is the game as it
 /// always started: the default maze and the player at the start.
 struct StartOptions {
@@ -89,6 +97,10 @@ struct StartOptions {
     /// True: play the intro at the start of this run, also next to the switches of
     /// a tool (--intro). --skip-intro wins over it when both are given.
     bool intro = false;
+
+    /// How the intro is told in this run (--intro-style). The storybook falls back to
+    /// the classic intro when its files cannot be read.
+    IntroStyle introStyle = IntroStyle::Storybook;
 };
 
 /// What parseStartOptions found.
@@ -127,6 +139,7 @@ extern const char* const START_OPTIONS_USAGE;
 ///     --daily <YYYYMMDD>     start the maze of that day at once, its best time untouched
 ///     --skip-intro           never play the intro in this run
 ///     --intro                play the intro at the start of this run
+///     --intro-style <name>   how the intro is told: storybook or classic
 ///
 /// An unknown switch, a missing value or a value that is not a number is an error: the
 /// result then carries a message and the game should not start. So are --night and

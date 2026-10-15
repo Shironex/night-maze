@@ -121,8 +121,9 @@ The switches are read before the window opens. A wrong one prints an `[error]` l
 | `--menu-background <video\|still\|scene>` | what is behind the main menu: the recorded video (default), the still picture, or the live scene |
 | `--skip-intro` | never play the intro in this run |
 | `--intro` | play the intro now, even if it was seen. `--skip-intro` wins if both are given |
+| `--intro-style <storybook\|classic>` | how the intro is told: the painted storybook of `assets/intro/` (the default when it loads) or the live cards. Not a tool switch, so a new campaign uses it too |
 
-Any switch except the two intro ones counts as a tool switch. A run with a tool switch never opens with the intro, because the scripts start the game in fresh folders where the intro would count as unseen. It also never asks the clock for the day of "Tonight's hedge": the day is the one of `--daily`, or 8 October 2026, so a picture of the menu does not change from day to day. Example, a round of the second night in a fixed maze without the shadow:
+Any switch except the three intro ones counts as a tool switch. A run with a tool switch never opens with the intro, because the scripts start the game in fresh folders where the intro would count as unseen. It also never asks the clock for the day of "Tonight's hedge": the day is the one of `--daily`, or 8 October 2026, so a picture of the menu does not change from day to day. Example, a round of the second night in a fixed maze without the shadow:
 
 ```sh
 build/release/Release/night_maze.exe --night 2 --seed 7 --calm

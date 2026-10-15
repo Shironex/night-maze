@@ -83,6 +83,18 @@ TEST_CASE("the two switches of the intro set their fields and are no switches of
     CHECK_FALSE(parse({"--intros"}).error.empty());
 }
 
+TEST_CASE("the style of the intro can be named, is no switch of a tool, and needs a name") {
+    CHECK(parse({}).options.introStyle == game::IntroStyle::Storybook);
+    const game::StartOptionsResult classic = parse({"--intro-style", "classic", "--intro"});
+    CHECK(classic.error.empty());
+    CHECK(classic.options.introStyle == game::IntroStyle::Classic);
+    CHECK(classic.options.intro);
+    CHECK_FALSE(classic.options.toolSwitch);
+    CHECK(parse({"--intro-style", "storybook"}).options.introStyle == game::IntroStyle::Storybook);
+    CHECK_FALSE(parse({"--intro-style"}).error.empty());
+    CHECK_FALSE(parse({"--intro-style", "video"}).error.empty());
+}
+
 TEST_CASE("the background of the main menu can be named, and only by its three names") {
     CHECK(parse({"--menu-background", "scene"}).options.menuBackground ==
           game::MenuBackground::LiveScene);
@@ -176,6 +188,7 @@ TEST_CASE("the list of switches names every switch") {
     CHECK(usage.find("--skip-intro") != std::string::npos);
     // With the space in front it is not the end of --skip-intro.
     CHECK(usage.find(" --intro") != std::string::npos);
+    CHECK(usage.find("--intro-style") != std::string::npos);
 }
 
 TEST_CASE("the calm switch asks for a run without a shade and changes nothing else") {

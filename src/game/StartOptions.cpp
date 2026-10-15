@@ -26,8 +26,13 @@ constexpr std::string_view COLLECT_ALL_SWITCH = "--collect-all";
 constexpr std::string_view CALM_SWITCH = "--calm";
 constexpr std::string_view SKIP_INTRO_SWITCH = "--skip-intro";
 constexpr std::string_view INTRO_SWITCH = "--intro";
+constexpr std::string_view INTRO_STYLE_SWITCH = "--intro-style";
 constexpr std::string_view NIGHT_SWITCH = "--night";
 constexpr std::string_view DAILY_SWITCH = "--daily";
+
+// The two names --intro-style accepts.
+constexpr std::string_view STORYBOOK_STYLE_NAME = "storybook";
+constexpr std::string_view CLASSIC_STYLE_NAME = "classic";
 
 // The two names --menu-shot accepts.
 constexpr std::string_view WALK_SHOT_NAME = "walk";
@@ -102,7 +107,8 @@ const char* const START_OPTIONS_USAGE =
     "Switches: --seed <number>, --play, --menu-camera, --menu-shot <walk|glide>, "
     "--menu-time <seconds>, --menu-background <video|still|scene>, "
     "--start-cell <column>,<row>, --start-yaw <degrees>, --collect-all, --calm, "
-    "--night <1..5>, --daily <YYYYMMDD>, --skip-intro, --intro";
+    "--night <1..5>, --daily <YYYYMMDD>, --skip-intro, --intro, "
+    "--intro-style <storybook|classic>";
 
 StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
     StartOptionsResult result;
@@ -119,6 +125,21 @@ StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
         }
         if (name == INTRO_SWITCH) {
             options.intro = true;
+            continue;
+        }
+        // How the intro is told. Not a switch of a tool either: the intro of a campaign
+        // is to be seen in both styles.
+        if (name == INTRO_STYLE_SWITCH) {
+            const std::string_view style = i + 1 < arguments.size() ? arguments[i + 1] : "";
+            if (style == STORYBOOK_STYLE_NAME) {
+                options.introStyle = IntroStyle::Storybook;
+            } else if (style == CLASSIC_STYLE_NAME) {
+                options.introStyle = IntroStyle::Classic;
+            } else {
+                result.error = "The switch --intro-style needs storybook or classic";
+                return result;
+            }
+            ++i;
             continue;
         }
 
