@@ -25,11 +25,12 @@ constexpr const char* LIGHTS_MODEL_PREFIX = "models/village_lights_";
 constexpr const char* MODEL_SUFFIX = ".obj";
 
 // The colour the village is multiplied by, a linear colour. The textured program knows
-// no light, and the model has two tones of its own (tools/blender/build_village.py): pale
-// walls, and dark roofs and ridge. With this tint the walls are stone under the moon,
-// a little lighter than the sky behind them, the roofs and the ridge are black shapes,
-// and the lights are what is seen first.
-constexpr glm::vec3 VILLAGE_TINT{0.03F, 0.04F, 0.065F};
+// no light, and the model wears a painted picture of its own (village.png, from
+// tools/blender/build_village.py): grey stone walls, dark slate roofs and moss, and a dark
+// earth on the ridge. Its stone is about 0.12 in linear light, so with this tint the walls
+// are stone under the moon, about 0.02 to 0.03, a little lighter than the sky behind
+// them, the roofs and the ridge are near black, and the lights are what is seen first.
+constexpr glm::vec3 VILLAGE_TINT{0.17F, 0.22F, 0.37F};
 
 constexpr glm::vec3 NO_GLOW{0.0F};
 
