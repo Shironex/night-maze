@@ -2,6 +2,25 @@
 
 Release notes for Night Maze, newest first.
 
+## 0.16.0 (2026-10-15)
+
+The maze is built from new models: the shadow, the lamp, the splinters, the sheep, the village and the gatehouse are made again, and the walls have new stone.
+
+### What's new
+
+- The shadow is a new figure: a tall hooded shape in a long robe, with the night sky in its hood and in its empty sleeves.
+- The lamp in your hand is an old tin railway lamp now, with a round lens in its side, a brass band and a wire bail on top. The beam leaves through the lens. A small window of three panes on its shoulder glows in the colour of the crystals while the battery has charge.
+- The splinters of the moon are new: a rough dark rind outside and a pale glowing fracture inside. The heartstone is four of them grown together like a broken crown.
+- The stone sheep lie curled up on the ground now, with carved wool and moss in the folds.
+- The stile has a new weathered oak post with an iron band and an empty hook, and the flask is a small tin bottle in a net of cord.
+- A worn milestone stands beside the gate.
+- The village on the ridge is a new model: stone cottages with steep roofs and a church tower, with its windows lit night by night. It is smaller in the sky than before.
+- The gatehouse is built again: a mossy arch of rough stones with an iron hook for a lantern on each pier, a slab of big dressed stones over the door, a heavy oak door with black iron bands and a ring, a new lantern on the crown and a new bronze bell. The door no longer shines in the beam of the lamp.
+- The walls have new stone: new pictures for the plain, the mossy and the cracked walls, with real relief in the light of the lamp. The same stones no longer come back every metre up the wall, and the ledge at the foot of a wall and the cap stones on top now meet the stone along its joints.
+- The end lines of the first two nights say what you see on the ridge: "The first windows are lit. The village slept a little." and "Seven more windows. The light walks along the ridge."
+- A frame takes less work: the game skips what is outside the view of the camera and of the lamp, and keeps the shadows of the walls that never move from one frame to the next.
+- The video behind the main menu is recorded again, so it shows the new walls and the gatehouse.
+
 ## 0.15.0 (2026-10-12)
 
 You can see the lamp you carry, and the side buttons of the mouse can be bound.
