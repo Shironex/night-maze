@@ -591,8 +591,9 @@ TEST_CASE("the held lamp keeps its place in the lower right of the picture") {
     const glm::vec3 eye{3.0F, 1.7F, 5.0F};
     constexpr float ASPECT_RATIO = 16.0F / 9.0F;
     const glm::vec4 lens{0.0F, 0.0F, -game::HELD_LAMP_LENS_OUT, 1.0F};
-    // The end of the window that is nearer to the player (tools/blender/build_lamp_held.py).
-    const glm::vec4 window{0.0F, 0.0182F, -0.082F, 1.0F};
+    // The lower edge of the window on the back of the shoulder
+    // (tools/blender/build_lamp_held.py).
+    const glm::vec4 window{0.0F, 0.042F, -0.012F, 1.0F};
 
     // Looking down, level and up, with the narrowest, the default and the widest field
     // of view of the settings.
@@ -981,13 +982,10 @@ TEST_CASE("the swaying held lamp stays in the lower right and keeps its butt out
     const glm::vec3 eye{3.0F, 1.7F, 5.0F};
     constexpr float ASPECT_RATIO = 16.0F / 9.0F;
     const glm::vec4 lens{0.0F, 0.0F, -game::HELD_LAMP_LENS_OUT, 1.0F};
-    // The two highest corners of the cap of the butt (tools/blender/build_lamp_held.py:
-    // a ring of eight corners, 0.0195 m from the axis and 0.012 m out, with a flat side
-    // on top, so its upper corners are 22.5 degrees to each side of the top).
-    const float capAngle = glm::radians(22.5F);
-    const std::array<glm::vec4, 2> cap{
-        glm::vec4{0.0195F * std::sin(capAngle), 0.0195F * std::cos(capAngle), -0.012F, 1.0F},
-        glm::vec4{-0.0195F * std::sin(capAngle), 0.0195F * std::cos(capAngle), -0.012F, 1.0F}};
+    // Two points of the foot of the body at its back, where a hand would hold it
+    // (tools/blender/build_lamp_held.py: the body reaches 0.065 m under the axis).
+    const std::array<glm::vec4, 2> cap{glm::vec4{0.03F, -0.064F, -0.01F, 1.0F},
+                                       glm::vec4{-0.03F, -0.064F, -0.01F, 1.0F}};
     scene::Camera camera;
     camera.yawDegrees = 220.0F;
     const glm::mat4 toClip = game::heldLampProjection(camera.projectionMatrix(ASPECT_RATIO)) *
@@ -1024,7 +1022,7 @@ TEST_CASE("the swaying held lamp stays in the lower right and keeps its butt out
                 CHECK(place.y > -0.9F);
                 CHECK(glm::distance(place, rest) < 0.08F);
 
-                // The butt, where an arm would begin: below the lower edge.
+                // The foot of the body, where an arm would begin: below the lower edge.
                 for (const glm::vec4& corner : cap) {
                     const glm::vec4 capClip = swayed * corner;
                     CHECK(capClip.y / capClip.w < -1.0F);

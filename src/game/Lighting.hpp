@@ -200,8 +200,9 @@ FlashlightPose flashlightPose(const LightingSettings& settings, const glm::vec3&
 
 /// The lamp the player holds, the three models of tools/blender/build_lamp_held.py: it
 /// lies along -Z with its origin in the middle of its butt, and the middle of its lens
-/// is this many metres out along its axis (LENS_OUT in that script).
-constexpr float HELD_LAMP_LENS_OUT = 0.219F;
+/// is this many metres out along its axis (LENS_OUT in that script). The lens is in the
+/// side of an upright railway lamp, so this is about the width of its body.
+constexpr float HELD_LAMP_LENS_OUT = 0.113F;
 
 /// How far the butt of the drawn lamp is from the hand, along the beam, in metres.
 ///
@@ -279,15 +280,15 @@ struct HeldLampGlow {
 HeldLampGlow heldLampGlow(const LightingSettings& frameLighting, float charge, float flicker);
 
 /// The light that spills back onto the head of the lamp while it is on: one weak point
-/// light for the draw of the lamp only. It stands just outside the rim of the head, above
-/// it and on the side of the player, where the model has this place: 2.5 cm to the left
-/// of the axis, 6 cm above it and 1 mm in front of the rim. From there it grazes the rim
-/// and the top of the head and has nearly left the tin where the head narrows to the
-/// body, so the head looks touched by its own light and nothing glows.
+/// light for the draw of the lamp only. It stands just outside the lamp, above the lens
+/// and on the side of the player: 2.5 cm to the left of the axis of the lens, 5 cm above
+/// it and 2 mm in front of the lens, over the front of the shoulder of the body. From
+/// there it grazes the top of the bezel and the shoulder and has nearly left the tin at
+/// the back of the lamp, so the front looks touched by its own light and nothing glows.
 ///
-/// A light in the lens itself would not do it: every face of the head the player sees
+/// A light in the lens itself would not do it: every face of the lamp the player sees
 /// looks away from the lens.
-constexpr glm::vec3 HELD_LAMP_SPILL_PLACE{-0.025F, 0.06F, -0.225F};
+constexpr glm::vec3 HELD_LAMP_SPILL_PLACE{-0.025F, 0.05F, -0.115F};
 
 /// How strong the spill is, as a factor on the intensity of the beam, and how far it
 /// reaches in metres (scene::attenuationForRadius). Both small on purpose: it is light
