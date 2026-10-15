@@ -105,8 +105,9 @@ void NightMazeApp::onRender(double alpha) {
         return;
     }
 
-    // The main menu with its video or its still picture is a frame of its own.
-    if (drawMenuBackgroundFrame(framebuffer)) {
+    // The storybook intro and the main menu with its video or its still picture are
+    // frames of their own.
+    if (drawStorybookFrame(framebuffer) || drawMenuBackgroundFrame(framebuffer)) {
         return;
     }
 
@@ -416,6 +417,21 @@ bool NightMazeApp::drawMenuBackgroundFrame(core::Size framebuffer) {
     // The picture goes straight into the window, like the composite pass does.
     gfx::Framebuffer::bindDefault(framebuffer.width, framebuffer.height);
     m_menuBackground.draw(framebuffer);
+    m_ui.draw(framebuffer);
+    return true;
+}
+
+bool NightMazeApp::drawStorybookFrame(core::Size framebuffer) {
+    // The intro may have ended in this frame (updateScreens): then the frame is drawn
+    // for the screen that follows it.
+    if (!m_storybookPlaying || !isIntro(m_mode)) {
+        return false;
+    }
+    m_pick = pickNothing(m_round);
+    gfx::Framebuffer::bindDefault(framebuffer.width, framebuffer.height);
+    m_storybookRenderer.draw(framebuffer, *m_storybook,
+                             storybookFrame(m_storybookBeatSeconds, m_storybook->crossfadeSeconds,
+                                            static_cast<float>(m_introSeconds)));
     m_ui.draw(framebuffer);
     return true;
 }

@@ -3,6 +3,7 @@
 #include "game/NightMazeApp.hpp"
 
 #include "core/Log.hpp"
+#include "core/Paths.hpp"
 #include "game/NightMazeAppShared.hpp"
 
 #include <GLFW/glfw3.h>
@@ -182,9 +183,18 @@ void NightMazeApp::startIntro() {
     // the application puts the game there.
     startNewGame({.difficulty = INTRO_DIFFICULTY, .seed = INTRO_MAZE_SEED});
     m_mode = GameMode::Intro;
+    beginIntroClock();
+    showScreen();
+}
+
+void NightMazeApp::beginIntroClock() {
     m_introSeconds = 0.0;
     m_introCardShown = INTRO_CARD_COUNT;
-    showScreen();
+    m_storybookPlaying =
+        m_storybook && m_storybookRenderer.load(*m_storybook, core::assetPath(STORYBOOK_FOLDER));
+    if (m_storybook && !m_storybookPlaying) {
+        core::logWarn("Storybook: its pictures cannot be loaded: the classic intro plays");
+    }
 }
 
 bool NightMazeApp::anyKeyPressed() {
@@ -313,6 +323,10 @@ bool NightMazeApp::villageRevealShown() const {
 }
 
 void NightMazeApp::updateIntro() {
+    if (m_storybookPlaying) {
+        updateStorybookIntro();
+        return;
+    }
     // Any key and any mouse button skip the whole intro. Escape is one of them, and it
     // also arrives as an event of its own before this function runs (onEscapePressed).
     // This function runs once per frame.
@@ -351,14 +365,57 @@ void NightMazeApp::updateIntro() {
                   frame.hintOpacity);
 }
 
+void NightMazeApp::updateStorybookIntro() {
+    const float crossfade = m_storybook->crossfadeSeconds;
+    if (storybookFrame(m_storybookBeatSeconds, crossfade, static_cast<float>(m_introSeconds))
+            .skippable &&
+        anyKeyPressed()) {
+        handleGameEvent(GameEvent::IntroFinished);
+        return;
+    }
+
+    // The music starts with the first frame, each spoken line at its moment: once.
+    const double before = m_introSeconds;
+    m_introSeconds += time().deltaSeconds();
+    if (before <= 0.0 && m_storybookMusicSound != NO_STORYBOOK_SOUND) {
+        m_audio.play(m_storybookMusicSound);
+    }
+    for (const std::size_t beat :
+         storybookVoicesBetween(m_storybookBeatSeconds, static_cast<float>(before),
+                                static_cast<float>(m_introSeconds))) {
+        if (m_storybookVoiceSounds.at(beat) != NO_STORYBOOK_SOUND) {
+            m_audio.play(m_storybookVoiceSounds.at(beat));
+        }
+    }
+
+    const StorybookFrame frame =
+        storybookFrame(m_storybookBeatSeconds, crossfade, static_cast<float>(m_introSeconds));
+    if (frame.finished) {
+        handleGameEvent(GameEvent::IntroFinished);
+        return;
+    }
+    // The lines change at the cut, where no text is shown (game::cardTextOpacity).
+    if (frame.beat != m_introCardShown) {
+        m_introCardShown = frame.beat;
+        const StorybookBeat& beat = m_storybook->beats.at(frame.beat);
+        writeCardLines({beat.lines.at(0).c_str(), beat.lines.at(1).c_str(), "", ""}, false);
+    }
+    showCardFrame(frame.blackOpacity, frame.textOpacity, {1.0F, 1.0F, 1.0F, 1.0F},
+                  frame.hintOpacity);
+}
+
 bool NightMazeApp::introTellsOfShade() const {
     return m_mode == GameMode::CampaignIntro ? !m_calmRun : shadeInGame();
 }
 
 void NightMazeApp::leaveIntro(bool intoNight) {
     // The wind is one sound of half a minute: without this it would go on over the
-    // main menu or the title card of the night after a skip.
+    // main menu or the title card of the night after a skip. The same for the music
+    // and the spoken lines of the storybook.
     m_audio.stopAll();
+    // The pictures of the storybook are not needed until the next intro.
+    m_storybookRenderer.unload();
+    m_storybookPlaying = false;
     // Seen, to its end or to the key that skipped it. The settings file keeps the line,
     // so files of older versions stay valid, but nothing asks it any more: the intro
     // plays when a campaign begins. An intro that could not be shown at all was not seen.

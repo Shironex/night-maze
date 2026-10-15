@@ -15,8 +15,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace game {
@@ -118,6 +120,29 @@ MazeSettings firstMazeSettings(const StartOptions& options, const GameSettings& 
                                shadeLines);
     }
     return mazeSettingsFor(settings.difficulty, options.seed, settings.nextStoryLine, shadeLines);
+}
+
+// The manifest of the storybook intro (assets/intro/storybook.txt), or nothing: the
+// classic intro is told then. Its absence is no error, a manifest that cannot be read is.
+std::optional<Storybook> loadStorybook() {
+    const std::filesystem::path path = core::assetPath(STORYBOOK_FOLDER) / STORYBOOK_MANIFEST_FILE;
+    if (!std::filesystem::exists(path)) {
+        core::logInfo("Intro: classic (no storybook at " + core::pathText(path) + ")");
+        return std::nullopt;
+    }
+    std::string text;
+    if (!core::readTextFile(path, text)) {
+        core::logError("Intro: classic (the storybook cannot be read: " + core::pathText(path) +
+                       ")");
+        return std::nullopt;
+    }
+    StorybookResult result = parseStorybook(text);
+    if (!result.error.empty()) {
+        core::logError("Intro: classic (" + core::pathText(path) + ", " + result.error + ")");
+        return std::nullopt;
+    }
+    core::logInfo("Intro: storybook of " + std::to_string(result.book.beats.size()) + " pictures");
+    return std::move(result.book);
 }
 
 // Reads the heightmap picture. When it cannot be loaded the ground is flat: the error is
@@ -343,7 +368,7 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     // the engine and everything else into the effects group: each group has a volume
     // of its own (applyAudioSettings). After the cues comes the one piece of music, the
     // theme of the menu, in the music group (game::MENU_THEME_SOUND).
-    std::array<audio::SoundFile, SOUND_CUE_COUNT + 1> soundFiles;
+    std::vector<audio::SoundFile> soundFiles(SOUND_CUE_COUNT + 1);
     for (std::size_t i = 0; i < SOUND_CUE_COUNT; ++i) {
         const auto cue = static_cast<SoundCue>(i);
         soundFiles.at(i) = {.path = core::assetPath(soundCueFile(cue)),
@@ -352,7 +377,40 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     }
     soundFiles.at(MENU_THEME_SOUND) = {.path = core::assetPath(MENU_THEME_FILE),
                                        .group = audio::SoundGroup::Music};
+    // Then the music and the spoken lines of the storybook intro, when it is to be told
+    // (loadStorybook). They are loaded with the rest, because load replaces the list.
+    // ponytail: every sound is decoded into memory at the start, the music of the
+    // storybook too (about 23 MB per minute of stereo). Stream it if it gets long.
+    if (options.introStyle == IntroStyle::Storybook) {
+        m_storybook = loadStorybook();
+    }
+    if (m_storybook) {
+        const std::filesystem::path folder = core::assetPath(STORYBOOK_FOLDER);
+        const auto addSound = [&soundFiles, &folder](const std::string& file,
+                                                     audio::SoundGroup group) {
+            if (file.empty()) {
+                return NO_STORYBOOK_SOUND;
+            }
+            soundFiles.push_back({.path = folder / file, .group = group});
+            return soundFiles.size() - 1;
+        };
+        m_storybookMusicSound = addSound(m_storybook->music, audio::SoundGroup::Music);
+        // The spoken lines go with the effects: they tell something, like the cues.
+        for (const StorybookBeat& beat : m_storybook->beats) {
+            m_storybookVoiceSounds.push_back(addSound(beat.voice, audio::SoundGroup::Effects));
+        }
+    }
     m_audio.load(soundFiles);
+    // A picture stays at least until its spoken line has ended. Without sound the
+    // lines have no length, and the pictures keep their own times.
+    if (m_storybook) {
+        for (std::size_t i = 0; i < m_storybook->beats.size(); ++i) {
+            const std::size_t voice = m_storybookVoiceSounds.at(i);
+            m_storybookBeatSeconds.push_back(storybookBeatSeconds(
+                m_storybook->beats.at(i),
+                voice == NO_STORYBOOK_SOUND ? 0.0F : m_audio.lengthSeconds(voice)));
+        }
+    }
 
     // The seed free play offers for the first game: the one of the command line, or
     // a random one.
@@ -366,6 +424,10 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     if (m_mode == GameMode::Intro && m_cardDocument == ui::NO_DOCUMENT) {
         core::logError("The card of the intro cannot be shown: the intro is left out");
         handleGameEvent(GameEvent::IntroFinished);
+    }
+    // An intro of the command line begins here; the other ways in begin it themselves.
+    if (m_mode == GameMode::Intro) {
+        beginIntroClock();
     }
     showScreen();
 }

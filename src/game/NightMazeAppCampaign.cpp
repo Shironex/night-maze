@@ -143,8 +143,7 @@ void NightMazeApp::beginCampaignIntro() {
     // writes the settings file. The maze of the first night follows when the intro is
     // left (leaveIntro).
     startNewGame({.difficulty = INTRO_DIFFICULTY, .seed = INTRO_MAZE_SEED});
-    m_introSeconds = 0.0;
-    m_introCardShown = INTRO_CARD_COUNT;
+    beginIntroClock();
     handleGameEvent(GameEvent::BeginCampaign);
 }
 

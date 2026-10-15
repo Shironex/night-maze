@@ -36,6 +36,8 @@
 #include "game/Skybox.hpp"
 #include "game/SoundCues.hpp"
 #include "game/StartOptions.hpp"
+#include "game/Storybook.hpp"
+#include "game/StorybookRenderer.hpp"
 #include "game/Terrain.hpp"
 #include "game/TerrainRenderer.hpp"
 #include "game/Village.hpp"
@@ -57,6 +59,9 @@
 #include <vector>
 
 namespace game {
+
+/// The number of a storybook sound that is not there (NightMazeApp::m_storybookMusicSound).
+constexpr std::size_t NO_STORYBOOK_SOUND = static_cast<std::size_t>(-1);
 
 /// The game itself: a generated maze of textured walls and pillars at night, standing
 /// on gently uneven ground that rises into hills around it (a heightmap terrain), and
@@ -659,6 +664,19 @@ private:
     /// (game::introFrame). At the end of the script it sends GameEvent::IntroFinished.
     void updateIntro();
 
+    /// Sets the clock of the intro to its start and chooses how it is told: the
+    /// storybook when there is one and its pictures load, the classic intro otherwise.
+    /// Called wherever an intro begins.
+    void beginIntroClock();
+
+    /// updateIntro for the storybook: the same skip and the same card, with the spoken
+    /// lines and the music in place of the sounds of the script (game::storybookFrame).
+    void updateStorybookIntro();
+
+    /// The frame of the storybook intro: its pictures and the card, straight into the
+    /// window. True when it drew that frame, and onRender is done.
+    bool drawStorybookFrame(core::Size framebuffer);
+
     /// True when any key or any mouse button was pressed in this frame: what skips the
     /// intro and the cards.
     bool anyKeyPressed();
@@ -1123,6 +1141,8 @@ private:
     // What is behind the main menu: the video loop, its still picture, or nothing of
     // its own when the live scene is shown there.
     MenuBackgroundRenderer m_menuBackground;
+    // The layers of the storybook intro, loaded while it plays.
+    StorybookRenderer m_storybookRenderer;
 
     // What the player has set: read from the settings file at start-up (the defaults
     // without a file) and written back when it changed. m_savedSettings is what the
@@ -1379,6 +1399,16 @@ private:
     // card came up (game::nightCardFrame, game::endingCardFrame). The two cards use the
     // document of the intro.
     double m_cardSeconds = 0.0;
+    // The storybook intro (game/Storybook.hpp): its manifest when the style of the run
+    // asks for it and the file can be read, the time of each picture (its spoken line
+    // can make it longer), the numbers of its sounds in m_audio (NO_STORYBOOK_SOUND for
+    // none), and whether the intro that plays now is the storybook. It is not when its
+    // pictures cannot be loaded: the classic intro plays then.
+    std::optional<Storybook> m_storybook;
+    std::vector<float> m_storybookBeatSeconds;
+    std::size_t m_storybookMusicSound = NO_STORYBOOK_SOUND;
+    std::vector<std::size_t> m_storybookVoiceSounds;
+    bool m_storybookPlaying = false;
     // Set by the debug UI: play the intro again (introRequest).
     bool m_introRequested = false;
     // True while the main menu is the one that followed the intro or the ending card: it

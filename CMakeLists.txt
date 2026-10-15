@@ -401,6 +401,8 @@ add_executable(night_maze
     src/game/ShadowMap.hpp
     src/game/Skybox.cpp
     src/game/Skybox.hpp
+    src/game/StorybookRenderer.cpp
+    src/game/StorybookRenderer.hpp
     src/game/TerrainRenderer.cpp
     src/game/TerrainRenderer.hpp
     src/debug/Categories.hpp
