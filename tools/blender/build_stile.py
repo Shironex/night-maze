@@ -256,7 +256,7 @@ def build(shots):
     model = common.create_mesh_object(NAME, vertices, faces)
     # face_project_uvs: the steps are turned, so their faces are slanted. The density is
     # the one of the walls, so the stone looks as on the plain wall beside it.
-    common.face_project_uvs(model.data, common.METRES_PER_UV_UNIT)
+    common.face_project_uvs(model.data, common.METRES_PER_UV_UNIT, wall.PLINTH_HEIGHT)
     common.assign_textured_material(model, "wall_stone", "wall_stone.png", "wall_stone_normal.png")
     common.export_obj(NAME)
     print(NAME, "has", sum(len(face) - 2 for face in faces), "triangles")

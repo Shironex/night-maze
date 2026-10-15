@@ -170,7 +170,7 @@ def create_mesh_object(name, vertices, faces):
     return model
 
 
-def box_project_uvs(mesh):
+def box_project_uvs(mesh, course_height=0.0):
     """Gives every face texture coordinates by projecting it along its dominant axis.
 
     Every face of the models is perpendicular to one axis. Looking at the face along that
@@ -182,6 +182,10 @@ def box_project_uvs(mesh):
     direction that points to the right for someone looking at the face from outside. That
     is why two opposite sides use opposite signs: without it the texture on one of them
     would be a mirror image.
+
+    course_height is the height (Blender Z) that lands on v = 0 on the upright faces. The
+    walls pass the top of their plinth: the wall pictures have a level joint at v = 0
+    (make_textures.align_courses), so the edge of the plinth follows a joint.
     """
     uv_layer = mesh.uv_layers.new(name="uv")
 
@@ -198,11 +202,11 @@ def box_project_uvs(mesh):
             if abs(normal.x) == largest:
                 # Side facing +X or -X: the face lies in the Y-Z plane.
                 u = position.y if normal.x > 0.0 else -position.y
-                v = position.z
+                v = position.z - course_height
             elif abs(normal.y) == largest:
                 # Side facing +Y or -Y: the face lies in the X-Z plane.
                 u = -position.x if normal.y > 0.0 else position.x
-                v = position.z
+                v = position.z - course_height
             else:
                 # Top or bottom: the face lies in the X-Y plane.
                 u = position.x
@@ -211,7 +215,7 @@ def box_project_uvs(mesh):
             uv_layer.data[loop_index].uv = (u / METRES_PER_UV_UNIT, v / METRES_PER_UV_UNIT)
 
 
-def face_project_uvs(mesh, metres_per_uv_unit):
+def face_project_uvs(mesh, metres_per_uv_unit, course_height=0.0):
     """Gives every face texture coordinates by projecting it onto its own plane.
 
     box_project_uvs only fits faces that are perpendicular to an axis. A slanted face (the
@@ -220,7 +224,8 @@ def face_project_uvs(mesh, metres_per_uv_unit):
     allows, and `right` points to the right for someone looking at the face from outside.
     u and v are the position measured along these two directions, so the texture is not
     stretched and is never a mirror image. `metres_per_uv_unit` is the size of one repeat
-    of the texture on the model.
+    of the texture on the model. course_height is the height that lands on v = 0 on an
+    upright face, as in box_project_uvs.
     """
     uv_layer = mesh.uv_layers.new(name="uv")
 
@@ -238,7 +243,7 @@ def face_project_uvs(mesh, metres_per_uv_unit):
         for loop_index in polygon.loop_indices:
             position = mesh.vertices[mesh.loops[loop_index].vertex_index].co
             u = position.dot(right)
-            v = position.dot(up)
+            v = (position - Vector((0.0, 0.0, course_height))).dot(up)
             uv_layer.data[loop_index].uv = (u / metres_per_uv_unit, v / metres_per_uv_unit)
 
 

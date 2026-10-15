@@ -13,6 +13,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import blender_common as common
+import build_wall_straight as wall
 
 NAME = "wall_pillar"
 
@@ -70,7 +71,8 @@ def build(shots):
     )
 
     model = common.create_mesh_object(NAME, vertices, faces)
-    common.box_project_uvs(model.data)
+    # The courses of the picture at the heights of the wall beside it.
+    common.box_project_uvs(model.data, wall.PLINTH_HEIGHT)
     common.assign_textured_material(
         model, "wall_stone", "wall_stone.png", "wall_stone_normal.png"
     )

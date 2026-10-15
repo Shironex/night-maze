@@ -306,10 +306,11 @@ def add_twigs(vertices, faces):
 def finish(name, vertices, faces, slanted, shots):
     """Turns the lists into a textured model, exports it and renders the review shots."""
     model = common.create_mesh_object(name, vertices, faces)
+    # The top of the plinth lands on v = 0, where every wall picture has a level joint.
     if slanted:
-        common.face_project_uvs(model.data, common.METRES_PER_UV_UNIT)
+        common.face_project_uvs(model.data, common.METRES_PER_UV_UNIT, PLINTH_HEIGHT)
     else:
-        common.box_project_uvs(model.data)
+        common.box_project_uvs(model.data, PLINTH_HEIGHT)
     common.assign_textured_material(model, "wall_stone", "wall_stone.png", "wall_stone_normal.png")
     common.export_obj(name)
     print(name, "has", sum(len(face) - 2 for face in faces), "triangles")
