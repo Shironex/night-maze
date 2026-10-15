@@ -101,9 +101,10 @@ CROSSFADE_SECONDS = 1.0
 LEAD_IN_SECONDS = 3.0
 
 # The quality of the final file: the CRF of the x264 encoder. Lower is better and larger.
-# At 17 the dark, smooth parts of the night sky keep their soft steps, and the file stays
-# well under the size limit below.
-QUALITY_CRF = 17
+# It was 17 until the walls got their generated pictures (game 0.16.0): their stones keep
+# far more detail, and at 17 the loop grew to 26 MB. At 20 it is 16.6 MB and the dark,
+# smooth parts of the night sky still keep their soft steps.
+QUALITY_CRF = 20
 
 # The file should not be larger than this: it lives in git as a normal file.
 MAX_BYTES = 20 * 1000 * 1000
