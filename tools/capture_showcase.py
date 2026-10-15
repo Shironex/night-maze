@@ -174,7 +174,7 @@ RUNS = [
     # start of the run. The intro counts real time from the first frame, about
     # a second after the start of the game, so the moment is hit within half a second,
     # and the text stands for four seconds.
-    Run("intro", ["--intro"], {}, [("wait", 13.5), ("grab", "intro")]),
+    Run("intro", ["--intro", "--intro-style", "classic"], {}, [("wait", 13.5), ("grab", "intro")]),
     # The tea at work: the flask is picked up by walking into the dead end, and the bar
     # of the tea is on the HUD. The player turns round to look back down the corridor.
     Run("tea", ["--play", "--calm", "--seed", "76", "--start-cell", "6,8", "--start-yaw", "0"],
