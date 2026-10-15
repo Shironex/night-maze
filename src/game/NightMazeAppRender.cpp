@@ -424,13 +424,14 @@ bool NightMazeApp::drawMenuBackgroundFrame(core::Size framebuffer) {
 bool NightMazeApp::drawStorybookFrame(core::Size framebuffer) {
     // The intro may have ended in this frame (updateScreens): then the frame is drawn
     // for the screen that follows it.
-    if (!m_storybookPlaying || !isIntro(m_mode)) {
+    if (!m_storybookPlaying || !isIntro(m_mode) || !m_storybook) {
         return false;
     }
+    const Storybook& book = *m_storybook;
     m_pick = pickNothing(m_round);
     gfx::Framebuffer::bindDefault(framebuffer.width, framebuffer.height);
-    m_storybookRenderer.draw(framebuffer, *m_storybook,
-                             storybookFrame(m_storybookBeatSeconds, m_storybook->crossfadeSeconds,
+    m_storybookRenderer.draw(framebuffer, book,
+                             storybookFrame(m_storybookBeatSeconds, book.crossfadeSeconds,
                                             static_cast<float>(m_introSeconds)));
     m_ui.draw(framebuffer);
     return true;

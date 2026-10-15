@@ -366,7 +366,12 @@ void NightMazeApp::updateIntro() {
 }
 
 void NightMazeApp::updateStorybookIntro() {
-    const float crossfade = m_storybook->crossfadeSeconds;
+    if (!m_storybook) {
+        return;
+    }
+    // Set once in the constructor and never reset, so the reference holds all frame long.
+    const Storybook& book = *m_storybook;
+    const float crossfade = book.crossfadeSeconds;
     if (storybookFrame(m_storybookBeatSeconds, crossfade, static_cast<float>(m_introSeconds))
             .skippable &&
         anyKeyPressed()) {
@@ -397,7 +402,7 @@ void NightMazeApp::updateStorybookIntro() {
     // The lines change at the cut, where no text is shown (game::cardTextOpacity).
     if (frame.beat != m_introCardShown) {
         m_introCardShown = frame.beat;
-        const StorybookBeat& beat = m_storybook->beats.at(frame.beat);
+        const StorybookBeat& beat = book.beats.at(frame.beat);
         writeCardLines({beat.lines.at(0).c_str(), beat.lines.at(1).c_str(), "", ""}, false);
     }
     showCardFrame(frame.blackOpacity, frame.textOpacity, {1.0F, 1.0F, 1.0F, 1.0F},

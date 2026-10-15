@@ -97,7 +97,7 @@ std::string readInstruction(std::string_view word, std::string_view rest, Storyb
         return "unknown word \"" + std::string(word) + "\"";
     }
     if (book.beats.empty()) {
-        return "\"" + std::string(word) + "\" comes before the first \"beat\"";
+        return std::string(word) + " comes before the first beat";
     }
     StorybookBeat& beat = book.beats.back();
     if (word == SECONDS_WORD) {
@@ -113,7 +113,7 @@ std::string readInstruction(std::string_view word, std::string_view rest, Storyb
         return {};
     }
     if (word == LINE_WORD) {
-        const auto free = std::find(beat.lines.begin(), beat.lines.end(), std::string());
+        const auto free = std::ranges::find(beat.lines, std::string());
         if (free == beat.lines.end()) {
             return "a beat has at most two lines of text";
         }
@@ -220,7 +220,7 @@ StorybookFrame storybookFrame(const std::vector<float>& beatSeconds, float cross
     }
     const std::vector<float> starts = beatStarts(beatSeconds);
     const float total = starts.back();
-    const float shortest = *std::min_element(beatSeconds.begin(), beatSeconds.end());
+    const float shortest = *std::ranges::min_element(beatSeconds);
     const float fade = std::clamp(crossfadeSeconds, 0.0F, HALF * shortest);
     frame.finished = seconds >= total;
     const float moment = std::clamp(seconds, 0.0F, total);
