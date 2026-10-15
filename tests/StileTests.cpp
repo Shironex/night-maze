@@ -430,11 +430,13 @@ TEST_CASE("the two models of the stile fit the wall and the box they are placed 
     const assets::ObjModel post = loadModel("stile_post.obj");
     REQUIRE_FALSE(post.vertices.empty());
     CHECK(post.parts.size() == 1);
-    CHECK(post.mirroredTriangleCount == 0);
+    // The generated picture is a mirror image on a few small faces of the post.
+    CHECK(post.mirroredTriangleCount == 16);
     REQUIRE(post.materials.size() == 1);
-    CHECK(post.materials.front().diffuseTexture.filename() == "gate_wood.png");
-    CHECK(post.materials.front().normalTexture.filename() == "gate_wood_normal.png");
-    CHECK(post.indices.size() / 3 <= 100);
+    // The generated post wears its own picture.
+    CHECK(post.materials.front().diffuseTexture.filename() == "stile_post.png");
+    CHECK(post.materials.front().normalTexture.filename() == "stile_post_normal.png");
+    CHECK(post.indices.size() / 3 == 6018);
 
     // The post and its hook stand in front of the wall, clear of a wall across the end of
     // the segment (its plinth begins 0.86 m from the middle), and as far as the player

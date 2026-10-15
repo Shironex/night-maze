@@ -3,8 +3,13 @@
 #   stile       one wall segment with a notch in its top and four flat through-stones
 #               that climb to it. It takes the place of the plain segment.
 #   stile_post  the oak post beside the steps, with the iron hook the lamp hung on. The
-#               hook is empty: the lamp is in the hand of the player.
-# Output: assets/models/<name>.obj and <name>.mtl for each of the two.
+#               hook is empty: the lamp is in the hand of the player. It is not built in
+#               this script: its source is a model that Tripo generated,
+#               tools/blender/sources/stile_post_tripo.glb, which this script cleans up,
+#               squeezes into the footprint of the first post and writes with a picture
+#               of its own.
+# Output: assets/models/<name>.obj and <name>.mtl for each of the two, and the pictures
+# assets/textures/stile_post.png and stile_post_normal.png.
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/build_stile.py
@@ -13,13 +18,18 @@ import math
 import os
 import sys
 
+import bmesh
+import bpy
+
 # Blender does not add the folder of the script to the module search path, so the helper
 # modules next to this file would not be found without this line.
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import blender_common as common
 import build_wall_straight as wall
-from mathutils import Vector
+import generated_common as generated
+import make_textures
+from mathutils import Matrix, Vector
 
 NAME = "stile"
 POST_NAME = "stile_post"
@@ -61,53 +71,36 @@ STEP_MAX_TURN_Z_AXIS = math.radians(6.0) / 2.0  # about the Y axis: one end dips
 STEP_MAX_TURN_X_AXIS = math.radians(5.0) / 2.0  # about the X axis: the stone leans
 
 # ---- the post ----
-# The start cell is a corner of the maze, so a wall can stand across either end of this
-# segment, and its plinth reaches 0.86 m from the middle. The post stands 1 cm clear of
-# that, in front of the far end of the notch.
+# The post is made from the source by clean_post. The start cell is a corner of the maze,
+# so a wall can stand across either end of this segment, and its plinth reaches 0.86 m
+# from the middle. The post stands 1 cm clear of that, in front of the far end of the
+# notch. Its footprint, at its widest place (the iron bands), is POST_X by POST_Y: the
+# place the first post stood in.
 POST_X = (0.75, 0.85)
 POST_Y = (-0.37, -0.27)
 # The post reaches below the ground like the milestone: the wall is lowered to the lowest
-# ground under its own footprint, and the post stands 0.3 m in front of it.
+# ground under its own footprint, and the post stands 0.3 m in front of it. POST_HEIGHT is
+# the height of its top over the ground: above the pillars (3.15 m), like the first post.
 POST_BOTTOM = -0.15
-POST_TOP = 3.25
-# The cap: a small board on top, 2 cm wider on every side.
-CAP_OVERHANG = 0.02
-CAP_TOP = 3.29
+POST_HEIGHT = 3.29
 
-# The hook: a thin square bar that leaves the post level, bends down and curls up again.
-# The points are the middle line of the bar. X is measured from the face of the post.
-HOOK_HEIGHT = 2.98
-HOOK_PATH = (
-    (0.0, 0.0),
-    (-0.07, 0.0),
-    (-0.11, -0.03),
-    (-0.12, -0.08),
-    (-0.10, -0.12),
-    (-0.07, -0.11),
-    (-0.055, -0.08),
-)
-HOOK_RADIUS = 0.008
-HOOK_SIDES = 4
+SOURCE_FILE = "stile_post_tripo.glb"
+# Two corners of the source closer than this (in its own units, about a metre for the whole
+# post) are one corner. The file has a corner of its own for every face that meets at a
+# seam of the picture, and without this the faces of one surface would not know that they
+# are neighbours: not for the smooth normals and not for the islands.
+MERGE_DISTANCE = 0.000001
+# The pictures of the source are 2048 pixels wide. The post is 3 m tall and seen from a
+# metre away at the start of every round, so it gets a quarter of the pixels: every texel
+# the average of 2 by 2 of the source.
+POST_TEXTURE_SIZE = 1024
 
-# ---- the picture of the post ----
-# The post wears gate_wood.png, the picture of the gate: upright oak planks 64 pixels wide
-# with two iron bands across them (make_textures.py). The post is cut out of one plank and
-# the hook out of a band, so one picture gives the model both of its materials.
-PICTURE_SIZE = 512.0
-PIXELS_PER_METRE = PICTURE_SIZE / common.METRES_PER_UV_UNIT
-# The middle of the fourth plank from the left.
-PLANK_CENTRE = 3 * 64 + 32
-# The upper band: the row of its middle and half of its height. On the post it lies at
-# the height of the hook, as the iron ring the hook is forged to.
-BAND_CENTRE = 352
-BAND_HALF_HEIGHT = 20
-# The wood under the band may use the rows from here up to the band. The lower band of
-# the picture ends at row 116.
-WOOD_FIRST_ROW = 122
-# The hook takes its iron from the band, beside the rivet in the middle of the plank.
-HOOK_PIXEL = (PLANK_CENTRE + 15, BAND_CENTRE)
-# The cap takes its wood from the middle of the plank, between the two bands.
-CAP_PIXEL = (PLANK_CENTRE, 224)
+# The source is four times as tall as wide, and the game wants a pole 30 times as tall as
+# wide. Squeezing everything evenly would stretch the iron bands and the hook into long
+# slivers. So the two places with iron, as heights of the source (the lower band and the
+# upper band with the hook), keep their own height, and the wood between them takes all of
+# the stretch, along its grain. The rest of the model is scaled across by the footprint.
+IRON_ZONES = ((0.065, 0.15), (0.74, 0.88))
 
 
 def add_notched_wall(vertices, faces):
@@ -177,119 +170,81 @@ def turned(point, centre, about_x, about_y):
     return wall.add((x, y, z), centre)
 
 
-def add_post(vertices, faces, pixels):
-    """Appends the post, its cap and the hook.
+def clean_post(model):
+    """Returns the post as a bmesh, squeezed into the footprint of POST_X and POST_Y.
 
-    `pixels` gets one entry per face, in the order of `faces`: None for a side of the
-    post, whose place in the picture follows from its height (post_row), or the pixel
-    of the picture the face lies around.
+    The source is a stubby post, as wide as a quarter of its height, with the hook on its
+    +X side. The game wants a pole 3 m tall and 10 cm wide, so the post is scaled along
+    its height by a different factor than across. The hook goes to the side of the notch
+    (-X), where the first hook was, so the player sees it in profile from the cell.
     """
-    band_low = HOOK_HEIGHT - BAND_HALF_HEIGHT / PIXELS_PER_METRE
-    band_high = HOOK_HEIGHT + BAND_HALF_HEIGHT / PIXELS_PER_METRE
+    mesh = bmesh.new()
+    mesh.from_mesh(model.data)
+    # The object of the import is moved by a millimetre or two. That goes into the corners.
+    bmesh.ops.transform(mesh, matrix=model.matrix_world, verts=mesh.verts)
+    bmesh.ops.remove_doubles(mesh, verts=mesh.verts, dist=MERGE_DISTANCE)
+    # The source is one piece already, but the check costs nothing: only the largest island
+    # stays.
+    post = set(generated.largest_island(mesh))
+    bmesh.ops.delete(mesh, geom=[face for face in mesh.faces if face not in post],
+                     context="FACES")
+    bmesh.ops.delete(mesh, geom=[corner for corner in mesh.verts if not corner.link_faces],
+                     context="VERTS")
 
-    # The post: three boxes on top of each other, the middle one being the iron band. Only
-    # their four sides are needed: the underside is in the ground, the top is under the
-    # cap and the boxes cover each other.
-    for bottom, top in ((POST_BOTTOM, band_low), (band_low, band_high), (band_high, POST_TOP)):
-        before = len(faces)
-        common.add_box(
-            vertices, faces, (POST_X[0], POST_Y[0], bottom), (POST_X[1], POST_Y[1], top),
-            skip=("-z", "+z"),
-        )
-        pixels.extend([None] * (len(faces) - before))
+    bmesh.ops.transform(mesh, matrix=Matrix.Rotation(math.pi, 4, "Z"), verts=mesh.verts)
+    xs = [corner.co.x for corner in mesh.verts]
+    ys = [corner.co.y for corner in mesh.verts]
+    low_z = min(corner.co.z for corner in mesh.verts)
+    high_z = max(corner.co.z for corner in mesh.verts)
+    middle_x = (min(xs) + max(xs)) / 2.0
+    middle_y = (min(ys) + max(ys)) / 2.0
+    across_x = (POST_X[1] - POST_X[0]) / (max(xs) - min(xs))
+    across_y = (POST_Y[1] - POST_Y[0]) / (max(ys) - min(ys))
+    # How much each height of the source is stretched: 1 in the zones of iron, and in the
+    # wood between them whatever brings the post to its height.
+    iron = sum(high - low for low, high in IRON_ZONES)
+    along = (POST_HEIGHT - POST_BOTTOM - iron) / (high_z - low_z - iron)
 
-    # The cap, with all six sides: its underside shows where it overhangs the post.
-    before = len(faces)
-    common.add_box(
-        vertices, faces, (POST_X[0] - CAP_OVERHANG, POST_Y[0] - CAP_OVERHANG, POST_TOP),
-        (POST_X[1] + CAP_OVERHANG, POST_Y[1] + CAP_OVERHANG, CAP_TOP),
-    )
-    pixels.extend([CAP_PIXEL] * (len(faces) - before))
+    def stretched(z):
+        """The height over POST_BOTTOM of the height z of the source."""
+        height = 0.0
+        position = low_z
+        for low, high in IRON_ZONES + ((high_z, high_z),):
+            top = min(z, low)
+            if top > position:
+                height += (top - position) * along
+            top = min(z, high)
+            if top > max(low, position):
+                height += top - max(low, position)
+            position = max(position, high)
+        return height
 
-    # The hook: a ring of HOOK_SIDES corners around every point of its middle line, and
-    # two triangles between every two corners of neighbouring rings. Triangles, because
-    # the rings turn with the bar and four such corners do not lie in one plane.
-    middle_y = (POST_Y[0] + POST_Y[1]) / 2.0
-    path = [(POST_X[0] + along, middle_y, HOOK_HEIGHT + up) for along, up in HOOK_PATH]
-    before = len(faces)
-    rings = []
-    for index, point in enumerate(path):
-        # The bar runs from the point before to the point after, and lies in the X-Z
-        # plane, so Y is always across it.
-        along = wall.unit(wall.sub(path[min(index + 1, len(path) - 1)], path[max(index - 1, 0)]))
-        side = (0.0, 1.0, 0.0)
-        other = wall.cross(along, side)
-        ring = []
-        for corner in range(HOOK_SIDES):
-            angle = corner * 2.0 * math.pi / HOOK_SIDES
-            ring.append(len(vertices))
-            vertices.append(
-                wall.add(
-                    point,
-                    wall.add(
-                        wall.scaled(other, math.cos(angle) * HOOK_RADIUS),
-                        wall.scaled(side, math.sin(angle) * HOOK_RADIUS),
-                    ),
-                )
-            )
-        rings.append(ring)
-    for index in range(len(rings) - 1):
-        middle = wall.between(path[index], path[index + 1], 0.5)
-        for corner in range(HOOK_SIDES):
-            following = (corner + 1) % HOOK_SIDES
-            a, b = rings[index][corner], rings[index][following]
-            c, d = rings[index + 1][following], rings[index + 1][corner]
-            wall.add_face_away_from(vertices, faces, (a, b, c), middle)
-            wall.add_face_away_from(vertices, faces, (a, c, d), middle)
-    # The free end is closed. The other end is inside the post.
-    wall.add_face_away_from(vertices, faces, tuple(rings[-1]), path[-2])
-    pixels.extend([HOOK_PIXEL] * (len(faces) - before))
+    for corner in mesh.verts:
+        corner.co = Vector((
+            (POST_X[0] + POST_X[1]) / 2.0 + (corner.co.x - middle_x) * across_x,
+            (POST_Y[0] + POST_Y[1]) / 2.0 + (corner.co.y - middle_y) * across_y,
+            POST_BOTTOM + stretched(corner.co.z),
+        ))
+    return mesh
 
 
-def post_row(height):
-    """The row of the picture for a height on the side of the post.
+def check_post(mesh):
+    """Stops when the post is not where the game (src/game/Stile.hpp) expects it."""
+    xs = [corner.co.x for corner in mesh.verts]
+    ys = [corner.co.y for corner in mesh.verts]
+    zs = [corner.co.z for corner in mesh.verts]
+    for found, wanted in ((min(xs), POST_X[0]), (max(xs), POST_X[1]),
+                          (min(ys), POST_Y[0]), (max(ys), POST_Y[1]),
+                          (min(zs), POST_BOTTOM), (max(zs), POST_HEIGHT)):
+        if abs(found - wanted) > 0.0001:
+            raise RuntimeError(f"{POST_NAME}: an edge is at {found:.4f}, not {wanted}")
+    print(POST_NAME, "has", len(mesh.faces), "triangles")
 
-    The band and the wood above it have the size they have on the gate. The wood below
-    the band is one long plank: 3 m of post on the 0.8 m of wood between the two bands,
-    stretched along the grain only.
-    """
-    band_low = HOOK_HEIGHT - BAND_HALF_HEIGHT / PIXELS_PER_METRE
-    if height >= band_low:
-        return BAND_CENTRE + (height - HOOK_HEIGHT) * PIXELS_PER_METRE
-    share = (height - POST_BOTTOM) / (band_low - POST_BOTTOM)
-    return WOOD_FIRST_ROW + share * (BAND_CENTRE - BAND_HALF_HEIGHT - WOOD_FIRST_ROW)
 
-
-def post_uvs(mesh, pixels):
-    """Gives every face of the post model its piece of gate_wood.png.
-
-    The face is projected onto its own plane, like common.face_project_uvs does. A side of
-    the post (None in `pixels`) lies in the middle of the plank, at the rows post_row gives
-    for its heights. Every other face lies around its pixel, in the size of the gate.
-    """
-    uv_layer = mesh.uv_layers.new(name="uv")
-    axis = Vector(((POST_X[0] + POST_X[1]) / 2.0, (POST_Y[0] + POST_Y[1]) / 2.0, 0.0))
-
-    # from_pydata keeps the order of the faces, so face number i has pixels[i].
-    for polygon, pixel in zip(mesh.polygons, pixels):
-        normal = polygon.normal
-        up = Vector((0.0, 0.0, 1.0)) - normal * normal.z
-        if up.length < 0.000001:
-            # A level face has no height direction. Blender Y is used instead.
-            up = Vector((0.0, 1.0, 0.0))
-        up.normalize()
-        right = up.cross(normal)
-
-        for loop_index in polygon.loop_indices:
-            position = mesh.vertices[mesh.loops[loop_index].vertex_index].co
-            if pixel is None:
-                column = PLANK_CENTRE + (position - axis).dot(right) * PIXELS_PER_METRE
-                row = post_row(position.z)
-            else:
-                offset = position - polygon.center
-                column = pixel[0] + offset.dot(right) * PIXELS_PER_METRE
-                row = pixel[1] + offset.dot(up) * PIXELS_PER_METRE
-            uv_layer.data[loop_index].uv = (column / PICTURE_SIZE, row / PICTURE_SIZE)
+def write_post_pictures(colour, normal):
+    """Writes the colour picture and the normal map of the post at POST_TEXTURE_SIZE."""
+    make_textures.save_png(generated.shrink(colour, POST_TEXTURE_SIZE), "stile_post.png")
+    generated.save_normal_map(normal, POST_TEXTURE_SIZE, "stile_post_normal.png")
 
 
 def build(shots):
@@ -312,21 +267,29 @@ def build(shots):
             NAME, target=(0.1, 0.0, 1.5), camera_positions=[(-2.4, -5.0, 2.2), (0.6, -2.2, 1.0)]
         )
 
+    source, colour, normal = generated.import_source(SOURCE_FILE)
+    mesh = clean_post(source)
+    check_post(mesh)
+    write_post_pictures(colour, normal)
+
     common.reset_scene()
-    vertices = []
-    faces = []
-    pixels = []
-    add_post(vertices, faces, pixels)
-    model = common.create_mesh_object(POST_NAME, vertices, faces)
-    post_uvs(model.data, pixels)
-    common.assign_textured_material(model, "gate_wood", "gate_wood.png", "gate_wood_normal.png")
+    data = bpy.data.meshes.new(POST_NAME)
+    mesh.to_mesh(data)
+    mesh.free()
+    # The wood is smooth: the exporter writes the normal of every corner as the average of
+    # the faces around it, and the bark is made of thousands of small faces.
+    data.shade_smooth()
+    # The normal-map node of the material names the UV map "uv".
+    data.uv_layers[0].name = "uv"
+    post = bpy.data.objects.new(POST_NAME, data)
+    bpy.context.scene.collection.objects.link(post)
+    common.assign_textured_material(post, "stile_post", "stile_post.png", "stile_post_normal.png")
     common.export_obj(POST_NAME)
-    print(POST_NAME, "has", sum(len(face) - 2 for face in faces), "triangles")
     if shots:
         # The whole post, and its top with the band and the hook.
         common.render_review_shots(
-            POST_NAME, target=(0.75, -0.32, 2.95),
-            camera_positions=[(-0.6, -5.5, 2.4), (0.25, -1.1, 3.1)],
+            POST_NAME, target=(0.75, -0.32, 2.5),
+            camera_positions=[(-0.6, -5.5, 2.4), (-0.2, -1.2, 2.7)],
         )
 
 
