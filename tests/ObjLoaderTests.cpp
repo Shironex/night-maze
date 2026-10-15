@@ -1234,17 +1234,18 @@ TEST_CASE("loadObj: a file that does not exist is reported, not thrown") {
 }
 
 TEST_CASE("loadObj: lamp_held.obj, lamp_held_lens.obj and lamp_held_window.obj") {
-    // The lamp the player holds, as three models that fit into each other. The body: 13
-    // bands of eight sides and the butt in tin, three sleeves of tape, and the four bars
-    // of the window and the switch without their undersides. The lens is a fan of eight
-    // triangles and the glass of the window one face.
+    // The lamp the player holds, as three models that fit into each other. The body is
+    // the generated railway lamp, the lens a fan of sixteen triangles and the window a
+    // small grid of faces that follows the back of the shoulder of the body.
     struct Part {
         std::string file;
         std::size_t triangles;
+        std::size_t mirrored;
     };
-    for (const Part& part : {Part{.file = "lamp_held.obj", .triangles = 314U},
-                             Part{.file = "lamp_held_lens.obj", .triangles = 8U},
-                             Part{.file = "lamp_held_window.obj", .triangles = 2U}}) {
+    for (const Part& part : {Part{.file = "lamp_held.obj", .triangles = 8718U, .mirrored = 12U},
+                             Part{.file = "lamp_held_lens.obj", .triangles = 16U, .mirrored = 0U},
+                             Part{.file = "lamp_held_window.obj", .triangles = 24U,
+                                  .mirrored = 0U}}) {
         CAPTURE(part.file);
         // Not through loadGameModel, for the same reason as the flask: slanted faces.
         assets::ObjModel model;
@@ -1266,8 +1267,9 @@ TEST_CASE("loadObj: lamp_held.obj, lamp_held_lens.obj and lamp_held_window.obj")
         CHECK(std::filesystem::exists(model.materials[0].diffuseTexture));
         CHECK(std::filesystem::exists(model.materials[0].normalTexture));
         CHECK(model.indices.size() == part.triangles * 3U);
-        // The picture goes around the tube and is not a mirror image on any face.
-        CHECK(model.mirroredTriangleCount == 0U);
+        // The generated picture of the body is a mirror image on a dozen small faces.
+        // The two glowing pieces are written by the script and never are.
+        CHECK(model.mirroredTriangleCount == part.mirrored);
     }
 
     assets::ObjModel body;
@@ -1278,40 +1280,36 @@ TEST_CASE("loadObj: lamp_held.obj, lamp_held_lens.obj and lamp_held_window.obj")
     REQUIRE(assets::loadObj(modelsDirectory() / "lamp_held_lens.obj", lens, error));
     REQUIRE(assets::loadObj(modelsDirectory() / "lamp_held_window.obj", window, error));
 
-    // The body lies along -Z from its butt at the origin, 0.224 m long, and its axis
-    // runs through the origin: the head is as wide to the left as to the right and as
-    // far down as up.
+    // The body lies in front of the origin, on the axis of the lens: nothing reaches
+    // behind the butt, and it is 0.17 m tall with the bail.
     const Bounds bodyBounds = boundsOf(body);
     CHECK(bodyBounds.max.z == doctest::Approx(0.0F));
-    CHECK(bodyBounds.min.z == doctest::Approx(-0.224F));
-    CHECK(bodyBounds.min.x == doctest::Approx(-bodyBounds.max.x));
-    CHECK(bodyBounds.min.y == doctest::Approx(-bodyBounds.max.y));
-    CHECK(bodyBounds.max.x < 0.0335F);
+    CHECK(bodyBounds.min.z < 0.0F);
+    CHECK(bodyBounds.max.y - bodyBounds.min.y == doctest::Approx(0.17F).epsilon(0.001));
 
-    // The lens is a flat disc where the game takes it to be, inside the rim of the head.
+    // The lens is a flat disc where the game takes it to be, a hair in front of the dome
+    // of the glass, and it lies on the axis.
     const Bounds lensBounds = boundsOf(lens);
     CHECK(lensBounds.min.z == doctest::Approx(-game::HELD_LAMP_LENS_OUT));
     CHECK(lensBounds.max.z == doctest::Approx(-game::HELD_LAMP_LENS_OUT));
-    CHECK(lensBounds.min.z > bodyBounds.min.z);
+    CHECK(lensBounds.min.z < bodyBounds.min.z);
+    CHECK(lensBounds.min.z > bodyBounds.min.z - 0.001F);
+    CHECK(lensBounds.min.x == doctest::Approx(-lensBounds.max.x).epsilon(0.01));
+    CHECK(lensBounds.min.y == doctest::Approx(-lensBounds.max.y).epsilon(0.01));
     for (const gfx::Vertex& vertex : lens.vertices) {
         CHECK(vertex.normal.z == doctest::Approx(-1.0F));
     }
 
-    // The glass of the window looks up and lies above the tube, and neither the tin nor
-    // the tape under it reaches through it.
+    // The window lies on the back of the shoulder, above the lens and behind it, the
+    // side the player sees, and looks back and up at the eye.
     const Bounds windowBounds = boundsOf(window);
-    CHECK(windowBounds.min.y == doctest::Approx(windowBounds.max.y));
-    CHECK(windowBounds.min.y > 0.0182F);
+    CHECK(windowBounds.min.y > lensBounds.max.y);
+    CHECK(windowBounds.max.z < 0.0F);
+    CHECK(windowBounds.min.z > lensBounds.max.z);
     for (const gfx::Vertex& vertex : window.vertices) {
-        CHECK(vertex.normal.y == doctest::Approx(1.0F));
+        CHECK(vertex.normal.y > 0.0F);
+        CHECK(vertex.normal.z > 0.0F);
     }
-    float highestUnderGlass = 0.0F;
-    for (const gfx::Vertex& vertex : body.vertices) {
-        if (vertex.position.z < windowBounds.max.z && vertex.position.z > windowBounds.min.z) {
-            highestUnderGlass = std::max(highestUnderGlass, vertex.position.y);
-        }
-    }
-    CHECK(highestUnderGlass < windowBounds.min.y);
 }
 
 TEST_CASE("vertexBounds: the box around every vertex of a model") {
