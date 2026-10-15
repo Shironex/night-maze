@@ -1,0 +1,63 @@
+# The storybook intro: the beats of docs/story/intro-storyboard.md.
+# The pictures are placeholders made by tools/make_storybook_placeholders.py. The words
+# are explained in src/game/Storybook.hpp and in the storyboard.
+#
+# Add the music with a line "music intro_theme.flac", and a spoken line to a beat with
+# "voice beat1_voice.wav": the beat then stays until its line has ended.
+#
+# layer <file> <drift x> <drift y> <scale from> <scale to>
+
+crossfade 1.5
+
+# 1. The moon breaks.
+beat
+seconds 7
+line Every winter the moon drops pieces of itself.
+layer beat1_sky.png 0.01 0 1.04 1.08
+layer beat1_ridge.png 0.03 0 1.06 1.10
+layer beat1_front.png 0.07 0.01 1.10 1.16
+
+# 2. The hollow and the sleeping village.
+beat
+seconds 8
+line They fall in the old maze above the village.
+line The village sleeps badly.
+layer beat2_sky.png -0.01 0 1.08 1.04
+layer beat2_ridge.png -0.03 0 1.10 1.06
+layer beat2_front.png -0.07 0 1.16 1.10
+
+# 3. The lamplighter.
+beat
+seconds 9
+line Someone has always walked in and carried them out.
+line This winter the lamplighter's hands shake.
+layer beat3_sky.png 0.01 0 1.04 1.08
+layer beat3_ridge.png 0.03 0 1.06 1.10
+layer beat3_front.png 0.07 -0.01 1.10 1.16
+
+# 4. A splinter in the hand.
+beat
+seconds 9
+line Outsiders call them crystals. We call them splinters.
+line They remember being light. The lamp believes them.
+layer beat4_sky.png 0 0.01 1.04 1.08
+layer beat4_ridge.png 0 0.02 1.06 1.12
+layer beat4_front.png 0 0.04 1.10 1.20
+
+# 5. Something walks where the lamp is not.
+beat
+seconds 8
+line Keep the lamp lit.
+line Something walks where it is not.
+layer beat5_sky.png -0.01 0 1.04 1.08
+layer beat5_ridge.png -0.03 0 1.06 1.10
+layer beat5_front.png -0.07 0 1.10 1.16
+
+# 6. The last lamp.
+beat
+seconds 9
+line One lamp is left in the village.
+line It is yours.
+layer beat6_sky.png 0 0 1.08 1.02
+layer beat6_ridge.png 0 0 1.12 1.04
+layer beat6_front.png 0 0 1.18 1.06
