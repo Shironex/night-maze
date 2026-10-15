@@ -54,7 +54,7 @@ Ordered by how much of the screen they fill. Sizes and limits come from [assets.
 
 ## Retexturing the wall kit
 
-The walls are modular and must tile, so they stay script-built. Their pictures can be generated: export the wall model as OBJ, open Tripo's Texture tool, upload it and generate a texture on our own mesh, then let `make_textures.py` keep the result as a source picture.
+The walls are modular and must tile, so they stay script-built; only their pictures are generated. A wall model is a plain box, and a texture baked onto its own UVs would not tile, so the input is a flat upright panel 2 by 2 m with UVs from 0 to 1, the size one picture covers on a wall (`C:/Users/kacpe/ai3d/tripo_inbox/nightmaze/wall_texture_panel.glb`). Upload it to Tripo's Texture tool with a prompt below, export the result, and the build makes the picture seamless (blending its edges) and derives the normal map, then keeps it as a source picture for `make_textures.py`.
 
 | Name | Status | Prompt for the texture |
 |---|---|---|
