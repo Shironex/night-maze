@@ -1,25 +1,22 @@
 # Generates the textures of the game into assets/textures: the colour pictures
 # wall_stone.png, wall_cracked.png, wall_mossy.png, wall_damaged.png, ground.png,
-# gate_wood.png, splinter.png, lever_iron.png, lever_brass.png, chalk.png,
-# flask.png, lantern.png, stone_sheep.png and lamp_held.png, and one normal map for each
-# of them (the same name with _normal). All twenty-eight are 512 x 512 pixels, 8 bits per
-# channel, RGB. The two pictures of the shade are not made here: build_shade.py takes them
-# from the model it starts from.
+# gate_wood.png, lever_iron.png, chalk.png, flask.png and lantern.png, and one normal map
+# for each of them (the same name with _normal). All twenty are 512 x 512 pixels, 8 bits
+# per channel, RGB. The pictures of the generated models are not made here: each build
+# script takes them from the model it starts from (see generated_common.py). The four
+# wall pictures are not drawn here either: they are made from generated pictures and
+# baked normal maps in tools/blender/sources (see plain_wall).
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/make_textures.py
 #
 # The textures are sampled with GL_REPEAT, so the left edge has to continue the right edge
 # and the bottom edge has to continue the top edge. Every step below keeps that property:
-# the stones and planks divide the image evenly, the noise is smoothed with wrap-around,
-# and the distances between the cells of the crystal and to the stones of the ground are
-# measured across the edges.
-# The exceptions are flask.png, lantern.png and splinter.png: the picture of the flask
-# goes once around its model, so only its left and right edges meet, the lantern only
-# uses a small piece from the middle of each half of its picture, and the splinter a strip
-# down the middle of each half of its picture, so there only the top and bottom edges
-# meet. lamp_held.png is cut into bands and pieces, and only
-# the left and right edges of its two bands meet.
+# the planks divide the image evenly, the noise is smoothed with wrap-around, and the
+# distances to the stones of the ground are measured across the edges. The wall pictures
+# are made seamless (see make_seamless). The exceptions are flask.png and lantern.png: the
+# picture of the flask goes once around its model, so only its left and right edges meet,
+# and the lantern only uses a small piece from the middle of each half of its picture.
 # Their noise still wraps around, because it comes from the same helpers.
 #
 # A colour picture and its normal map are made from the same pattern (the same stones, the
@@ -54,35 +51,79 @@ SIZE = 512
 
 # The same seeds give the same pictures on every run. Change a seed to get another
 # arrangement of light and dark stones.
-WALL_SEED = 11
 GROUND_SEED = 67
 GATE_SEED = 37
-CRYSTAL_SEED = 41
 LEVER_SEED = 53
-LEVER_BRASS_SEED = 71
-# The worn walls show the same stones as the plain wall (WALL_SEED). These seeds only
-# place what was added to them: the cracks, the moss and the rubble in the niches.
-WALL_CRACKED_SEED = 83
-WALL_MOSSY_SEED = 89
+# The damaged wall shows the stones of the plain wall. This seed only shapes the
+# outline and the rubble of its niches.
 WALL_DAMAGED_SEED = 97
 FLASK_SEED = 101
 LANTERN_IRON_SEED = 107
 LANTERN_GLASS_SEED = 109
 CHALK_SEED = 113
-# The fracture of a splinter is the pattern of CRYSTAL_SEED. This seed places the craters
-# of its rind.
-SPLINTER_RIND_SEED = 127
-STONE_SHEEP_SEED = 131
-LAMP_TIN_SEED = 137
-LAMP_TAPE_SEED = 139
-LAMP_IRON_SEED = 149
 
-# The wall model is 3 m high and one repeat of the texture is 2 m, so the lower 1 m of
-# the picture (courses 0 to 3) is seen twice on a wall: at the bottom and again at the
-# top. The four courses above it are seen once. Something that must not show twice, like
-# a missing stone, goes there.
-WALL_COURSE_HEIGHT = 64
-WALL_FIRST_SINGLE_COURSE = 4
+# The wall pictures are not drawn here. They start from pictures that Tripo's Image tab
+# generated and from the normal maps bake_wall_normals.py baked from the wall slabs Tripo
+# generated from two of them, all in this folder (see docs/generation.md, "Wall
+# pictures"). A source is 1024 x 1024 for 2 m of wall, twice the texels of the game's
+# pictures, and is halved at the end.
+SOURCES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources")
+
+# The size of a source picture: 1024 x 1024 for 2 m of wall.
+WALL_SOURCE_SIZE = 1024
+# make_seamless lays the last WALL_OVERLAP columns of a picture over its first ones, and
+# then the last rows over the first ones, and cuts through the overlap along the cheapest
+# path. The path keeps WALL_CUT_MARGIN pixels away from the edges of the overlap. It moves
+# by up to WALL_CUT_STEP pixels from one row to the next, so it can follow a joint that
+# runs at a slant, and every WALL_CUT_START_SPACING-th column is tried as its start.
+WALL_OVERLAP = 128
+WALL_CUT_MARGIN = 16
+WALL_CUT_STEP = 3
+WALL_CUT_START_SPACING = 4
+
+# The joints of the source pictures, by brightness (sRGB, Rec. 709 weights): darker than
+# WALL_JOINT_ABOVE - WALL_JOINT_SOFTNESS is joint, brighter than WALL_JOINT_ABOVE is stone.
+WALL_JOINT_ABOVE = 0.16
+WALL_JOINT_SOFTNESS = 0.06
+# The joints of the sources are close to black. Pixels darker than WALL_LIFT_BELOW are
+# drawn towards WALL_JOINT_COLOR, the darkest ones all of the way.
+WALL_LIFT_BELOW = 0.22
+WALL_JOINT_COLOR = (0.17, 0.15, 0.13)
+
+# How much light every wall picture reflects on average (sRGB decoded, Rec. 709 weights).
+# The generated plain picture as it comes reflects 0.18, and the stones the script drew
+# before it reflected 0.29. At 0.29 the pale stones of the generated pictures run into
+# white (one pixel in a hundred); 0.24 is about as bright as they go without that.
+WALL_LIGHT = 0.24
+# A worn wall may differ from the plain wall by this share of its light, and the share of
+# a channel in the sum of the three by this much (the limits of tests/ImageLoaderTests.cpp).
+# The pictures keep their own colour: the moss stays green.
+WALL_LIGHT_TOLERANCE = 0.05
+WALL_COLOUR_SHARE_TOLERANCE = 0.03
+
+# The baked relief is used as it was baked.
+WALL_BAKED_RELIEF = 1.0
+# The relief made from a picture, in pixels of the source (1/512 m): how much higher the
+# brightest pixel is than the darkest, and how deep a joint lies on top of that.
+WALL_PICTURE_RISE = 10.0
+WALL_PICTURE_JOINT_DEPTH = 8.0
+
+# The stones that are missing in the damaged wall, as one pixel (column, row from the
+# bottom) on each, in the seamless plain picture at the size of the source. The wall model
+# is 3 m high and one repeat of the picture is 2 m, so the lower half of the picture is
+# seen twice on a wall and the upper half once. Both stones lie in the upper half, so a
+# niche is not seen twice, and they do not touch.
+WALL_MISSING_STONES = ((225, 648), (840, 883))
+# A stone grows from its pixel by one pixel per step: this many steps reach across the
+# largest stone. If it still grows after them, it has run into a joint that is too light.
+WALL_STONE_GROWTH = 300
+WALL_STONE_SHRINK = 5
+# A stone smaller than this many pixels is a chip, not a stone that broke out.
+WALL_STONE_SMALLEST = 3000
+# The colour of the rubble in a niche, and how deep its floor lies, in pixels of the
+# source behind the face of the stones (24 pixels are under 5 cm).
+WALL_NICHE_COLOR = (0.20, 0.19, 0.18)
+WALL_NICHE_DEPTH = 24.0
 
 # The bands of the picture of the flask, in pixel rows from the bottom. The model
 # (build_flask.py) puts the height of the flask on the y axis of the picture: 512 rows
@@ -95,45 +136,6 @@ FLASK_CORD_TURN_HEIGHT = 8.5
 # From this row up the picture shows the cork (the lip ends at 21.2 cm).
 FLASK_CORK_ROW = 433
 
-# The picture of the lamp the player holds, in pixel rows from the bottom. The models
-# (build_lamp_held.py) wrap the two lower bands once around the tube, so x goes around the
-# lamp and y along it: the tin below LAMP_TAPE_ROW, the cloth tape of the grip from there
-# to LAMP_PIECE_ROW. Above that row lie three plain pieces side by side, from which a face
-# takes a small part of the middle: the iron of the window frame and of the switch up to
-# the column LAMP_LENS_COLUMN, the lens from there to LAMP_WINDOW_COLUMN, and the glass of
-# the window in the rest.
-LAMP_TAPE_ROW = 320
-LAMP_PIECE_ROW = 384
-LAMP_LENS_COLUMN = 256
-LAMP_WINDOW_COLUMN = 384
-# The scratches of the tin: how many, and how long one is in pixels.
-LAMP_SCRATCH_COUNT = 60
-LAMP_SCRATCH_LENGTH = (24.0, 128.0)
-# One turn of the tape around the grip is this many rows high.
-LAMP_TAPE_TURN_HEIGHT = 10.0
-
-# The rind of a splinter, the left half of its picture. The models (build_splinter.py)
-# show 1.5 pixels per millimetre, so the craters are 0.7 to 2.7 cm across. The colour is
-# a dark grey on purpose: see build_splinter_textures.
-SPLINTER_CRATER_COUNT = 46
-SPLINTER_CRATER_RADIUS = (5.0, 20.0)
-SPLINTER_RIND_COLOR = (0.27, 0.265, 0.25)
-
-# How dark the water makes the stone of the mossy wall: the brightness of its wettest
-# streak, and how much brighter the driest one is. The numbers multiply sRGB values, so
-# they take away more light than they seem to: 0.6 leaves a third of it. They were 0.48
-# and 0.26 once, and with the dark moss on top the wall kept 30 percent of the light of
-# a plain one, which made every mossy segment a black patch in the maze.
-MOSSY_DAMP_SHADE = 0.90
-MOSSY_DAMP_STREAKS = 0.10
-# The moss of that wall. It was (0.17, 0.26, 0.11), a fifth of the light of the stone.
-MOSS_COLOR = (0.42, 0.49, 0.33)
-
-# The stones that are missing in the damaged wall, as (course, stone in the course).
-# Both lie in the courses that are seen once, at 1.0 m and at 1.5 m above the ground,
-# and they do not touch.
-WALL_MISSING_STONES = ((4, 3), (6, 0))
-
 # The iron bands of the gate, in pixels: the rows of the band centres and half of the band
 # height. One repeat of the texture is 2 m high and the gate is taller, so the lower band
 # is seen twice: at 256 pixels per metre the bands lie at 0.375 m, 1.375 m and 2.375 m.
@@ -142,13 +144,17 @@ GATE_BAND_CENTRES = (96, 352)
 GATE_BAND_HALF_HEIGHT = 20
 
 # How far the two kinds of noise are blurred once more before they become relief, in
-# pixels (see stone_height).
+# pixels. A normal map shows the SLOPE of the height, and the slope of noise that was
+# blurred once is jagged: from one pixel to the next the average loses one random value
+# and gains another. On the first walls that looked like woven cloth. After the second blur
+# the slope is smooth.
 BUMP_BLUR_RADIUS = 8
 GRAIN_BLUR_RADIUS = 1
 
 
 def blur(values, radius):
-    """Returns the SIZE x SIZE array with every pixel averaged with its neighbours.
+    """Returns the array with every pixel averaged with its neighbours. It is SIZE x SIZE
+    for the pictures made here; the wall pictures are blurred at the size of their source.
 
     The neighbours are the pixels up to `radius` pixels away, first along one axis, then
     along the other. np.roll shifts the array and moves what falls off one edge to the
@@ -156,7 +162,7 @@ def blur(values, radius):
     side and the result tiles.
     """
     for axis in (0, 1):
-        total = np.zeros((SIZE, SIZE))
+        total = np.zeros(values.shape)
         for shift in range(-radius, radius + 1):
             total += np.roll(values, shift, axis=axis)
         values = total / (2 * radius + 1)
@@ -197,153 +203,10 @@ def smooth_noise(rng, radius):
     return (noise - noise.min()) / (noise.max() - noise.min())
 
 
-def stone_pattern(seed, stone_width, stone_height, running_bond, stone_variation):
-    """Returns what the colour picture and the normal map of one texture have in common.
-
-    stone_width, stone_height: size of one stone in pixels. Both must divide SIZE.
-    running_bond: True shifts every second row by half a stone, like in a brick wall.
-    stone_variation: how much the brightness of whole stones differs, 0 means not at all.
-
-    The result is a dictionary. Its arrays are SIZE x SIZE, one value per pixel:
-      "row", "column":         which stone the pixel belongs to
-      "inside_x", "inside_y":  where the pixel lies inside its stone, in pixels
-      "edge_distance":         distance to the nearest edge of its stone, in pixels
-      "stone_brightness":      the random brightness of its stone
-      "patches", "grain":      large soft noise and fine noise, both from 0 to 1
-    It also holds the sizes ("rows", "columns", "stone_width", "stone_height") and the
-    random generator ("rng"), for more random numbers about the same stones.
-    """
-    rng = np.random.default_rng(seed)
-    columns = SIZE // stone_width
-    rows = SIZE // stone_height
-
-    # Pixel coordinates. Row 0 is the bottom row of the image, because Blender stores
-    # images bottom row first. It is also where v = 0 is.
-    y, x = np.mgrid[0:SIZE, 0:SIZE]
-
-    row = y // stone_height
-    if running_bond:
-        # Odd rows are shifted by half a stone. With an even number of rows the pattern
-        # still continues across the top and bottom edge.
-        x = x + (row % 2) * (stone_width // 2)
-    # The modulo wraps a stone that crosses the right edge back to the left edge, so both
-    # of its halves get the same brightness.
-    column = (x // stone_width) % columns
-
-    # Distance of every pixel to the nearest edge of its stone, in pixels.
-    inside_x = x % stone_width
-    inside_y = y % stone_height
-    edge_distance = np.minimum(
-        np.minimum(inside_x, stone_width - 1 - inside_x),
-        np.minimum(inside_y, stone_height - 1 - inside_y),
-    )
-
-    # One random brightness per stone, looked up for every pixel.
-    stone_brightness = rng.uniform(1.0 - stone_variation, 1.0 + stone_variation, (rows, columns))
-
-    # Large soft patches and fine grain, so a stone is not one flat color.
-    patches = smooth_noise(rng, 12)
-    grain = smooth_noise(rng, 1)
-
-    # The order of the three draws above (brightness, patches, grain) decides which random
-    # numbers each of them gets. Changing it would change every texture.
-    return {
-        "rng": rng,
-        "rows": rows,
-        "columns": columns,
-        "stone_width": stone_width,
-        "stone_height": stone_height,
-        "row": row,
-        "column": column,
-        "inside_x": inside_x,
-        "inside_y": inside_y,
-        "edge_distance": edge_distance,
-        "stone_brightness": stone_brightness[row, column],
-        "patches": patches,
-        "grain": grain,
-    }
 
 
-def stone_color(pattern, joint_width, rim_width, stone_color, joint_color):
-    """Returns a SIZE x SIZE x 3 array of colors from 0 to 1: stones separated by joints.
-
-    pattern: the result of stone_pattern.
-    joint_width: width of the joint between two stones in pixels.
-    rim_width: how far from the joint a stone is still darkened, in pixels.
-    stone_color, joint_color: (red, green, blue) from 0 to 1.
-    """
-    edge_distance = pattern["edge_distance"]
-    grain = pattern["grain"]
-
-    brightness = pattern["stone_brightness"]
-    brightness = brightness * (0.82 + 0.36 * pattern["patches"]) * (0.90 + 0.20 * grain)
-
-    # Darker rim: 0 at the edge of a stone, 1 from rim_width pixels inwards. It makes the
-    # stones look rounded without any lighting.
-    rim = np.clip(edge_distance / rim_width, 0.0, 1.0)
-    brightness = brightness * (0.70 + 0.30 * rim)
-
-    # brightness[..., None] adds a third axis of length 1, so one brightness per pixel
-    # multiplies all three color channels.
-    color = brightness[..., None] * np.array(stone_color)
-
-    # The joint is the outer half joint_width of every stone: two neighbouring stones give
-    # the full width together. It only gets the grain.
-    joint = edge_distance < joint_width // 2
-    joint_shade = 0.85 + 0.30 * grain
-    color[joint] = joint_shade[joint][..., None] * np.array(joint_color)
-
-    return np.clip(color, 0.0, 1.0)
 
 
-def stone_height(pattern, joint_width, bevel_width, joint_depth, tilt, bump_depth, grain_depth):
-    """Returns a SIZE x SIZE array: how far every pixel stands out of the surface.
-
-    The unit is the size of one pixel of the texture (1 / 256 m on the models), so a
-    height difference of 1 between two neighbouring pixels is a slope of 45 degrees.
-
-    pattern: the result of stone_pattern, the same one the colour picture was made from.
-    joint_width: width of the joint in pixels, the same number as for the colour picture.
-    bevel_width: over how many pixels a stone rises from the joint to its face.
-    joint_depth: how far the face of a stone stands in front of the joint.
-    tilt: the largest height difference between two opposite edges of one stone.
-    bump_depth: height of the large soft bumps on a stone.
-    grain_depth: height of the fine grain, on the stones and in the joints.
-    """
-    edge_distance = pattern["edge_distance"]
-    row = pattern["row"]
-    column = pattern["column"]
-
-    # The profile across a stone: 0 in the joint (the pixels the colour picture paints as
-    # joint, where edge_distance is below joint_width // 2), then a smooth rise over
-    # bevel_width pixels, then 1 on the face. 3t^2 - 2t^3 is the "smoothstep" curve: it
-    # starts and ends flat, so the bevel has no sharp crease at either end.
-    t = np.clip((edge_distance - (joint_width // 2 - 1)) / bevel_width, 0.0, 1.0)
-    profile = t * t * (3.0 - 2.0 * t)
-
-    # Every stone leans a little, each one differently: two random slopes per stone, one
-    # along x and one along y. They are drawn after the numbers of the colour picture, so
-    # they do not change it. (inside / size - 0.5) runs from -0.5 at one edge of the stone
-    # to +0.5 at the other.
-    rng = pattern["rng"]
-    stone_count = (pattern["rows"], pattern["columns"])
-    tilt_x = rng.uniform(-tilt, tilt, stone_count)[row, column]
-    tilt_y = rng.uniform(-tilt, tilt, stone_count)[row, column]
-    lean = tilt_x * (pattern["inside_x"] / pattern["stone_width"] - 0.5)
-    lean = lean + tilt_y * (pattern["inside_y"] / pattern["stone_height"] - 0.5)
-
-    # The two kinds of noise of the colour picture, blurred once more. A normal map shows
-    # the SLOPE of the height, and the slope of noise that was blurred once is jagged:
-    # from one pixel to the next the average loses one random value and gains another.
-    # On the wall that looked like woven cloth. After the second blur the slope is smooth.
-    # The noise is centred on 0, so it raises and lowers the surface by the same amount.
-    bumps = bump_depth * (blur(pattern["patches"], BUMP_BLUR_RADIUS) - 0.5)
-    grain = grain_depth * (blur(pattern["grain"], GRAIN_BLUR_RADIUS) - 0.5)
-
-    # The face with its lean and its bumps is multiplied by the profile: all of it fades
-    # out towards the joint, so two neighbouring stones meet at the same height (0) and
-    # the surface has no step. The grain covers everything, the mortar included.
-    return profile * (joint_depth + lean + bumps) + grain
 
 
 def normal_map(height):
@@ -471,7 +334,8 @@ def wood_height(
 ):
     """Returns a SIZE x SIZE array: how far every pixel of the gate stands out.
 
-    The unit is the size of one pixel of the texture, like in stone_height.
+    The unit is the size of one pixel of the texture (1 / 256 m on the models), so a
+    height difference of 1 between two neighbouring pixels is a slope of 45 degrees.
 
     pattern: the result of wood_pattern, the same one the colour picture was made from.
     gap_width: width of the gap in pixels, the same number as for the colour picture.
@@ -489,7 +353,7 @@ def wood_height(
     profile = smooth_step(np.clip((edge_distance - (gap_width // 2 - 1)) / bevel_width, 0.0, 1.0))
 
     # The streaks become grooves. They are blurred once more across the grain, for the
-    # same reason as the noise in stone_height: the slope has to be smooth.
+    # same reason as the noise (BUMP_BLUR_RADIUS): the slope has to be smooth.
     grooves = grain_depth * (blur_along(pattern["streaks"], 1, axis=1) - 0.5)
     fine = 0.5 * (blur(pattern["grain"], GRAIN_BLUR_RADIUS) - 0.5)
     wood = profile * (gap_depth + grooves) + fine
@@ -507,127 +371,10 @@ def wood_height(
     return np.where(band_depth > 0.0, iron, wood)
 
 
-def crystal_pattern(seed, cell_count):
-    """Returns what the colour picture and the normal map of the crystal have in common.
-
-    The picture is divided into cells around random points: every pixel belongs to the
-    point that is nearest to it. The cells look like the facets inside a crystal, and the
-    borders between them become the veins.
-
-    cell_count: number of random points, so also the number of cells.
-
-    The result is a dictionary. Its arrays are SIZE x SIZE, one value per pixel:
-      "cell":                  which cell the pixel belongs to
-      "offset_x", "offset_y":  where the pixel lies relative to the point of its cell
-      "border_distance":       distance to the border of its cell, in pixels
-      "cell_brightness":       the random brightness of its cell
-      "patches", "grain":      soft noise and fine noise, both from 0 to 1
-    It also holds the random generator ("rng") and "cell_count".
-    """
-    rng = np.random.default_rng(seed)
-    y, x = np.mgrid[0:SIZE, 0:SIZE]
-
-    points = rng.uniform(0.0, SIZE, (cell_count, 2))
-
-    # For every pixel: the distance to the nearest point and to the second nearest one,
-    # and which points they are (`cell` and `neighbour`). Found by going through the
-    # points one by one.
-    nearest = np.full((SIZE, SIZE), float(SIZE))
-    second = np.full((SIZE, SIZE), float(SIZE))
-    cell = np.zeros((SIZE, SIZE), dtype=int)
-    neighbour = np.zeros((SIZE, SIZE), dtype=int)
-    offset_x = np.zeros((SIZE, SIZE))
-    offset_y = np.zeros((SIZE, SIZE))
-    for index in range(cell_count):
-        # The offset to the point, taken the short way around: a point near the right
-        # edge is close to the pixels at the left edge. This makes the cells tile.
-        dx = (x - points[index, 0] + SIZE / 2) % SIZE - SIZE / 2
-        dy = (y - points[index, 1] + SIZE / 2) % SIZE - SIZE / 2
-        distance = np.sqrt(dx * dx + dy * dy)
-
-        closer = distance < nearest
-        between = ~closer & (distance < second)
-        # Where this point is the new nearest one, the old nearest becomes the second.
-        # Where it only beats the second one, it replaces that.
-        second = np.where(closer, nearest, np.where(between, distance, second))
-        neighbour = np.where(closer, cell, np.where(between, index, neighbour))
-        nearest = np.where(closer, distance, nearest)
-        cell = np.where(closer, index, cell)
-        offset_x = np.where(closer, dx, offset_x)
-        offset_y = np.where(closer, dy, offset_y)
-
-    # The border between two cells is the line on which both points are equally far away.
-    # The distance of a pixel to that line is (second^2 - nearest^2) / (2 * gap), where
-    # gap is the distance between the two points, again taken the short way around.
-    gap_x = (points[cell, 0] - points[neighbour, 0] + SIZE / 2) % SIZE - SIZE / 2
-    gap_y = (points[cell, 1] - points[neighbour, 1] + SIZE / 2) % SIZE - SIZE / 2
-    gap = np.sqrt(gap_x * gap_x + gap_y * gap_y)
-    border_distance = (second * second - nearest * nearest) / (2.0 * gap)
-
-    cell_brightness = rng.uniform(0.82, 1.0, cell_count)[cell]
-    patches = smooth_noise(rng, 12)
-    grain = smooth_noise(rng, 1)
-
-    return {
-        "rng": rng,
-        "cell_count": cell_count,
-        "cell": cell,
-        "offset_x": offset_x,
-        "offset_y": offset_y,
-        "border_distance": border_distance,
-        "cell_brightness": cell_brightness,
-        "patches": patches,
-        "grain": grain,
-    }
 
 
-def crystal_color(pattern, vein_width, crystal_color, vein_color):
-    """Returns a SIZE x SIZE x 3 array of colors from 0 to 1: pale cells with light veins.
-
-    pattern: the result of crystal_pattern.
-    vein_width: how far from the border of a cell the vein still shows, in pixels.
-    crystal_color, vein_color: (red, green, blue) from 0 to 1.
-    """
-    brightness = pattern["cell_brightness"]
-    brightness = brightness * (0.92 + 0.08 * pattern["patches"]) * (0.97 + 0.03 * pattern["grain"])
-    color = brightness[..., None] * np.array(crystal_color)
-
-    # The vein: 1 on the border between two cells, fading to 0 over vein_width pixels.
-    vein = smooth_step(np.clip(1.0 - pattern["border_distance"] / vein_width, 0.0, 1.0))
-    # Mix towards the vein color: vein = 0 keeps the cell color, vein = 1 replaces it.
-    color = color + vein[..., None] * (np.array(vein_color) - color)
-
-    return np.clip(color, 0.0, 1.0)
 
 
-def crystal_height(pattern, bevel_width, vein_depth, tilt, bump_depth):
-    """Returns a SIZE x SIZE array: how far every pixel of the crystal stands out.
-
-    The unit is the size of one pixel of the texture, like in stone_height.
-
-    pattern: the result of crystal_pattern, the same one the colour picture was made from.
-    bevel_width: over how many pixels a cell rises from its border to its face.
-    vein_depth: how far the face of a cell stands in front of the vein.
-    tilt: the largest slope of a cell, in pixels of height per pixel.
-    bump_depth: height of the large soft bumps.
-    """
-    cell = pattern["cell"]
-
-    # 0 on the border of a cell, a smooth rise, then 1 on the face.
-    profile = smooth_step(np.clip(pattern["border_distance"] / bevel_width, 0.0, 1.0))
-
-    # Every cell is a small tilted plane, each one tilted differently, so the cells catch
-    # the light one after another. Two random slopes per cell, along x and along y.
-    rng = pattern["rng"]
-    tilt_x = rng.uniform(-tilt, tilt, pattern["cell_count"])[cell]
-    tilt_y = rng.uniform(-tilt, tilt, pattern["cell_count"])[cell]
-    lean = tilt_x * pattern["offset_x"] + tilt_y * pattern["offset_y"]
-
-    bumps = bump_depth * (blur(pattern["patches"], BUMP_BLUR_RADIUS) - 0.5)
-
-    # Like the stones: everything fades out towards the border, so two neighbouring cells
-    # meet at the same height (0) and the surface has no step.
-    return profile * (vein_depth + lean + bumps)
 
 
 def ground_pattern(seed, stone_count, min_radius, max_radius):
@@ -730,7 +477,8 @@ def ground_color(pattern, earth_color, moss_color, stone_color):
 def ground_height(pattern, stone_rise, moss_rise, bump_depth, grain_depth):
     """Returns a SIZE x SIZE array: how far every pixel of the ground stands out.
 
-    The unit is the size of one pixel of the texture, like in stone_height.
+    The unit is the size of one pixel of the texture (1 / 256 m on the models), so a
+    height difference of 1 between two neighbouring pixels is a slope of 45 degrees.
 
     pattern: the result of ground_pattern, the same one the colour picture was made from.
     stone_rise: how far the middle of a stone stands above the earth.
@@ -742,7 +490,7 @@ def ground_height(pattern, stone_rise, moss_rise, bump_depth, grain_depth):
     # middle (1), so it meets the earth without a sharp crease.
     dome = smooth_step(np.clip(pattern["stone_depth"], 0.0, 1.0))
 
-    # The two kinds of noise, blurred once more for a smooth slope (see stone_height).
+    # The two kinds of noise, blurred once more for a smooth slope (BUMP_BLUR_RADIUS).
     bumps = bump_depth * (blur(pattern["patches"], BUMP_BLUR_RADIUS) - 0.5)
     grain = grain_depth * (blur(pattern["grain"], GRAIN_BLUR_RADIUS) - 0.5)
 
@@ -796,173 +544,19 @@ def metal_color(pattern, metal_color, patch_strength):
 def metal_height(pattern, bump_depth, grain_depth):
     """Returns a SIZE x SIZE array: how far every pixel of the metal stands out.
 
-    The unit is the size of one pixel of the texture, like in stone_height.
+    The unit is the size of one pixel of the texture (1 / 256 m on the models), so a
+    height difference of 1 between two neighbouring pixels is a slope of 45 degrees.
 
     pattern: the result of metal_pattern, the same one the colour picture was made from.
     bump_depth: height of the large soft dents, like the marks of a hammer.
     grain_depth: height of the fine grain.
     """
-    # The two kinds of noise, blurred once more for a smooth slope (see stone_height), and
+    # The two kinds of noise, blurred once more for a smooth slope (BUMP_BLUR_RADIUS), and
     # centred on 0, so they raise and lower the surface by the same amount.
     bumps = bump_depth * (blur(pattern["patches"], BUMP_BLUR_RADIUS) - 0.5)
     grain = grain_depth * (blur(pattern["grain"], GRAIN_BLUR_RADIUS) - 0.5)
 
     return bumps + grain
-
-
-def wall_stones():
-    """Returns the stone pattern of the wall: every wall texture is made from it.
-
-    Neutral grey blocks, 0.5 m long and 0.25 m high, in a running bond. Twelve rows fit
-    the 3 m wall exactly and the 0.25 m plinth of the wall is one row. Calling it again
-    gives the same stones, so the courses of a worn wall line up with the plain wall next
-    to it.
-    """
-    return stone_pattern(
-        seed=WALL_SEED,
-        stone_width=128,
-        stone_height=WALL_COURSE_HEIGHT,
-        running_bond=True,
-        stone_variation=0.16,
-    )
-
-
-def wall_picture(wall, joint_color=(0.20, 0.20, 0.20)):
-    """Returns the colour picture of the wall stones. wall: the result of wall_stones."""
-    return stone_color(
-        wall,
-        joint_width=6,
-        rim_width=7,
-        stone_color=(0.62, 0.62, 0.60),
-        joint_color=joint_color,
-    )
-
-
-def wall_relief(wall, joint_depth=2.5):
-    """Returns the height field of the wall stones. wall: the result of wall_stones.
-
-    Joints about 1 cm deep (2.5 pixels of 1 / 256 m), blocks that lean by up to 1.5
-    pixels from edge to edge, soft bumps and fine grain. The two depths of the noise look
-    large, but they are the range the noise had before its second blur: after it, most of
-    the surface moves by a fraction of a pixel.
-    """
-    return stone_height(
-        wall,
-        joint_width=6,
-        bevel_width=5,
-        joint_depth=joint_depth,
-        tilt=1.5,
-        bump_depth=6.0,
-        grain_depth=0.5,
-    )
-
-
-def draw_crack(mask, centre, width):
-    """Returns mask with one crack added. mask is SIZE x SIZE, 1 on a crack, 0 beside it.
-
-    centre: for every row of the picture, the x of the crack in that row, in pixels.
-    width: for every row, half of the width of the crack in pixels. 0 leaves the row out.
-    """
-    x = np.arange(SIZE)[None, :] + 0.5
-
-    # From one row to the next the crack may jump sideways by several pixels. Each row
-    # therefore paints the whole piece between its own x and the x of the row below it,
-    # so the crack is one unbroken line. np.roll takes the row below row 0 from the top
-    # of the picture: a crack that runs through every row closes across that edge.
-    below = np.roll(centre, 1)
-    middle = (centre + below) / 2.0
-    half_step = np.abs(centre - below) / 2.0
-
-    # The distance to the middle of the piece, taken the short way around, so a crack
-    # that crosses the left or right edge continues on the other side.
-    offset = np.abs((x - middle[:, None] + SIZE / 2) % SIZE - SIZE / 2)
-    distance = np.maximum(offset - half_step[:, None], 0.0)
-
-    # 1 in the core of the crack, falling to 0 over its last pixel: a soft edge.
-    line = np.clip(width[:, None] - distance, 0.0, 1.0)
-    return np.maximum(mask, line)
-
-
-def crack_mask(rng):
-    """Returns a SIZE x SIZE array: 1 on a crack, 0 beside it.
-
-    Two long cracks run through the whole height of the picture, and three short ones
-    branch off them.
-    """
-    rows = np.arange(SIZE)
-    # One full turn over the height of the picture: a sine of this angle, or of a whole
-    # multiple of it, ends where it began, so the crack meets itself at the top edge.
-    turn = rows / SIZE * 2.0 * np.pi
-    mask = np.zeros((SIZE, SIZE))
-
-    long_cracks = []
-    for start in (rng.uniform(70.0, 190.0), rng.uniform(310.0, 440.0)):
-        # A slow wander, a faster one and a small one, each with a random phase.
-        phases = rng.uniform(0.0, 2.0 * np.pi, 3)
-        centre = start + 30.0 * np.sin(turn + phases[0])
-        centre = centre + 12.0 * np.sin(3.0 * turn + phases[1])
-        centre = centre + 5.0 * np.sin(7.0 * turn + phases[2])
-        # Stone breaks in straight pieces with sharp corners: every 16 rows the crack
-        # steps sideways by a random amount.
-        centre = centre + np.repeat(rng.uniform(-5.0, 5.0, SIZE // 16), 16)
-        # The crack is wider in some places than in others, from 1.4 to 2.6 pixels.
-        width = 2.0 + 0.6 * np.sin(2.0 * turn + rng.uniform(0.0, 2.0 * np.pi))
-        mask = draw_crack(mask, centre, width)
-        long_cracks.append(centre)
-
-    first_row = WALL_FIRST_SINGLE_COURSE * WALL_COURSE_HEIGHT
-    for branch in range(3):
-        # A branch starts on a long crack, in the courses that are seen once, and runs
-        # up and to one side for 70 to 120 rows. It gets thinner and ends in a point.
-        parent = long_cracks[branch % 2]
-        start_row = int(rng.integers(first_row, first_row + 2 * WALL_COURSE_HEIGHT))
-        length = int(rng.integers(70, 120))
-        slope = rng.uniform(0.5, 1.2) * rng.choice((-1.0, 1.0))
-        steps = np.repeat(rng.uniform(-3.0, 3.0, SIZE // 8), 8)
-
-        along = rows - start_row
-        centre = parent[start_row] + slope * along + steps - steps[start_row]
-        inside = (along >= 0) & (along < length)
-        width = np.where(inside, 1.9 * (1.0 - along / length), 0.0)
-        mask = draw_crack(mask, centre, width)
-
-    return mask
-
-
-def build_worn_wall_textures():
-    """Writes the textures of the three worn walls, each with its normal map.
-
-    Every one starts as the plain wall: the same stones in the same places. Only what is
-    added differs, so a worn wall next to a plain one looks like the same building. What
-    is added is a mask (where the cracks, the moss or the niches are), and the colour
-    picture and the height field are both changed with that one mask.
-
-    To make only these six pictures, run from the repository root (one line):
-      blender --background --factory-startup --python-expr "import sys;
-      sys.path.append('tools/blender'); import make_textures;
-      make_textures.build_worn_wall_textures()"
-    """
-    build_cracked_wall_textures()
-    build_mossy_wall_textures()
-    build_damaged_wall_textures()
-
-
-def build_cracked_wall_textures():
-    """Writes wall_cracked.png and its normal map: deep joints and a few long cracks."""
-    # The mortar has washed out: the joints are darker and almost twice as deep.
-    wall = wall_stones()
-    color = wall_picture(wall, joint_color=(0.13, 0.13, 0.13))
-    height = wall_relief(wall, joint_depth=4.5)
-
-    cracks = crack_mask(np.random.default_rng(WALL_CRACKED_SEED))
-
-    # A crack is nearly black in the picture and a groove 6 pixels (about 2 cm) deep in
-    # the relief. The groove is what catches the light of the flashlight.
-    color = color * (1.0 - 0.85 * cracks[..., None])
-    height = height - 6.0 * cracks
-
-    save_png(color, "wall_cracked.png")
-    save_png(normal_map(height), "wall_cracked_normal.png")
 
 
 def srgb_to_linear(color):
@@ -979,114 +573,352 @@ def linear_to_srgb(light):
     return np.where(light <= 0.0031308, light * 12.92, 1.055 * light ** (1.0 / 2.4) - 0.055)
 
 
-def with_brightness_of(color, reference):
-    """Returns color scaled so that it reflects as much light as reference on average.
+def load_source_picture(file_name):
+    """Returns a picture of tools/blender/sources as a height x width x 3 array, rows from
+    the bottom like the arrays of this file, with the values the file holds (sRGB for a
+    colour picture, directions for a normal map)."""
+    image = bpy.data.images.load(os.path.join(SOURCES_DIR, file_name))
+    width, height = image.size
+    pixels = np.empty(width * height * 4, dtype=np.float32)
+    image.pixels.foreach_get(pixels)
+    bpy.data.images.remove(image)
+    return pixels.reshape(height, width, 4)[..., :3].astype(np.float64)
 
-    Both are SIZE x SIZE x 3 arrays of colours from 0 to 1. The average is taken of the
-    light (srgb_to_linear), because that is what the game shades with and what the small
-    copies of a texture hold, which a far wall is drawn from. The three channels are
-    weighted the way the eye does (the Rec. 709 weights). One factor scales all three, so
-    no colour of the picture changes its hue.
+
+def cheapest_cut(cost):
+    """Returns, for every row of cost, the column of the cheapest path from the top row to
+    the bottom row: the path whose costs add up to the least. From one row to the next it
+    moves by up to WALL_CUT_STEP columns, and it ends in the column it started in, so it
+    also closes where the picture repeats below itself.
     """
+    rows, columns = cost.shape
+    best = None
+    for start in range(0, columns, WALL_CUT_START_SPACING):
+        total = np.full(columns, np.inf)
+        total[start] = cost[0, start]
+        came_from = np.zeros((rows, columns), dtype=np.int64)
+        for row in range(1, rows):
+            # The cheapest way into every column from the columns up to WALL_CUT_STEP away
+            # in the row before. np.argmin takes the first of equal options, so the same
+            # cost always gives the same path.
+            walls = np.full(WALL_CUT_STEP, np.inf)
+            padded = np.concatenate((walls, total, walls))
+            options = np.stack([padded[k:k + columns] for k in range(2 * WALL_CUT_STEP + 1)])
+            pick = np.argmin(options, axis=0)
+            total = options[pick, np.arange(columns)] + cost[row]
+            came_from[row] = np.arange(columns) + pick - WALL_CUT_STEP
+        if best is None or total[start] < best[0]:
+            best = (total[start], start, came_from)
+
+    _, start, came_from = best
+    path = np.zeros(rows, dtype=np.int64)
+    path[-1] = start
+    for row in range(rows - 1, 0, -1):
+        path[row - 1] = came_from[row, path[row]]
+    return path
+
+
+def seamless_across(pictures):
+    """Returns the pictures made narrower so that their left edge continues their right
+    edge.
+
+    The last WALL_OVERLAP columns of a picture are laid over its first ones, and the
+    picture ends where they begin. Through the overlap runs a cut from the top to the
+    bottom, along the path where the two layers differ least and are darkest: mostly the
+    joints, where nobody sees that a stone of one meets a stone of the other. Left of
+    the cut the result shows the end of the picture, right of it the start, so its first
+    column continues its last one. The cut is softened over 3 pixels.
+
+    pictures: a list of arrays of the same size. The first one (the colour picture)
+    decides where the cut runs, and all are cut in the same place, so a normal map stays
+    on its stones.
+    """
+    first = pictures[0]
+    width = first.shape[1] - WALL_OVERLAP
+    start = first[:, :WALL_OVERLAP]
+    end = first[:, width:]
+    cost = np.abs(start - end).sum(axis=-1) + start.mean(axis=-1) + end.mean(axis=-1)
+    # The cut keeps away from the edges of the overlap, where the slabs are rounded.
+    cut = WALL_CUT_MARGIN + cheapest_cut(cost[:, WALL_CUT_MARGIN:WALL_OVERLAP - WALL_CUT_MARGIN])
+    x = np.arange(WALL_OVERLAP)[None, :]
+    show_end = np.clip((cut[:, None] - x + 1.5) / 3.0, 0.0, 1.0)[..., None]
+
+    result = []
+    for picture in pictures:
+        joined = picture[:, :width].copy()
+        joined[:, :WALL_OVERLAP] = (show_end * picture[:, width:]
+                                    + (1.0 - show_end) * picture[:, :WALL_OVERLAP])
+        result.append(joined)
+    return result
+
+
+def make_seamless(pictures):
+    """seamless_across, then the same along the height (on the pictures turned on their
+    side), then stretched back to the size of the source.
+
+    The second step takes whole rows, so the left and right edges still meet. The rows
+    of the first cut run on without a break across the second one, so the corner meets
+    too. The stretch makes the stones larger than in the source (by 1024 / 896, a
+    seventh), as the picture still covers 2 m of wall.
+    """
+    pictures = seamless_across(pictures)
+    turned = seamless_across([np.transpose(picture, (1, 0, 2)) for picture in pictures])
+    return [stretch_tiling(np.transpose(picture, (1, 0, 2))) for picture in turned]
+
+
+def stretch_tiling(picture):
+    """The picture stretched to WALL_SOURCE_SIZE x WALL_SOURCE_SIZE, every pixel
+    interpolated between its four nearest. Beyond the last row and column come the first
+    ones, as the picture tiles."""
+    height, width = picture.shape[:2]
+    rows = np.arange(WALL_SOURCE_SIZE) * height / WALL_SOURCE_SIZE
+    columns = np.arange(WALL_SOURCE_SIZE) * width / WALL_SOURCE_SIZE
+    row = np.floor(rows).astype(int)
+    column = np.floor(columns).astype(int)
+    down = (rows - row)[:, None, None]
+    across = (columns - column)[None, :, None]
+    above = (row + 1) % height
+    right = (column + 1) % width
+    return ((1 - down) * ((1 - across) * picture[row][:, column] + across * picture[row][:, right])
+            + down * ((1 - across) * picture[above][:, column] + across * picture[above][:, right]))
+
+
+def luminance(color):
+    """How bright every pixel of a colour picture looks, from its sRGB values."""
+    return color @ np.array((0.2126, 0.7152, 0.0722))
+
+
+def joint_mask(color):
+    """1 in the dark gaps between the stones of a wall picture, 0 on the stones, soft in
+    between."""
+    return np.clip((WALL_JOINT_ABOVE - luminance(color)) / WALL_JOINT_SOFTNESS, 0.0, 1.0)
+
+
+def lift_joints(color):
+    """The joints of the generated pictures are almost black. Under the flashlight they
+    read as holes through the wall, so the darkest pixels are drawn towards a very dark
+    grey brown, the colour of shadowed earth and stone."""
+    lift = np.clip((WALL_LIFT_BELOW - luminance(color)) / WALL_LIFT_BELOW, 0.0, 1.0)
+    return color + lift[..., None] * (np.array(WALL_JOINT_COLOR) - color)
+
+
+def average_light(color):
+    """The average light of a colour picture in the three channels: sRGB decoded, as the
+    game shades it and as the small copies of the texture a far wall is drawn from hold
+    it."""
+    return srgb_to_linear(color).mean(axis=(0, 1))
+
+
+def with_light(color, light):
+    """Returns color scaled so that it reflects the light `light` on average (Rec. 709
+    weights). One factor scales all three channels, so no colour changes its hue."""
     weights = np.array((0.2126, 0.7152, 0.0722))
-    light = srgb_to_linear(color)
-    wanted = (srgb_to_linear(reference) @ weights).mean()
-    light = light * (wanted / (light @ weights).mean())
-    return linear_to_srgb(np.clip(light, 0.0, 1.0))
+    linear = srgb_to_linear(color)
+    linear = linear * (light / (linear.mean(axis=(0, 1)) @ weights))
+    return linear_to_srgb(np.clip(linear, 0.0, 1.0))
+
+
+def halve(picture):
+    """The picture at half its width and height: every pixel the average of four."""
+    height, width, channels = picture.shape
+    return picture.reshape(height // 2, 2, width // 2, 2, channels).mean(axis=(1, 3))
+
+
+def slopes_of(normal_colors):
+    """The slopes of the relief (dheight/dx, dheight/dy) of a normal map, as colours from
+    0 to 1. The inverse of normal_map."""
+    normal = normal_colors * 2.0 - 1.0
+    return -normal[..., :2] / normal[..., 2:]
+
+
+def normal_colors(slopes):
+    """A normal map, as colours from 0 to 1, of a relief with the given slopes."""
+    normal = np.concatenate([-slopes, np.ones(slopes.shape[:2] + (1,))], axis=-1)
+    return normal / np.linalg.norm(normal, axis=-1, keepdims=True) * 0.5 + 0.5
+
+
+def save_wall(color, slopes, name):
+    """Writes name.png and name_normal.png at SIZE from a colour picture and the slopes of
+    its relief at the size of the sources. The normal map is halved as slopes, so the
+    lean of four texels is averaged and not their colours."""
+    save_png(np.clip(halve(color), 0.0, 1.0), name + ".png")
+    save_png(normal_colors(halve(slopes)), name + "_normal.png")
+
+
+def plain_wall():
+    """Returns the colour picture of the plain wall and the slopes of its relief, both
+    seamless, at the size of the sources, with the joints and the light as they came.
+
+    The colour is the generated picture, and the relief was baked from the slab Tripo
+    generated from it (see bake_wall_normals.py).
+    """
+    color, normal = make_seamless([
+        load_source_picture("wall_stone.png"),
+        load_source_picture("wall_stone_normal_baked.png"),
+    ])
+    return color, WALL_BAKED_RELIEF * slopes_of(normal)
+
+
+def build_plain_wall_textures():
+    """Writes wall_stone.png and its normal map."""
+    color, slopes = plain_wall()
+    save_wall(with_light(lift_joints(color), WALL_LIGHT), slopes, "wall_stone")
+
+
+def build_worn_wall_textures():
+    """Writes the textures of the three worn walls, each with its normal map.
+
+    Each is scaled to reflect as much light on average as the plain wall, so a worn
+    segment between plain ones does not turn into a patch from across the maze. Each
+    returns its colour picture, and the script stops if one is too far from the plain wall
+    in light or in colour.
+
+    To make only these six pictures, run from the repository root (one line):
+      blender --background --factory-startup --python-expr "import sys;
+      sys.path.append('tools/blender'); import make_textures;
+      make_textures.build_worn_wall_textures()"
+    """
+    plain_color, plain_slopes = plain_wall()
+    plain = average_light(halve(with_light(lift_joints(plain_color), WALL_LIGHT)))
+    worn = {
+        "wall_cracked": build_cracked_wall_textures(),
+        "wall_mossy": build_mossy_wall_textures(),
+        "wall_damaged": build_damaged_wall_textures(plain_color, plain_slopes),
+    }
+    weights = np.array((0.2126, 0.7152, 0.0722))
+    for name, color in worn.items():
+        light = average_light(halve(color))
+        if abs(light @ weights / (plain @ weights) - 1.0) > WALL_LIGHT_TOLERANCE:
+            raise RuntimeError(f"{name} is not as bright as the plain wall")
+        if np.abs(light / light.sum() - plain / plain.sum()).max() > WALL_COLOUR_SHARE_TOLERANCE:
+            raise RuntimeError(f"{name} is not of the colour of the plain wall")
+
+
+def height_slopes(height):
+    """The slopes (dheight/dx, dheight/dy) of a height field that tiles, like in
+    normal_map."""
+    return np.stack([
+        (np.roll(height, -1, axis=1) - np.roll(height, 1, axis=1)) / 2.0,
+        (np.roll(height, -1, axis=0) - np.roll(height, 1, axis=0)) / 2.0,
+    ], axis=-1)
+
+
+def picture_slopes(color):
+    """The slopes of a relief made from a wall picture alone: brighter is higher, which
+    rounds every stone and raises its pale faces a little, and the dark joints lie
+    deepest. bake_wall_normals.py also fills the holes of a bake with it."""
+    height = WALL_PICTURE_RISE * blur(luminance(color), 2)
+    height = height - WALL_PICTURE_JOINT_DEPTH * blur(joint_mask(color), 2)
+    return height_slopes(height)
+
+
+def build_cracked_wall_textures():
+    """Writes wall_cracked.png and its normal map.
+
+    The picture is generated, and Tripo has no slab of it, so the relief is made from the
+    picture itself (see picture_slopes).
+    """
+    (color,) = make_seamless([load_source_picture("wall_cracked.png")])
+    slopes = picture_slopes(color)
+    color = with_light(lift_joints(color), WALL_LIGHT)
+    save_wall(color, slopes, "wall_cracked")
+    return color
 
 
 def build_mossy_wall_textures():
-    """Writes wall_mossy.png and its normal map: a damp wall overgrown with moss."""
-    wall = wall_stones()
-    color = wall_picture(wall)
-    height = wall_relief(wall)
-    rng = np.random.default_rng(WALL_MOSSY_SEED)
-
-    # Water has run down the wall: the stone is darker in long upright streaks (random
-    # pixels blurred far along y, like the grain of the gate). There is no "wetter at
-    # the bottom": the picture repeats above 2 m, and a ramp along the height would end
-    # in a hard line there.
-    streaks = stretch(blur_along(blur_along(rng.random((SIZE, SIZE)), 40, axis=0), 4, axis=1))
-    color = color * (MOSSY_DAMP_SHADE + MOSSY_DAMP_STREAKS * streaks)[..., None]
-
-    # Moss grows in patches, like on the ground (see ground_pattern), and it grows first
-    # where water stays: in the joints. So the joints are green also outside the patches.
-    moss_noise = stretch(blur(smooth_noise(rng, 24), 16))
-    patches = smooth_step(np.clip((moss_noise - 0.38) / 0.20, 0.0, 1.0))
-    in_joints = 1.0 - np.clip(wall["edge_distance"] / 12.0, 0.0, 1.0)
-    in_joints = in_joints * smooth_step(np.clip((moss_noise - 0.15) / 0.20, 0.0, 1.0))
-    # Fine noise frays the edge of every patch, so it does not look painted on.
-    fray = 0.55 + 0.45 * smooth_noise(rng, 2)
-    moss = np.clip(patches + 0.8 * in_joints, 0.0, 1.0) * fray
-
-    # Mix towards the moss colour: moss = 0 keeps the stone, moss = 1 replaces it.
-    moss_shade = (0.65 + 0.70 * wall["grain"])[..., None] * np.array(MOSS_COLOR)
-    color = color + moss[..., None] * (moss_shade - color)
-
-    # Moss is a soft cushion on the stone. It fills the joints and has a grain of its own.
-    height = height + 3.0 * blur(moss, 2) + 1.2 * moss * (blur(wall["grain"], 1) - 0.5)
-
-    # The damp and the moss are detail. Seen from far away a wall is the average of its
-    # picture, and that average is brought back to the brightness of the plain wall: a
-    # mossy segment is then as bright as its neighbours. What is left of the green in the
-    # average is small, because the moss is pale.
-    color = with_brightness_of(np.clip(color, 0.0, 1.0), wall_picture(wall))
-
-    save_png(color, "wall_mossy.png")
-    save_png(normal_map(height), "wall_mossy_normal.png")
+    """Writes wall_mossy.png and its normal map: the generated picture and the relief
+    baked from the slab Tripo generated from it, like the plain wall."""
+    color, normal = make_seamless([
+        load_source_picture("wall_mossy.png"),
+        load_source_picture("wall_mossy_normal_baked.png"),
+    ])
+    color = with_light(lift_joints(color), WALL_LIGHT)
+    save_wall(color, WALL_BAKED_RELIEF * slopes_of(normal), "wall_mossy")
+    return color
 
 
-def build_damaged_wall_textures():
-    """Writes wall_damaged.png and its normal map: two stones have broken out.
+def spread(mask):
+    """The mask with every pixel next to it (left, right, above, below) added."""
+    grown = mask.copy()
+    grown[1:] |= mask[:-1]
+    grown[:-1] |= mask[1:]
+    grown[:, 1:] |= mask[:, :-1]
+    grown[:, :-1] |= mask[:, 1:]
+    return grown
+
+
+def grow_stone(stone, row, column):
+    """Returns a mask of the stone that covers the pixel (row, column).
+
+    stone: True on the stones, False in the joints. Two stones may touch where a joint
+    is thin, so the stones are first made WALL_STONE_SHRINK pixels smaller all around.
+    The stone grows from its pixel inside that, and then by the same pixels outward
+    again, up to the joints.
+    """
+    core = stone.copy()
+    for _ in range(WALL_STONE_SHRINK):
+        core &= ~spread(~core)
+    if not core[row, column]:
+        raise RuntimeError(f"the pixel at row {row}, column {column} is not on a stone")
+    found = np.zeros(stone.shape, dtype=bool)
+    found[row, column] = True
+    for _ in range(WALL_STONE_GROWTH):
+        grown = spread(found) & core
+        if (grown == found).all():
+            for _ in range(WALL_STONE_SHRINK):
+                found = spread(found) & stone
+            if found.sum() < WALL_STONE_SMALLEST:
+                raise RuntimeError(f"the stone at row {row}, column {column} is too small")
+            return found
+        found = grown
+    raise RuntimeError(f"the stone at row {row}, column {column} runs into its neighbours")
+
+
+def build_damaged_wall_textures(color, slopes):
+    """Writes wall_damaged.png and its normal map: the plain wall with two stones broken
+    out.
 
     The wall model stays flat: a missing stone is a niche in the relief only. It is
-    shallow (12 pixels, under 5 cm), so it reads as a stone that broke off its face, not
-    as a hole through the wall. A stub of each stone is left at one end, with a ragged
-    edge: a clean rectangle would look like a window, not like damage.
+    shallow (about 5 cm), so it reads as a stone that broke off its face, not as a hole
+    through the wall. Its outline is the outline of the stone, pushed in and out a little
+    by noise, so it is ragged like a break.
     """
-    wall = wall_stones()
-    color = wall_picture(wall)
-    height = wall_relief(wall)
     rng = np.random.default_rng(WALL_DAMAGED_SEED)
+    size = color.shape[0]
+    stone = joint_mask(color) < 0.5
+    missing = np.zeros((size, size))
+    for column, row in WALL_MISSING_STONES:
+        missing = np.maximum(missing, grow_stone(stone, row, column))
 
-    # 1 inside the missing stones, 0 elsewhere. A stone is named by its course and its
-    # number in the course, so a stone that crosses the edge of the picture stays whole.
-    missing = np.zeros((SIZE, SIZE), dtype=bool)
-    for course, stone in WALL_MISSING_STONES:
-        missing = missing | ((wall["row"] == course) & (wall["column"] == stone))
-
-    # Soft noise that pushes the outline of a niche in and out by up to 4 pixels, so it
-    # is not a straight line.
-    ragged = smooth_noise(rng, 6)
-    edge = wall["edge_distance"] + 8.0 * (ragged - 0.5)
-
-    # The stub that is left: the first eighth to two fifths of the stone, measured along
-    # its length, with the same noise moving the break line. In one of the two courses
-    # the stub is at the left end, in the other at the right end.
-    along = wall["inside_x"] / wall["stone_width"]
-    along = np.where(wall["row"] % 4 == 0, along, 1.0 - along)
-    broken_off = smooth_step(np.clip((along - (0.12 + 0.30 * ragged)) / 0.05, 0.0, 1.0))
-
-    # How deep in the niche a pixel lies: 0 at its outline and on the stub, rising over
-    # 6 pixels to 1 on the floor of the niche.
-    depth = smooth_step(np.clip(edge / 6.0, 0.0, 1.0)) * broken_off * missing
+    # The share of the pixels around every pixel that are missing, 0.5 on the outline,
+    # with noise that moves the outline by a few pixels.
+    ragged = blur(rng.random((size, size)), 12)
+    ragged = (ragged - ragged.min()) / (ragged.max() - ragged.min())
+    around = blur(missing, 6) + 0.3 * (ragged - 0.5)
+    # How deep in the niche a pixel lies: 0 at its outline, 1 on its floor.
+    depth = smooth_step(np.clip((around - 0.5) / 0.4, 0.0, 1.0))
 
     # What is left behind the stone: rough mortar and rubble, lumps of two sizes.
-    rubble = 0.6 * smooth_noise(rng, 5) + 0.4 * smooth_noise(rng, 2)
+    lumps = 0.6 * blur(rng.random((size, size)), 10) + 0.4 * blur(rng.random((size, size)), 4)
+    rubble = (lumps - lumps.min()) / (lumps.max() - lumps.min())
 
     # The colour of the niche: dark rubble, and darker still towards its rim, where the
-    # stones around it keep the light out. This shading is painted, like the darker rim
-    # of every stone.
-    shade = (0.55 + 0.45 * np.clip(edge / 20.0, 0.0, 1.0)) * (0.55 + 0.9 * rubble)
-    niche_color = shade[..., None] * np.array((0.20, 0.19, 0.18))
+    # stones around it keep the light out. This shading is painted, like the shading of
+    # the stones in the picture.
+    shade = (0.55 + 0.45 * depth) * (0.55 + 0.9 * rubble)
+    niche_color = shade[..., None] * np.array(WALL_NICHE_COLOR)
+    color = lift_joints(color)
     color = color + depth[..., None] * (niche_color - color)
 
-    # The relief: the floor of the niche lies 12 pixels behind the mortar bed, with the
-    # lumps of the rubble on it. The step at the rim is the slope the normal map shows.
-    height = height * (1.0 - depth) + depth * (-12.0 + 3.5 * (blur(rubble, 1) - 0.5))
+    # The relief: the floor of the niche lies WALL_NICHE_DEPTH pixels behind the face of
+    # the stones, with the lumps of the rubble on it. In the niche the slopes of the
+    # stone that broke out are gone.
+    height = depth * (-WALL_NICHE_DEPTH + 7.0 * (rubble - 0.5))
+    slopes = slopes * (1.0 - depth[..., None]) + height_slopes(height)
 
-    save_png(np.clip(color, 0.0, 1.0), "wall_damaged.png")
-    save_png(normal_map(height), "wall_damaged_normal.png")
+    color = with_light(color, WALL_LIGHT)
+    save_wall(color, slopes, "wall_damaged")
+    return color
 
 
 def build_flask_textures():
@@ -1143,10 +975,11 @@ def build_flask_textures():
     save_png(normal_map(height), "flask_normal.png")
 
 
-def save_png(color, file_name):
+def save_png(color, file_name, folder=None):
     """Saves a height x width x 3 array of colors from 0 to 1 as an 8-bit RGB PNG.
 
-    The pictures of this file are SIZE x SIZE. build_shade.py writes larger ones.
+    The pictures of this file are SIZE x SIZE. build_shade.py writes larger ones, and
+    bake_wall_normals.py writes into the sources folder.
     """
     height, width, _ = color.shape
     # Round to the 256 levels of an 8-bit channel here, so the bytes in the file do not
@@ -1161,21 +994,20 @@ def save_png(color, file_name):
     image = bpy.data.images.new(file_name, width, height, alpha=False)
     image.pixels.foreach_set(rgba.ravel())
 
-    os.makedirs(common.TEXTURES_DIR, exist_ok=True)
-    image.filepath_raw = os.path.join(common.TEXTURES_DIR, file_name)
+    folder = folder or common.TEXTURES_DIR
+    os.makedirs(folder, exist_ok=True)
+    image.filepath_raw = os.path.join(folder, file_name)
     image.file_format = "PNG"
     image.save()
     print("Wrote", image.filepath_raw)
 
 
 def build():
-    # Wall: the plain stone, as it was built (see wall_stones, wall_picture, wall_relief).
-    wall = wall_stones()
-    save_png(wall_picture(wall), "wall_stone.png")
-    save_png(normal_map(wall_relief(wall)), "wall_stone_normal.png")
+    # Wall: the plain stone, made from the generated picture (see plain_wall).
+    build_plain_wall_textures()
 
-    # The same wall worn in three ways: cracked, mossy and damaged. They are in a
-    # function of their own, so they can also be made alone.
+    # The wall worn in three ways: cracked, mossy and damaged. They are in a function of
+    # their own, so they can also be made alone.
     build_worn_wall_textures()
 
     # Ground: packed earth with patches of moss and small stones, for the terrain. The
@@ -1234,9 +1066,6 @@ def build():
     )
     save_png(normal_map(gate_height), "gate_wood_normal.png")
 
-    # The two pictures of the splinters the player collects, in a function of their own.
-    build_splinter_textures()
-
     # The textures of the lever, the chalk and the flask. They are in a function of their
     # own, so they can also be made without writing the pictures above again.
     build_interactable_textures()
@@ -1244,51 +1073,7 @@ def build():
     # The two pictures of the lantern of the exit gate, in a function of their own too.
     build_lantern_textures()
 
-    # The two pictures of the stone sheep, in a function of their own too.
-    build_stone_sheep_textures()
 
-    # The two pictures of the lamp the player holds, in a function of their own too.
-    build_lamp_textures()
-
-
-def build_stone_sheep_textures():
-    """Writes stone_sheep.png and its normal map: wool that went to stone, moss in its folds.
-
-    The picture of the wall would draw the joints of its blocks across the animal. Here
-    the picture is divided into round curls instead (the cells of crystal_pattern), in
-    a stone paler than the walls, so the animal stands out in front of one in the beam of
-    the lamp and in the light of the moon. Between two curls is a fold, and moss grows
-    where water stays: in the folds of the damper half of the picture, and in a few
-    patches over whole curls. The picture tiles, and the model (build_stone_sheep.py)
-    repeats it once per metre, so a curl is about 5 cm across.
-    """
-    wool = crystal_pattern(seed=STONE_SHEEP_SEED, cell_count=340)
-    rng = wool["rng"]
-    fold_distance = wool["border_distance"]
-
-    # A curl is lightest in its middle and darker towards the fold around it.
-    rounded = smooth_step(np.clip(fold_distance / 9.0, 0.0, 1.0))
-    shade = wool["cell_brightness"] * (0.80 + 0.20 * rounded)
-    shade = shade * (0.90 + 0.10 * wool["patches"]) * (0.96 + 0.08 * wool["grain"])
-    color = shade[..., None] * np.array((0.86, 0.85, 0.80))
-
-    # The moss: in the folds where the noise says the wool is damp, and in soft patches
-    # that cover whole curls where it is dampest. Fine noise frays every edge.
-    moss_noise = stretch(blur(smooth_noise(rng, 24), 16))
-    patches = smooth_step(np.clip((moss_noise - 0.62) / 0.18, 0.0, 1.0))
-    in_folds = smooth_step(np.clip(1.0 - fold_distance / 4.0, 0.0, 1.0))
-    in_folds = in_folds * smooth_step(np.clip((moss_noise - 0.35) / 0.25, 0.0, 1.0))
-    fray = 0.55 + 0.45 * smooth_noise(rng, 2)
-    moss = np.clip(0.7 * patches + 0.8 * in_folds, 0.0, 1.0) * fray
-    moss_shade = (0.65 + 0.70 * wool["grain"])[..., None] * np.array((0.22, 0.33, 0.14))
-    color = color + moss[..., None] * (moss_shade - color)
-
-    # The relief: every curl is a low dome, the moss a soft cushion in the fold.
-    height = 2.5 * rounded + 4.0 * (blur(wool["patches"], BUMP_BLUR_RADIUS) - 0.5)
-    height = height + 1.5 * blur(moss, 2) + 0.5 * (blur(wool["grain"], GRAIN_BLUR_RADIUS) - 0.5)
-
-    save_png(np.clip(color, 0.0, 1.0), "stone_sheep.png")
-    save_png(normal_map(height), "stone_sheep_normal.png")
 
 
 def build_interactable_textures():
@@ -1307,7 +1092,7 @@ def build_interactable_textures():
 
 
 def build_lever_textures():
-    """Writes the two metal textures that carry the name of the lever, each with its normal map."""
+    """Writes the metal texture that carries the name of the lever, with its normal map."""
     # Iron with a little blue in it, for the ring at the foot of a wall that a lever
     # opens (build_crook.py). Unlike the other pictures this one is dark on purpose: the
     # ring hangs on a stone wall that the flashlight lights up, and the picture of that
@@ -1321,16 +1106,6 @@ def build_lever_textures():
     iron_relief = metal_height(iron, bump_depth=5.0, grain_depth=0.6)
     save_png(normal_map(iron_relief), "lever_iron_normal.png")
 
-    # Warm brass, light and yellow, which the bell of the gate wears (build_gate_bell.py). The patches are weaker than on the iron:
-    # the red channel is already 0.86, and stronger patches would push it past 1, where
-    # it is cut off and the colour of the light patches would change.
-    brass = metal_pattern(seed=LEVER_BRASS_SEED)
-    brass_picture = metal_color(brass, metal_color=(0.86, 0.58, 0.20), patch_strength=0.14)
-    save_png(brass_picture, "lever_brass.png")
-
-    # The relief of the brass: gentler than the iron, like metal polished by many hands.
-    brass_relief = metal_height(brass, bump_depth=3.0, grain_depth=0.4)
-    save_png(normal_map(brass_relief), "lever_brass_normal.png")
 
 
 def build_chalk_textures():
@@ -1386,170 +1161,4 @@ def build_lantern_textures():
     save_png(normal_map(height), "lantern_normal.png")
 
 
-def build_splinter_textures():
-    """Writes the texture of the moon splinters with its normal map.
 
-    To make only these two pictures, run from the repository root (one line):
-      blender --background --factory-startup --python-expr "import sys;
-      sys.path.append('tools/blender'); import make_textures;
-      make_textures.build_splinter_textures()"
-
-    The picture has two halves, like the one of the lantern, and the model gives every
-    side a piece from the middle of one of them (see build_splinter.py): the left half is
-    the rind, the old surface of the moon, and the right half the fracture.
-
-    The fracture is pale and the rind is dark, and that difference decides what glows.
-    The game multiplies the colour of a surface with one glow value for the whole model
-    (uEmissive in lit.frag), so the fracture shines turquoise and the rind stays a strip
-    of dim stone, which the flashlight shows as the grey it is.
-    """
-    half = SIZE // 2
-    y, x = np.mgrid[0:SIZE, 0:SIZE]
-
-    # The fracture: pale turquoise cells with lighter veins, like the facets inside
-    # a crystal. The game adds its own glow and a turquoise light, so the picture itself
-    # stays light.
-    fracture = crystal_pattern(seed=CRYSTAL_SEED, cell_count=28)
-    fracture_picture = crystal_color(
-        fracture,
-        vein_width=3,
-        crystal_color=(0.60, 0.90, 0.86),
-        vein_color=(0.80, 0.97, 0.95),
-    )
-    # Its relief: shallow veins and gently tilted cells.
-    fracture_relief = crystal_height(
-        fracture,
-        bevel_width=6,
-        vein_depth=1.0,
-        tilt=0.06,
-        bump_depth=4.0,
-    )
-
-    # The rind: grey dust with soft lighter and darker patches. Its own random generator,
-    # so the numbers of the other textures stay what they are.
-    rng = np.random.default_rng(SPLINTER_RIND_SEED)
-    patches = smooth_noise(rng, 10)
-    grain = smooth_noise(rng, 1)
-
-    # The craters. Each is a bowl with a raised lip around it: `bowl` is 1 in the middle
-    # of a crater and 0 at its edge, `lip` is 1 on the edge and fades to both sides.
-    # A crater that crosses the top edge continues at the bottom, and one that crosses the
-    # side of the half continues at its other side, so no crater is cut off.
-    centre_x = rng.uniform(0.0, half, SPLINTER_CRATER_COUNT)
-    centre_y = rng.uniform(0.0, SIZE, SPLINTER_CRATER_COUNT)
-    low, high = SPLINTER_CRATER_RADIUS
-    # Squaring the random number makes small craters common and large ones rare.
-    radius = low + (high - low) * rng.random(SPLINTER_CRATER_COUNT) ** 2
-    bowl = np.zeros((SIZE, SIZE))
-    lip = np.zeros((SIZE, SIZE))
-    crater_relief = np.zeros((SIZE, SIZE))
-    for index in range(SPLINTER_CRATER_COUNT):
-        dx = (x - centre_x[index] + half / 2) % half - half / 2
-        dy = (y - centre_y[index] + SIZE / 2) % SIZE - SIZE / 2
-        distance = np.sqrt(dx * dx + dy * dy) / radius[index]
-        this_bowl = np.clip(1.0 - distance * distance, 0.0, 1.0)
-        this_lip = np.exp(-(((distance - 1.0) / 0.2) ** 2))
-        bowl = np.maximum(bowl, this_bowl)
-        lip = np.maximum(lip, this_lip)
-        # In pixels of height: the depth of a bowl and the height of its lip grow with
-        # its radius, so a large crater is not a shallow dish.
-        crater_relief += radius[index] * (0.12 * this_lip - 0.30 * this_bowl)
-
-    # The floor of a crater is darker and its lip lighter, the way the real ones look
-    # under a high sun.
-    shade = (0.80 + 0.40 * patches) * (0.90 + 0.20 * grain)
-    shade = shade * (1.0 - 0.45 * bowl) * (1.0 + 0.30 * lip * (1.0 - bowl))
-    rind_picture = np.clip(shade[..., None] * np.array(SPLINTER_RIND_COLOR), 0.0, 1.0)
-    rind_relief = (
-        crater_relief
-        + 6.0 * (blur(patches, BUMP_BLUR_RADIUS) - 0.5)
-        + 0.8 * (blur(grain, GRAIN_BLUR_RADIUS) - 0.5)
-    )
-
-    # The columns of the left half take the rind.
-    is_rind = x < half
-    color = np.where(is_rind[..., None], rind_picture, fracture_picture)
-    height = np.where(is_rind, rind_relief, fracture_relief)
-
-    save_png(color, "splinter.png")
-    save_png(normal_map(height), "splinter_normal.png")
-
-
-def build_lamp_textures():
-    """Writes lamp_held.png and its normal map: the lamp the player holds.
-
-    One picture for the three models of build_lamp_held.py, cut as the LAMP_ constants at
-    the top say: scratched tin, the cloth tape of the grip, dark iron, the lens and the
-    glass of the window.
-
-    The lens and the glass are pale and the game draws each as a model of its own, with
-    a glow of its own (uEmissive in lit.frag): the glow of a surface is its colour times
-    that value, so a pale piece is what can shine.
-    """
-    rng = np.random.default_rng(LAMP_TIN_SEED)
-    y, x = np.mgrid[0:SIZE, 0:SIZE]
-
-    # The tin: a pale grey with soft patches, and scratches on it, half of them lighter
-    # than the tin and half darker. A scratch that leaves the picture on one side comes
-    # back on the other, because the band goes once around the lamp. It stays below the
-    # tape: the two ends of the band do not meet.
-    tin = metal_pattern(seed=LAMP_TIN_SEED)
-    light = np.zeros((SIZE, SIZE))
-    dark = np.zeros((SIZE, SIZE))
-    for _ in range(LAMP_SCRATCH_COUNT):
-        start_x = rng.random() * SIZE
-        start_y = rng.random() * LAMP_TAPE_ROW
-        shortest, longest = LAMP_SCRATCH_LENGTH
-        length = shortest + rng.random() * (longest - shortest)
-        angle = rng.random() * np.pi
-        scratch = light if rng.random() < 0.5 else dark
-        # One mark every half pixel along the scratch.
-        steps = np.arange(0.0, length, 0.5)
-        columns = np.round(start_x + np.cos(angle) * steps).astype(int) % SIZE
-        rows = np.round(start_y + np.sin(angle) * steps).astype(int)
-        inside = (rows >= 0) & (rows < LAMP_TAPE_ROW)
-        scratch[rows[inside], columns[inside]] = 1.0
-    tin_picture = metal_color(tin, metal_color=(0.62, 0.655, 0.67), patch_strength=0.16)
-    tin_picture = tin_picture * (1.0 + 0.16 * light - 0.20 * dark)[..., None]
-    # A scratch is a groove, whatever its colour.
-    tin_relief = metal_height(tin, bump_depth=3.0, grain_depth=0.4) - 1.5 * blur(light + dark, 1)
-
-    # The tape: dark cloth wound around the grip, turn beside turn. Each turn is lightest
-    # in its middle and has a dark seam where the next one lies over it.
-    tape = metal_pattern(seed=LAMP_TAPE_SEED)
-    turn = ((y - LAMP_TAPE_ROW) % LAMP_TAPE_TURN_HEIGHT) / LAMP_TAPE_TURN_HEIGHT
-    across = np.sin(np.pi * turn)
-    tape_picture = metal_color(tape, metal_color=(0.235, 0.22, 0.20), patch_strength=0.24)
-    tape_picture = tape_picture * (0.72 + 0.28 * across)[..., None]
-    tape_relief = 1.6 * across + metal_height(tape, bump_depth=1.0, grain_depth=1.2)
-
-    # The iron of the window frame and of the switch, like the iron of the slab ring.
-    iron = metal_pattern(seed=LAMP_IRON_SEED)
-    iron_picture = metal_color(iron, metal_color=(0.17, 0.18, 0.20), patch_strength=0.30)
-    iron_relief = metal_height(iron, bump_depth=5.0, grain_depth=0.6)
-
-    # The lens, a warm white, and the glass of the window, a pale teal: the colour of the
-    # splinter behind it. Both are plain and flat. Neither reaches 1, so the glow of the
-    # game has room above them.
-    lens_picture = np.broadcast_to(np.array((0.94, 0.90, 0.80)), (SIZE, SIZE, 3))
-    window_picture = np.broadcast_to(np.array((0.61, 0.91, 0.87)), (SIZE, SIZE, 3))
-    flat = np.zeros((SIZE, SIZE))
-
-    # From the bottom to the top, and in the top band from the left to the right.
-    color = tin_picture
-    height = tin_relief
-    for part, picture, relief in (
-        (y >= LAMP_TAPE_ROW, tape_picture, tape_relief),
-        (y >= LAMP_PIECE_ROW, iron_picture, iron_relief),
-        ((y >= LAMP_PIECE_ROW) & (x >= LAMP_LENS_COLUMN), lens_picture, flat),
-        ((y >= LAMP_PIECE_ROW) & (x >= LAMP_WINDOW_COLUMN), window_picture, flat),
-    ):
-        color = np.where(part[..., None], picture, color)
-        height = np.where(part, relief, height)
-
-    save_png(np.clip(color, 0.0, 1.0), "lamp_held.png")
-    save_png(normal_map(height), "lamp_held_normal.png")
-
-
-if __name__ == "__main__":
-    build()

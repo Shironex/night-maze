@@ -182,36 +182,37 @@ TEST_CASE("the wall normal map follows the OpenGL convention: a joint is a groov
         assets::loadImage(assetsDirectory() / "textures" / "wall_stone_normal.png", image, error));
 
     // The loader returns the bottom row first, so row 0 is v = 0 and rows count upwards,
-    // like v. The bottom row of blocks covers the rows 0 to 63 and its first block the
-    // columns 0 to 127. Each side of a block has 3 pixels of joint and then 5 pixels of
-    // bevel that rise to the face (tools/blender/make_textures.py).
+    // like v. The relief is baked from the generated model of the wall
+    // (tools/blender/bake_wall_normals.py), so the places below are joints found in that
+    // picture: a long level joint between the rows 388 and 396 under the columns 48 to
+    // 127, and an upright joint between the columns 301 and 307 beside the rows 148 to 179.
     //
-    // In a groove the bevel BELOW the joint is the top edge of a block: it faces up, so
+    // In a groove the bevel BELOW the joint is the top edge of a stone: it faces up, so
     // its normal has a positive y, a green above 128. The bevel ABOVE the joint is the
-    // bottom edge of the next block: it faces down, green below 128. A map in the
+    // bottom edge of the next stone: it faces down, green below 128. A map in the
     // DirectX convention, or a ridge instead of a groove, would have the two swapped.
-    constexpr int BLOCK_MIDDLE_FIRST_COLUMN = 24;
-    constexpr int BLOCK_MIDDLE_COLUMN_COUNT = 80;
-    constexpr int TOP_BEVEL_ROW = 58;   // below the joint between the rows 63 and 64
-    constexpr int BOTTOM_BEVEL_ROW = 5; // above the joint at the bottom of the picture
-    const double greenBelowJoint = channelAverage(image, 1, BLOCK_MIDDLE_FIRST_COLUMN,
-                                                  TOP_BEVEL_ROW, BLOCK_MIDDLE_COLUMN_COUNT, 1);
-    const double greenAboveJoint = channelAverage(image, 1, BLOCK_MIDDLE_FIRST_COLUMN,
-                                                  BOTTOM_BEVEL_ROW, BLOCK_MIDDLE_COLUMN_COUNT, 1);
+    constexpr int STONE_MIDDLE_FIRST_COLUMN = 48;
+    constexpr int STONE_MIDDLE_COLUMN_COUNT = 80;
+    constexpr int TOP_BEVEL_ROW = 388;    // below the level joint
+    constexpr int BOTTOM_BEVEL_ROW = 396; // above it
+    const double greenBelowJoint = channelAverage(image, 1, STONE_MIDDLE_FIRST_COLUMN,
+                                                  TOP_BEVEL_ROW, STONE_MIDDLE_COLUMN_COUNT, 1);
+    const double greenAboveJoint = channelAverage(image, 1, STONE_MIDDLE_FIRST_COLUMN,
+                                                  BOTTOM_BEVEL_ROW, STONE_MIDDLE_COLUMN_COUNT, 1);
     CHECK(greenBelowJoint > 150.0);
     CHECK(greenAboveJoint < 106.0);
 
-    // The same along x, in the red channel: the bevel left of a vertical joint is the
-    // right edge of a block and faces right (red above 128), the bevel right of the
+    // The same along x, in the red channel: the bevel left of an upright joint is the
+    // right edge of a stone and faces right (red above 128), the bevel right of the
     // joint faces left (red below 128).
-    constexpr int BLOCK_MIDDLE_FIRST_ROW = 16;
-    constexpr int BLOCK_MIDDLE_ROW_COUNT = 32;
-    constexpr int RIGHT_BEVEL_COLUMN = 122; // left of the joint between the columns 127 and 128
-    constexpr int LEFT_BEVEL_COLUMN = 5;    // right of the joint at the left edge of the picture
+    constexpr int STONE_MIDDLE_FIRST_ROW = 148;
+    constexpr int STONE_MIDDLE_ROW_COUNT = 32;
+    constexpr int RIGHT_BEVEL_COLUMN = 301; // left of the upright joint
+    constexpr int LEFT_BEVEL_COLUMN = 307;  // right of it
     const double redLeftOfJoint = channelAverage(image, 0, RIGHT_BEVEL_COLUMN,
-                                                 BLOCK_MIDDLE_FIRST_ROW, 1, BLOCK_MIDDLE_ROW_COUNT);
+                                                 STONE_MIDDLE_FIRST_ROW, 1, STONE_MIDDLE_ROW_COUNT);
     const double redRightOfJoint = channelAverage(
-        image, 0, LEFT_BEVEL_COLUMN, BLOCK_MIDDLE_FIRST_ROW, 1, BLOCK_MIDDLE_ROW_COUNT);
+        image, 0, LEFT_BEVEL_COLUMN, STONE_MIDDLE_FIRST_ROW, 1, STONE_MIDDLE_ROW_COUNT);
     CHECK(redLeftOfJoint > 150.0);
     CHECK(redRightOfJoint < 106.0);
 
