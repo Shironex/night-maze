@@ -9,6 +9,7 @@
 #
 # layer <file> <drift x> <drift y> <scale from> <scale to>
 
+music intro_theme.flac
 crossfade 1.5
 
 # 1. The moon breaks.
@@ -52,7 +53,7 @@ layer beat5.png 0 0 1.03 1.14
 
 # 6. The last lamp.
 beat
-seconds 9
+seconds 13
 voice beat6_voice.flac
 line One lamp is left in the village.
 line It is yours.
