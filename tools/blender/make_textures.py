@@ -101,6 +101,26 @@ WALL_LIGHT = 0.24
 WALL_LIGHT_TOLERANCE = 0.05
 WALL_COLOUR_SHARE_TOLERANCE = 0.03
 
+# The generated picture of the plain wall is two copies of one picture stacked: it repeats
+# after WALL_STONE_PERIOD rows. Stretched over 2 m of wall that showed the same stones
+# every 1.1 m. So only one copy is kept, and the other half of the picture is that copy
+# mirrored left to right and moved by half its width (unrepeated_plain).
+WALL_STONE_PERIOD = 512
+# The two halves meet along a cut through this many rows around the seam, the cheapest
+# path as in seamless_across: where the halves differ least and are darkest.
+WALL_HALF_SEAM_BAND = 128
+
+# Every wall picture is moved and stretched up and down so that a level joint lies at
+# v = 0 and another WALL_SECOND_COURSE of the picture above it (align_courses). The wall
+# models put v = 0 at the top of the plinth (0.25 m) and so the second joint at the
+# underside of the coping (2.85 m, 1.3 pictures up): both edges follow a joint instead of
+# cutting through stones. A joint row is one where the most pixels are joint, averaged
+# over WALL_COURSE_SMOOTHING rows to each side; the second is looked for up to
+# WALL_COURSE_SEARCH of the picture from where it should lie.
+WALL_SECOND_COURSE = 0.3
+WALL_COURSE_SMOOTHING = 2
+WALL_COURSE_SEARCH = 0.06
+
 # The baked relief is used as it was baked.
 WALL_BAKED_RELIEF = 1.0
 # The relief made from a picture, in pixels of the source (1/512 m): how much higher the
@@ -110,10 +130,11 @@ WALL_PICTURE_JOINT_DEPTH = 8.0
 
 # The stones that are missing in the damaged wall, as one pixel (column, row from the
 # bottom) on each, in the seamless plain picture at the size of the source. The wall model
-# is 3 m high and one repeat of the picture is 2 m, so the lower half of the picture is
-# seen twice on a wall and the upper half once. Both stones lie in the upper half, so a
-# niche is not seen twice, and they do not touch.
-WALL_MISSING_STONES = ((225, 648), (840, 883))
+# is 3 m high, one repeat of the picture is 2 m and v = 0 is the top of the plinth: the
+# plinth shows the rows from 896 up, the coping the rows from 307 to 384, and the body
+# every row once and the rows up to 307 a second time. Both stones lie between the rows
+# 384 and 896, so a niche is not seen twice, and they do not touch.
+WALL_MISSING_STONES = ((470, 839), (720, 659))
 # A stone grows from its pixel by one pixel per step: this many steps reach across the
 # largest stone. If it still grows after them, it has run into a joint that is too light.
 WALL_STONE_GROWTH = 300
@@ -683,6 +704,98 @@ def stretch_tiling(picture):
             + down * ((1 - across) * picture[above][:, column] + across * picture[above][:, right]))
 
 
+def unrepeated_plain(pictures):
+    """The pictures of the plain wall (colour and normal map, as loaded) made seamless
+    without their repeat: one copy of WALL_STONE_PERIOD rows, made seamless across, under
+    the same copy mirrored left to right and moved by half its width, at the size of the
+    source.
+
+    Both halves repeat up and down by themselves, so they are defined for every row, and
+    the result shows the lower half from a cut near its middle row to the same cut one
+    copy higher, and the upper half elsewhere. The cut runs along the joints where the two
+    halves differ least, as in seamless_across, so the stones of one half do not end in
+    the middle of a stone of the other.
+    """
+    lower = seamless_across([picture[:WALL_STONE_PERIOD] for picture in pictures])
+    width = lower[0].shape[1]
+    upper = []
+    for index, picture in enumerate(lower):
+        mirrored = np.roll(picture[:, ::-1], width // 2, axis=1)
+        if index > 0:
+            # A normal map turned left to right: its x direction turns round too.
+            mirrored = mirrored.copy()
+            mirrored[..., 0] = 1.0 - mirrored[..., 0]
+        upper.append(mirrored)
+
+    # The rows from -WALL_HALF_SEAM_BAND / 2 to WALL_HALF_SEAM_BAND / 2 around the seam,
+    # one path from the left edge to the right one that closes on itself.
+    half_band = WALL_HALF_SEAM_BAND // 2
+    rows = np.arange(-half_band, half_band) % WALL_STONE_PERIOD
+    first, second = lower[0][rows], upper[0][rows]
+    cost = np.abs(first - second).sum(axis=-1) + first.mean(axis=-1) + second.mean(axis=-1)
+    cut = (WALL_CUT_MARGIN + cheapest_cut(
+        cost[WALL_CUT_MARGIN:WALL_HALF_SEAM_BAND - WALL_CUT_MARGIN].T)) - half_band
+
+    # Where every pixel lies from the cut of its column, from minus one copy up to one
+    # copy: from 0 up it shows the upper half, below 0 the lower one. Softened over 3
+    # pixels at both of its edges, like the cut of seamless_across.
+    height = 2 * WALL_STONE_PERIOD
+    above = (np.arange(height)[:, None] - cut[None, :] + WALL_STONE_PERIOD) % height
+    above = above - WALL_STONE_PERIOD
+    show_upper = (np.clip((above + 1.5) / 3.0, 0.0, 1.0)
+                  * np.clip((WALL_STONE_PERIOD - above - 0.5) / 3.0, 0.0, 1.0))[..., None]
+    every_row = np.arange(height) % WALL_STONE_PERIOD
+    return [stretch_tiling(show_upper * top[every_row] + (1.0 - show_upper) * bottom[every_row])
+            for bottom, top in zip(lower, upper)]
+
+
+def joint_rows(color):
+    """How much of every row of a wall picture is joint, averaged with the
+    WALL_COURSE_SMOOTHING rows to each side (the picture repeats, so the first rows are
+    averaged with the last)."""
+    share = joint_mask(color).mean(axis=1)
+    return sum(np.roll(share, shift) for shift in
+               range(-WALL_COURSE_SMOOTHING, WALL_COURSE_SMOOTHING + 1))
+
+
+def align_courses(color, slopes=None):
+    """Returns the wall picture (and the slopes of its relief, when given) moved and
+    stretched up and down so that its most level joint lies at row 0 and the most level
+    joint near WALL_SECOND_COURSE of the picture above it at that row exactly.
+
+    The rows between the two joints are stretched evenly, and so are the rows from the
+    second joint round to the first. The slopes along the height change with the stretch.
+    """
+    size = color.shape[0]
+    share = joint_rows(color)
+    first = int(np.argmax(share))
+    want = WALL_SECOND_COURSE * size
+    search = int(WALL_COURSE_SEARCH * size)
+    near = (first + int(round(want)) + np.arange(-search, search + 1)) % size
+    second = int(near[np.argmax(share[near])])
+    gap = (second - first) % size
+
+    # The row of the source that every row of the result shows, and how many rows of the
+    # source one row of the result covers there.
+    out = np.arange(size, dtype=np.float64)
+    low = out < want
+    source = np.where(low, first + out * gap / want,
+                      second + (out - want) * (size - gap) / (size - want))
+    step = np.where(low, gap / want, (size - gap) / (size - want))
+    below = np.floor(source).astype(int)
+    share_above = (source - below)[:, None, None]
+
+    def remap(picture):
+        return ((1.0 - share_above) * picture[below % size]
+                + share_above * picture[(below + 1) % size])
+
+    if slopes is None:
+        return remap(color)
+    slopes = remap(slopes)
+    slopes[..., 1] *= step[:, None]
+    return remap(color), slopes
+
+
 def luminance(color):
     """How bright every pixel of a colour picture looks, from its sRGB values."""
     return color @ np.array((0.2126, 0.7152, 0.0722))
@@ -752,11 +865,11 @@ def plain_wall():
     The colour is the generated picture, and the relief was baked from the slab Tripo
     generated from it (see bake_wall_normals.py).
     """
-    color, normal = make_seamless([
+    color, normal = unrepeated_plain([
         load_source_picture("wall_stone.png"),
         load_source_picture("wall_stone_normal_baked.png"),
     ])
-    return color, WALL_BAKED_RELIEF * slopes_of(normal)
+    return align_courses(color, WALL_BAKED_RELIEF * slopes_of(normal))
 
 
 def build_plain_wall_textures():
@@ -819,6 +932,7 @@ def build_cracked_wall_textures():
     picture itself (see picture_slopes).
     """
     (color,) = make_seamless([load_source_picture("wall_cracked.png")])
+    color = align_courses(color)
     slopes = picture_slopes(color)
     color = with_light(lift_joints(color), WALL_LIGHT)
     save_wall(color, slopes, "wall_cracked")
@@ -832,8 +946,9 @@ def build_mossy_wall_textures():
         load_source_picture("wall_mossy.png"),
         load_source_picture("wall_mossy_normal_baked.png"),
     ])
+    color, slopes = align_courses(color, WALL_BAKED_RELIEF * slopes_of(normal))
     color = with_light(lift_joints(color), WALL_LIGHT)
-    save_wall(color, WALL_BAKED_RELIEF * slopes_of(normal), "wall_mossy")
+    save_wall(color, slopes, "wall_mossy")
     return color
 
 

@@ -184,17 +184,17 @@ TEST_CASE("the wall normal map follows the OpenGL convention: a joint is a groov
     // The loader returns the bottom row first, so row 0 is v = 0 and rows count upwards,
     // like v. The relief is baked from the generated model of the wall
     // (tools/blender/bake_wall_normals.py), so the places below are joints found in that
-    // picture: a long level joint between the rows 388 and 396 under the columns 48 to
-    // 127, and an upright joint between the columns 301 and 307 beside the rows 148 to 179.
+    // picture: a long level joint between the rows 330 and 338 under the columns 212 to
+    // 291, and an upright joint between the columns 25 and 31 beside the rows 462 to 493.
     //
     // In a groove the bevel BELOW the joint is the top edge of a stone: it faces up, so
     // its normal has a positive y, a green above 128. The bevel ABOVE the joint is the
     // bottom edge of the next stone: it faces down, green below 128. A map in the
     // DirectX convention, or a ridge instead of a groove, would have the two swapped.
-    constexpr int STONE_MIDDLE_FIRST_COLUMN = 48;
+    constexpr int STONE_MIDDLE_FIRST_COLUMN = 212;
     constexpr int STONE_MIDDLE_COLUMN_COUNT = 80;
-    constexpr int TOP_BEVEL_ROW = 388;    // below the level joint
-    constexpr int BOTTOM_BEVEL_ROW = 396; // above it
+    constexpr int TOP_BEVEL_ROW = 330;    // below the level joint
+    constexpr int BOTTOM_BEVEL_ROW = 338; // above it
     const double greenBelowJoint = channelAverage(image, 1, STONE_MIDDLE_FIRST_COLUMN,
                                                   TOP_BEVEL_ROW, STONE_MIDDLE_COLUMN_COUNT, 1);
     const double greenAboveJoint = channelAverage(image, 1, STONE_MIDDLE_FIRST_COLUMN,
@@ -205,10 +205,10 @@ TEST_CASE("the wall normal map follows the OpenGL convention: a joint is a groov
     // The same along x, in the red channel: the bevel left of an upright joint is the
     // right edge of a stone and faces right (red above 128), the bevel right of the
     // joint faces left (red below 128).
-    constexpr int STONE_MIDDLE_FIRST_ROW = 148;
+    constexpr int STONE_MIDDLE_FIRST_ROW = 462;
     constexpr int STONE_MIDDLE_ROW_COUNT = 32;
-    constexpr int RIGHT_BEVEL_COLUMN = 301; // left of the upright joint
-    constexpr int LEFT_BEVEL_COLUMN = 307;  // right of it
+    constexpr int RIGHT_BEVEL_COLUMN = 25; // left of the upright joint
+    constexpr int LEFT_BEVEL_COLUMN = 31;  // right of it
     const double redLeftOfJoint = channelAverage(image, 0, RIGHT_BEVEL_COLUMN,
                                                  STONE_MIDDLE_FIRST_ROW, 1, STONE_MIDDLE_ROW_COUNT);
     const double redRightOfJoint = channelAverage(
