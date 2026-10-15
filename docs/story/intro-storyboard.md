@@ -8,6 +8,19 @@ Both tell the same six beats below. They keep the facts and the names of the fiv
 
 One calm female narrator, the voice of an old woman of the village telling a winter tale to a child at the fire. She speaks low and slow, about 120 words a minute, warm but tired, with no drama in the scary lines. Danger is said as plainly as the weather. Leave a breath between the two sentences of a beat, and let the last words of each beat fall rather than rise. "It is yours." is the softest line of the six, almost a gift. No accent is required, but a slight rural, old-fashioned colour suits the tale. Record each beat as its own file, with half a second of room tone before and after.
 
+Recorded on 2026-10-15 in ElevenLabs (Eleven v4, a voice made with Voice Design from this direction, MP3 128 kbps). Long descriptive tags in brackets were read out loud; one-word tags work. The kept takes used:
+
+```
+[slowly] Every winter... the moon drops pieces of itself.
+[slowly] They fall into the old maze above the village... [sighs] And the village sleeps badly.
+[slowly] Someone has always walked in and carried them out... [sadly] This winter, the lamplighter's hands shake.
+[slowly] Outsiders call them crystals. We call them splinters... [softly] They remember being light... and the lamp believes them.
+[slowly] Keep the lamp lit... [quietly] Something walks where it is not.
+[slowly] One lamp is left in the village... [whispers] It is yours.
+```
+
+Each take is trimmed, peaked at -3 dBFS and padded with half a second of quiet pink room tone into `beatN_voice.flac` (mono, 44.1 kHz) with ffmpeg.
+
 ## Music
 
 One piece for the whole intro, in an Ender Lilies mood: a melancholic solo piano carries the melody, low strings hold the floor, and a soft wordless choir appears only at the moon and at the end. Slow, about 60 to 66 BPM, in a minor key that turns warmer in the last beat. It should be about as long as the intro (about 55 to 65 seconds with the voice) and end with its own fade, because a skip cuts it.
