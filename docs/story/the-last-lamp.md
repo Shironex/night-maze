@@ -240,8 +240,8 @@ The round end card today has the title "You escaped". Proposed title for every n
 
 One line under the title, by night:
 
-- E1: `The near lamps are lit. The village slept a little.`
-- E2: `The lane is lit as far as the well.`
+- E1: `The first windows are lit. The village slept a little.`
+- E2: `Seven more windows. The light walks along the ridge.`
 - E3: `It followed you to the gate and stopped at the lamplight.`
 - E4: `Lamps to the edge of the village. One window still dark.`
 
