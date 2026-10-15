@@ -166,15 +166,20 @@ TYMPANUM_RAYS = 48
 TYMPANUM_GRIP = 0.04
 BELL_OPENING_HALF = 0.42
 BELL_OPENING_SILL = 2.92
-# The slab wears a tiny piece of the picture of the stones over the doorway, this many UV
-# units per metre: the darker third of them (TYMPANUM_SHADE), so it reads as stone in the
-# shadow of the arch.
-TYMPANUM_UV_UNITS_PER_METRE = 0.02
-TYMPANUM_SHADE = 0.3
+# The slab wears a patch of the picture where the source has a few large dressed stones
+# with clear joints: TYMPANUM_UV_CENTRE is its middle and TYMPANUM_UV_SIZE its width and
+# height, in UV units, found once by looking at the picture. The whole slab is laid on it
+# in one piece, as large as fits, so it reads as a lintel of big stones. (It wore one
+# flat colour before, a tiny piece of the picture, and read as smooth plaster.)
+TYMPANUM_UV_CENTRE = (0.105, 0.49)
+TYMPANUM_UV_SIZE = (0.11, 0.07)
 
 # The source pictures are 2048 pixels wide. The arch is the landmark of the maze and is
-# seen from close by, so the game gets them at 1024.
-TEXTURE_SIZE = 1024
+# seen from close by, and at 1024 its stones were blurred (about 130 texels a metre, half
+# of the walls), so the game gets them at full size. Its normal map is steepened by
+# ARCH_RELIEF, because the joints were too faint to read in the light of the game.
+TEXTURE_SIZE = 2048
+ARCH_RELIEF = 1.5
 
 
 def in_box(point, box):
@@ -305,17 +310,20 @@ def reshape(mesh):
     return factor
 
 
-def project_piece(face, uv_layer, centre_uv, units_per_metre):
+def project_piece(face, uv_layer, centre_uv, units_per_metre, centre=None):
     """Gives a face a small piece of the picture around centre_uv. The face is projected
     onto its own plane, as common.face_project_uvs does, so its piece of the picture is
-    never a line and never a mirror image."""
+    never a line and never a mirror image. centre is the point that lands on centre_uv,
+    the middle of the face unless given: faces that share one centre get one picture
+    without seams."""
     face.normal_update()
     up = Vector((0.0, 0.0, 1.0)) - face.normal * face.normal.z
     if up.length < 0.000001:
         up = Vector((0.0, 1.0, 0.0))
     up.normalize()
     right = up.cross(face.normal)
-    centre = face.calc_center_median()
+    if centre is None:
+        centre = face.calc_center_median()
     for loop in face.loops:
         offset = loop.vert.co - centre
         loop[uv_layer].uv = (centre_uv[0] + offset.dot(right) * units_per_metre,
@@ -398,18 +406,9 @@ def crossing(first, second, x):
     return first[1] + (second[1] - first[1]) * share
 
 
-def add_tympanum(mesh, uv_layer, colour):
+def add_tympanum(mesh, uv_layer):
     """Adds the tympanum over the door, with the opening for the bell."""
     tree = BVHTree.FromBMesh(mesh)
-    soffit = tree.ray_cast(Vector((0.0, 0.0, 1.0)), Vector((0.0, 0.0, 1.0)), 10.0)[0].z
-    stones = [face for face in mesh.faces
-              if abs(face.calc_center_median().x) < 0.6
-              and soffit - 0.2 < face.calc_center_median().z < soffit + 0.3]
-    stones.sort(key=lambda face: (generated.texel_at(colour, face, uv_layer).sum(),
-                                  face.index))
-    shade = stones[int(len(stones) * TYMPANUM_SHADE)]
-    centre_uv = (sum(loop[uv_layer].uv.x for loop in shade.loops) / 3.0,
-                 sum(loop[uv_layer].uv.y for loop in shade.loops) / 3.0)
 
     sides = {}
     for side in (-1.0, 1.0):
@@ -454,11 +453,17 @@ def add_tympanum(mesh, uv_layer, colour):
          (-BELL_OPENING_HALF, far, sill), (-BELL_OPENING_HALF, near, sill)],
         Vector((0.0, 0.0, 1.0)))
 
+    # The slab is laid on its patch of the picture from its middle, as large as fits.
+    xs = [x for points, _, _ in sides.values() for x, _ in points]
+    zs = [z for points, _, _ in sides.values() for _, z in points]
+    middle = Vector((0.0, 0.0, (min(zs) + max(zs)) / 2.0))
+    units_per_metre = min(TYMPANUM_UV_SIZE[0] / (max(xs) - min(xs)),
+                          TYMPANUM_UV_SIZE[1] / (max(zs) - min(zs)))
     faces = bmesh.ops.triangulate(mesh, faces=faces, quad_method="BEAUTY",
                                   ngon_method="BEAUTY")["faces"]
     for face in faces:
         face.smooth = False
-        project_piece(face, uv_layer, centre_uv, TYMPANUM_UV_UNITS_PER_METRE)
+        project_piece(face, uv_layer, TYMPANUM_UV_CENTRE, units_per_metre, middle)
 
 
 def check(mesh, mounts):
@@ -493,7 +498,7 @@ def build(shots):
     for face in mesh.faces:
         face.smooth = True
     crown, soffit = crown_and_soffit(mesh)
-    add_tympanum(mesh, uv_layer, colour)
+    add_tympanum(mesh, uv_layer)
     mounts = add_hooks(mesh, uv_layer, iron_uv)
     bmesh.ops.triangulate(mesh, faces=mesh.faces[:])
     check(mesh, mounts)
@@ -513,7 +518,7 @@ def build(shots):
               f"{mount.z:.3f})")
 
     make_textures.save_png(generated.shrink(colour, TEXTURE_SIZE), "gate_arch.png")
-    generated.save_normal_map(normal, TEXTURE_SIZE, "gate_arch_normal.png")
+    generated.save_normal_map(normal, TEXTURE_SIZE, "gate_arch_normal.png", ARCH_RELIEF)
 
     common.reset_scene()
     data = bpy.data.meshes.new(NAME)
