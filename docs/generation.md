@@ -68,6 +68,78 @@ Seamless tileable texture, flat orthographic front view filling the whole square
 | wall_mossy | Built | An old drystone wall of rough grey fieldstones stacked without mortar, thick green moss in the joints and over the upper stones, damp dark patches. |
 | wall_cracked | Built | An old drystone wall of rough grey fieldstones stacked without mortar, several stones cracked and split, one or two missing leaving dark holes, pale fresh broken faces. |
 
+## Next: tumbled walls and night dressing
+
+Planned, not built (first of three releases). Some walls get a real break: the top third has fallen out in a V and stones lie at the foot, still too high to climb. Each night also gets props that match its title (frost, shepherds, a children's game, craters, the lamplighter's things). Nothing here is in the game yet; the build scripts come with the release. Append the style line to every prompt.
+
+Wall shapes repeat, so they are Prop and not Landmark. The build cuts the ends flat to the 2 m segment, gives the shape the wall's own UVs and `wall_stone.png`, and decimates it to about 600 triangles (the crowned wall is 414). Dressing props have their origin at the middle of the base, and the box is the footprint, at most 0.45 m deep against a wall.
+
+| Name | Status | Settings | Prompt | Limits for the build |
+|---|---|---|---|---|
+| wall_tumbled | Not generated | Prop | A straight section of an old drystone wall 2 m long, 3 m tall and 0.4 m thick, built of rough grey fieldstones without mortar, whose upper part has collapsed: a deep V-shaped gap in the top third where stones have fallen out, the stones on both sides of the gap loose and tilted, a few fallen stones lying close along its foot on both faces alike, both ends cut straight and flat. | 2.0 x 3.0 x 0.4 m, origin of a wall segment; the bottom of the gap stays above 2.2 m; fallen stones stay within 0.2 m of the wall face and below 0.25 m, so no box. Both faces alike, because walls along X are never turned. |
+| wall_bulged | Not generated | Prop | A straight section of an old drystone wall 2 m long, 3 m tall and 0.4 m thick, rough grey fieldstones without mortar, bulging outwards in its middle as if about to fall, two thick grey oak props leaning against the bulge with their feet in the ground, both ends cut straight and flat. | Same limits. Border walls only, props on the outer face in the land; needs a 180 degree variant of `wallModelMatrix`, or the west and east borders. |
+| wall_roots | Not generated | Prop | A straight section of an old drystone wall 2 m long, 3 m tall and 0.4 m thick, rough grey fieldstones without mortar, gripped by thick old stony roots of a hedge that turned to stone: grey roots as thick as an arm growing out of the joints, climbing over the top and down both faces alike, lying flat against the stone, no leaves, both ends cut straight and flat. | Same limits. The hedge that went to stone, as a shape and not as leaves. |
+| trough_iced | Not generated | Prop | An old stone water trough cut from one block, 1 m long, thick rim worn smooth, the water inside frozen into a flat white opaque sheet of ice with cracks, frost on the rim, moss at the foot. | Night 1. Box 1.0 x 0.4 x 0.5 m. |
+| coping_fall | Not generated | Prop | A low heap of six fallen coping stones from a drystone wall, flat rough grey slabs lying tumbled and tilted against each other, frost and lichen on their upper faces. | Night 1. Box 1.2 x 0.4 x 0.35 m. |
+| field_gate_leaning | Not generated | Prop | An old wooden field gate 1.8 m long and 1.1 m tall made of five thick weathered grey oak planks with one diagonal brace, two black iron hinge straps, standing on its own and leaning backwards as if propped against a wall. | Night 2. 1.8 m long, 0.3 m deep, leans on a wall. Five thick planks, so it is not a thin repeating part. |
+| shepherd_satchel | Not generated | Prop | A worn shepherd's satchel of thick brown leather and grey wool felt lying slumped on the ground, the flap open, a wooden cup and a heel of bread showing inside, a long strap coiled beside it, iron buckle. | Night 2. 0.4 m, on the ground against a wall, no box. |
+| feed_trough | Not generated | Prop | An old wooden sheep feed trough 1.2 m long on four short splayed legs, a V-shaped box of thick grey oak boards with black iron corner straps, a little old hay in the bottom. | Night 2. Box 1.2 x 0.4 x 0.45 m. |
+| toy_lamp | Not generated | Prop | A child's toy lamp carved from pale wood, 0.25 m tall, a chunky square body with a painted yellow window on each side, a little peaked roof and a wooden ring on top, the paint faded and chipped. | Night 3. 0.25 m, on the ground, no box. Echoes the held lamp; the windows are painted, not glowing. |
+| counting_stool | Not generated | Prop | A small old three-legged milking stool of grey oak with a round seat worn smooth, 0.45 m tall, one leg mended with an iron band. | Night 3. 0.45 m, faces a wall, where the "lamp" child stood. Box 0.35 m. |
+| splinter_crater | Not generated | Prop | A shallow round crater 1.4 m across in dark earth and broken stone where a piece of the moon struck the ground: a ring of cracked dark grey stone around the edge, and in the middle a smooth pale glassy white-blue scorch like melted crystal, sharply separate from the dark stone. | Night 4. 1.4 m across, 0.15 m high, flat on the ground, no box. The glassy middle glows, so the build splits it like the splinter ([decisions/moon-splinters.md](decisions/moon-splinters.md)). |
+| oil_can_dropped | Not generated | Prop | An old lamplighter's oil can of dented tinplate lying on its side, a round body with a long thin spout and a wire handle on top, a brass maker's band like a railway lamp, a dark stain of spilled oil under the spout. | Night 5. 0.3 m, on its side, no box. |
+| lamp_cart | Not generated | Prop | A small old lamplighter's handcart of grey oak boards, two solid wooden disc wheels with iron rims and no spokes, two long handles resting on the ground, an open crate in the cart holding three old iron lanterns with dark panes, a coiled rope. | Night 5. Box 1.3 x 0.7 x 0.9 m; needs a dead end, since it takes 0.7 m. |
+
+Rerolls of a weak model. The first two rolls of `crook_post` both became doors, so this prompt says it lies flat and shows it alone. The door, the heartstone and the milestone are also weak, but I have no new prompt for them yet.
+
+| Name | Status | Settings | Prompt | Limits for the build |
+|---|---|---|---|---|
+| crook_post | Not generated | Prop | A small flat rectangular board of weathered grey oak lying flat on the ground, seen from above, only 0.3 m wide and 0.6 m long and 5 cm thick, like a plaque, two black iron straps across it, one short thick iron pin standing straight up from its middle, a small iron ring lying beside the pin, nothing behind it and nothing around it. | Same limits as the row above. The build stands it up on the wall. |
+
+New wall picture, from the Image tab (about 2 credits). Append the seamless line from Wall pictures above. A darker picture also means loosening the test that keeps a worn picture within 5 % of the plain wall's brightness (`tests/ImageLoaderTests.cpp`). The frost and damp variants and the ground pictures of the five nights have no prompt yet.
+
+| Name | Status | Prompt for the picture |
+|---|---|---|
+| wall_dark | Not generated | An old drystone wall of rough dark grey fieldstones stacked without mortar, soot-blackened and damp, deep shadowed joints, a few stones scorched almost black, no moss. |
+
+## Next: gate seals
+
+Planned, not built (second of three releases). The gate asks for one more thing on two nights. On night 2 an iron lock sits on the door and the shepherd's key hangs on a post in a far dead end. On night 4 a stone dial beside the door has three rings of moon phases, and three chalk marks in the maze each show one phase to match. Append the style line to every prompt.
+
+| Name | Status | Settings | Prompt | Limits for the build |
+|---|---|---|---|---|
+| shepherd_key | Not generated | Prop | A large old black iron gate key 0.3 m long, a round ring bow, a thick round shank, a big square bit with two teeth, a loop of worn leather thong tied through the bow. | Night 2. 0.3 m, floats and turns like a flask. |
+| key_post | Not generated | Prop | A short thick weathered oak post 1.5 m tall leaning slightly, a black iron hook near the top, a shepherd's crook-shaped notch carved into its face, the bare foot driven straight into the ground. | Night 2. 1.5 m, the post the key hangs on. Box 0.3 m. |
+| gate_lock | Not generated | Prop | A heavy old black iron box lock for an oak door, a flat rectangular iron case 0.35 m wide with big round rivets at the corners, a keyhole plate with a swinging iron cover, a thick iron bolt sticking out of one side, rust in the seams. | Night 2. 0.35 x 0.3 m, mounted on the door leaf and sinks with it; one picture for iron. |
+| moon_dial | Not generated | Prop | A square block of dressed grey stone 0.9 m tall with a round dial carved in its front face: three plain flat stone rings one inside the other around a central black iron boss, each ring divided by small grooves into eight smooth empty fields, a raised worn rim, moss in the cracks. | Night 4. 0.9 m block set against a pier of the arch. The body has plain fields; the phase pictures are script strips like the chalk, because Tripo does not draw exact symbols. The build cuts the three rings out as separate models, or they are script rings wearing the picture, so they can turn. |
+
+## Next: landmarks
+
+Planned, not built (third of three releases). A few tall shapes stand against the stars above the walls, the same for one seed, so you learn "the gate is past the dovecote". Five stand on the land outside the border wall, one per side; the hawthorn stands in a free corner cell with a trunk box of 0.4 m and its crown hangs over the walls above 3.2 m. A landmark you have seen gets a small icon on the held map. Check first that the fog leaves a 7 m silhouette readable at 30 to 40 m; if not, landmarks get a fog factor of their own. Append the style line to every prompt.
+
+| Name | Status | Settings | Prompt | Limits for the build |
+|---|---|---|---|---|
+| lm_hawthorn | Not generated | Landmark | A lone ancient hawthorn tree with no leaves, 6 m tall: a thick twisted grey trunk that splits at 3 m into three heavy crooked limbs, all bent the same way as if by years of wind, only a few thick branches and no thin twigs, deeply furrowed bark, thick roots going straight down into the ground close around the trunk. | Inner. 6 m tall, origin at the middle of the base. The build squeezes everything below 3.2 m into the 0.4 m trunk box and keeps anything at the foot under 0.25 m; branches start above 3.2 m. Bare branches are geometry, so no transparency. |
+| lm_standing_stone | Not generated | Landmark | A tall rough standing stone 5 m high, one slab of dark grey granite leaning slightly to one side, narrowing towards the top, a large round hole worn right through its upper third, pale lichen patches, set in a low ring of small stones. | Outer. 5 m tall. The hole must show sky from the corridors, so check that it reads. |
+| lm_dovecote | Not generated | Landmark | A ruined round dovecote tower 7 m tall built of drystone fieldstones without mortar, a conical roof of stone slabs with one side fallen in, rows of small square nesting holes high on the wall, a low doorway blocked with stones, moss at the foot. | Outer. 7 m tall. |
+| lm_chapel_gable | Not generated | Landmark | The single standing gable end of a ruined stone chapel, 8 m tall: one thick wall of rough stone with a pointed top, a tall empty arched window in the middle, a small empty bellcote on the peak with no bell, the side walls broken off low, ivy-free, moss on the ledges. | Outer. 8 m tall. The empty bellcote is the silhouette that matters. |
+| lm_watch_hut | Not generated | Landmark | A small old shepherd's watch hut on a stone base 2 m high, a timber upper room with one dark open window, a steep roof of stone slabs with a short chimney, the whole hut leaning slightly, weathered grey oak and black iron straps. | Outer. 5 m tall. A shepherd's look-out. A window light would be a script piece like the village lights. |
+| lm_cairn | Not generated | Landmark | A tall shepherd's cairn 4 m high, a cone of stacked flat fieldstones without mortar, one long upright stone on its top like a finger pointing at the sky, moss between the lower stones. | Outer. 4 m tall. A spare shape for the fourth side. |
+
 ## Budget
 
 About 16 models and 3 textures, 50 to 60 credits a roll: roughly 1,000 to 1,500 credits with rerolls.
+
+The three planned releases add 23 models, 1 picture and the crook_post reroll, at about 55 credits a roll and 3 to 4 rolls a model (Landmark rolls fail more, so 4):
+
+| Line | Models | Rolls each | Rolls | Credits |
+|---|---|---|---|---|
+| Tumbled walls | 3 | 4 | 12 | 660 |
+| Night dressing | 10 | 3 | 30 | 1,650 |
+| Gate seals | 4 | 3 | 12 | 660 |
+| Landmarks | 6 | 4 | 24 | 1,320 |
+| Rerolls (door, heartstone, crook_post, milestone) | 4 | 4 | 16 | 880 |
+| Pictures (the dark wall and the night pictures) | about 15 | | | about 30 |
+| Total | | | 94 | about 5,200 |
+
+Of 19,800 credits that leaves about 14,600. Credits are not the limit, building is, so a model can be generated well before its release and kept in the inbox.
