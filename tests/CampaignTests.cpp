@@ -247,9 +247,9 @@ TEST_CASE("the first nights each start with the line the story document names") 
 
 TEST_CASE("the first four nights end with their line, and the last with the ending card") {
     CHECK(std::string_view(game::campaignNight(1).endLine) ==
-          "The near lamps are lit. The village slept a little.");
+          "The first windows are lit. The village slept a little.");
     CHECK(std::string_view(game::campaignNight(2).endLine) ==
-          "The lane is lit as far as the well.");
+          "Seven more windows. The light walks along the ridge.");
     CHECK(std::string_view(game::campaignNight(3).endLine) ==
           "It followed you to the gate and stopped at the lamplight.");
     CHECK(std::string_view(game::campaignNight(4).endLine) ==
