@@ -162,6 +162,10 @@ To change the piece, edit its notes in `SKETCHES` and run the script and `--repo
 
 Record again whenever the look of the game changes.
 
+## Storybook intro
+
+`assets/intro/` holds the storybook intro: `storybook.txt` and the layers it names. `tools/make_storybook_placeholders.py` writes the placeholder layers (standard library only). The painted layers, the voice lines and the music replace them by hand, and then the script is not run again. The file names, formats and sizes are in [story/intro-storyboard.md](story/intro-storyboard.md).
+
 ## README pictures
 
 `tools/capture_showcase.py` starts the Release build and saves what its window shows into `showcase-out/raw/` (not committed). Then:

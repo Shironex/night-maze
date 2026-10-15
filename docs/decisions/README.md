@@ -61,6 +61,7 @@ Status words: `accepted (date)` means the code does this today. `planned (date)`
 - [lamplighters-ledger](lamplighters-ledger.md): the lines whose note was opened, as codes in one settings line
 - [chalk-marks](chalk-marks.md): notes drawn as chalk, the arrow leans along the wall
 - [intro-played-live](intro-played-live.md): five cards in the engine
+- [intro-storybook](intro-storybook.md): painted layers from a manifest, classic as fallback
 
 ## Interface
 - [debug-window](debug-window.md): one window, HUD at the top
