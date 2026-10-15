@@ -51,6 +51,7 @@ Status words: `accepted (date)` means the code does this today. `superseded by <
 - [the-shade](the-shade.md): wanders, hunts by sound and sight, burned away by the lamp
 - [the-shade-hood](the-shade-hood.md): night sky in the hood, brighter as it burns, empty sleeves
 - [generated-shade-model](generated-shade-model.md): a Tripo model as the source, cleaned by a script
+- [generated-models](generated-models.md): the rest of the models and wall pictures the same way
 - [calm-night](calm-night.md): a switch without the shade
 - [campaign-of-five-nights](campaign-of-five-nights.md): own table of nights
 - [village-on-the-ridge](village-on-the-ridge.md): drawn with the sky, real depth, lit night by night
