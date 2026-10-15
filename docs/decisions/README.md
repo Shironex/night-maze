@@ -2,7 +2,7 @@
 
 A record explains why a non-obvious part of the code looks the way it does. Each one is about ten lines: a title that is a sentence, `Status:`, `Code:` (paths only), then Context, Decision, Why (with the one rejected alternative) and Cost and revisit. A record is short on purpose. Theory and code walk-throughs live elsewhere.
 
-Status words: `accepted (date)` means the code does this today. `superseded by <record>` means the decision is gone and the named record replaces it. An `Earlier:` clause names an older form of a decision that still stands.
+Status words: `accepted (date)` means the code does this today. `planned (date)` means the decision is taken and the code does not exist yet. `superseded by <record>` means the decision is gone and the named record replaces it. An `Earlier:` clause names an older form of a decision that still stands.
 
 ## Rendering
 - [rendering-in-the-game-layer](rendering-in-the-game-layer.md): drawing classes live in src/game
@@ -55,6 +55,7 @@ Status words: `accepted (date)` means the code does this today. `superseded by <
 - [calm-night](calm-night.md): a switch without the shade
 - [campaign-of-five-nights](campaign-of-five-nights.md): own table of nights
 - [village-on-the-ridge](village-on-the-ridge.md): drawn with the sky, real depth, lit night by night
+- [land-around-the-maze](land-around-the-maze.md): planned, real models within 40 m of the border, windows lit night by night
 - [tonights-hedge](tonights-hedge.md): a maze a day, the date is the seed
 - [story-notes-in-order](story-notes-in-order.md): lines read nearest first
 - [lamplighters-ledger](lamplighters-ledger.md): the lines whose note was opened, as codes in one settings line
