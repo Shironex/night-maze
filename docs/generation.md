@@ -52,15 +52,21 @@ Ordered by how much of the screen they fill. Sizes and limits come from [assets.
 | crook_post | Rerolling | Prop | A flat weathered oak board, 0.3 m wide and 0.6 m tall and 5 cm thick, the kind nailed to a wall, with two black iron straps across it, one thick iron pin sticking straight out of its middle and a small iron ring hanging below the pin. Only the board, no door, no wall, no frame. | Must fit the lever pick box 0.3 x 0.64 x 0.26 m with the crook; the crook, the ropes and the slab ring stay script-built ([decisions/crook-lever.md](decisions/crook-lever.md)). |
 | village | Generated | Landmark | A small old hillside village seen from far away at night: a dozen stone cottages with steep slate roofs and chimneys along one lane climbing a ridge, a little church tower, a well, low stone walls. Simple readable silhouettes. | Drawn like the sky around the eye ([decisions/village-on-the-ridge.md](decisions/village-on-the-ridge.md)); the window lights stay script-built (five models of light). |
 
-## Retexturing the wall kit
+## Wall pictures
 
-The walls are modular and must tile, so they stay script-built; only their pictures are generated. A wall model is a plain box, and a texture baked onto its own UVs would not tile, so the input is a flat upright panel 2 by 2 m with UVs from 0 to 1, the size one picture covers on a wall (`C:/Users/kacpe/ai3d/tripo_inbox/nightmaze/wall_texture_panel.glb`). Upload it to Tripo's Texture tool with a prompt below, export the result, and the build makes the picture seamless (blending its edges) and derives the normal map, then keeps it as a source picture for `make_textures.py`.
+The walls are modular and must tile, so they stay script-built; only their pictures are generated. Tripo's Texture tool does not work for this: on a flat 2 by 2 m panel it painted an object (a frame, one row of stones along the top, blurred fields) instead of a surface (tried 2026-10-15, all three rolls). The pictures come from Tripo's **Image** tab instead (a picture generator, about 2 credits a roll). The build makes the picture seamless by blending its edges, derives the normal map, and keeps it as a source picture for `make_textures.py`. A picture covers 2 m of wall.
 
-| Name | Status | Prompt for the texture |
+Append this line to every wall prompt:
+
+```
+Seamless tileable texture, flat orthographic front view filling the whole square, even flat lighting, no shadows from a light direction, no border, no frame, no perspective, no objects, hand-painted, muted natural colours.
+```
+
+| Name | Status | Prompt for the picture |
 |---|---|---|
-| wall_stone | Not generated | Old drystone wall of rough grey fieldstones, tight joints with dark gaps, a few lighter stones, faint lichen, no moss. Hand-painted, muted, no baked lighting. |
-| wall_mossy | Not generated | The same drystone wall with thick green moss growing over the top stones and down the joints, damp dark patches. |
-| wall_cracked | Not generated | The same drystone wall with cracked and split stones, a few missing, pale fresh breaks. |
+| wall_stone | Not generated | An old drystone wall of rough grey fieldstones of mixed sizes stacked without mortar, tight joints with dark gaps, a few lighter stones, faint pale lichen spots, no moss. |
+| wall_mossy | Not generated | An old drystone wall of rough grey fieldstones stacked without mortar, thick green moss in the joints and over the upper stones, damp dark patches. |
+| wall_cracked | Not generated | An old drystone wall of rough grey fieldstones stacked without mortar, several stones cracked and split, one or two missing leaving dark holes, pale fresh broken faces. |
 
 ## Budget
 
