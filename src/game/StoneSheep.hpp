@@ -29,13 +29,14 @@ struct MazeWorld;
 // along +X, which is east, and its origin on the ground under the middle of its length.
 
 /// How long and how wide a sheep is, from the nose to the end of the tail and across the
-/// wool, in metres. The model is exactly as long and a little narrower.
-constexpr float STONE_SHEEP_LENGTH = 0.9F;
+/// wool, in metres. The model is exactly as long and as wide: it lies curled up, and the
+/// build squeezes it across to this width (tools/blender/build_stone_sheep.py).
+constexpr float STONE_SHEEP_LENGTH = 0.75F;
 constexpr float STONE_SHEEP_WIDTH = 0.4F;
 
 /// The collision box reaches this far above the ground under the middle of the sheep and
-/// this far below it: the model is 0.57 m high and its legs go 0.1 m into the ground, for
-/// a sheep that stands on a slope.
+/// this far below it: the model is 0.51 m high and its belly goes 0.1 m into the ground,
+/// for a sheep that lies on a slope.
 constexpr float STONE_SHEEP_BOX_HEIGHT = 0.6F;
 constexpr float STONE_SHEEP_BOX_DEPTH = 0.11F;
 
@@ -57,9 +58,9 @@ constexpr float STONE_SHEEP_ALONG_WALL = 0.25F;
 constexpr float STONE_SHEEP_TO_CORNER = 0.55F;
 
 /// Half of the side of the square box of such a sheep. The box holds the body. The nose,
-/// the tail and the ears reach up to STONE_SHEEP_DIAGONAL_OVERHANG past it, towards the
-/// two walls, where the body of the player cannot follow them: a box around all of it
-/// would be 0.68 m wide and would take the middle of the cell from the player.
+/// the tail and the curl of the wool reach up to STONE_SHEEP_DIAGONAL_OVERHANG past it,
+/// towards the two walls, where the body of the player cannot follow them: a box around
+/// all of it would be 0.68 m wide and would take the middle of the cell from the player.
 constexpr float STONE_SHEEP_DIAGONAL_HALF = 0.24F;
 constexpr float STONE_SHEEP_DIAGONAL_OVERHANG = 0.11F;
 

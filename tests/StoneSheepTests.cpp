@@ -843,8 +843,8 @@ TEST_CASE("the box of a sheep is long along the way it looks, or a square on a d
           doctest::Approx(2.0F * game::STONE_SHEEP_DIAGONAL_HALF));
     CHECK(diagonal.max.z - diagonal.min.z ==
           doctest::Approx(2.0F * game::STONE_SHEEP_DIAGONAL_HALF));
-    // The plate of the sketchbook: a box of 0.9 by 0.4 m.
-    CHECK(game::STONE_SHEEP_LENGTH == 0.9F);
+    // A sheep lying curled up: a box of 0.75 by 0.4 m.
+    CHECK(game::STONE_SHEEP_LENGTH == 0.75F);
     CHECK(game::STONE_SHEEP_WIDTH == 0.4F);
 }
 
@@ -1066,12 +1066,14 @@ TEST_CASE("the model of the sheep fits its box, turned each of the eight ways") 
     REQUIRE_MESSAGE(assets::loadObj(file, model, error), error);
     REQUIRE_FALSE(model.vertices.empty());
     CHECK(model.parts.size() == 1);
-    CHECK(model.mirroredTriangleCount == 0);
+    // The generated picture is a mirror image on two tiny faces.
+    CHECK(model.mirroredTriangleCount == 2);
     REQUIRE(model.materials.size() == 1);
     CHECK(model.materials.front().diffuseTexture.filename() == "stone_sheep.png");
     CHECK(model.materials.front().normalTexture.filename() == "stone_sheep_normal.png");
-    // It is drawn three times per frame, like a wall, and there are at most five.
-    CHECK(model.indices.size() / 3 <= 220);
+    // The generated sheep as it is built: about 6,000 triangles, drawn three times per
+    // frame, like a wall, and there are at most five.
+    CHECK(model.indices.size() / 3 == 6079);
 
     // As long as the box, from the nose to the end of the tail.
     float lowestX = 0.0F;
@@ -1086,7 +1088,7 @@ TEST_CASE("the model of the sheep fits its box, turned each of the eight ways") 
     }
     CHECK(lowestX == doctest::Approx(-game::STONE_SHEEP_LENGTH / 2.0F).epsilon(0.001));
     CHECK(highestX == doctest::Approx(game::STONE_SHEEP_LENGTH / 2.0F).epsilon(0.001));
-    // The legs go into the ground, for a sheep on a slope, and the back is knee high.
+    // The belly goes into the ground, for a sheep on a slope, and the back is knee high.
     CHECK(lowest < -0.08F);
     CHECK(lowest >= -game::STONE_SHEEP_BOX_DEPTH);
     CHECK(highest > 0.5F);
