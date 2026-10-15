@@ -11,7 +11,7 @@ Prompts and settings for the models I generate in Tripo Studio for Night Maze, a
 
 ## What the engine needs
 
-The game loads OBJ files with one material each: a colour picture and a normal map, no transparency, no glow map (a glow value is set per model in code). Pictures are 512 or 1024 px. Generated models get smooth normals and keep the UVs of their source, like the shade. Everything a script adds to a model (moving parts, a second piece for the glow) stays a script.
+The game loads OBJ files with one material each: a colour picture and a normal map, no transparency, no glow map (a glow value is set per model in code). Pictures are 512 or 1024 px (2048 for the arch of the gate). Generated models get smooth normals and keep the UVs of their source, like the shade. Everything a script adds to a model (moving parts, a second piece for the glow) stays a script.
 
 ## Settings
 
@@ -21,7 +21,7 @@ The game loads OBJ files with one material each: a colour picture and a normal m
 | Prop | HD, H3.1 | Quad | 3,000 | 2K | off | off |
 | Landmark (seen from far) | HD, H3.1 | Quad | 15,000 | 2K | off | off |
 
-Always: Remove Lighting on, PBR on (the build keeps the normal map), Privacy private. The build script reduces the picture to 1024 or 512.
+Always: Remove Lighting on, PBR on (the build keeps the normal map), Privacy private. The build script reduces the picture to 1024 or 512, or keeps the 2048 of the source for the arch.
 
 Append this line to every prompt so the set matches. It is not the anime line of Shatter: Night Maze is an old folk tale under the moon.
 
@@ -54,7 +54,7 @@ Ordered by how much of the screen they fill. Sizes and limits come from [assets.
 
 ## Wall pictures
 
-The walls are modular and must tile, so they stay script-built; only their pictures are generated. Tripo's Texture tool does not work for this: on a flat 2 by 2 m panel it painted an object (a frame, one row of stones along the top, blurred fields) instead of a surface (tried 2026-10-15, all three rolls). The pictures come from Tripo's **Image** tab instead (a picture generator, about 2 credits a roll). The picture is kept as a source under `tools/blender/sources/` and `make_textures.py` makes it seamless: it overlaps the last 128 columns, then rows, onto the first, cuts through the overlap along the joints, stretches the result back to 1024, lifts the near-black joints to a dark grey-brown and matches the brightness, then averages it down to 512. The source of `wall_stone` turned out to be two copies of one picture stacked, so the same stones came back every 1.1 m: only one copy is kept, and the other half of the picture is that copy mirrored left to right and moved by half its width, joined along the joints. Every wall picture is then moved and stretched up and down so that a level joint lies at v = 0 and another 0.3 above it: the walls put v = 0 at the top of the plinth, so the plinth and the coping meet the stone along joints. The normal maps of `wall_stone` and `wall_mossy` are baked from their slabs (`bake_wall_normals.py`, Cycles, warped onto the picture); `wall_cracked` has no slab, so its normal map comes from the picture (brighter is higher, joints deep). The average reflectance is 0.24 (`WALL_LIGHT`). A picture covers 2 m of wall.
+The walls are modular and must tile, so they stay script-built; only their pictures are generated. Tripo's Texture tool does not work for this: on a flat 2 by 2 m panel it painted an object (a frame, one row of stones along the top, blurred fields) instead of a surface (tried 2026-10-15, all three rolls). The pictures come from Tripo's **Image** tab instead (a picture generator, about 2 credits a roll). The picture is kept as a source under `tools/blender/sources/` and `make_textures.py` makes it seamless: it overlaps the last 128 columns, then rows, onto the first, cuts through the overlap along the joints, stretches the result back to 1024, lifts the near-black joints to a dark grey-brown and matches the brightness, then averages it down to 512. The source of `wall_stone` turned out to be two copies of one picture stacked, so the same stones came back every 1.1 m: only one copy is kept, and the other half of the picture is that copy mirrored left to right and moved by half its width, joined along the joints. Every wall picture is then moved and stretched up and down so that a level joint lies at v = 0 and another 0.3 above it: the walls put v = 0 at the top of the plinth, so the edges of the plinth and the coping lie mostly on joints (on the plain wall about 40 % of the row at the plinth and 27 % at the coping is joint, against 12 % on average). The normal maps of `wall_stone` and `wall_mossy` are baked from their slabs (`bake_wall_normals.py`, Cycles, warped onto the picture); `wall_cracked` has no slab, so its normal map comes from the picture (brighter is higher, joints deep). The average reflectance is 0.24 (`WALL_LIGHT`). A picture covers 2 m of wall.
 
 Append this line to every wall prompt:
 
