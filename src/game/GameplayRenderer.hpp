@@ -73,7 +73,9 @@ public:
     /// gatehouse, the milestone and the three lanterns (game::gateScenery): those stand
     /// still while the door sinks. The bell hangs in the gatehouse, turned by
     /// bellSwingDegrees (game::gateBellMatrix). It sets uEmissive to lampGlow for the
-    /// lanterns and leaves it black. A maze without a gate gets none of this.
+    /// lanterns and leaves it black. The door is drawn with a weak highlight of its own
+    /// (uSpecularStrength), and the caller sets the strength back for what comes next. A
+    /// maze without a gate gets none of this.
     /// drawCrystals sets uEmissive to crystalGlow. It also draws the heartstone of the
     /// round while it is not taken (game::heartstoneBase): the big splinter, turning
     /// slowly, with crystalGlow times HEARTSTONE_GLOW_FACTOR. So every pass that draws

@@ -28,6 +28,10 @@ namespace {
 constexpr const char* CRYSTAL_A_MODEL_FILE = "models/splinter_a.obj";
 constexpr const char* CRYSTAL_B_MODEL_FILE = "models/splinter_b.obj";
 constexpr const char* GATE_MODEL_FILE = "models/gate.obj";
+// The highlight of the door: weathered oak, dull. With the highlight of the stone the
+// flashlight, which shines from where the player looks, laid one bright sheen over the
+// dark wood and its iron bands alike, and from close by the door read as a melted shape.
+constexpr float GATE_DOOR_SPECULAR_STRENGTH = 0.04F;
 
 // What stands around the gate and never moves. The arch is built like the gate: along X,
 // with its origin in the middle of its base, and a hook on both faces of both piers. The
@@ -127,8 +131,10 @@ void GameplayRenderer::drawGate(const gfx::Shader& shader, const MazeWorld& worl
         loweredGate.position.y -= gateSinkDepth(round);
         const glm::mat4 gateMatrix = wallModelMatrix(loweredGate);
 
-        // Wood gives off no light.
+        // Wood gives off no light, and has almost no highlight. The caller puts the
+        // highlight of the stone back (the textured program has no such uniform).
         shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{0.0F});
+        shader.setFloat(SPECULAR_STRENGTH_UNIFORM, GATE_DOOR_SPECULAR_STRENGTH);
         // drawModel takes a list of matrices. A span made of a pointer and a count of
         // 1 is a list with this one matrix in it.
         drawModel(shader, m_gate, std::span<const glm::mat4>(&gateMatrix, 1), frustum);

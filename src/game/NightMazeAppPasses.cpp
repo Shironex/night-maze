@@ -393,6 +393,8 @@ void NightMazeApp::drawGateAndCrystals(const gfx::Shader& shader,
                                        const scene::Frustum* frustum) const {
     m_gameplayRenderer.drawGate(shader, m_mazeWorld, m_round, m_gateLampGlow, m_bellSwing.degrees,
                                 frustum);
+    // The door is drawn with a highlight of its own: the one of the stone goes back.
+    shader.setFloat(SPECULAR_STRENGTH_UNIFORM, m_lighting.specularStrength);
     // The flasks, always with the program of the walls: they are brass, not glass, and
     // show no sky.
     m_gameplayRenderer.drawFlasks(shader, m_mazeWorld, m_round, frustum);
