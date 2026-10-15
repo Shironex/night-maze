@@ -683,7 +683,10 @@ TEST_CASE("the lantern and the milestone models have the sizes the game places t
     int brightestIron = 0;
     for (int row = 0; row < picture.height; ++row) {
         for (int column = 0; column < picture.width; ++column) {
-            const auto texel = static_cast<std::size_t>((row * picture.width + column) * 3);
+            const std::size_t texel =
+                (static_cast<std::size_t>(row) * static_cast<std::size_t>(picture.width) +
+                 static_cast<std::size_t>(column)) *
+                3U;
             const int least = std::min(
                 {picture.pixels[texel], picture.pixels[texel + 1], picture.pixels[texel + 2]});
             const int most = std::max(
