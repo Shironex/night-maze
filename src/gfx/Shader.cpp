@@ -269,7 +269,7 @@ Shader::Shader(Shader&& other) noexcept
     // Two objects must never hold the same id. With 0 the destructor of other
     // deletes nothing.
     other.m_program = 0;
-    // The locations went with the program. The standard does not promise that a map
+    // The locations went with the program. The standard does not promise that a vector
     // is empty after it was moved from, so it is emptied by hand.
     other.m_uniformLocations.clear();
 }
@@ -335,12 +335,13 @@ void Shader::use() const {
 GLint Shader::uniformLocation(const char* name) const {
     // Asking OpenGL for a location compares the name with the names of the uniforms of
     // the program, and a frame sets several thousand uniforms. The answer cannot change
-    // while the program lives, so it is asked for once and then read from the map.
+    // while the program lives, so it is asked for once and then read from the list.
     // The string_view is the name with its length, without a copy of the characters.
     const std::string_view key(name);
-    const auto found = m_uniformLocations.find(key);
-    if (found != m_uniformLocations.end()) {
-        return found->second;
+    for (const auto& [storedName, storedLocation] : m_uniformLocations) {
+        if (storedName == key) {
+            return storedLocation;
+        }
     }
 
     // First use of this name with this program. -1 means the program has no active
@@ -349,7 +350,7 @@ GLint Shader::uniformLocation(const char* name) const {
     GLint location = -1;
     GL_CHECK(location = glGetUniformLocation(m_program, name));
     countUniformLookup();
-    m_uniformLocations.emplace(key, location);
+    m_uniformLocations.emplace_back(key, location);
     return location;
 }
 

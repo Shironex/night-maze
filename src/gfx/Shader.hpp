@@ -8,10 +8,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
-#include <functional>
-#include <map>
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace gfx {
@@ -180,14 +179,14 @@ private:
     std::string m_lastError;
     // The requests made with bindUniformBlock, repeated on every newly built program.
     std::vector<UniformBlockBinding> m_blockBindings;
-    // The locations uniformLocation has asked OpenGL for so far, by the name of the
-    // uniform. They belong to m_program: every place that replaces or gives up the
-    // program empties the map. A name the program does not have is kept too, with -1.
-    // mutable, because the const setters fill it.
-    // std::less<> lets find() compare the stored names with a std::string_view, so
-    // looking a name up builds no std::string. The default std::less<std::string>
-    // would build one on every call of a setter, and allocate memory for a long name.
-    mutable std::map<std::string, GLint, std::less<>> m_uniformLocations;
+    // The locations uniformLocation has asked OpenGL for so far, as pairs of the name of
+    // the uniform and its location. They belong to m_program: every place that replaces or
+    // gives up the program empties the list. A name the program does not have is kept too,
+    // with -1. mutable, because the const setters fill it.
+    // A program has a few dozen uniforms at most, so a list searched from the front is as
+    // fast as a map. Unlike a std::map (whose move allocates in some standard libraries),
+    // a vector moves without allocating, so the noexcept moves of Shader cannot throw.
+    mutable std::vector<std::pair<std::string, GLint>> m_uniformLocations;
 };
 
 } // namespace gfx
