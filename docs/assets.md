@@ -164,7 +164,7 @@ Record again whenever the look of the game changes.
 
 ## Storybook intro
 
-`assets/intro/` holds the storybook intro: `storybook.txt` and the layers it names. `tools/make_storybook_placeholders.py` writes the placeholder layers (standard library only). The painted layers, the voice lines and the music replace them by hand, and then the script is not run again. The file names, formats and sizes are in [story/intro-storyboard.md](story/intro-storyboard.md).
+`assets/intro/` holds the storybook intro: `storybook.txt` and the pictures it names, one painted picture a beat (`beatN.png`, 1376 x 768, generated in Tripo's Image tab and cropped by 4 % on each side to drop the paper border). Parallax layers, the voice lines and the music are added by hand. The file names, formats and sizes are in [story/intro-storyboard.md](story/intro-storyboard.md).
 
 ## README pictures
 

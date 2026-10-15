@@ -100,7 +100,7 @@ Two to four layers per beat are enough. The back layer must be fully opaque. The
 
 ## Dropping in the files (option A)
 
-Everything goes into `assets/intro/`, next to `storybook.txt`. The manifest names every file, so any names work. The placeholders use `beatN_sky.png`, `beatN_ridge.png` and `beatN_front.png`, so a painted layer under the same name replaces a placeholder without editing the manifest.
+Everything goes into `assets/intro/`, next to `storybook.txt`. The manifest names every file, so any names work. Today each beat is one painted picture, `beatN.png`, picked on 2026-10-15 from four rolls of the prompt above (Nano Banana 2, 16:9) and cropped by 4 % on each side to drop the paper border. Splitting a beat into layers means adding `layer` lines for the new files and keeping `beatN.png` as the opaque back layer or replacing it.
 
 | What | Format | Notes |
 |---|---|---|
