@@ -1241,10 +1241,10 @@ TEST_CASE("loadObj: lamp_held.obj, lamp_held_lens.obj and lamp_held_window.obj")
         std::size_t triangles;
         std::size_t mirrored;
     };
-    for (const Part& part : {Part{.file = "lamp_held.obj", .triangles = 8718U, .mirrored = 12U},
-                             Part{.file = "lamp_held_lens.obj", .triangles = 16U, .mirrored = 0U},
-                             Part{.file = "lamp_held_window.obj", .triangles = 24U,
-                                  .mirrored = 0U}}) {
+    for (const Part& part :
+         {Part{.file = "lamp_held.obj", .triangles = 8718U, .mirrored = 12U},
+          Part{.file = "lamp_held_lens.obj", .triangles = 16U, .mirrored = 0U},
+          Part{.file = "lamp_held_window.obj", .triangles = 24U, .mirrored = 0U}}) {
         CAPTURE(part.file);
         // Not through loadGameModel, for the same reason as the flask: slanted faces.
         assets::ObjModel model;
