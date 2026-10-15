@@ -958,28 +958,27 @@ TEST_CASE("loadObj: flask.obj") {
     CHECK(std::filesystem::exists(model.materials[0].diffuseTexture));
     CHECK(std::filesystem::exists(model.materials[0].normalTexture));
 
-    // 192 triangles: a small thing has to stay cheap.
-    CHECK(model.indices.size() == 192U * 3U);
+    // The generated bottle in its net, with its own picture (flask.png stays the cord of
+    // the ropes of the lever).
+    CHECK(model.materials[0].diffuseTexture.filename() == "flask_bottle.png");
+    CHECK(model.indices.size() == 7248U * 3U);
 
-    // 0.25 m tall, standing on the floor with its origin under the middle of its base,
-    // and as wide as its belly: the cord loop ends exactly above the widest place.
+    // 0.2 m tall, standing on the floor with its origin under the middle of its base.
     const Bounds bounds = boundsOf(model);
     CHECK(bounds.min.y == doctest::Approx(0.0F));
-    CHECK(bounds.max.y == doctest::Approx(0.25F));
-    CHECK(bounds.min.x == doctest::Approx(-0.088F));
-    CHECK(bounds.max.x == doctest::Approx(0.088F));
+    CHECK(bounds.max.y == doctest::Approx(0.2F));
+    CHECK(bounds.max.x - bounds.min.x < 0.18F);
 }
 
 TEST_CASE("loadObj: splinter_a.obj and splinter_b.obj") {
-    // The two models a crystal is drawn with (game::CRYSTAL_VARIANT_COUNT). A sliver has
-    // 40 triangles: five sides between six rings, as triangles at the two points and as
-    // two triangles each in between. splinter_b is three slivers.
+    // The two models a crystal is drawn with (game::CRYSTAL_VARIANT_COUNT): the generated
+    // crescent, and three copies of it leaning apart.
     struct Splinter {
         std::string file;
         std::size_t triangles;
     };
-    for (const Splinter& splinter : {Splinter{.file = "splinter_a.obj", .triangles = 40U},
-                                     Splinter{.file = "splinter_b.obj", .triangles = 120U}}) {
+    for (const Splinter& splinter : {Splinter{.file = "splinter_a.obj", .triangles = 1998U},
+                                     Splinter{.file = "splinter_b.obj", .triangles = 5994U}}) {
         CAPTURE(splinter.file);
         // Not through loadGameModel, for the same reason as the flask: slanted faces.
         assets::ObjModel model;
