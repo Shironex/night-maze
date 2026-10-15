@@ -3,8 +3,9 @@
 # storyboard); parallax layers can replace each later. The words are explained in
 # src/game/Storybook.hpp and in the storyboard.
 #
-# Add the music with a line "music intro_theme.flac", and a spoken line to a beat with
-# "voice beat1_voice.wav": the beat then stays until its line has ended.
+# Add the music with a line "music intro_theme.flac". A beat with a "voice" line stays
+# until its line has ended. The voice lines are ElevenLabs takes, trimmed, peaked at
+# -3 dBFS and padded with half a second of quiet room tone.
 #
 # layer <file> <drift x> <drift y> <scale from> <scale to>
 
@@ -13,12 +14,14 @@ crossfade 1.5
 # 1. The moon breaks.
 beat
 seconds 7
+voice beat1_voice.flac
 line Every winter the moon drops pieces of itself.
 layer beat1.png 0 0.02 1.04 1.12
 
 # 2. The hollow and the sleeping village.
 beat
 seconds 8
+voice beat2_voice.flac
 line They fall in the old maze above the village.
 line The village sleeps badly.
 layer beat2.png -0.02 0 1.12 1.05
@@ -26,6 +29,7 @@ layer beat2.png -0.02 0 1.12 1.05
 # 3. The lamplighter.
 beat
 seconds 9
+voice beat3_voice.flac
 line Someone has always walked in and carried them out.
 line This winter the lamplighter's hands shake.
 layer beat3.png 0.02 0 1.05 1.12
@@ -33,6 +37,7 @@ layer beat3.png 0.02 0 1.05 1.12
 # 4. A splinter in the hand.
 beat
 seconds 9
+voice beat4_voice.flac
 line Outsiders call them crystals. We call them splinters.
 line They remember being light. The lamp believes them.
 layer beat4.png 0 -0.01 1.06 1.14
@@ -40,6 +45,7 @@ layer beat4.png 0 -0.01 1.06 1.14
 # 5. Something walks where the lamp is not.
 beat
 seconds 8
+voice beat5_voice.flac
 line Keep the lamp lit.
 line Something walks where it is not.
 layer beat5.png 0 0 1.03 1.14
@@ -47,6 +53,7 @@ layer beat5.png 0 0 1.03 1.14
 # 6. The last lamp.
 beat
 seconds 9
+voice beat6_voice.flac
 line One lamp is left in the village.
 line It is yours.
 layer beat6.png 0 0.01 1.12 1.04
