@@ -119,11 +119,17 @@ def shrink(picture, size):
     return picture.reshape(size, factor, size, factor, 3).mean(axis=(1, 3))
 
 
-def save_normal_map(normal, size, file_name):
+def save_normal_map(normal, size, file_name, relief=1.0):
     """Shrinks a normal map to size by size and writes it.
 
     The directions are averaged as directions: from 0..1 to -1..1, then to length 1 again.
+    relief scales the slopes of the map: 2 makes every bump and groove twice as steep, for
+    a source whose map is too faint to show in the light of the game.
     """
     directions = shrink(normal, size) * 2.0 - 1.0
     directions /= np.linalg.norm(directions, axis=-1, keepdims=True)
+    if relief != 1.0:
+        directions[..., :2] *= relief / np.maximum(directions[..., 2:], 0.05)
+        directions[..., 2] = 1.0
+        directions /= np.linalg.norm(directions, axis=-1, keepdims=True)
     make_textures.save_png(directions * 0.5 + 0.5, file_name)
