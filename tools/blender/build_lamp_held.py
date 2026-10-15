@@ -8,8 +8,8 @@
 #
 # It comes as three models that fit into each other, because the game gives each a glow
 # of its own: lamp_held is the lamp from the source, lamp_held_lens a flat disc just in
-# front of its glass and lamp_held_window a ring of flat panes inside the vents of the
-# cap, where the light of the splinter that feeds the lamp shows. The two glow pieces are
+# front of its glass and lamp_held_window a small window of three panes on the back of
+# the shoulder, where the light of the splinter that feeds the lamp shows. The two glow pieces are
 # built here. All three wear lamp_held.png.
 # Output: assets/models/lamp_held.obj, lamp_held_lens.obj, lamp_held_window.obj and their
 # .mtl files, and the pictures assets/textures/lamp_held.png and lamp_held_normal.png.
@@ -117,17 +117,35 @@ DECIMATE_RATIO = 0.5
 # the average of 2 by 2 of the source: the lamp is the closest thing the player ever sees.
 TEXTURE_SIZE = 1024
 
-# The glow pieces need plain pale colours, because the glow of a surface is its colour
-# times the glow value of the draw: the lens a warm white, the window the pale teal of the
+# The glow pieces need pale colours, because the glow of a surface is its colour times
+# the glow value of the draw: the lens a warm white, the window the pale teal of the
 # splinter. Neither reaches 1, so the glow has room above them. They are painted into two
 # patches of lamp_held.png that no face of the source uses (the script stops if one does),
 # with a flat normal map there. Each patch is (left, bottom, right, top) in pixels of the
-# 1024 picture, and a face of a glow piece takes a small part of the middle of its patch.
+# 1024 picture. A face of the lens takes a small part of the middle of its patch, so the
+# lens is one plain colour.
 LENS_COLOUR = (0.94, 0.90, 0.80)
 WINDOW_COLOUR = (0.61, 0.91, 0.87)
 LENS_PATCH = (480, 992, 528, 1024)
 WINDOW_PATCH = (608, 1008, 656, 1024)
 PIECE_UV_UNITS_PER_METRE = 0.1
+
+# The window is not one plain colour: one flat colour over the whole pane read as a
+# sticker on the tin. Its patch is painted as a small lit window, and the grid of the pane
+# spans the whole patch, so the picture lies on it once. Around the glass is a frame of
+# WINDOW_FRAME pixels in the colour of dark tin, and the glass is split into three panes
+# by two bars of WINDOW_BAR pixels. The glass is brightest in the middle and falls to
+# WINDOW_EDGE of the colour at its rim, and to WINDOW_TOP_EDGE under the frame on top,
+# where the brim of the cap shades it, so it looks lit from behind and set into the tin.
+# The glow is the colour times the glow value, so the frame and the bars do not glow.
+# The grid keeps WINDOW_UV_INSET pixels inside the patch, so the filter of the texture
+# never reaches the picture of the body around it.
+WINDOW_FRAME = 3
+WINDOW_BAR = 2
+WINDOW_TIN = (0.07, 0.07, 0.065)
+WINDOW_EDGE = 0.45
+WINDOW_TOP_EDGE = 0.3
+WINDOW_UV_INSET = 1
 
 
 def patch_centre(patch):
@@ -180,6 +198,31 @@ def clean(model):
     return mesh
 
 
+def window_picture():
+    """The patch of the window, rows from the bottom: a frame of dark tin around three
+    panes of glass that glow most in the middle."""
+    left, bottom, right, top = WINDOW_PATCH
+    width, height = right - left, top - bottom
+    # Where every pixel lies on the glass, from -1 to 1 across and up, at its middle.
+    across = (np.arange(width) + 0.5 - width / 2.0) / (width / 2.0 - WINDOW_FRAME)
+    up = (np.arange(height) + 0.5 - height / 2.0) / (height / 2.0 - WINDOW_FRAME)
+    x, y = np.meshgrid(across, up)
+    # Light falls off from the middle towards the rim, faster along the short side.
+    fall = np.clip(1.0 - (0.35 * x * x + 0.6 * y * y), 0.0, 1.0)
+    rim = np.where(y > 0.0, WINDOW_TOP_EDGE, WINDOW_EDGE)
+    light = rim + (1.0 - rim) * fall
+    picture = light[..., None] * np.array(WINDOW_COLOUR)
+
+    tin = np.zeros((height, width), dtype=bool)
+    tin[:WINDOW_FRAME] = tin[-WINDOW_FRAME:] = True
+    tin[:, :WINDOW_FRAME] = tin[:, -WINDOW_FRAME:] = True
+    for third in (1, 2):
+        middle = round(WINDOW_FRAME + (width - 2 * WINDOW_FRAME) * third / 3.0)
+        tin[:, middle - WINDOW_BAR // 2:middle - WINDOW_BAR // 2 + WINDOW_BAR] = True
+    picture[tin] = WINDOW_TIN
+    return picture
+
+
 def write_pictures(colour, normal):
     """Writes the colour picture and the normal map at TEXTURE_SIZE, with the two patches
     of the glow pieces painted in."""
@@ -187,7 +230,7 @@ def write_pictures(colour, normal):
     directions = generated.shrink(normal, TEXTURE_SIZE) * 2.0 - 1.0
     directions /= np.linalg.norm(directions, axis=-1, keepdims=True)
     for (left, bottom, right, top), paint in ((LENS_PATCH, LENS_COLOUR),
-                                              (WINDOW_PATCH, WINDOW_COLOUR)):
+                                              (WINDOW_PATCH, window_picture())):
         # Rows from the bottom, as v counts them.
         picture[bottom:top, left:right] = paint
         directions[bottom:top, left:right] = (0.0, 0.0, 1.0)
@@ -232,13 +275,32 @@ def window_piece(body):
     return corners, faces
 
 
+def window_uvs(mesh):
+    """Lays the patch of the window over its grid: the columns of the grid across the
+    patch, its rows up it, WINDOW_UV_INSET pixels inside the edge of the patch."""
+    left, bottom, right, top = (edge / TEXTURE_SIZE for edge in WINDOW_PATCH)
+    inset = WINDOW_UV_INSET / TEXTURE_SIZE
+    rows = len(WINDOW_ROWS)
+    uv_layer = mesh.uv_layers.new(name="uv")
+    for loop in mesh.loops:
+        # Corner number row + rows * column (see window_piece).
+        column, row = divmod(loop.vertex_index, rows)
+        u = left + inset + (right - left - 2.0 * inset) * column / WINDOW_COLUMNS
+        v = bottom + inset + (top - bottom - 2.0 * inset) * row / (rows - 1)
+        uv_layer.data[loop.index].uv = (u, v)
+
+
 def export_piece(name, corners, faces, patch, shots_scene=False):
-    """Writes one glow piece: flat faces with a small part of the middle of its patch."""
+    """Writes one glow piece: flat faces, the lens with a small part of the middle of its
+    patch, the window with the whole of its patch."""
     if not shots_scene:
         common.reset_scene()
     model = common.create_mesh_object(name, corners, faces)
-    common.piece_project_uvs(model.data, [patch_centre(patch)] * len(faces),
-                             PIECE_UV_UNITS_PER_METRE)
+    if name == WINDOW_NAME:
+        window_uvs(model.data)
+    else:
+        common.piece_project_uvs(model.data, [patch_centre(patch)] * len(faces),
+                                 PIECE_UV_UNITS_PER_METRE)
     common.assign_textured_material(model, NAME, "lamp_held.png", "lamp_held_normal.png")
     if not shots_scene:
         common.export_obj(name)
