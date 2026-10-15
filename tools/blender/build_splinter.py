@@ -1,9 +1,19 @@
-# Builds the models of the thing the player collects, a splinter of the moon:
-# splinter_a is one sliver, splinter_b is three slivers that broke apart where they fell,
-# and heartstone is the one big piece of a maze: four slivers grown into one.
-# A sliver is long and thin. Two of its five sides are the rind of the moon, grey and
-# pitted, the other three are clean fracture, and those glow.
-# Output: assets/models/splinter_a.obj, splinter_b.obj and heartstone.obj, each with its .mtl.
+# Builds the models of the thing the player collects, a splinter of the moon, and the one
+# big piece of a maze, the heartstone. None of them is built in this script: their sources
+# are models that Tripo generated, each one material with a colour picture and a normal map.
+#
+# tools/blender/sources/splinter_tripo.glb is a crescent of pale stone, about a metre from
+# horn to horn. This script makes it smaller and stands it on one horn. splinter_a is the
+# crescent. splinter_b is three crescents that broke apart where they fell: the same
+# crescent and two smaller copies that lean away from it, turned so they show other sides.
+# tools/blender/sources/heartstone_tripo.glb is a crown of tall slivers on a spiky base,
+# dark outside and pale blue inside. It becomes the heartstone, 0.9 m tall.
+#
+# The surface of each source is split into the rind of the moon and the fracture (see
+# rind_faces), and the two go to the two halves of its picture (see BAND_WIDTH).
+# Output: assets/models/splinter_a.obj, splinter_b.obj and heartstone.obj, each with its
+# .mtl, and the pictures assets/textures/splinter_moon.png, splinter_moon_normal.png,
+# heartstone.png and heartstone_normal.png.
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/build_splinter.py
@@ -12,268 +22,360 @@ import math
 import os
 import sys
 
-from mathutils import Vector
+import bmesh
+import bpy
+import numpy as np
+from mathutils import Matrix, Vector
 
 # Blender does not add the folder of the script to the module search path, so the helper
-# module next to this file would not be found without this line.
+# modules next to this file would not be found without this line.
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import blender_common as common
+import generated_common as generated
+import make_textures
 
 # All sizes are in metres. The geometry is written in Blender space, where Z is the height.
-# After export Z becomes the game Y axis. The two splinters are 0.5 m tall (0.496 m, because
-# the slivers lean) and the heartstone 0.9 m. Their origin is the lower point of the main
-# sliver: the game lets them float and turns them about the upright line through that point.
+# After export Z becomes the game Y axis. The two splinters are 0.4 m tall and the
+# heartstone 0.9 m (HEARTSTONE_HEIGHT in src/game/Heartstone.hpp). Their origin is their
+# lower point: the game lets them float and turns them about the upright line through it.
+MOON_HEIGHT = 0.4
+HEARTSTONE_HEIGHT = 0.9
 
-# A sliver is built ring by ring, like the flask, and every ring has these five corners:
-# the angle of the corner around the axis in degrees, and how far out it lies (1 = the
-# width of the sliver). The first three corners lie on the outer arc, so the two faces
-# between them are the rind, curved like the surface the sliver was broken from. The
-# other three faces are the fracture.
-SECTION = ((-40.0, 1.0), (0.0, 1.1), (40.0, 1.0), (132.0, 0.74), (228.0, 0.8))
-RIND_SIDES = 2
+# Two corners of a source closer than this (in its own units, about a metre for the
+# whole model) are one corner, as in build_shade.py.
+MERGE_DISTANCE = 0.000001
 
-# The rings from the lower point to the upper one: where the ring lies along the length
-# (0 to 1) and how wide it is (0 = the ring is a single point).
-RINGS = ((0.0, 0.0), (0.1, 0.55), (0.32, 0.95), (0.58, 1.0), (0.8, 0.7), (1.0, 0.0))
+# The crescent has 5878 triangles. A crystal is 0.4 m and up to 40 of them float in a
+# maze, drawn again for the reflections, so the crescent keeps about a third of them: the
+# Decimate modifier in its collapse mode, which gives the same faces on every run. The
+# heartstone is one per maze and keeps its 6359 triangles (its source has a few specks
+# beside the crown, which go).
+MOON_DECIMATE_RATIO = 0.34
+MOON_TRIANGLES = 1998
+HEARTSTONE_TRIANGLES = 6359
 
-# A sliver is flatter than it is wide: the direction across the rind is this much narrower.
-FLATTEN = 0.72
+# The rind and the fracture. A face belongs to the rind when it faces away from the
+# middle of the model: the direction from that middle to the face and the normal of the
+# face more than a facing apart (the cosine of the angle between them). The crescent lies
+# in a plane, its middle is the middle of its arc, and its rind is the outer, convex edge,
+# the old surface of the moon: the inner edge and the two broad sides are the fracture,
+# about three fifths of the surface, like three of the five sides of the old slivers. The
+# middle of the heartstone is its upright axis: the outside of every sliver is rind and
+# the inside fracture, and its base up to HEARTSTONE_BASE_SHARE of its height is all
+# rind, so the floor of the crown does not glow.
+# The surfaces are pitted, and the normal of a single face says little about the side it
+# is on: the normals are first averaged with those of the neighbours a number of passes,
+# so only the large curves are left. The slivers of the crown are thin, and more passes
+# would mix their inside with their outside. At the end a face takes the side most of its
+# neighbours are on, SMOOTHING_PASSES times, so the line between the two has no single
+# faces on the wrong side.
+MOON_RIND_FACING = 0.5
+MOON_NORMAL_PASSES = 10
+HEARTSTONE_RIND_FACING = 0.3
+HEARTSTONE_NORMAL_PASSES = 3
+HEARTSTONE_BASE_SHARE = 0.12
+SMOOTHING_PASSES = 2
 
-# Nothing broken is regular. Every corner lies between 88 % and 112 % of its distance from
-# the axis, and each of the two points up to 6 mm beside it. The numbers come from the
-# seed of the sliver, so every run writes the same file.
-CORNER_JITTER_LOW = 0.88
-CORNER_JITTER_RANGE = 0.24
-POINT_JITTER = 0.012
+# A picture has two halves, like the old splinter.png: the left half is the rind and the
+# right half the fracture. The game makes a surface glow by multiplying its colour with
+# one glow value for the whole model, so the dark rind stays stone and the pale fracture
+# shines. The source keeps its UVs, squeezed across: a face of the rind gets u from
+# RIND_BAND to RIND_BAND + BAND_WIDTH, a face of the fracture from FRACTURE_BAND on, and
+# each half of the picture is the whole picture of the source, squeezed the same way.
+# Nothing lies within a twentieth of the picture of its edges or of the line between the
+# halves, so the mipmaps do not mix the two.
+RIND_BAND = 0.06
+FRACTURE_BAND = 0.56
+BAND_WIDTH = 0.38
 
-# The picture splinter.png has two halves (make_textures.py): the left half is the rind
-# and the right half the fracture. Every side of a sliver gets a piece from the middle of
-# its half, like the faces of the gate lantern. The rind is dark and the fracture pale,
-# and the game makes a surface glow by multiplying its colour with one glow value, so the
-# fracture shines and the rind stays stone.
-RIND_U_CENTRE = 0.25
-FRACTURE_U_CENTRE = 0.75
-# One metre of the model is this many units of u and v. The widest side then covers
-# a third of the picture and stays inside its half (tests/ObjLoaderTests.cpp checks that).
-# The piece of a side lies as far up the picture as the side lies along the sliver (the
-# picture continues from its top edge to its bottom edge), so the sides of two rings do
-# not show the same craters.
-UV_UNITS_PER_METRE = 3.0
-# The slivers of the heartstone are up to 0.15 m wide, where a splinter has 0.085 m. Its
-# picture is that much less dense, so its widest side covers the same third.
-HEARTSTONE_UV_UNITS_PER_METRE = UV_UNITS_PER_METRE * 0.085 / 0.15
+# The pictures of the sources are 2048 pixels wide. The game gets them at 1024: each half
+# is then about 400 pixels across, for a crystal that comes as close as the hand.
+TEXTURE_SIZE = 1024
+
+# The colours. The brightest channel of a texel of the source (sRGB) becomes a brightness,
+# so the pits and facets the source painted stay. The crescent is pale and the crown dark,
+# so the brightness of a source is first scaled until its average is BRIGHTNESS_MIDDLE
+# (about that of the crescent): the rind of both is then an old grey around the 0.27 of
+# the old rind, and the fracture a pale white-blue.
+BRIGHTNESS_MIDDLE = 0.66
+RIND_FLOOR = 0.10
+RIND_RANGE = 0.26
+RIND_TINT = (1.0, 0.98, 0.93)
+FRACTURE_FLOOR = 0.70
+FRACTURE_RANGE = 0.30
+FRACTURE_TINT = (0.84, 0.93, 1.0)
+
+# splinter_b: the crescent and two smaller copies from the same spot. Each copy is
+# (scale, its own turn about the upright, its lean in degrees, the direction of the lean
+# in degrees around the upright, where its horn stands). The tallest one is splinter_a.
+MOON_COPIES = (
+    (1.0, 0.0, 0.0, 0.0, (0.0, 0.0, 0.0)),
+    (0.72, 140.0, 30.0, 20.0, (0.015, -0.01, 0.0)),
+    (0.56, 250.0, 34.0, 200.0, (-0.015, 0.01, 0.0)),
+)
 
 
-def random_numbers(seed):
-    """Returns a function that gives the next number from 0 to 1 of a fixed sequence.
+def import_surface(file_name, decimate_ratio, triangles):
+    """Imports a source and returns its largest island as a bmesh and its two pictures.
 
-    The generator is written out here (it is the one known as mulberry32) and uses whole
-    numbers of 32 bits only, so the sequence of a seed is the same in every version of
-    Python and of Blender.
+    decimate_ratio is the share of the triangles the Decimate modifier keeps, or None.
+    Stops when the surface has not exactly `triangles` triangles.
     """
-    state = seed & 0xFFFFFFFF
+    model, colour, normal = generated.import_source(file_name)
+    mesh = bmesh.new()
+    mesh.from_mesh(model.data)
+    # The object of the import is moved by a millimetre or less. That goes into the corners.
+    bmesh.ops.transform(mesh, matrix=model.matrix_world, verts=mesh.verts)
+    bmesh.ops.remove_doubles(mesh, verts=mesh.verts, dist=MERGE_DISTANCE)
+    keep = set(generated.largest_island(mesh))
+    bmesh.ops.delete(mesh, geom=[face for face in mesh.faces if face not in keep],
+                     context="FACES")
+    mesh.to_mesh(model.data)
+    mesh.free()
+    model.matrix_world = Matrix.Identity(4)
 
-    def following():
-        nonlocal state
-        state = (state + 0x6D2B79F5) & 0xFFFFFFFF
-        mixed = ((state ^ (state >> 15)) * (1 | state)) & 0xFFFFFFFF
-        mixed = ((mixed + ((mixed ^ (mixed >> 7)) * (61 | mixed))) & 0xFFFFFFFF) ^ mixed
-        return (mixed ^ (mixed >> 14)) / 4294967296.0
+    if decimate_ratio is not None:
+        decimate = model.modifiers.new("decimate", "DECIMATE")
+        decimate.decimate_type = "COLLAPSE"
+        decimate.ratio = decimate_ratio
+        decimate.use_collapse_triangulate = True
+    mesh = bmesh.new()
+    mesh.from_object(model, bpy.context.evaluated_depsgraph_get())
+    mesh.faces.index_update()
+    mesh.normal_update()
+    if len(mesh.faces) != triangles:
+        raise RuntimeError(f"{file_name} has {len(mesh.faces)} triangles, not {triangles}")
+    return mesh, colour, normal
 
-    return following
+
+def fit_circle(points):
+    """The middle (x, z) of the circle closest to the points (x, z), least squares."""
+    x = points[:, 0]
+    z = points[:, 1]
+    # x^2 + z^2 + d x + e z + f = 0 is linear in d, e and f.
+    rows = np.column_stack((x, z, np.ones_like(x)))
+    (d, e, _), *_ = np.linalg.lstsq(rows, -(x * x + z * z), rcond=None)
+    return -d / 2.0, -e / 2.0
 
 
-def add_sliver(vertices, faces, uvs, base, axis, length, width, twist, seed,
-               uv_units=UV_UNITS_PER_METRE):
-    """Appends one sliver to the lists `vertices`, `faces` and `uvs`.
+def rind_faces(mesh, outwards, facing, normal_passes, forced=()):
+    """The set of the indices of the faces of the rind.
 
-    base: the lower point (x, y, z). axis: the direction from it to the upper point, of
-    any length. length, width: the size of the sliver, the width measured from the axis
-    to the rind. twist: by how many degrees the last ring is turned against the first.
-    seed: the seed of the jitter of this sliver. uv_units: how many units of u and v one
-    metre of the sliver is.
-
-    faces gets triangles only. uvs gets one entry per triangle: the (u, v) of its three
-    corners.
+    outwards(point) is the direction away from the middle of the model at a point.
+    `forced` are indices of faces that are rind whatever they face.
     """
-    following = random_numbers(seed)
-    base = Vector(base)
-    along = Vector(axis).normalized()
-    # Two directions across the sliver. across points at the middle of the rind.
-    reference = Vector((0.0, 0.0, 1.0)) if abs(along.z) < 0.9 else Vector((1.0, 0.0, 0.0))
-    across = reference.cross(along).normalized()
-    flat = along.cross(across)
-
-    # The index of every corner, ring by ring. A ring that is a point has one vertex,
-    # listed once for every corner, so the code below needs no special case to find it.
-    rings = []
-    for position, ring_width in RINGS:
-        centre = base + along * (position * length)
-        if ring_width == 0.0:
-            vertices.append(tuple(centre + across * ((following() - 0.5) * POINT_JITTER)))
-            rings.append([len(vertices) - 1] * len(SECTION))
-            continue
-        turn = math.radians(twist * position)
-        ring = []
-        for angle, reach in SECTION:
-            angle = math.radians(angle) + turn
-            reach = width * ring_width * reach
-            reach = reach * (CORNER_JITTER_LOW + following() * CORNER_JITTER_RANGE)
-            corner = centre + across * (math.cos(angle) * reach)
-            corner = corner + flat * (math.sin(angle) * reach * FLATTEN)
-            vertices.append(tuple(corner))
-            ring.append(len(vertices) - 1)
-        rings.append(ring)
-
-    for number in range(len(RINGS) - 1):
-        lower = rings[number]
-        upper = rings[number + 1]
-        middle = (RINGS[number][0] + RINGS[number + 1][0]) / 2.0
-        inside = base + along * (length * middle)
-        for side in range(len(SECTION)):
-            following_side = (side + 1) % len(SECTION)
-            # The four corners of this side between the two rings. At a point two of
-            # them are the same vertex, and the side is a triangle.
-            corners = [lower[side], lower[following_side], upper[following_side], upper[side]]
-            corners = [corner for place, corner in enumerate(corners)
-                       if corner != corners[place - 1]]
-            u_centre = RIND_U_CENTRE if side < RIND_SIDES else FRACTURE_U_CENTRE
-            add_side(vertices, faces, uvs, corners, inside, (u_centre, middle), uv_units)
+    normals = [face.normal.copy() for face in mesh.faces]
+    for _ in range(normal_passes):
+        normals = [sum((normals[other.index] for other in generated.neighbours(face)),
+                       normals[face.index].copy())
+                   for face in mesh.faces]
+        for normal in normals:
+            normal.normalize()
+    labels = [face.index in forced or
+              normals[face.index].dot(outwards(face.calc_center_median())) > facing
+              for face in mesh.faces]
+    for _ in range(SMOOTHING_PASSES):
+        following = []
+        for face in mesh.faces:
+            around = [labels[face.index]] + [labels[other.index]
+                                             for other in generated.neighbours(face)]
+            rind = sum(around)
+            # A tie keeps the side the face is on.
+            following.append(labels[face.index] if rind * 2 == len(around)
+                             else rind * 2 > len(around))
+        labels = following
+    return {number for number, rind in enumerate(labels) if rind}
 
 
-def add_side(vertices, faces, uvs, corners, inside, uv_centre, uv_units):
-    """Appends one side of a sliver, three or four corners, as one or two triangles.
+def split_uvs(mesh, rind):
+    """Squeezes the UVs of every face into the half of its side (see BAND_WIDTH)."""
+    uv_layer = mesh.loops.layers.uv.active
+    for face in mesh.faces:
+        start = RIND_BAND if face.index in rind else FRACTURE_BAND
+        for loop in face.loops:
+            loop[uv_layer].uv.x = start + BAND_WIDTH * loop[uv_layer].uv.x
 
-    The side faces away from the point `inside`. Its piece of the picture lies around
-    `uv_centre`, `uv_units` units of u and v to the metre.
+
+def crescent_surface():
+    """Returns the crescent as a bmesh standing on its horn, and its two pictures."""
+    mesh, colour, normal = import_surface("splinter_tripo.glb", MOON_DECIMATE_RATIO,
+                                          MOON_TRIANGLES)
+
+    # The source lies with the crescent in its XZ plane, the horns up.
+    centre_x, centre_z = fit_circle(np.array([(corner.co.x, corner.co.z)
+                                              for corner in mesh.verts]))
+
+    def outwards(point):
+        return Vector((point.x - centre_x, 0.0, point.z - centre_z)).normalized()
+
+    split_uvs(mesh, rind_faces(mesh, outwards, MOON_RIND_FACING, MOON_NORMAL_PASSES))
+
+    # The horn at the left end of the source goes down. The crescent is turned so that its
+    # middle (the average of the middles of its faces, each counted by its area) is
+    # straight above that horn: the game turns it about the upright line through its
+    # origin, and it turns around itself and not around a point beside it.
+    horn = min(mesh.verts, key=lambda corner: (corner.co.x, corner.index)).co.copy()
+    area = sum(face.calc_area() for face in mesh.faces)
+    middle = sum((face.calc_center_median() * face.calc_area() for face in mesh.faces),
+                 Vector()) / area
+    turn = (middle - horn).rotation_difference(Vector((0.0, 0.0, 1.0))).to_matrix().to_4x4()
+    bmesh.ops.transform(mesh, matrix=turn, verts=mesh.verts)
+
+    # MOON_HEIGHT tall, the lowest corner on the origin.
+    low = min(mesh.verts, key=lambda corner: (corner.co.z, corner.index)).co.copy()
+    top = max(corner.co.z for corner in mesh.verts)
+    scale = MOON_HEIGHT / (top - low.z)
+    for corner in mesh.verts:
+        corner.co = (corner.co - low) * scale
+    mesh.normal_update()
+    return mesh, colour, normal
+
+
+def heartstone_surface():
+    """Returns the heartstone as a bmesh and its two pictures."""
+    mesh, colour, normal = import_surface("heartstone_tripo.glb", None, HEARTSTONE_TRIANGLES)
+
+    # The source stands upright on Blender Z = 0. Its origin goes to the middle of its
+    # base, and it is scaled to HEARTSTONE_HEIGHT.
+    low = Vector((min(corner.co.x for corner in mesh.verts),
+                  min(corner.co.y for corner in mesh.verts),
+                  min(corner.co.z for corner in mesh.verts)))
+    high = Vector((max(corner.co.x for corner in mesh.verts),
+                   max(corner.co.y for corner in mesh.verts),
+                   max(corner.co.z for corner in mesh.verts)))
+    base = Vector(((low.x + high.x) / 2.0, (low.y + high.y) / 2.0, low.z))
+    scale = HEARTSTONE_HEIGHT / (high.z - low.z)
+    for corner in mesh.verts:
+        corner.co = (corner.co - base) * scale
+    mesh.normal_update()
+
+    def outwards(point):
+        return Vector((point.x, point.y, 0.0)).normalized()
+
+    floor = {face.index for face in mesh.faces
+             if face.calc_center_median().z < HEARTSTONE_BASE_SHARE * HEARTSTONE_HEIGHT}
+    split_uvs(mesh, rind_faces(mesh, outwards, HEARTSTONE_RIND_FACING,
+                               HEARTSTONE_NORMAL_PASSES, floor))
+    return mesh, colour, normal
+
+
+def band(picture, start):
+    """The whole picture squeezed across into the columns from start to start + BAND_WIDTH
+    (in parts of the width), at the size of the picture. The columns beyond the band
+    repeat its edge."""
+    size = picture.shape[1]
+    u = ((np.arange(size) + 0.5) / size - start) / BAND_WIDTH
+    column = np.clip(np.clip(u, 0.0, 1.0) * size - 0.5, 0.0, size - 1.0)
+    left = np.floor(column).astype(int)
+    right = np.minimum(left + 1, size - 1)
+    share = (column - left)[None, :, None]
+    return picture[:, left] * (1.0 - share) + picture[:, right] * share
+
+
+def write_pictures(colour, normal, picture_file, normal_file):
+    """Writes the colour picture of the two halves and its normal map."""
+    half = colour.shape[1] // 2
+    brightness = np.clip(colour.max(-1) * (BRIGHTNESS_MIDDLE / colour.max(-1).mean()),
+                         0.0, 1.0)[..., None]
+    rind = band(brightness, RIND_BAND)[..., 0]
+    fracture = band(brightness, FRACTURE_BAND)[..., 0]
+    picture = np.empty_like(colour)
+    picture[:, :half] = ((RIND_FLOOR + RIND_RANGE * rind[:, :half])[..., None]
+                         * np.array(RIND_TINT))
+    picture[:, half:] = ((FRACTURE_FLOOR + FRACTURE_RANGE * fracture[:, half:])[..., None]
+                         * np.array(FRACTURE_TINT))
+    make_textures.save_png(generated.shrink(picture, TEXTURE_SIZE), picture_file)
+
+    directions = np.empty_like(normal)
+    directions[:, :half] = band(normal, RIND_BAND)[:, :half]
+    directions[:, half:] = band(normal, FRACTURE_BAND)[:, half:]
+    generated.save_normal_map(directions, TEXTURE_SIZE, normal_file)
+
+
+def export(name, mesh, height, material, shots, shot_cameras):
+    """Writes the bmesh as one textured model with smooth normals.
+
+    material is (its name, the colour picture, the normal map). Stops when the model is
+    not `height` tall over its origin or a UV lies outside the halves of the picture.
     """
-    points = [Vector(vertices[corner]) for corner in corners]
-    centre = sum(points, Vector()) / len(points)
+    common.reset_scene()
+    data = bpy.data.meshes.new(name)
+    mesh.to_mesh(data)
+    # A generated surface of small faces: the exporter writes the normal of every corner
+    # as the average of the faces around it, as for the shade.
+    data.shade_smooth()
+    # The normal-map node of the material names the UV map "uv".
+    data.uv_layers[0].name = "uv"
+    model = bpy.data.objects.new(name, data)
+    bpy.context.scene.collection.objects.link(model)
 
-    # The direction the side faces. The rings are twisted and jittered, so four corners
-    # do not lie in one plane: this is the average over its edges (Newell's method),
-    # which for a flat side is its normal.
-    normal = Vector()
-    for place, point in enumerate(points):
-        after = points[(place + 1) % len(points)]
-        normal += Vector(((point.y - after.y) * (point.z + after.z),
-                          (point.z - after.z) * (point.x + after.x),
-                          (point.x - after.x) * (point.y + after.y)))
-    normal.normalize()
-    if normal.dot(centre - inside) < 0.0:
-        # The corners went clockwise as seen from outside. Turn them around.
-        corners.reverse()
-        points.reverse()
-        normal = -normal
+    lowest = min(corner.co.z for corner in data.vertices)
+    top = max(corner.co.z for corner in data.vertices)
+    if lowest < -0.001 or abs(top - height) > 0.000001:
+        raise RuntimeError(f"{name} reaches from {lowest:.4f} m to {top:.4f} m, "
+                           f"not from 0 to {height} m")
+    for loop in data.uv_layers[0].data:
+        u = loop.uv.x
+        if not (RIND_BAND <= u <= RIND_BAND + BAND_WIDTH or
+                FRACTURE_BAND <= u <= FRACTURE_BAND + BAND_WIDTH):
+            raise RuntimeError(f"{name} has u = {u:.4f} outside the halves")
 
-    # The side is projected onto its own plane, like common.face_project_uvs does: `up`
-    # is the height as far as the side allows, `right` points to the right for someone
-    # who looks at it from outside. Both triangles of a side use the same two directions,
-    # so the picture continues across the line between them.
-    up = Vector((0.0, 0.0, 1.0)) - normal * normal.z
-    if up.length < 0.000001:
-        up = Vector((0.0, 1.0, 0.0))
-    up.normalize()
-    right = up.cross(normal)
-    side_uvs = [
-        (uv_centre[0] + (point - centre).dot(right) * uv_units,
-         uv_centre[1] + (point - centre).dot(up) * uv_units)
-        for point in points
-    ]
-
-    # A fan around the first corner: one triangle for three corners, two for four. Each
-    # triangle is flat, so each has one normal.
-    for place in range(1, len(corners) - 1):
-        faces.append((corners[0], corners[place], corners[place + 1]))
-        uvs.append((side_uvs[0], side_uvs[place], side_uvs[place + 1]))
-
-
-def finish(name, vertices, faces, uvs, shots, shot_target=(0.03, 0.0, 0.25),
-           shot_cameras=((0.9, -0.5, 0.45), (-0.8, 0.6, 0.5))):
-    """Turns the lists into a textured model, exports it and renders the review shots."""
-    model = common.create_mesh_object(name, vertices, faces)
-
-    # The texture coordinates are written by hand, as in build_flask.py. A loop is one
-    # corner of one face, and from_pydata keeps the order of both lists.
-    uv_layer = model.data.uv_layers.new(name="uv")
-    for polygon, face_uvs in zip(model.data.polygons, uvs):
-        for loop_index, uv in zip(polygon.loop_indices, face_uvs):
-            uv_layer.data[loop_index].uv = uv
-
-    common.assign_textured_material(model, "splinter", "splinter.png", "splinter_normal.png")
+    common.assign_textured_material(model, *material)
     common.export_obj(name)
 
     if shots:
-        # Two views aimed at the middle of the splinter: the rind, and the fracture.
-        common.render_review_shots(
-            name,
-            target=shot_target,
-            camera_positions=list(shot_cameras),
-        )
+        common.render_review_shots(name, target=(0.0, 0.0, height / 2.0),
+                                   camera_positions=shot_cameras)
 
 
-def build_splinter_a(shots):
-    common.reset_scene()
+def build_splinters(shots):
+    mesh, colour, normal = crescent_surface()
+    write_pictures(colour, normal, "splinter_moon.png", "splinter_moon_normal.png")
+    material = ("splinter_moon", "splinter_moon.png", "splinter_moon_normal.png")
+    # Three views: from the side of the rind, from the side of the fracture, from above.
+    cameras = [(1.0, -0.6, 0.35), (-0.9, 0.7, 0.3), (0.4, -0.5, 1.1)]
 
-    vertices = []
-    faces = []
-    uvs = []
+    export("splinter_a", mesh, MOON_HEIGHT, material, shots, cameras)
 
-    # One sliver that stands on its lower point and leans a little.
-    add_sliver(vertices, faces, uvs, base=(0.0, 0.0, 0.0), axis=(0.12, -0.05, 1.0),
-               length=0.5, width=0.085, twist=28.0, seed=3)
-
-    finish("splinter_a", vertices, faces, uvs, shots)
-
-
-def build_splinter_b(shots):
-    common.reset_scene()
-
-    vertices = []
-    faces = []
-    uvs = []
-
-    # Three slivers from one spot that lean away from each other. They overlap at their
-    # lower points, which hides where one ends and the next one starts. The tallest one
-    # stands almost upright and is the size of splinter_a.
-    add_sliver(vertices, faces, uvs, base=(0.0, 0.0, 0.0), axis=(0.05, 0.02, 1.0),
-               length=0.5, width=0.08, twist=24.0, seed=4)
-    add_sliver(vertices, faces, uvs, base=(0.02, -0.01, 0.0), axis=(0.8, -0.35, 1.0),
-               length=0.36, width=0.062, twist=-30.0, seed=5)
-    add_sliver(vertices, faces, uvs, base=(-0.02, 0.02, 0.0), axis=(-0.62, 0.58, 1.0),
-               length=0.28, width=0.05, twist=20.0, seed=6)
-
-    finish("splinter_b", vertices, faces, uvs, shots)
+    # The copies are added one after another to one bmesh: from_mesh adds to what the
+    # bmesh already has.
+    copy_data = bpy.data.meshes.new("splinter_copy")
+    mesh.to_mesh(copy_data)
+    cluster = bmesh.new()
+    for scale, own_turn, lean, lean_turn, horn in MOON_COPIES:
+        first = len(cluster.verts)
+        cluster.from_mesh(copy_data)
+        cluster.verts.ensure_lookup_table()
+        place = (Matrix.Translation(horn)
+                 @ Matrix.Rotation(math.radians(lean_turn), 4, "Z")
+                 @ Matrix.Rotation(math.radians(lean), 4, "X")
+                 @ Matrix.Rotation(math.radians(own_turn - lean_turn), 4, "Z")
+                 @ Matrix.Scale(scale, 4))
+        added = cluster.verts[first:]
+        bmesh.ops.transform(cluster, matrix=place, verts=added)
+        # A leaning copy turns the corners beside its horn below it. It is lifted until
+        # none lies below the origin, so the origin stays the lowest point.
+        dip = min(corner.co.z for corner in added)
+        if dip < 0.0:
+            bmesh.ops.translate(cluster, vec=(0.0, 0.0, -dip), verts=added)
+    export("splinter_b", cluster, MOON_HEIGHT, material, shots, cameras)
+    cluster.free()
+    mesh.free()
 
 
 def build_heartstone(shots):
-    common.reset_scene()
-
-    vertices = []
-    faces = []
-    uvs = []
-
-    # Four slivers grown into one piece. The main one stands almost upright and is 0.9 m
-    # long, two lean away from it like the side slivers of splinter_b, and the fourth
-    # lies low across them. They overlap at their lower points.
-    slivers = (
-        ((0.0, 0.0, 0.0), (0.05, 0.02, 1.0), 0.9, 0.15, 18.0, 11),
-        ((0.03, -0.02, 0.02), (0.7, -0.3, 1.0), 0.62, 0.11, -24.0, 12),
-        ((-0.03, 0.03, 0.02), (-0.55, 0.62, 1.0), 0.55, 0.1, 22.0, 13),
-        ((0.0, 0.04, 0.0), (0.1, 0.9, 0.6), 0.45, 0.085, 30.0, 14),
-    )
-    for base, axis, length, width, twist, seed in slivers:
-        add_sliver(vertices, faces, uvs, base=base, axis=axis, length=length, width=width,
-                   twist=twist, seed=seed, uv_units=HEARTSTONE_UV_UNITS_PER_METRE)
-
-    finish("heartstone", vertices, faces, uvs, shots, shot_target=(0.05, 0.05, 0.45),
-           shot_cameras=((1.6, -0.9, 0.8), (-1.4, 1.1, 0.9)))
+    mesh, colour, normal = heartstone_surface()
+    write_pictures(colour, normal, "heartstone.png", "heartstone_normal.png")
+    # Three views: from the side, from a player who looks down into the crown, from below.
+    export("heartstone", mesh, HEARTSTONE_HEIGHT,
+           ("heartstone", "heartstone.png", "heartstone_normal.png"), shots,
+           [(1.8, -1.0, 0.7), (-1.0, 1.2, 1.9), (1.2, 1.4, -0.4)])
+    mesh.free()
 
 
 def build(shots):
-    build_splinter_a(shots)
-    build_splinter_b(shots)
+    build_splinters(shots)
     build_heartstone(shots)
 
 

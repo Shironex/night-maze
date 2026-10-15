@@ -34,11 +34,11 @@ constexpr int CRYSTAL_VARIANT_COUNT = 2;
 // All sizes are in metres.
 
 /// Height of the crystal models, from their base (the origin of the model) to their tip.
-constexpr float CRYSTAL_HEIGHT = 0.5F;
+constexpr float CRYSTAL_HEIGHT = 0.4F;
 
 /// How high above the ground the base of a resting crystal floats: the middle of the
 /// crystal is then 1.15 m above it, a little above the middle of the body of the player.
-constexpr float CRYSTAL_FLOAT_HEIGHT = 0.9F;
+constexpr float CRYSTAL_FLOAT_HEIGHT = 0.95F;
 
 /// The crystal moves up and down by this much around its resting height, once in
 /// CRYSTAL_BOB_SECONDS.

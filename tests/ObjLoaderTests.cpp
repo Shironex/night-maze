@@ -2,6 +2,7 @@
 #include "assets/ObjLoader.hpp"
 
 #include "assets/Tangents.hpp"
+#include "game/Crystals.hpp"
 #include "game/Lighting.hpp"
 
 #include <doctest/doctest.h>
@@ -993,22 +994,21 @@ TEST_CASE("loadObj: splinter_a.obj and splinter_b.obj") {
 
         // One material, and the two pictures it names are there.
         REQUIRE(model.parts.size() == 1U);
-        CHECK(model.parts[0].material == "splinter");
+        CHECK(model.parts[0].material == "splinter_moon");
         REQUIRE(model.materials.size() == 1U);
-        CHECK(model.materials[0].diffuseTexture.filename() == "splinter.png");
-        CHECK(model.materials[0].normalTexture.filename() == "splinter_normal.png");
+        CHECK(model.materials[0].diffuseTexture.filename() == "splinter_moon.png");
+        CHECK(model.materials[0].normalTexture.filename() == "splinter_moon_normal.png");
         CHECK(std::filesystem::exists(model.materials[0].diffuseTexture));
         CHECK(std::filesystem::exists(model.materials[0].normalTexture));
         CHECK(model.indices.size() == splinter.triangles * 3U);
 
-        // The origin is the lower point, to the millimetre (a side sliver of splinter_b
-        // leans so far that a corner of it dips a hair lower), and the upper point is no
-        // higher than the game takes a crystal to be: its light hangs above
+        // The origin is the lower point, to the millimetre, and the model is 0.4 m tall,
+        // no higher than the game takes a crystal to be: its light hangs above
         // CRYSTAL_HEIGHT (game/Crystals.hpp).
         const Bounds bounds = boundsOf(model);
         CHECK(std::abs(bounds.min.y) < 0.001F);
-        CHECK(bounds.max.y > 0.45F);
-        CHECK(bounds.max.y <= 0.5F);
+        CHECK(bounds.max.y > 0.39F);
+        CHECK(bounds.max.y <= game::CRYSTAL_HEIGHT);
 
         // Every side keeps to its half of the picture: the rind on the left, the fracture
         // on the right, and nothing within a twentieth of the picture of the line between.
@@ -1021,8 +1021,8 @@ TEST_CASE("loadObj: splinter_a.obj and splinter_b.obj") {
 }
 
 TEST_CASE("loadObj: heartstone.obj") {
-    // The big splinter of a maze: four slivers of 40 triangles each, in the material of
-    // the splinters and with its origin at its lower point.
+    // The big splinter of a maze: the generated crown of slivers, in a picture of its
+    // own split like the one of the splinters, with its origin under its middle.
     assets::ObjModel model;
     std::string error;
     const bool ok = assets::loadObj(modelsDirectory() / "heartstone.obj", model, error);
@@ -1033,11 +1033,11 @@ TEST_CASE("loadObj: heartstone.obj") {
         CHECK(glm::length(vertex.normal) == doctest::Approx(1.0F).epsilon(0.001));
     }
     REQUIRE(model.parts.size() == 1U);
-    CHECK(model.parts[0].material == "splinter");
+    CHECK(model.parts[0].material == "heartstone");
     REQUIRE(model.materials.size() == 1U);
-    CHECK(model.materials[0].diffuseTexture.filename() == "splinter.png");
-    CHECK(model.materials[0].normalTexture.filename() == "splinter_normal.png");
-    CHECK(model.indices.size() == 160U * 3U);
+    CHECK(model.materials[0].diffuseTexture.filename() == "heartstone.png");
+    CHECK(model.materials[0].normalTexture.filename() == "heartstone_normal.png");
+    CHECK(model.indices.size() == 6359U * 3U);
 
     // 0.9 m tall to the centimetre, and no taller than the game takes it to be: its
     // light hangs above HEARTSTONE_HEIGHT (game/Heartstone.hpp).
