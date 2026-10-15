@@ -167,6 +167,11 @@ public:
     /// sounds are loaded, or the reason why there is no sound.
     const std::string& status() const { return m_status; }
 
+    /// How long sound number index is, in seconds. 0 without a device, for a number that
+    /// was not loaded and for a sound whose file failed to load. The storybook intro
+    /// holds a picture for as long as its spoken line lasts (game/Storybook.hpp).
+    float lengthSeconds(std::size_t index) const;
+
     /// How many frames the engine mixes per second (one frame is one sample per
     /// channel), and how many channels a frame has. Both 0 without a device.
     unsigned sampleRate() const;

@@ -395,6 +395,18 @@ void AudioEngine::setGroupVolume(SoundGroup group, float volume) {
     }
 }
 
+float AudioEngine::lengthSeconds(std::size_t index) const {
+    const LoadedSound* found = m_backend == nullptr ? nullptr : m_backend->sound(index);
+    if (found == nullptr) {
+        return 0.0F;
+    }
+    // Every voice reads the same samples: the first one knows how many frames they are,
+    // at the sample rate of the engine (loadSound).
+    const ma_audio_buffer_ref& reader = found->voices.front().reader;
+    return static_cast<float>(reader.sizeInFrames) /
+           static_cast<float>(ma_engine_get_sample_rate(&m_backend->engine));
+}
+
 unsigned AudioEngine::sampleRate() const {
     return m_backend == nullptr ? 0 : ma_engine_get_sample_rate(&m_backend->engine);
 }

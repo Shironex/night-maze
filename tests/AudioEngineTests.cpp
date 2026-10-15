@@ -320,6 +320,16 @@ TEST_CASE("a loop fades in and out without a click, also when the fade is turned
     CHECK(peak(renderLeft(engine, 1.0)) > 0.005F);
 }
 
+TEST_CASE("the length of a sound is the length of its file, and 0 for one that is not there") {
+    AudioEngine engine(AudioOutput::None);
+    const std::array<SoundFile, 2> files = {soundFile("maze_wind.wav", SoundGroup::Ambient),
+                                            soundFile("no_such_sound.wav")};
+    engine.load(files);
+    CHECK(engine.lengthSeconds(0) == doctest::Approx(static_cast<double>(WIND_SECONDS)));
+    CHECK(engine.lengthSeconds(1) == 0.0F);
+    CHECK(engine.lengthSeconds(7) == 0.0F);
+}
+
 TEST_CASE("the wind of the maze has no tick where its file starts again") {
     AudioEngine engine(AudioOutput::None);
     const std::array<SoundFile, 1> files = {soundFile("maze_wind.wav", SoundGroup::Ambient)};
