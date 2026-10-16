@@ -77,6 +77,7 @@ Status words: `accepted (date)` means the code does this today. `planned (date)`
 ## Audio
 - [audio](audio.md): miniaudio, computed sounds and music, one room
 - [menu-music](menu-music.md): FLAC loop, music group, where it plays
+- [round-music](round-music.md): bed, chase layer and sting in a round, second menu theme
 - [audio-loops-and-groups](audio-loops-and-groups.md): loops, footsteps, volume groups
 
 ## Build and release
