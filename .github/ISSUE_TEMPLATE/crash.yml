@@ -41,7 +41,7 @@ body:
     attributes:
       label: Game version
       description: The launcher shows it on the Launch line of its main window.
-      placeholder: 0.16.0
+      placeholder: 0.17.0
     validations:
       required: true
   - type: input
