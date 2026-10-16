@@ -29,8 +29,8 @@ using audio::SoundGroup;
 constexpr std::size_t RATE = 48000;
 constexpr std::size_t CHANNELS = 2;
 
-// The wind of the maze is a loop of this many seconds (tools/make_sounds.py).
-constexpr std::size_t WIND_SECONDS = 10;
+// The wind of the maze is a loop of this many seconds (assets/audio/README.md).
+constexpr std::size_t WIND_SECONDS = 9;
 
 // The theme of the menu is a loop of 72.72 seconds (tools/make_music.py): this many
 // frames of the engine.
@@ -230,7 +230,9 @@ TEST_CASE("a loop goes on for longer than its file, and only setLoop ends it") {
     engine.play(1);
     renderLeft(engine, 4.0);
     const float both = peak(renderLeft(engine, 2.0));
-    CHECK(both > 1.5F * loud);
+    // The recorded wind of the maze has gusts of its own, so the two together are not
+    // much louder than its loudest gust: a third more is what is asked.
+    CHECK(both > 1.3F * loud);
     engine.stopAll();
     CHECK(engine.isLooping(0));
     const float after = peak(renderLeft(engine, 2.0));
@@ -336,7 +338,7 @@ TEST_CASE("the wind of the maze has no tick where its file starts again") {
     engine.load(files);
     engine.setLoop(0, true, 0.0F);
 
-    // 25 seconds: the file starts again after 10 and after 20. The engine mixes at
+    // 25 seconds: the file starts again after 9 and after 18. The engine mixes at
     // another sample rate than the file has, and the conversion starts from silence,
     // which is why the file has to begin where its wave crosses 0. A copy of the file
     // that begins at its loudest sample fails this test with a step ten times the
@@ -453,25 +455,26 @@ TEST_CASE("a loop that is switched off and on again goes on from where it stoppe
     CHECK(differenceAt(0) > 0.5F * peak(resumed));
 }
 
-TEST_CASE("the music of a round and the second theme go round without a tick") {
-    // The three loops cut from recordings (assets/audio/README.md) and their lengths in
-    // whole seconds: the material after the loop end is crossfaded into the head, and
+TEST_CASE("the music of a round, the second theme and the hum go round without a tick") {
+    // The loops cut from recordings (assets/audio/README.md) and their lengths in
+    // seconds: the material after the loop end is crossfaded into the head, and
     // the file starts at a quiet sample of both channels.
     struct Loop {
         const char* file;
-        std::size_t seconds;
+        double seconds;
     };
-    for (const Loop loop : {Loop{.file = "maze_ambient.flac", .seconds = 48},
-                            Loop{.file = "shade_chase.flac", .seconds = 52},
-                            Loop{.file = "menu_theme_v2.flac", .seconds = 108}}) {
+    for (const Loop loop : {Loop{.file = "maze_ambient.flac", .seconds = 48.0},
+                            Loop{.file = "shade_chase.flac", .seconds = 52.0},
+                            Loop{.file = "menu_theme_v2.flac", .seconds = 108.0},
+                            Loop{.file = "shade_near.wav", .seconds = 3.5}}) {
         const std::string name = loop.file;
         CAPTURE(name);
         AudioEngine engine(AudioOutput::None);
         const std::array<SoundFile, 1> files = {soundFile(loop.file, SoundGroup::Music)};
         engine.load(files);
-        REQUIRE(engine.lengthSeconds(0) == doctest::Approx(static_cast<double>(loop.seconds)));
+        REQUIRE(engine.lengthSeconds(0) == doctest::Approx(loop.seconds));
         engine.setLoop(0, true, 0.0F);
-        const std::size_t seam = loop.seconds * RATE;
+        const auto seam = static_cast<std::size_t>(loop.seconds * static_cast<double>(RATE));
         engine.render(seam - 2 * RATE);
         const std::vector<float> mixed = engine.render(3 * RATE);
         // Peaks are kept below -1 dBTP: well under 0.89 after the conversion.
