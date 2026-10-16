@@ -2,11 +2,16 @@
 # out of the window, into showcase-out/raw/ (not committed). `pnpm showcase` then frames
 # them and builds the banner, into docs/showcase/ (committed).
 #
-# Run from the repository root, on Windows, after a Release build (make release):
+# Run from the repository root, on Windows or on macOS, after a Release build
+# (make release):
 #   python tools/capture_showcase.py
 #   python tools/capture_showcase.py --only round,lever    (only these runs)
-# It needs ffmpeg on PATH and nothing else: no Python package is used. The window code
-# and the screen grabber are the ones of tools/record_menu_loop.py.
+# It needs ffmpeg on PATH and nothing else: no Python package is used. What depends on
+# the system is in tools/showcase_windows.py (the window code and the screen grabber of
+# tools/record_menu_loop.py, SendInput) and tools/showcase_macos.py (CoreGraphics,
+# screencapture). On macOS the terminal needs two permissions, Screen Recording for the
+# pictures and Accessibility for the keys and the mouse; without the second the runs
+# that send input are left out and named at the end.
 #
 # Every picture is one entry of RUNS below: the switches the game is started with
 # (game/StartOptions.hpp), its settings file, and a few steps. A picture that only needs
@@ -19,7 +24,8 @@
 # file of the player is never touched, and it is silent (master_volume = 0).
 #
 # While it runs, the game window (1280 x 720) is on the screen, on top of the other
-# windows. Keys and mouse turns go to whatever window is the active one, so before each
+# windows (on macOS it stays where the game opens it, in the middle of the main
+# screen). Keys and mouse turns go to whatever window is the active one, so before each
 # of them the script checks that this is the game window, and stops that picture when it
 # is not. For as long as it sends input it holds the file nm-input.lock in the temporary
 # folder: another script that wants the keyboard waits for that file to go away, and
@@ -29,8 +35,6 @@
 # The pictures go out of date whenever the look of the game changes. Then run this script
 # and `pnpm showcase` again, and look at every picture before committing it.
 import argparse
-import ctypes
-import ctypes.wintypes
 import os
 import subprocess
 import sys
@@ -40,9 +44,17 @@ from dataclasses import dataclass, field
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from record_menu_loop import (DEFAULT_EXE, HEIGHT, LEAD_IN_SECONDS, REPOSITORY,  # noqa: E402
-                              SETTINGS_FILE_NAME, WIDTH, WINDOW_LEFT, WINDOW_TOP, client_size,
-                              find_window, grab_arguments, put_on_top, run, use_real_pixels,
-                              user32)
+                              SETTINGS_FILE_NAME, WIDTH, WINDOW_LEFT, WINDOW_TOP)
+
+# Everything that depends on the system (finding the window, bringing it to the front,
+# the picture, the keys and the mouse) is in one module per system, with the same
+# functions in both: "desk" is the one of this computer.
+if sys.platform == "win32":
+    import showcase_windows as desk  # noqa: E402
+elif sys.platform == "darwin":
+    import showcase_macos as desk  # noqa: E402
+else:
+    sys.exit("tools/capture_showcase.py runs on Windows and on macOS only")
 
 OUT_DIR = os.path.join(REPOSITORY, "showcase-out", "raw")
 WORK = os.path.join(tempfile.gettempdir(), "nm-showcase-work")
@@ -54,9 +66,8 @@ LOCK_WAIT_SECONDS = 120.0
 POINTER_WAIT_SECONDS = 10.0
 
 # The settings file writes mouse_sensitivity = 4, which is 0.1 degrees per unit of mouse
-# movement (game/Settings.hpp), so a turn of 90 degrees is 900 units.
+# movement (game/Settings.hpp), so a turn of 90 degrees is 900 units: desk.UNITS_PER_DEGREE.
 MOUSE_SENSITIVITY = 4
-UNITS_PER_DEGREE = 10
 
 # ---- the pictures -------------------------------------------------------------------------
 #
@@ -169,12 +180,19 @@ RUNS = [
     # for as long as the light is on it after that.
     Run("shade", ["--play", "--seed", "6", "--start-cell", "4,9", "--start-yaw", "270"], {}, [
         ("wait", 0.5), ("grab", "shade")]),
-    # The third card of the intro, 3.5 seconds after the cut to it: its text stands, and
-    # the crystal at the end of the corridor is in view. --intro plays the intro at the
-    # start of the run. The intro counts real time from the first frame, about
-    # a second after the start of the game, so the moment is hit within half a second,
-    # and the text stands for four seconds.
-    Run("intro", ["--intro", "--intro-style", "classic"], {}, [("wait", 13.5), ("grab", "intro")]),
+    # The storybook, the intro of a campaign (--intro plays it at the start of the run,
+    # --intro-style storybook names it, though it is the default). The second of its six
+    # pictures: the old maze on the hill with the splinters of the moon glowing in its
+    # corridors, the sleeping village below, and both lines of its text standing. Of the
+    # six it is the one that shows the maze of the game, and its text stands on the
+    # quiet snow and not on a figure (the sixth, the child with the lamp, was the other
+    # choice). The intro counts real time from its first frame, which comes after its
+    # pictures and sounds are loaded. The first picture stays 7.75 seconds (as long as
+    # its spoken line lasts), the second 11. A picture every two seconds of a run on a
+    # Mac showed the second with both lines up from about 9 to 20 seconds after the
+    # lead-in: the moment below is in the middle, with room for a slower start.
+    Run("intro", ["--intro", "--intro-style", "storybook"], {}, [
+        ("wait", 14.5), ("grab", "intro")]),
     # The tea at work: the flask is picked up by walking into the dead end, and the bar
     # of the tea is on the HUD. The player turns round to look back down the corridor.
     Run("tea", ["--play", "--calm", "--seed", "76", "--start-cell", "6,8", "--start-yaw", "0"],
@@ -182,38 +200,7 @@ RUNS = [
         ("hold", "W", 1.5), ("turn", 180, 0), ("wait", 0.5), ("grab", "tea")]),
 ]
 
-# ---- keys and mouse (Windows only) --------------------------------------------------------
-
-# Scan codes of the keys the steps use (the position of a key on the keyboard, so the
-# layout of the keyboard does not matter).
-SCAN_CODES = {"W": 0x11, "S": 0x1F, "E": 0x12, "M": 0x32, "SHIFT": 0x2A, "TAB": 0x0F,
-              "ENTER": 0x1C}
-
-INPUT_MOUSE = 0
-INPUT_KEYBOARD = 1
-KEYEVENTF_KEYUP = 0x0002
-KEYEVENTF_SCANCODE = 0x0008
-MOUSEEVENTF_MOVE = 0x0001
-
-
-class MouseInput(ctypes.Structure):
-    _fields_ = [("dx", ctypes.c_long), ("dy", ctypes.c_long), ("mouseData", ctypes.c_ulong),
-                ("dwFlags", ctypes.c_ulong), ("time", ctypes.c_ulong),
-                ("dwExtraInfo", ctypes.c_void_p)]
-
-
-class KeyboardInput(ctypes.Structure):
-    _fields_ = [("wVk", ctypes.c_ushort), ("wScan", ctypes.c_ushort),
-                ("dwFlags", ctypes.c_ulong), ("time", ctypes.c_ulong),
-                ("dwExtraInfo", ctypes.c_void_p)]
-
-
-class InputUnion(ctypes.Union):
-    _fields_ = [("mouse", MouseInput), ("keyboard", KeyboardInput)]
-
-
-class Input(ctypes.Structure):
-    _fields_ = [("type", ctypes.c_ulong), ("union", InputUnion)]
+# ---- keys and mouse ----------------------------------------------------------------------
 
 
 class Keyboard:
@@ -225,13 +212,10 @@ class Keyboard:
         self.down = set()
 
     def check(self):
-        if user32.GetForegroundWindow() != self.window:
+        if not desk.is_front(self.window):
             raise RuntimeError("the game window is not the active window: nothing was sent")
 
     def key(self, name, up):
-        flags = KEYEVENTF_SCANCODE | (KEYEVENTF_KEYUP if up else 0)
-        entry = Input(INPUT_KEYBOARD,
-                      InputUnion(keyboard=KeyboardInput(0, SCAN_CODES[name], flags, 0, None)))
         if up:
             # A release is sent whatever window is in front: a key that stays down would
             # repeat there. A release without a press before it does nothing.
@@ -239,21 +223,19 @@ class Keyboard:
         else:
             self.check()
             self.down.add(name)
-        user32.SendInput(1, ctypes.byref(entry), ctypes.sizeof(Input))
+        desk.send_key(name, up)
 
     def turn(self, right, up):
         # In pieces of at most 3 degrees, a moment apart: one large jump would be a single
         # mouse event. Moving the mouse down looks down, so up is sent with a minus sign.
-        x = round(right * UNITS_PER_DEGREE)
-        y = -round(up * UNITS_PER_DEGREE)
+        x = round(right * desk.UNITS_PER_DEGREE)
+        y = -round(up * desk.UNITS_PER_DEGREE)
         pieces = max(1, (max(abs(x), abs(y)) + 29) // 30)
         for piece in range(1, pieces + 1):
             dx = x * piece // pieces - x * (piece - 1) // pieces
             dy = y * piece // pieces - y * (piece - 1) // pieces
-            entry = Input(INPUT_MOUSE,
-                          InputUnion(mouse=MouseInput(dx, dy, 0, MOUSEEVENTF_MOVE, 0, None)))
             self.check()
-            user32.SendInput(1, ctypes.byref(entry), ctypes.sizeof(Input))
+            desk.send_move(self.window, dx, dy)
             time.sleep(0.01)
 
     def release_all(self):
@@ -286,13 +268,18 @@ class InputLock:
 
 
 class Game:
-    # Starts the game for one run and stops it again: "with Game(...) as window:".
+    # Starts the game for one run and stops it again: "with Game(...) as game:", and
+    # game.window is the game window.
 
     def __init__(self, exe, a_run):
         self.exe = exe
         self.run = a_run
         self.process = None
-        self.pointer = ctypes.wintypes.POINT()
+        self.window = None
+        self.pointer = (0, 0)
+        # Whether the script moved the mouse pointer itself (only on macOS, before a
+        # picture of a menu: desk.move_pointer_away).
+        self.pointer_moved = False
 
     def __enter__(self):
         os.makedirs(WORK, exist_ok=True)
@@ -305,7 +292,7 @@ class Game:
 
         # During a round the game hides the mouse pointer and keeps it in the middle of
         # its window. Where the pointer was is remembered here and put back at the end.
-        user32.GetCursorPos(ctypes.byref(self.pointer))
+        self.pointer = desk.pointer()
         self.process = subprocess.Popen([self.exe, *self.run.switches], cwd=WORK,
                                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         started = time.monotonic()
@@ -313,33 +300,36 @@ class Game:
         while window is None and time.monotonic() - started < 20.0:
             if self.process.poll() is not None:
                 raise RuntimeError("the game ended right after its start")
-            window = find_window(self.process.pid)
+            window = desk.find_window(self.process.pid, self.pointer)
             time.sleep(0.05)
         if window is None:
             raise RuntimeError("the game window did not appear")
 
         left, top = self.place()
-        put_on_top(window, left, top)
+        desk.show(window, left, top)
         # A run that sends keys needs the game window in front, in a round and in a menu.
         if starts_round(self.run) or sends_input(self.run):
-            bring_to_front(window)
+            desk.bring_to_front(window)
         time.sleep(max(0.0, LEAD_IN_SECONDS - (time.monotonic() - started)))
-        width, height = client_size(window)
+        width, height = desk.client_size(window)
         if width != WIDTH or height != HEIGHT:
             raise RuntimeError(f"the game window is {width} x {height}, not {WIDTH} x {HEIGHT}")
-        return window
+        self.window = window
+        return self
 
     def place(self):
         # Where the window goes: the usual corner of the main screen. A menu lights up
         # the button under the mouse pointer, so a run that waits for the pointer to be
         # outside ("pointer_out") starts on another screen when the pointer is in the
-        # way and there is one. With one screen it waits for the pointer to move.
+        # way and there is one. With one screen it waits for the pointer to move. (On
+        # macOS the window is not moved at all: desk.show and desk.move_pointer_away.)
         usual = (WINDOW_LEFT, WINDOW_TOP)
         if ("pointer_out",) not in self.run.steps:
             return usual
-        for left, top in [usual] + [place for place in screen_corners() if place != usual]:
-            over_x = left <= self.pointer.x < left + WIDTH
-            over_y = top <= self.pointer.y < top + HEIGHT
+        x, y = self.pointer
+        for left, top in [usual] + [place for place in desk.screen_corners() if place != usual]:
+            over_x = left <= x < left + WIDTH
+            over_y = top <= y < top + HEIGHT
             if not (over_x and over_y):
                 return left, top
         return usual
@@ -348,67 +338,24 @@ class Game:
         if self.process is not None and self.process.poll() is None:
             self.process.terminate()
             self.process.wait(timeout=10)
-        if starts_round(self.run):
-            user32.SetCursorPos(self.pointer.x, self.pointer.y)
+        if starts_round(self.run) or self.pointer_moved:
+            desk.put_pointer(*self.pointer)
         return False
 
 
-def bring_to_front(window):
-    # A game that a script starts is not always the active window: Windows keeps another
-    # program's window in front when the person is working in it. A round pauses when
-    # its window is not the active one, so the window is asked for the front: the thread
-    # of the window in front lends its right to do that. No key and no click is sent.
-    if user32.GetForegroundWindow() == window:
-        return
-    front_thread = user32.GetWindowThreadProcessId(user32.GetForegroundWindow(), None)
-    own_thread = ctypes.windll.kernel32.GetCurrentThreadId()
-    user32.AttachThreadInput(own_thread, front_thread, True)
-    user32.BringWindowToTop(window)
-    user32.SetForegroundWindow(window)
-    user32.AttachThreadInput(own_thread, front_thread, False)
-    time.sleep(0.3)
-
-
-def screen_corners():
-    # The top left corner of every screen, moved in by as much as the usual place is.
-    corners = []
-
-    @ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.wintypes.HMONITOR, ctypes.wintypes.HDC,
-                        ctypes.POINTER(ctypes.wintypes.RECT), ctypes.wintypes.LPARAM)
-    def visit(_monitor, _context, rectangle, _data):
-        screen = rectangle.contents
-        corners.append((screen.left + WINDOW_LEFT, screen.top + WINDOW_TOP))
-        return 1
-
-    user32.EnumDisplayMonitors(0, 0, visit, 0)
-    return corners
-
-
-def grab(window, path):
-    run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", *grab_arguments(window),
-         "-frames:v", "1", "-update", "1", path])
-    print("wrote", path)
-
-
-def pointer_inside(window):
-    point = ctypes.wintypes.POINT()
-    user32.GetCursorPos(ctypes.byref(point))
-    rectangle = ctypes.wintypes.RECT()
-    user32.GetWindowRect(window, ctypes.byref(rectangle))
-    return (rectangle.left <= point.x < rectangle.right and
-            rectangle.top <= point.y < rectangle.bottom)
-
-
-def wait_for_pointer(window):
+def wait_for_pointer(game):
+    if desk.move_pointer_away(game.window):
+        game.pointer_moved = True
     waited_from = time.monotonic()
-    while pointer_inside(window):
+    while desk.pointer_inside(game.window):
         if time.monotonic() - waited_from > POINTER_WAIT_SECONDS:
             raise RuntimeError("the mouse pointer stayed over the game window")
         time.sleep(0.2)
 
 
 def play(exe, a_run, out_dir):
-    with Game(exe, a_run) as window:
+    with Game(exe, a_run) as game:
+        window = game.window
         keyboard = Keyboard(window)
         try:
             for step in a_run.steps:
@@ -420,7 +367,7 @@ def play(exe, a_run, out_dir):
                     # active one any more: that must not be the picture.
                     if starts_round(a_run):
                         keyboard.check()
-                    grab(window, os.path.join(out_dir, step[1] + ".png"))
+                    desk.grab(window, os.path.join(out_dir, step[1] + ".png"))
                 elif kind == "hold":
                     names = step[1].split("+")
                     for name in names:
@@ -439,7 +386,7 @@ def play(exe, a_run, out_dir):
                     keyboard.turn(step[1], step[2])
                     time.sleep(0.15)
                 elif kind == "pointer_out":
-                    wait_for_pointer(window)
+                    wait_for_pointer(game)
                 else:
                     raise ValueError(f"unknown step: {step}")
         finally:
@@ -465,9 +412,12 @@ def main():
 
     if not os.path.isfile(arguments.exe):
         sys.exit(f"The game is not built: {arguments.exe} (run make release first)")
-    use_real_pixels()
+    desk.prepare()
     os.makedirs(arguments.out_dir, exist_ok=True)
     wanted = arguments.only.split(",") if arguments.only else [a_run.name for a_run in RUNS]
+    # Whether the system lets this script send keys and mouse movements at all. When it
+    # does not, the runs that need them are left out and the others are still taken.
+    input_allowed, refusal = desk.input_allowed()
 
     failed = []
     for a_run in RUNS:
@@ -475,6 +425,8 @@ def main():
             continue
         print("run", a_run.name)
         try:
+            if sends_input(a_run) and not input_allowed:
+                raise RuntimeError(refusal)
             if sends_input(a_run):
                 with InputLock():
                     play(arguments.exe, a_run, arguments.out_dir)

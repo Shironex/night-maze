@@ -123,14 +123,17 @@ WINDOW_TITLE = "Night Maze"
 SETTINGS_FILE_NAME = "night-maze-settings.txt"
 
 REPOSITORY = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEFAULT_EXE = os.path.join(REPOSITORY, "build", "release", "Release", "night_maze.exe")
+# The Release build: Visual Studio puts it in a folder of its own configuration, the
+# Makefile generator of macOS straight into build/release.
+if sys.platform == "win32":
+    DEFAULT_EXE = os.path.join(REPOSITORY, "build", "release", "Release", "night_maze.exe")
+else:
+    DEFAULT_EXE = os.path.join(REPOSITORY, "build", "release", "night_maze")
 DEFAULT_OUT_DIR = os.path.join(REPOSITORY, "assets", "video")
 LOOP_FILE_NAME = "menu_loop.mp4"
 STILL_FILE_NAME = "menu_still.png"
 
 # ---- the game window (Windows only) -------------------------------------------------------
-
-user32 = ctypes.windll.user32
 
 # SetWindowPos: "above all other windows", and "keep the size, do not make it the active
 # window, show it".
@@ -139,12 +142,19 @@ SWP_NOSIZE = 0x0001
 SWP_NOACTIVATE = 0x0010
 SWP_SHOWWINDOW = 0x0040
 
-# The types of the call. Without them ctypes passes every argument as a 32 bit number, so
-# the handle -1 of HWND_TOPMOST becomes 0xFFFFFFFF on a 64 bit Windows, which names no
-# window, and the call fails without a word.
-user32.SetWindowPos.argtypes = [ctypes.wintypes.HWND, ctypes.wintypes.HWND, ctypes.c_int,
-                                ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_uint]
-user32.SetWindowPos.restype = ctypes.wintypes.BOOL
+# This script records on Windows only, but tools/capture_showcase.py imports its numbers
+# on macOS too, where there is no user32: there it stays None and is never called.
+if sys.platform == "win32":
+    user32 = ctypes.windll.user32
+
+    # The types of the call. Without them ctypes passes every argument as a 32 bit
+    # number, so the handle -1 of HWND_TOPMOST becomes 0xFFFFFFFF on a 64 bit Windows,
+    # which names no window, and the call fails without a word.
+    user32.SetWindowPos.argtypes = [ctypes.wintypes.HWND, ctypes.wintypes.HWND, ctypes.c_int,
+                                    ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_uint]
+    user32.SetWindowPos.restype = ctypes.wintypes.BOOL
+else:
+    user32 = None
 
 
 def use_real_pixels():
