@@ -68,4 +68,10 @@ void VertexArray::setFloatAttribute(GLuint index, GLint componentCount, GLsizei 
                                    offsetAsPointer));
 }
 
+void VertexArray::setAttributeDivisor(GLuint index, GLuint divisor) {
+    // Like the format, the divisor belongs to the vertex array that is bound.
+    bind();
+    GL_CHECK(glVertexAttribDivisor(index, divisor));
+}
+
 } // namespace gfx

@@ -14,10 +14,12 @@ namespace gfx {
 /// that make them. Dear ImGui and RmlUi draw with their own OpenGL code and are not in
 /// these numbers.
 struct RenderCounters {
-    /// Draw calls: glDrawElements and glDrawArrays.
+    /// Draw calls: glDrawElements and glDrawArrays, and glDrawElementsInstanced, which is
+    /// one call however many copies it draws.
     std::uint32_t drawCalls = 0;
-    /// Triangles those draw calls handed to the card (trianglesOf). The blades the
-    /// geometry shader of the grass makes on the card are not in it.
+    /// Triangles those draw calls handed to the card (trianglesOf): for an instanced
+    /// call, the triangles of every copy. The blades the geometry shader of the grass
+    /// makes on the card are not in it.
     std::uint32_t triangles = 0;
     /// Lookups of a uniform by its name (glGetUniformLocation). gfx::Shader remembers
     /// the answers, so only the first use of a name with a program is one: after the

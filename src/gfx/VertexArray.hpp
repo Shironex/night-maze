@@ -49,6 +49,14 @@ public:
     void setFloatAttribute(GLuint index, GLint componentCount, GLsizei strideInBytes,
                            std::size_t offsetInBytes);
 
+    /// Sets how often attribute index moves on to its next value (glVertexAttribDivisor).
+    /// Binds this vertex array first. 0, the start value, is once per vertex: the usual
+    /// attribute. 1 is once per instance of an instanced draw call
+    /// (glDrawElementsInstanced): every vertex of one copy of the mesh reads the same
+    /// value, and the next copy reads the next one. The grass reads the root of a tuft
+    /// like this (game::GrassRenderer).
+    void setAttributeDivisor(GLuint index, GLuint divisor);
+
 private:
     // Name (id) of the OpenGL vertex array object. 0 is never a real one: it means "none".
     GLuint m_id = 0;
