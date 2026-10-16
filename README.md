@@ -161,7 +161,7 @@ Everything here is in `src/gfx`, `src/game`, `src/assets` and `assets/shaders`.
 | Vignette | The corners of the picture are darkened a little. |
 | Skybox | A cube map of the night sky with stars and a painted moon. |
 | Reflections | Puddles and crystals mirror the sky: they sample the cube map of the skybox (environment mapping), not the scene around them. |
-| Grass | A geometry shader turns every point into a tuft of three blades that move in the wind. |
+| Grass | Every tuft is three blades that move in the wind, drawn by instancing one small mesh, or by a geometry shader that turns a point into the blades (switch in the debug window). Chunks out of view are skipped and far tufts lose blades. |
 | Terrain | The ground is built from a height map, so the floor of the corridors is gently uneven. |
 | Models | OBJ models, written by the Blender scripts in `tools/blender` and read by a loader of my own. Most of them start from a model I generated in Tripo, kept as a source next to the scripts; the walls, the glowing pieces and the moving parts are built by the scripts. |
 

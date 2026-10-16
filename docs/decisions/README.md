@@ -19,6 +19,7 @@ Status words: `accepted (date)` means the code does this today. `planned (date)`
 - [flashlight-shadow-bias](flashlight-shadow-bias.md): bias in world space
 - [held-lamp](held-lamp.md): lamp model on the beam, in front of walls
 - [grass-lighting](grass-lighting.md): fixed up normal
+- [grass-instancing](grass-instancing.md): instancing by default, chunks, geometry shader kept
 - [tangents-on-load](tangents-on-load.md): computed once per OBJ
 - [reflections-and-puddles](reflections-and-puddles.md): own pass, puddles follow ground
 - [visible-effect-over-physical-values](visible-effect-over-physical-values.md): defaults chosen to be seen
