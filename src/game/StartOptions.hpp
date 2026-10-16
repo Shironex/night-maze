@@ -27,6 +27,14 @@ enum class IntroStyle {
     Classic,
 };
 
+/// Which theme the main menu plays (--menu-theme): the piano of tools/make_music.py
+/// (game::MENU_THEME_FILE) or the second theme, a recording (game::MENU_THEME_V2_FILE).
+/// A switch and not a setting: the two are compared, and one of them goes.
+enum class MenuTheme {
+    Classic,
+    V2,
+};
+
 /// How the game starts. Without switches on the command line it is the game as it
 /// always started: the default maze and the player at the start.
 struct StartOptions {
@@ -101,6 +109,9 @@ struct StartOptions {
     /// How the intro is told in this run (--intro-style). The storybook falls back to
     /// the classic intro when its files cannot be read.
     IntroStyle introStyle = IntroStyle::Storybook;
+
+    /// The theme of the main menu in this run (--menu-theme). Only that one is loaded.
+    MenuTheme menuTheme = MenuTheme::Classic;
 };
 
 /// What parseStartOptions found.
@@ -140,6 +151,7 @@ extern const char* const START_OPTIONS_USAGE;
 ///     --skip-intro           never play the intro in this run
 ///     --intro                play the intro at the start of this run
 ///     --intro-style <name>   how the intro is told: storybook or classic
+///     --menu-theme <name>    the theme of the main menu: classic or v2
 ///
 /// An unknown switch, a missing value or a value that is not a number is an error: the
 /// result then carries a message and the game should not start. So are --night and

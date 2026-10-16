@@ -454,12 +454,17 @@ struct MazeWindRequest {
 ///   - On every other screen only while a sample runs.
 bool mazeWindPlays(const MazeWindRequest& request);
 
-/// The theme of the main menu: music, the one piece the game has. It is no cue: it is
-/// not a short sound that says something happened, it has a volume of its own
-/// (GameSettings::musicVolume) and its file is not a WAV file. It is a loop like the
-/// wind of the maze, switched on and off (menuThemePlays), and its file ends where it
-/// begins (tools/make_music.py). The path is relative to the assets directory.
+/// The theme of the main menu: music. It is no cue: it is not a short sound that says
+/// something happened, it has a volume of its own (GameSettings::musicVolume) and its
+/// file is not a WAV file. It is a loop like the wind of the maze, switched on and off
+/// (menuThemePlays), and its file ends where it begins (tools/make_music.py). The path
+/// is relative to the assets directory. The music under a round is in game/RoundMusic.hpp.
 constexpr const char* MENU_THEME_FILE = "audio/menu_theme.flac";
+
+/// The second theme, a recording cut into a loop (assets/audio/README.md), played in
+/// the place of the first when the game is started with --menu-theme v2
+/// (game::MenuTheme). It takes the same place in the list of sounds.
+constexpr const char* MENU_THEME_V2_FILE = "audio/menu_theme_v2.flac";
 
 /// The place of the theme in the list of sounds the audio layer loads: right after the
 /// cues, whose places are their numbers.
@@ -499,7 +504,7 @@ struct MenuThemeRequest {
 ///     Intro               no: the intro has its wind and its bell
 ///     CampaignIntro       no
 ///     NightCard           no: a card is text on black before a round
-///     Playing             no: a night has the wind of the maze and its own sounds
+///     Playing             no: a night has the wind of the maze and its own music
 ///     Paused              no: the pause is a stop in the night, not the menu
 ///     SettingsFromPause   no, for the same reason
 ///     LedgerFromPause     no

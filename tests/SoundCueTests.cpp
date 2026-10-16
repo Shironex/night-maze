@@ -1110,6 +1110,7 @@ TEST_CASE("the theme of the menu plays on the main menu and its pages and nowher
     // The theme is the sound after the last cue, and it comes slower than it goes.
     CHECK(game::MENU_THEME_SOUND == game::SOUND_CUE_COUNT);
     CHECK(std::string(game::MENU_THEME_FILE) == "audio/menu_theme.flac");
+    CHECK(std::string(game::MENU_THEME_V2_FILE) == "audio/menu_theme_v2.flac");
     CHECK(game::MENU_THEME_FADE_IN_SECONDS == 2.5F);
     CHECK(game::MENU_THEME_FADE_OUT_SECONDS == 1.5F);
 }

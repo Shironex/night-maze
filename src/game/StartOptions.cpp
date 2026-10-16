@@ -27,12 +27,17 @@ constexpr std::string_view CALM_SWITCH = "--calm";
 constexpr std::string_view SKIP_INTRO_SWITCH = "--skip-intro";
 constexpr std::string_view INTRO_SWITCH = "--intro";
 constexpr std::string_view INTRO_STYLE_SWITCH = "--intro-style";
+constexpr std::string_view MENU_THEME_SWITCH = "--menu-theme";
 constexpr std::string_view NIGHT_SWITCH = "--night";
 constexpr std::string_view DAILY_SWITCH = "--daily";
 
 // The two names --intro-style accepts.
 constexpr std::string_view STORYBOOK_STYLE_NAME = "storybook";
 constexpr std::string_view CLASSIC_STYLE_NAME = "classic";
+
+// The two names --menu-theme accepts.
+constexpr std::string_view CLASSIC_THEME_NAME = "classic";
+constexpr std::string_view V2_THEME_NAME = "v2";
 
 // The two names --menu-shot accepts.
 constexpr std::string_view WALK_SHOT_NAME = "walk";
@@ -108,7 +113,7 @@ const char* const START_OPTIONS_USAGE =
     "--menu-time <seconds>, --menu-background <video|still|scene>, "
     "--start-cell <column>,<row>, --start-yaw <degrees>, --collect-all, --calm, "
     "--night <1..5>, --daily <YYYYMMDD>, --skip-intro, --intro, "
-    "--intro-style <storybook|classic>";
+    "--intro-style <storybook|classic>, --menu-theme <classic|v2>";
 
 StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
     StartOptionsResult result;
@@ -137,6 +142,20 @@ StartOptionsResult parseStartOptions(std::span<const char* const> arguments) {
                 options.introStyle = IntroStyle::Classic;
             } else {
                 result.error = "The switch --intro-style needs storybook or classic";
+                return result;
+            }
+            ++i;
+            continue;
+        }
+        // The theme of the main menu, for comparing the two. Not a switch of a tool.
+        if (name == MENU_THEME_SWITCH) {
+            const std::string_view theme = i + 1 < arguments.size() ? arguments[i + 1] : "";
+            if (theme == CLASSIC_THEME_NAME) {
+                options.menuTheme = MenuTheme::Classic;
+            } else if (theme == V2_THEME_NAME) {
+                options.menuTheme = MenuTheme::V2;
+            } else {
+                result.error = "The switch --menu-theme needs classic or v2";
                 return result;
             }
             ++i;
