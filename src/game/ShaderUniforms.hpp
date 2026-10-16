@@ -12,9 +12,9 @@ namespace game {
 
 /// The three matrices. Every vertex shader (textured, color, lit, gouraud) declares
 /// them under the same names. skybox.vert has the view and the projection only: the sky
-/// is not placed anywhere in the world. The grass has the same two, in grass.geom: its
-/// points are already in world space. shadow_depth.vert has all three, and there the
-/// view and the projection are the ones of a light (scene::LightSpace).
+/// is not placed anywhere in the world. The grass has the same two, in grass.geom and
+/// grass_instanced.vert: its tufts are already in world space. shadow_depth.vert has all three, and
+/// there the view and the projection are the ones of a light (scene::LightSpace).
 constexpr const char* MODEL_UNIFORM = "uModel";
 constexpr const char* VIEW_UNIFORM = "uView";
 constexpr const char* PROJECTION_UNIFORM = "uProjection";
@@ -193,11 +193,21 @@ constexpr const char* MINIMAP_OVERLAY_BORDER_COLOR_UNIFORM = "uBorderColor";
 constexpr const char* SKYBOX_UNIFORM = "uSkybox";
 constexpr const char* SKYBOX_BRIGHTNESS_UNIFORM = "uBrightness";
 
-/// grass.geom: the clock of the wind in seconds, the height of the tallest blades in
-/// metres and how far the wind pushes the tips (0: still air).
+/// common/grass_blade.glsl, so grass.geom and grass_instanced.vert: the clock of the
+/// wind in seconds, the height of the tallest blades in metres and how far the wind
+/// pushes the tips (0: still air).
 constexpr const char* GRASS_TIME_UNIFORM = "uTime";
 constexpr const char* GRASS_BLADE_HEIGHT_UNIFORM = "uBladeHeight";
 constexpr const char* GRASS_WIND_STRENGTH_UNIFORM = "uWindStrength";
+
+/// common/grass_blade.glsl: the distance LOD of the grass. Whether it is on (1) or off
+/// (0), the eye in world space, the two distances in metres behind which the third and
+/// the second blade of a tuft shrink away, and the width of the band they shrink in.
+constexpr const char* GRASS_LOD_ENABLED_UNIFORM = "uLodEnabled";
+constexpr const char* GRASS_EYE_POSITION_UNIFORM = "uEyePosition";
+constexpr const char* GRASS_LOD_NEAR_UNIFORM = "uLodNear";
+constexpr const char* GRASS_LOD_FAR_UNIFORM = "uLodFar";
+constexpr const char* GRASS_LOD_FADE_UNIFORM = "uLodFade";
 
 /// grass.frag: whether the grass is lit by the lights of the scene (1) or shown at full
 /// brightness (0).

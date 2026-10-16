@@ -9,8 +9,10 @@
 #include "game/StoneSheep.hpp"
 #include "game/Terrain.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <random>
 
@@ -143,6 +145,122 @@ bool grassIsTrampled(const MazeWorld& world, float x, float z) {
     }
     const MazeCell cell = cellAt({x, 0.0F, z});
     return cell == world.exitCell || cell == approachCell(world);
+}
+
+namespace {
+
+// The square of the grid of chunks a coordinate lies in: 0 from 0 to just below
+// chunkSize, -1 from -chunkSize to just below 0, and so on. floor and not a cast: a cast
+// cuts towards 0 and would put -0.5 and 0.5 into the same square.
+std::int64_t chunkIndex(float coordinate, float chunkSize) {
+    return static_cast<std::int64_t>(std::floor(coordinate / chunkSize));
+}
+
+} // namespace
+
+GrassChunks groupGrassIntoChunks(std::span<const GrassTuft> tufts, float chunkSize) {
+    GrassChunks result;
+    if (tufts.empty()) {
+        return result;
+    }
+
+    // One key per tuft: the row (z) and the column (x) of its square, and its place in
+    // the list. Sorting the keys puts the tufts of one square together, the squares row
+    // by row, and inside one square keeps the order of the list (the third number).
+    // A size of 0 or less gives every tuft the key of the square (0, 0): one chunk.
+    struct Key {
+        std::int64_t row;
+        std::int64_t column;
+        std::size_t index;
+        auto operator<=>(const Key&) const = default;
+    };
+    std::vector<Key> keys;
+    keys.reserve(tufts.size());
+    for (std::size_t i = 0; i < tufts.size(); ++i) {
+        const glm::vec3& root = tufts[i].position;
+        const bool grid = chunkSize > 0.0F;
+        keys.push_back({.row = grid ? chunkIndex(root.z, chunkSize) : 0,
+                        .column = grid ? chunkIndex(root.x, chunkSize) : 0,
+                        .index = i});
+    }
+    std::ranges::sort(keys);
+
+    result.tufts.reserve(tufts.size());
+    for (std::size_t i = 0; i < keys.size(); ++i) {
+        const GrassTuft& tuft = tufts[keys[i].index];
+        // A new chunk starts with the first tuft and wherever the square changes.
+        const bool newChunk =
+            i == 0 || keys[i].row != keys[i - 1].row || keys[i].column != keys[i - 1].column;
+        if (newChunk) {
+            result.chunks.push_back({.firstTuft = static_cast<std::uint32_t>(i),
+                                     .tuftCount = 0,
+                                     .roots = {.min = tuft.position, .max = tuft.position}});
+        }
+        GrassChunk& chunk = result.chunks.back();
+        ++chunk.tuftCount;
+        chunk.roots.min = glm::min(chunk.roots.min, tuft.position);
+        chunk.roots.max = glm::max(chunk.roots.max, tuft.position);
+        result.tufts.push_back(tuft);
+    }
+    return result;
+}
+
+scene::Aabb grassChunkBox(const scene::Aabb& roots, float bladeHeight, float windStrength) {
+    // How far a blade reaches sideways from the root of its tuft, at most: its own root
+    // stands GRASS_ROOT_SPREAD from the middle, its tip leans GRASS_LEAN of its height
+    // further, the wind adds its push, and the blade is GRASS_ROOT_HALF_WIDTH wide to
+    // each side of its middle line. The tallest blade is bladeHeight high (shorter
+    // blades and shrunk ones reach less far), and nothing of a blade lies below its root.
+    const float reach = GRASS_ROOT_SPREAD + GRASS_LEAN * bladeHeight +
+                        GRASS_WIND_REACH * std::abs(windStrength) + GRASS_ROOT_HALF_WIDTH;
+    return {.min = roots.min - glm::vec3{reach, 0.0F, reach},
+            .max = roots.max + glm::vec3{reach, bladeHeight, reach}};
+}
+
+float grassLodFar(const GrassSettings& settings) {
+    return std::max(settings.lodFar, settings.lodNear);
+}
+
+int grassBladesAt(float distance, const GrassSettings& settings) {
+    if (!settings.distanceLod) {
+        return GRASS_BLADES_PER_TUFT;
+    }
+    // The first blade always stays. The second one is there up to two bands behind
+    // lodFar, the third one up to two bands behind lodNear (see GRASS_LOD_FADE). The
+    // second blade never goes before the third: a lodFar below lodNear counts as lodNear
+    // (grassLodFar), as it does in the shader.
+    constexpr float GONE_BEHIND = 2.0F * GRASS_LOD_FADE;
+    int blades = 1;
+    if (distance < grassLodFar(settings) + GONE_BEHIND) {
+        ++blades;
+    }
+    if (distance < settings.lodNear + GONE_BEHIND) {
+        ++blades;
+    }
+    return blades;
+}
+
+std::vector<GrassDrawRange> grassDrawRanges(std::span<const GrassChunk> chunks,
+                                            std::span<const int> bladesPerChunk) {
+    std::vector<GrassDrawRange> ranges;
+    const std::size_t count = std::min(chunks.size(), bladesPerChunk.size());
+    for (std::size_t i = 0; i < count; ++i) {
+        const int blades = bladesPerChunk[i];
+        if (blades <= 0) {
+            continue;
+        }
+        const GrassChunk& chunk = chunks[i];
+        // The chunk continues the last range when it starts right where that range ends
+        // and its tufts get the same number of blades: one draw call draws both.
+        if (!ranges.empty() && ranges.back().blades == blades &&
+            ranges.back().firstTuft + ranges.back().tuftCount == chunk.firstTuft) {
+            ranges.back().tuftCount += chunk.tuftCount;
+            continue;
+        }
+        ranges.push_back(
+            {.firstTuft = chunk.firstTuft, .tuftCount = chunk.tuftCount, .blades = blades});
+    }
+    return ranges;
 }
 
 } // namespace game

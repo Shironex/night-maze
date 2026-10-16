@@ -1,8 +1,12 @@
 // Grass: where the tufts of grass stand, one point per tuft, chosen from the seed of the maze.
 #pragma once
 
+#include "scene/Collider.hpp"
+
 #include <glm/glm.hpp>
 
+#include <cstdint>
+#include <span>
 #include <vector>
 
 namespace game {
@@ -10,8 +14,9 @@ namespace game {
 struct MazeWorld;
 
 // Plain data and math without OpenGL, like the rest of the game_logic library. The blades
-// themselves do not exist here: a tuft is one point, and the geometry shader grass.geom
-// builds its blades on the graphics card in every frame.
+// themselves do not exist here: a tuft is one point, and the graphics card builds its
+// blades in every frame, either in the geometry shader grass.geom or in the vertex shader
+// grass_instanced.vert (see GrassPath).
 
 // All sizes are in metres.
 
@@ -40,6 +45,43 @@ constexpr float GRASS_HILL_CLEARANCE = 0.6F;
 constexpr float DEFAULT_GRASS_DENSITY = 2.5F;
 constexpr float MAX_GRASS_DENSITY = 8.0F;
 
+/// The blades of one tuft: BLADES_PER_TUFT in assets/shaders/common/grass_blade.glsl.
+constexpr int GRASS_BLADES_PER_TUFT = 3;
+
+/// The shape of a blade, the same numbers as in common/grass_blade.glsl (the test
+/// "the blade numbers of C++ are the ones of the shader" reads them there). The C++ side
+/// needs them for one thing only: how far a blade can reach from the root of its tuft,
+/// which makes the box a chunk of grass is culled with (grassChunkBox).
+///
+/// Half of the width of a blade at its root, how far its root stands from the middle of
+/// the tuft, how far its tip leans as a part of its height, and how far the wind pushes
+/// a tip at wind strength 1, all in metres or parts of the height.
+constexpr float GRASS_ROOT_HALF_WIDTH = 0.02F;
+constexpr float GRASS_ROOT_SPREAD = 0.025F;
+constexpr float GRASS_LEAN = 0.4F;
+constexpr float GRASS_WIND_REACH = 0.06F;
+
+/// The side of the square a chunk of grass covers on the ground, in metres: two cells of
+/// the maze. The tufts are grouped by the square they stand in, so that a whole group can
+/// be left out when its box is outside the view (chunk culling). Smaller chunks fit the
+/// view more closely but need more boxes to test and more draw calls.
+constexpr float GRASS_CHUNK_SIZE = 4.0F;
+
+/// The distances of the distance LOD (level of detail) the game starts with, in metres:
+/// from GRASS_LOD_NEAR on the third blade of a tuft shrinks away, from GRASS_LOD_FAR on
+/// the second one. The first blade stays at every distance.
+constexpr float DEFAULT_GRASS_LOD_NEAR = 12.0F;
+constexpr float DEFAULT_GRASS_LOD_FAR = 24.0F;
+
+/// The largest distance the two sliders of the LOD offer, in metres.
+constexpr float MAX_GRASS_LOD_DISTANCE = 60.0F;
+
+/// The width of the band in which a blade shrinks away, in metres. Every tuft starts to
+/// shrink its blade at its own distance inside one more band of this width (it is
+/// chosen by the random number of the tuft), so the blades do not vanish along one line.
+/// A blade is therefore gone for good two bands behind its LOD distance.
+constexpr float GRASS_LOD_FADE = 4.0F;
+
 /// One tuft of grass.
 struct GrassTuft {
     /// Where its roots are: a point on the ground (y is Terrain::heightAt).
@@ -51,11 +93,38 @@ struct GrassTuft {
     float random = 0.0F;
 };
 
+/// The two ways the blades are made on the graphics card. Both draw the same blades.
+enum class GrassPath {
+    /// The vertex shader grass_instanced.vert: one small mesh of the three blades of
+    /// a tuft is drawn once for every tuft (instancing), and each copy reads the root and
+    /// the random number of its own tuft. The default.
+    Instanced = 0,
+    /// The geometry shader grass.geom: one point per tuft goes in, the blades come out.
+    /// Kept as the example of a geometry shader. It is slow on a Mac, whose graphics
+    /// cards have no geometry stage of their own: the driver imitates it.
+    GeometryShader = 1,
+};
+
 /// What can be changed about the grass while the game runs. The debug UI edits the
 /// fields. The values here are the defaults.
 struct GrassSettings {
     /// Whether the grass is drawn.
     bool enabled = true;
+
+    /// How the blades are made (GrassPath).
+    GrassPath path = GrassPath::Instanced;
+
+    /// Whether a chunk of grass whose box lies outside the view is left out. Only while
+    /// the frustum culling of the whole game is on too (the switch in Diagnostics).
+    bool chunkCulling = true;
+
+    /// Whether far tufts have fewer blades (lodNear, lodFar).
+    bool distanceLod = true;
+
+    /// The distances of the LOD in metres: the third blade of a tuft shrinks away
+    /// behind lodNear, the second one behind lodFar (see GRASS_LOD_FADE).
+    float lodNear = DEFAULT_GRASS_LOD_NEAR;
+    float lodFar = DEFAULT_GRASS_LOD_FAR;
 
     /// Tufts per metre of wall, on each side of the wall. Changing it means choosing the
     /// places again: the panel sets replant.
@@ -106,5 +175,72 @@ std::vector<GrassTuft> placeGrass(const MazeWorld& world, float density);
 /// (game::stileWornGround), in a world that has one (MazeWorld::stileWall). And no grass
 /// grows under a stone sheep (game::stoneSheepBareGround).
 bool grassIsTrampled(const MazeWorld& world, float x, float z);
+
+/// The tufts that stand in one square of GRASS_CHUNK_SIZE: a range of GrassChunks::tufts.
+struct GrassChunk {
+    /// The first tuft of the chunk in GrassChunks::tufts, and how many follow it.
+    std::uint32_t firstTuft = 0;
+    std::uint32_t tuftCount = 0;
+
+    /// The smallest box around the roots of its tufts. The blades reach out of it:
+    /// grassChunkBox makes it large enough for them.
+    scene::Aabb roots;
+};
+
+/// The tufts of a world grouped into chunks: tufts holds every tuft once, ordered so
+/// that the tufts of one chunk follow each other, and chunks says where each chunk
+/// begins.
+struct GrassChunks {
+    std::vector<GrassTuft> tufts;
+    std::vector<GrassChunk> chunks;
+};
+
+/// Groups tufts into squares of chunkSize metres on the ground. The squares are a fixed
+/// grid of the world with a corner in its origin, so a square of the maze is the same
+/// square in every world. The chunks come row by row (z, then x), so
+/// chunks that stand side by side in a row are neighbours in the list too, and a row of
+/// visible chunks becomes one range of tufts that one draw call can draw. Inside
+/// a chunk the tufts keep their order. No chunk is empty.
+///
+/// This only reorders: the tufts that come out are the tufts that went in. placeGrass
+/// itself is untouched by it, so the places of the grass of a seed stay what they are.
+/// A chunkSize of 0 or less puts every tuft into one chunk.
+GrassChunks groupGrassIntoChunks(std::span<const GrassTuft> tufts, float chunkSize);
+
+/// The box that holds every blade of a chunk: the box of the roots, wider on every side
+/// by how far a blade can reach sideways (its spread, its lean, its width and the wind)
+/// and higher by the height of the tallest blades. The frustum test needs nothing more
+/// precise: a box that is a little too large only keeps a chunk that shows nothing.
+scene::Aabb grassChunkBox(const scene::Aabb& roots, float bladeHeight, float windStrength);
+
+/// The distance behind which the second blade of a tuft shrinks away: settings.lodFar,
+/// but never less than settings.lodNear, so the blades always go in the order third,
+/// second. The renderer gives the shader this number, not lodFar itself.
+float grassLodFar(const GrassSettings& settings);
+
+/// How many blades a tuft at this distance from the eye still shows with the distance
+/// LOD of settings: 3 near, then 2, then 1. A blade counts while any part of it can
+/// still be seen: up to two bands of GRASS_LOD_FADE behind its LOD distance (the shader
+/// starts to shrink it somewhere in the first band and needs the second one to finish).
+/// Without the LOD (settings.distanceLod false) every tuft shows all of its blades.
+///
+/// The renderer asks it with the distance of the nearest point of a chunk: no tuft of
+/// the chunk is nearer, so none of them needs more blades.
+int grassBladesAt(float distance, const GrassSettings& settings);
+
+/// One draw call of the grass: a range of GrassChunks::tufts and how many blades each of
+/// its tufts gets.
+struct GrassDrawRange {
+    std::uint32_t firstTuft = 0;
+    std::uint32_t tuftCount = 0;
+    int blades = 0;
+};
+
+/// The draw calls for a list of chunks. bladesPerChunk holds one number for every chunk:
+/// 0 for a chunk that is not drawn (it is outside the view), otherwise how many blades
+/// its tufts get. Chunks that follow each other in the list and get the same number are
+/// joined into one range. Both spans must have the same length.
+std::vector<GrassDrawRange> grassDrawRanges(std::span<const GrassChunk> chunks,
+                                            std::span<const int> bladesPerChunk);
 
 } // namespace game

@@ -12,7 +12,9 @@
 // of the walls like the ground it grows on.
 #include "common/shadows.glsl"
 
-// Inputs from the geometry shader, already blended for this fragment.
+// Inputs from the geometry shader grass.geom, or from grass_instanced.vert, which writes
+// the same two: this one fragment shader serves both grass programs. Already blended for
+// this fragment.
 in vec3 gWorldPosition; // position in world space
 in vec2 gBladeUv;       // x: across the blade, y: 0 at the root and 1 at the tip
 

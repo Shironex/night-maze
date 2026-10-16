@@ -656,25 +656,40 @@ void NightMazeApp::drawGrass(const glm::mat4& view, const glm::mat4& projection)
         return;
     }
 
-    // The grass has one program for every lighting mode. It is lit per fragment in the
-    // three lit modes (with Gouraud too: a tuft has no vertices in any buffer that
-    // light could be computed at), and shown at full brightness in the mode Unlit.
-    const bool lit = m_lighting.mode != LightingMode::Unlit;
-    // The clock of the wind: the seconds since GLFW was started. It only has to keep
-    // growing, so it does not stop when the round is won and does not jump when one is
-    // restarted.
-    const auto windSeconds = static_cast<float>(glfwGetTime());
+    // The two programs draw the same blades (game::GrassPath): the instanced one, or
+    // the one with the geometry shader.
+    const gfx::Shader& shader =
+        m_grassSettings.path == GrassPath::Instanced ? m_grassInstancedShader : m_grassShader;
+
+    // The chunks of the grass are culled with the frustum of the pass, like the walls
+    // (drawMaze), while both switches are on: the one of the whole game in Diagnostics and
+    // the one of the grass.
+    const scene::Frustum frustum = scene::frustumFromMatrix(projection * view);
+    const bool culling = m_frustumCulling && m_grassSettings.chunkCulling;
 
     // The grass lies in the shadows of the moon and of the flashlight like the ground,
     // so its program gets the uniforms of the two shadow maps too. A uniform is written
     // into the program in use, hence use() here: GrassRenderer::draw calls it again,
     // which changes nothing.
-    if (m_grassShader.isValid()) {
-        m_grassShader.use();
-        setShadowUniformsOf(m_grassShader);
+    if (shader.isValid()) {
+        shader.use();
+        setShadowUniformsOf(shader);
     }
-    m_grassRenderer.draw(m_grassShader, view, projection, m_grassSettings, windSeconds, lit,
-                         m_viewMode);
+    GrassFrame frame{.view = view, .projection = projection, .viewMode = m_viewMode};
+    // The eye is where the view matrix looks from: the inverse of the view matrix takes
+    // the origin of view space (the eye) back into the world, and its last column is
+    // where that origin lands.
+    frame.eye = glm::vec3(glm::inverse(view)[3]);
+    frame.frustum = culling ? &frustum : nullptr;
+    // The clock of the wind: the seconds since GLFW was started. It only has to keep
+    // growing, so it does not stop when the round is won and does not jump when one is
+    // restarted.
+    frame.timeSeconds = static_cast<float>(glfwGetTime());
+    // The grass has one program for every lighting mode. It is lit per fragment in the
+    // three lit modes (with Gouraud too: a tuft has no vertices in any buffer that light
+    // could be computed at), and shown at full brightness in the mode Unlit.
+    frame.lit = m_lighting.mode != LightingMode::Unlit;
+    m_grassRenderer.draw(shader, m_grassSettings, frame);
 }
 
 void NightMazeApp::drawColliderLines(const glm::mat4& view, const glm::mat4& projection) const {

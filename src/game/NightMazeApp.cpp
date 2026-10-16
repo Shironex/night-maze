@@ -31,8 +31,10 @@ constexpr int INITIAL_HEIGHT = 720;
 // Shader files, relative to the assets directory. The scene without lighting is drawn
 // with the first pair, the lines of the collision boxes and spheres with the second, the
 // scene with lighting per fragment with the third, with lighting per vertex with the
-// fourth and the sky with the fifth. The grass has three files: between its vertex and
-// its fragment shader runs a geometry shader. The four programs after it do not draw
+// fourth and the sky with the fifth. The grass has two programs that draw the same
+// blades (game::GrassPath): the first has three files, because between its vertex and its
+// fragment shader runs a geometry shader, and the second, the instanced one, has
+// a vertex shader of its own and shares the fragment shader. The programs after them do not draw
 // the scene: they draw one triangle over the whole target and share its vertex shader. The
 // composite program brings the HDR picture of the scene to the window, the preview
 // program makes the pictures of the framebuffer attachments for the debug UI, and the
@@ -51,6 +53,7 @@ constexpr const char* SKYBOX_FRAGMENT_SHADER_FILE = "shaders/skybox.frag";
 constexpr const char* GRASS_VERTEX_SHADER_FILE = "shaders/grass.vert";
 constexpr const char* GRASS_GEOMETRY_SHADER_FILE = "shaders/grass.geom";
 constexpr const char* GRASS_FRAGMENT_SHADER_FILE = "shaders/grass.frag";
+constexpr const char* GRASS_INSTANCED_VERTEX_SHADER_FILE = "shaders/grass_instanced.vert";
 constexpr const char* FULLSCREEN_VERTEX_SHADER_FILE = "shaders/post/composite.vert";
 constexpr const char* COMPOSITE_FRAGMENT_SHADER_FILE = "shaders/post/composite.frag";
 constexpr const char* PREVIEW_FRAGMENT_SHADER_FILE = "shaders/post/preview.frag";
@@ -180,6 +183,8 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
       m_grassShader(core::assetPath(GRASS_VERTEX_SHADER_FILE),
                     core::assetPath(GRASS_FRAGMENT_SHADER_FILE),
                     core::assetPath(GRASS_GEOMETRY_SHADER_FILE)),
+      m_grassInstancedShader(core::assetPath(GRASS_INSTANCED_VERTEX_SHADER_FILE),
+                             core::assetPath(GRASS_FRAGMENT_SHADER_FILE)),
       m_compositeShader(core::assetPath(FULLSCREEN_VERTEX_SHADER_FILE),
                         core::assetPath(COMPOSITE_FRAGMENT_SHADER_FILE)),
       m_previewShader(core::assetPath(FULLSCREEN_VERTEX_SHADER_FILE),
@@ -230,12 +235,13 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
       m_ledgerCounts(!options.toolSwitch),
       m_playedDifficultyName(difficultyLevel(m_settings.difficulty).name),
       m_ui(window()) {
-    // The two lit programs and the grass program read the lights from the uniform buffer
-    // of m_lightRig. Each program is told once: the shader repeats it by itself after
-    // a reload.
+    // The two lit programs and the two grass programs read the lights from the uniform
+    // buffer of m_lightRig. Each program is told once: the shader repeats it by itself
+    // after a reload.
     m_lightRig.connect(m_litShader);
     m_lightRig.connect(m_gouraudShader);
     m_lightRig.connect(m_grassShader);
+    m_lightRig.connect(m_grassInstancedShader);
     // The reflect program lights the crystals and the puddles with the same lights.
     m_lightRig.connect(m_reflectShader);
 

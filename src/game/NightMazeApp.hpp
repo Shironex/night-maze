@@ -210,6 +210,9 @@ protected:
     /// Shader program of the grass (with a geometry stage), exposed for the same reason.
     gfx::Shader& grassShader() { return m_grassShader; }
 
+    /// Shader program of the instanced grass, exposed for the same reason.
+    gfx::Shader& grassInstancedShader() { return m_grassInstancedShader; }
+
     /// Shader program of the composite pass (the HDR picture to the window), exposed
     /// for the same reason.
     gfx::Shader& compositeShader() { return m_compositeShader; }
@@ -304,6 +307,9 @@ protected:
 
     /// How many tufts of grass are on the graphics card, for the debug UI.
     std::size_t grassTuftCount() const { return m_grassRenderer.tuftCount(); }
+
+    /// How many chunks the tufts are grouped into, for the debug UI.
+    std::size_t grassChunkCount() const { return m_grassRenderer.chunkCount(); }
 
     /// The switch and the brightness of the sky, exposed so the debug UI can edit them
     /// live.
@@ -893,7 +899,7 @@ private:
     /// Sets the uniforms of both shadow maps (the moon and the flashlight) in the
     /// program shader, which must be in use and must include common/shadows.glsl:
     /// game::setShadowUniforms once for each map. Called in every frame for the lit
-    /// program in use and for the grass program, also with the shadows switched off.
+    /// program in use and for the grass programs, also with the shadows switched off.
     void setShadowUniformsOf(const gfx::Shader& shader) const;
 
     /// The parts of a frame. Each one selects its own shader program and sets its
@@ -905,8 +911,9 @@ private:
     /// drawMaze makes the frustum of the pass from the view and the projection it is
     /// given (scene::frustumFromMatrix) and hands it to the way it chose, so whatever camera the
     /// frame is drawn with (the player, the menu camera, the intro, the reveal of the
-    /// village) is the one that is culled with. The terrain and the grass are one draw
-    /// call each and are never left out.
+    /// village) is the one that is culled with. The terrain is one draw call and is never
+    /// left out. drawGrass culls the chunks of the grass with the same frustum, when the
+    /// frustum culling and the chunk culling of the grass are both switched on.
     void drawMaze(const glm::mat4& view, const glm::mat4& projection) const;
     void drawUnlitMaze(const glm::mat4& view, const glm::mat4& projection,
                        const scene::Frustum* frustum) const;
@@ -1111,6 +1118,7 @@ private:
     gfx::Shader m_gouraudShader;
     gfx::Shader m_skyboxShader;
     gfx::Shader m_grassShader;
+    gfx::Shader m_grassInstancedShader;
     gfx::Shader m_compositeShader;
     gfx::Shader m_previewShader;
     gfx::Shader m_brightPassShader;
