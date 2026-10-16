@@ -41,7 +41,7 @@ I write the game to learn how real time graphics work, so most of what is on the
 
 The game needs a graphics card and driver with OpenGL 4.1.
 
-Windows is what ships. I last ran the game on a Mac around version 0.9.0. Since then the code is only compiled and unit tested on macOS by a GitHub runner, so I do not know whether the newest version works there.
+Windows is what ships. I ran 0.17.0 on a Mac with Apple silicon: the window, the menu video, the sound, the storybook intro and rounds all work there, and the pictures below were taken on it. There is no macOS build in the releases yet.
 
 ## Screenshots
 
@@ -59,7 +59,7 @@ Windows is what ships. I last ran the game on a Mac around version 0.9.0. Since 
     <td width="50%"><img src="docs/showcase/corridor.webp" alt="Night Maze: A corridor" /></td>
   </tr>
   <tr>
-    <td align="center"><sub>The classic intro (<code>--intro-style classic</code>): the third of its five cards, over a walk through the maze.</sub></td>
+    <td align="center"><sub>The storybook intro: its second painted picture, the old maze above the sleeping village, with splinters of the moon glowing in its corridors.</sub></td>
     <td align="center"><sub>A crystal glows in front of the wall at the end of a corridor.</sub></td>
   </tr>
   <tr>
@@ -88,7 +88,7 @@ Windows is what ships. I last ran the game on a Mac around version 0.9.0. Since 
   </tr>
 </table>
 
-Every picture is the game window as it is, at 1280 x 720. The corridor and the worn walls are taken by the menu camera, which shows the game without the HUD. The intro card is the classic intro itself. The others are from a round and from the menus.
+Every picture is the game window as it is, at 1280 x 720. The corridor and the worn walls are taken by the menu camera, which shows the game without the HUD. The intro picture is the storybook itself. The others are from a round and from the menus.
 
 ## What is in the game
 
@@ -240,7 +240,7 @@ pnpm install
 pnpm showcase                      # frames and banner, into docs/showcase/
 ```
 
-The kit cannot start a native game, so the capture is a script of mine. It starts the Release build in a 1280 x 720 window, with fixed seeds, in a folder of its own (your settings are not touched), and saves what the window shows. The views without a HUD come from the menu camera, set with command line switches. Some views from a round are reached with switches too: `--start-cell <column>,<row>` and `--start-yaw <degrees>` put the player somewhere in the first round, `--collect-all` starts it with every crystal collected, so the gate is open, and `--intro` plays the intro. Every run that plays a round has `--calm`, a calm night for that run only, so nothing catches the player in the middle of a picture. The one run that shows the shadow leaves it out and starts three cells away from it, with the light on it. The other views from a round need a few key presses and mouse turns. The script sends them only while the game window is the active one, so leave the mouse and the keyboard alone while it runs. It needs Python 3, ffmpeg on `PATH` and Windows.
+The kit cannot start a native game, so the capture is a script of mine. It starts the Release build in a 1280 x 720 window, with fixed seeds, in a folder of its own (your settings are not touched), and saves what the window shows. The views without a HUD come from the menu camera, set with command line switches. Some views from a round are reached with switches too: `--start-cell <column>,<row>` and `--start-yaw <degrees>` put the player somewhere in the first round, `--collect-all` starts it with every crystal collected, so the gate is open, and `--intro` plays the intro. Every run that plays a round has `--calm`, a calm night for that run only, so nothing catches the player in the middle of a picture. The one run that shows the shadow leaves it out and starts three cells away from it, with the light on it. The other views from a round need a few key presses and mouse turns. The script sends them only while the game window is the active one, so leave the mouse and the keyboard alone while it runs. It needs Python 3 and ffmpeg on `PATH`, and runs on Windows and on macOS. On macOS the terminal needs the Screen Recording permission for the pictures and the Accessibility permission for the keys and the mouse.
 
 `pnpm showcase` only reads those pictures: from the same raw pictures it wrote the same files, byte for byte, every time I ran it on my PC. It needs Node 22, pnpm 10 and the Chromium of Playwright, downloaded once with `pnpm exec playwright install chromium`. The game itself is not a still picture (the crystals turn, a clock runs in the HUD), so a new capture is never identical to the last one.
 

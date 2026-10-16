@@ -32,7 +32,9 @@ The `Makefile` depends on this. It builds the path of clang-format and clang-tid
 
 You need the Xcode command line tools (`xcode-select --install`), CMake 3.24 or newer (`brew install cmake`) and git. Full Xcode is not needed. Ninja is optional: CMake uses Unix Makefiles. For `make tidy` you also need `brew install llvm`, and the Makefile finds its `clang-tidy` through `brew --prefix llvm`.
 
-I last ran the game on a Mac around version 0.9.0. Since then the video decoder for macOS (`src/video/VideoDecoderApple.mm`, Objective-C++ on AVFoundation) and the sound engine were added, and I have not started the game on a Mac again. Today the code is only compiled and unit tested there by a GitHub runner: the `macos` job of `.github/workflows/ci.yml` (macOS 15) configures the Release preset, builds with `-k` so one log shows every error, and runs `ctest`. The job is marked `continue-on-error`, so it reports and does not block. It does not prove that the window opens, the video plays or the sound works.
+I ran the game on a Mac again with version 0.17.0 (Apple silicon, macOS 26, a Retina screen), after a long gap since about 0.9.0: the Release build opens its window at the size of the settings file, the main menu plays over its video (the video decoder for macOS is `src/video/VideoDecoderApple.mm`, Objective-C++ on AVFoundation), the storybook intro shows its pictures and text, and rounds play with keyboard and mouse. The pictures of the README were taken there with `tools/capture_showcase.py`. The window is 1280 x 720 points with a framebuffer of twice that, and the title bar of macOS sits above it.
+
+Beyond that the code is compiled and unit tested on every push by a GitHub runner: the `macos` job of `.github/workflows/ci.yml` (macOS 15) configures the Release preset, builds with `-k` so one log shows every error, and runs `ctest`. The job is marked `continue-on-error`, so it reports and does not block. It does not start the game.
 
 ## Getting the source
 

@@ -49,7 +49,7 @@ export default defineConfig({
     {
       id: 'intro',
       title: 'The intro',
-      caption: 'The third of the five cards of the intro, over a walk through the maze.',
+      caption: 'The second of the six painted pictures of the storybook: the old maze above the sleeping village, splinters of the moon glowing in its corridors.',
     },
     {
       id: 'corridor',
