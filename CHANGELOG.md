@@ -2,6 +2,18 @@
 
 Release notes for Night Maze, newest first.
 
+## 0.17.0 (2026-10-16)
+
+The tale is told before the first night, and the maze sounds new: a painted, narrated intro, music while you walk, and new recorded sounds.
+
+### What's new
+
+- A new campaign opens with a storybook: six painted pictures of the tale, from the night the moon breaks to the last lamp of the village, drifting slowly while an old storyteller reads them to you and a theme of piano, strings and a soft choir plays under her. Any key skips it, as before.
+- The main menu has a new theme: a slow piano with low strings and a quiet choir.
+- Music now plays in the maze: a quiet bed under the wind a few seconds into a night, a darker layer that rises while the shadow hunts you and fades when it gives up or is burned away, and a short warm phrase when you walk through the gate. The music slider sets all of it.
+- Most sounds are recorded anew: the lamp switching on, off and dying, the low battery, the splinters, the heartstone, the flask, the lever, the gate sinking, your steps and breath, the wind, and every sound of the shadow. The gate bell and the sounds of the old intro stay as they were.
+- The hum of the shadow is a steady drone now that grows louder as it comes closer, instead of short swells.
+
 ## 0.16.0 (2026-10-15)
 
 The maze is built from new models: the shadow, the lamp, the splinters, the sheep, the village and the gatehouse are made again, and the walls have new stone.
