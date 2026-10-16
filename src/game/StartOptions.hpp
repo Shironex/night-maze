@@ -111,7 +111,7 @@ struct StartOptions {
     IntroStyle introStyle = IntroStyle::Storybook;
 
     /// The theme of the main menu in this run (--menu-theme). Only that one is loaded.
-    MenuTheme menuTheme = MenuTheme::Classic;
+    MenuTheme menuTheme = MenuTheme::V2;
 };
 
 /// What parseStartOptions found.

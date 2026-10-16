@@ -96,7 +96,7 @@ TEST_CASE("the style of the intro can be named, is no switch of a tool, and need
 }
 
 TEST_CASE("the theme of the main menu can be chosen, is no switch of a tool, and needs a name") {
-    CHECK(parse({}).options.menuTheme == game::MenuTheme::Classic);
+    CHECK(parse({}).options.menuTheme == game::MenuTheme::V2);
     const game::StartOptionsResult v2 = parse({"--menu-theme", "v2", "--skip-intro"});
     CHECK(v2.error.empty());
     CHECK(v2.options.menuTheme == game::MenuTheme::V2);
