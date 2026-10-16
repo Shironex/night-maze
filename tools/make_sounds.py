@@ -944,9 +944,8 @@ def shade_near():
     #   - The loudness rises for a quarter of a second and falls for longer. Nothing
     #     starts suddenly.
     #
-    # The whole sound is 0.62 s long: the hums come as fast as every 0.7 s
-    # (SHADE_HUM_FAST_SECONDS in src/game/SoundCues.hpp), and a hum that started again
-    # before the last one ended would be cut off.
+    # The whole sound is 0.62 s long: the game once played it as fast as every 0.7 s,
+    # and a hum that started again before the last one ended would be cut off.
     generator = random.Random(10)
     seconds = 0.62
     count = count_of(seconds)
@@ -1414,6 +1413,20 @@ SOUNDS = [
     ("gate_bell.wav", gate_bell),
     ("heartstone_pickup.wav", heartstone_pickup),
 ]
+
+
+# The files that are recordings now, generated in ElevenLabs (assets/audio/README.md). The
+# script still makes its own versions of them, to compare, but only into another folder
+# (--out-dir): it never writes them into assets/audio. --report measures what the script
+# makes, so it is run on such a folder.
+RECORDED = {
+    "flashlight_on.wav", "flashlight_off.wav", "flashlight_dead.wav", "low_battery_pulse.wav",
+    "crystal_pickup.wav", "heartstone_pickup.wav", "flask_pickup.wav", "lever_pull.wav",
+    "gate_open.wav", "footstep_1.wav", "footstep_2.wav", "footstep_3.wav", "winded_breath.wav",
+    "maze_wind.wav", "shade_near.wav", "shade_alert.wav", "shade_step_1.wav", "shade_step_2.wav",
+    "shade_banish.wav", "caught.wav",
+}
+DEFAULT_OUT_DIR = os.path.join("assets", "audio")
 
 
 # ---- measuring the files (--report) ----------------------------------------------------------
@@ -1963,12 +1976,17 @@ def picture(path, wav_path):
 
 def main():
     parser = argparse.ArgumentParser(description="Makes the sounds of the game.")
-    parser.add_argument("--out-dir", default=os.path.join("assets", "audio"))
+    parser.add_argument("--out-dir", default=DEFAULT_OUT_DIR)
     parser.add_argument("--report", action="store_true")
     parser.add_argument("--pictures", metavar="DIR")
     arguments = parser.parse_args()
+    into_assets = (os.path.normcase(os.path.abspath(arguments.out_dir))
+                   == os.path.normcase(os.path.abspath(DEFAULT_OUT_DIR)))
 
     if arguments.report:
+        if into_assets:
+            raise SystemExit("Most files in assets/audio are recordings now: make the sounds into "
+                             "another folder with --out-dir and report on that folder.")
         raise SystemExit(1 if report(arguments.out_dir) else 0)
     if arguments.pictures:
         os.makedirs(arguments.pictures, exist_ok=True)
@@ -1979,6 +1997,9 @@ def main():
 
     os.makedirs(arguments.out_dir, exist_ok=True)
     for name, make in SOUNDS:
+        if into_assets and name in RECORDED:
+            print(f"{name}: a recording, left alone (use --out-dir to make the computed one)")
+            continue
         write_wav(os.path.join(arguments.out_dir, name), make(), PEAK_DB[name],
                   RATES.get(name, SAMPLE_RATE))
 
