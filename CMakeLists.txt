@@ -211,6 +211,8 @@ add_library(game_logic STATIC
     src/game/Puddles.hpp
     src/game/Round.cpp
     src/game/Round.hpp
+    src/game/RoundMusic.cpp
+    src/game/RoundMusic.hpp
     src/game/Settings.cpp
     src/game/Settings.hpp
     src/game/Shade.cpp
@@ -500,6 +502,7 @@ add_executable(night_maze_tests
     tests/PuddleTests.cpp
     tests/RaycastTests.cpp
     tests/RenderStatsTests.cpp
+    tests/RoundMusicTests.cpp
     tests/RoundTests.cpp
     tests/SearchTests.cpp
     tests/SettingsTests.cpp

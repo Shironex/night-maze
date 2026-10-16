@@ -366,17 +366,30 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     // the number of its sound (game::soundCueIndex). A missing file is in the log and
     // its cue is silent (audio::AudioEngine). The winds go into the ambient group of
     // the engine and everything else into the effects group: each group has a volume
-    // of its own (applyAudioSettings). After the cues comes the one piece of music, the
-    // theme of the menu, in the music group (game::MENU_THEME_SOUND).
-    std::vector<audio::SoundFile> soundFiles(SOUND_CUE_COUNT + 1);
+    // of its own (applyAudioSettings). After the cues comes the music, in the music
+    // group: the theme of the menu (game::MENU_THEME_SOUND, the one --menu-theme names)
+    // and the three pieces of a round (game/RoundMusic.hpp).
+    std::vector<audio::SoundFile> soundFiles(FIXED_SOUND_COUNT);
     for (std::size_t i = 0; i < SOUND_CUE_COUNT; ++i) {
         const auto cue = static_cast<SoundCue>(i);
         soundFiles.at(i) = {.path = core::assetPath(soundCueFile(cue)),
                             .group = soundCueIsAmbient(cue) ? audio::SoundGroup::Ambient
                                                             : audio::SoundGroup::Effects};
     }
-    soundFiles.at(MENU_THEME_SOUND) = {.path = core::assetPath(MENU_THEME_FILE),
+    const char* const themeFile =
+        options.menuTheme == MenuTheme::V2 ? MENU_THEME_V2_FILE : MENU_THEME_FILE;
+    soundFiles.at(MENU_THEME_SOUND) = {.path = core::assetPath(themeFile),
                                        .group = audio::SoundGroup::Music};
+    core::logInfo(std::string("Music: the theme of the menu is ") + themeFile);
+    // ponytail: decoded into memory like the rest, about 23 MB per minute of stereo:
+    // 49.9 MB for the bed (48 s), the chase (52 s) and the sting (30 s) together. Stream
+    // them if more music comes (docs/decisions/round-music.md).
+    soundFiles.at(MAZE_AMBIENT_SOUND) = {.path = core::assetPath(MAZE_AMBIENT_FILE),
+                                         .group = audio::SoundGroup::Music};
+    soundFiles.at(SHADE_CHASE_SOUND) = {.path = core::assetPath(SHADE_CHASE_FILE),
+                                        .group = audio::SoundGroup::Music};
+    soundFiles.at(NIGHT_END_SOUND) = {.path = core::assetPath(NIGHT_END_FILE),
+                                      .group = audio::SoundGroup::Music};
     // Then the music and the spoken lines of the storybook intro, when it is to be told
     // (loadStorybook). They are loaded with the rest, because load replaces the list.
     // ponytail: every sound is decoded into memory at the start, the music of the
@@ -494,6 +507,55 @@ void NightMazeApp::updateAmbience(bool windowFocused) {
         m_menuThemeOn = theme;
         core::logInfo(theme ? "Music: the theme of the menu fades in"
                             : "Music: the theme of the menu fades out");
+    }
+    updateRoundMusic(windowFocused);
+}
+
+void NightMazeApp::updateRoundMusic(bool windowFocused) {
+    // The bed and the chase layer: loops like the theme, said in every frame. Each goes
+    // on from where it stopped, so a pause does not start the piece again.
+    const RoundMusicRequest request{.mode = m_mode,
+                                    .windowFocused = windowFocused,
+                                    .menuCamera = m_menuCamera.enabled,
+                                    .catching = m_catchSeconds >= 0.0F};
+    const bool bed = mazeAmbientPlays(request, m_round);
+    const bool chase = shadeChasePlays(request, m_round);
+    m_audio.setLoop(MAZE_AMBIENT_SOUND, bed,
+                    bed ? MAZE_AMBIENT_FADE_IN_SECONDS : MAZE_AMBIENT_FADE_OUT_SECONDS);
+    m_audio.setLoop(SHADE_CHASE_SOUND, chase,
+                    chase ? SHADE_CHASE_FADE_IN_SECONDS : SHADE_CHASE_FADE_OUT_SECONDS);
+    // The bed steps aside under the chase, a little per frame.
+    m_ambientDuck =
+        advanceAmbientDuck(m_ambientDuck, chase, static_cast<float>(time().deltaSeconds()));
+    m_audio.setLoopVolume(MAZE_AMBIENT_SOUND, m_ambientDuck);
+    if (bed != m_mazeAmbientOn) {
+        m_mazeAmbientOn = bed;
+        core::logInfo(bed ? "Music: the bed of the round fades in"
+                          : "Music: the bed of the round fades out");
+    }
+    if (chase != m_shadeChaseOn) {
+        m_shadeChaseOn = chase;
+        core::logInfo(chase ? "Music: the shade hunts, the chase layer fades in"
+                            : "Music: the hunt is over, the chase layer fades out");
+    }
+
+    // The sting of a won night: once, a moment after the win, and faded when the screens
+    // after the win are left (fadeNightEnd).
+    if (advanceNightEndSting(m_nightEndSting, m_mode, static_cast<float>(time().deltaSeconds()))) {
+        m_audio.play(NIGHT_END_SOUND);
+        m_nightEndOn = true;
+        core::logInfo("Music: the night is won, the sting plays");
+    }
+    if (!nightEndScreen(m_mode)) {
+        fadeNightEnd();
+    }
+}
+
+void NightMazeApp::fadeNightEnd() {
+    if (m_nightEndOn) {
+        m_nightEndOn = false;
+        m_audio.fadeOut(NIGHT_END_SOUND, NIGHT_END_FADE_OUT_SECONDS);
+        core::logInfo("Music: the sting fades out");
     }
 }
 

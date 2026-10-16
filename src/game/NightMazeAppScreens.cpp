@@ -53,6 +53,8 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
     // The ending card is over, at its end or skipped: its bell must not ring on over
     // the main menu.
     if (before == GameMode::EndingCard) {
+        // The sting of the last night is faded, not cut: stopAll leaves a fading sound.
+        fadeNightEnd();
         m_audio.stopAll();
     }
     // After a film that ends in black the main menu comes in out of black.

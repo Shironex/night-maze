@@ -30,6 +30,7 @@
 #include "game/PostProcess.hpp"
 #include "game/PuddleRenderer.hpp"
 #include "game/Round.hpp"
+#include "game/RoundMusic.hpp"
 #include "game/Settings.hpp"
 #include "game/ShadowMap.hpp"
 #include "game/Shadows.hpp"
@@ -620,6 +621,11 @@ private:
     /// a moment when a sample was asked for. The audio engine fades it. Called once
     /// per frame.
     void updateAmbience(bool windowFocused);
+    /// The music of a round (game/RoundMusic.hpp), said in every frame by updateAmbience:
+    /// the bed, the chase layer with the duck of the bed under it, and the sting.
+    void updateRoundMusic(bool windowFocused);
+    /// Fades out the sting of a won night when it still plays.
+    void fadeNightEnd();
 
     /// Writes m_settings into the settings file, unless they are what the file holds
     /// already. An error is in the log, and the game goes on.
@@ -1470,6 +1476,16 @@ private:
     // What updateAmbience last told the audio engine about the theme of the menu, to
     // write one line into the log when it changes.
     bool m_menuThemeOn = false;
+    // The same for the music of a round (game/RoundMusic.hpp): the bed, the chase layer
+    // and the sting of a won night, which plays once and is faded when its screen is left.
+    bool m_mazeAmbientOn = false;
+    bool m_shadeChaseOn = false;
+    bool m_nightEndOn = false;
+    // The volume of the bed under the chase layer (game::advanceAmbientDuck): 1, or on
+    // its way to the ducked volume and back.
+    float m_ambientDuck = 1.0F;
+    // The wait between the win and the sting (game::advanceNightEndSting).
+    NightEndSting m_nightEndSting;
     // Seconds until the volume slider of the settings screen may play its next sample
     // click (handleControlChanges). 0: the next change is heard at once.
     double m_volumeSampleWait = 0.0;
