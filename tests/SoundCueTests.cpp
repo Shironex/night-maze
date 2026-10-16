@@ -412,18 +412,15 @@ TEST_CASE("a shade that is quiet after a banish does not hum, however near it st
     REQUIRE(game::shadeHumSounds(round));
     round.shade.quietLeft = 5.0F;
     CHECK_FALSE(game::shadeHumSounds(round));
-    game::ShadeHum hum;
-    for (int i = 0; i < 600; ++i) {
-        CHECK_FALSE(game::advanceShadeHum(hum, round, STEP));
-    }
+    CHECK_FALSE(game::shadeHumPlays({.mode = game::GameMode::Playing}, round));
     // And it makes no step: it stands.
     game::StepClock clock;
     game::CuePlay play;
     CHECK(game::shadeStepMetres(round) == 0.0F);
     CHECK_FALSE(game::advanceShadeSteps(clock, round, play));
-    // The quiet time is over: the hum is back at once.
+    // The quiet time is over: the hum is back.
     round.shade.quietLeft = 0.0F;
-    CHECK(game::advanceShadeHum(hum, round, STEP));
+    CHECK(game::shadeHumPlays({.mode = game::GameMode::Playing}, round));
 }
 
 TEST_CASE("the hum is heard from 14 m of way, and not in a round without a shade") {
@@ -449,64 +446,38 @@ TEST_CASE("the hum is heard from 14 m of way, and not in a round without a shade
     CHECK_FALSE(game::shadeHumSounds(round));
 }
 
-TEST_CASE("the hum comes more often the nearer the shade is") {
-    CHECK(game::shadeHumInterval(14.0F) == doctest::Approx(game::SHADE_HUM_SLOW_SECONDS));
-    CHECK(game::shadeHumInterval(40.0F) == doctest::Approx(game::SHADE_HUM_SLOW_SECONDS));
-    CHECK(game::shadeHumInterval(0.0F) == doctest::Approx(game::SHADE_HUM_FAST_SECONDS));
-    CHECK(game::shadeHumInterval(-1.0F) == doctest::Approx(game::SHADE_HUM_FAST_SECONDS));
-    float before = game::shadeHumInterval(0.0F);
+TEST_CASE("the hum is louder the nearer the shade is") {
+    CHECK(game::shadeHumVolume(14.0F) == doctest::Approx(game::SHADE_HUM_FAR_VOLUME));
+    CHECK(game::shadeHumVolume(40.0F) == doctest::Approx(game::SHADE_HUM_FAR_VOLUME));
+    CHECK(game::shadeHumVolume(0.0F) == doctest::Approx(game::SHADE_HUM_NEAR_VOLUME));
+    CHECK(game::shadeHumVolume(-1.0F) == doctest::Approx(game::SHADE_HUM_NEAR_VOLUME));
+    float before = game::shadeHumVolume(0.0F);
     for (int metres = 1; metres <= 14; ++metres) {
-        const float now = game::shadeHumInterval(static_cast<float>(metres));
-        CHECK(now > before);
+        const float now = game::shadeHumVolume(static_cast<float>(metres));
+        CHECK(now < before);
         before = now;
     }
-    // The sound of the hum is 0.69 s long: it must be over before the next one starts.
-    CHECK(game::SHADE_HUM_FAST_SECONDS > 0.69F);
+    // A step of a metre moves it by less than a twentieth: no jump that clicks.
+    CHECK(game::shadeHumVolume(0.0F) - game::shadeHumVolume(1.0F) < 0.05F);
 }
 
-TEST_CASE("the clock of the hum starts at once, waits its interval and is silent far away") {
+TEST_CASE("the loop of the hum is heard in a played round only, while the shade is near") {
+    using game::GameMode;
     game::Round round;
     round.shade.present = true;
-    game::ShadeHum hum;
-
-    // Far away: never.
-    round.shade.wayMetres = 30.0F;
-    for (int i = 0; i < 600; ++i) {
-        CHECK_FALSE(game::advanceShadeHum(hum, round, STEP));
-    }
-    // Near: at once, and then again after the interval of 7 m (1.55 s), not before.
     round.shade.wayMetres = 7.0F;
-    CHECK(game::advanceShadeHum(hum, round, STEP));
-    const float interval = game::shadeHumInterval(7.0F);
-    CHECK(interval == doctest::Approx(1.55F));
-    int steps = 0;
-    while (!game::advanceShadeHum(hum, round, STEP)) {
-        ++steps;
-        REQUIRE(steps < 1000);
-    }
-    CHECK(static_cast<float>(steps + 1) * STEP == doctest::Approx(interval).epsilon(0.02));
-
-    // Twenty seconds right next to the shade: one hum every 0.7 s or so, never two in
-    // one step and never faster than the sound is long.
-    round.shade.wayMetres = 0.5F;
-    int hums = 0;
-    for (int i = 0; i < 20 * 120; ++i) {
-        if (game::advanceShadeHum(hum, round, STEP)) {
-            ++hums;
-        }
-    }
-    CHECK(hums >= 25);
-    CHECK(hums <= 29);
-
-    // A calm round: the clock never fires.
+    CHECK(game::shadeHumPlays({.mode = GameMode::Playing}, round));
+    CHECK_FALSE(game::shadeHumPlays({.mode = GameMode::Paused}, round));
+    CHECK_FALSE(game::shadeHumPlays({.mode = GameMode::RoundEnd}, round));
+    CHECK_FALSE(game::shadeHumPlays({.mode = GameMode::MainMenu, .sample = true}, round));
+    CHECK_FALSE(game::shadeHumPlays({.mode = GameMode::Playing, .windowFocused = false}, round));
+    CHECK_FALSE(game::shadeHumPlays({.mode = GameMode::Playing, .menuCamera = true}, round));
+    // Far away, or no shade: silent.
+    round.shade.wayMetres = 30.0F;
+    CHECK_FALSE(game::shadeHumPlays({.mode = GameMode::Playing}, round));
     round.shade.wayMetres = 7.0F;
     round.shade.present = false;
-    for (int i = 0; i < 600; ++i) {
-        CHECK_FALSE(game::advanceShadeHum(hum, round, STEP));
-    }
-    // Back in range it hums at once again: the clock was reset.
-    round.shade.present = true;
-    CHECK(game::advanceShadeHum(hum, round, STEP));
+    CHECK_FALSE(game::shadeHumPlays({.mode = GameMode::Playing}, round));
 }
 
 TEST_CASE("the hum follows the way the shade has to walk, not the straight line") {

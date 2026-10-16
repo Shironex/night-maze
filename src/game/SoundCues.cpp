@@ -211,28 +211,10 @@ bool shadeHumSounds(const Round& round) {
            round.shade.wayMetres <= SHADE_HUM_DISTANCE;
 }
 
-float shadeHumInterval(float distance) {
-    // How far away the shade is as a part of the distance it is heard from: 0 when it
-    // is here, 1 at the edge of hearing and beyond.
+float shadeHumVolume(float distance) {
+    // How far away the shade is as a part of the distance: 0 here, 1 at the edge.
     const float share = std::clamp(distance / SHADE_HUM_DISTANCE, 0.0F, 1.0F);
-    return SHADE_HUM_FAST_SECONDS + (SHADE_HUM_SLOW_SECONDS - SHADE_HUM_FAST_SECONDS) * share;
-}
-
-bool advanceShadeHum(ShadeHum& hum, const Round& round, float stepSeconds) {
-    // Not near, or no shade at all: the clock goes back to "hum at once".
-    if (!shadeHumSounds(round)) {
-        hum.secondsToNextHum = 0.0F;
-        return false;
-    }
-
-    hum.secondsToNextHum -= stepSeconds;
-    if (hum.secondsToNextHum > 0.0F) {
-        return false;
-    }
-    // A hum. The wait is SET and what the step overshot is dropped, as in
-    // advanceLowBatteryPulse.
-    hum.secondsToNextHum = shadeHumInterval(round.shade.wayMetres);
-    return true;
+    return SHADE_HUM_NEAR_VOLUME + (SHADE_HUM_FAR_VOLUME - SHADE_HUM_NEAR_VOLUME) * share;
 }
 
 float gateBellVolume(int passagesToExit) {
@@ -302,7 +284,7 @@ float shadeStepMetres(const Round& round) {
 }
 
 float shadeStepVolume(float wayMetres) {
-    // The same share of the distance as in shadeHumInterval: 0 here, 1 at the edge.
+    // How far away the shade is as a part of the distance: 0 here, 1 at the edge.
     const float share = std::clamp(wayMetres / SHADE_STEP_DISTANCE, 0.0F, 1.0F);
     return SHADE_STEP_NEAR_VOLUME + (SHADE_STEP_FAR_VOLUME - SHADE_STEP_NEAR_VOLUME) * share;
 }
@@ -334,6 +316,11 @@ bool mazeWindPlays(const MazeWindRequest& request) {
         return false;
     }
     return request.sample || (updatesRound(request.mode) && !request.menuCamera);
+}
+
+bool shadeHumPlays(const MazeWindRequest& request, const Round& round) {
+    return updatesRound(request.mode) && request.windowFocused && !request.menuCamera &&
+           shadeHumSounds(round);
 }
 
 namespace {

@@ -1429,8 +1429,6 @@ private:
     LowBatteryPulse m_lowBatteryPulse;
     // The clock of the breathing of a winded player: the same kind of state.
     WindedBreath m_windedBreath;
-    // The clock of the hum of the shade: the same kind of state.
-    ShadeHum m_shadeHum;
     // The clock of the bell of the open gate: the same kind of state.
     GateBell m_gateBell;
     // Where the bell of the gatehouse is in its swing (game::advanceBellSwing): pushed by

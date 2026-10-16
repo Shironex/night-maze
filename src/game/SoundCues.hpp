@@ -30,7 +30,7 @@ enum class SoundCue {
     GateOpen,        ///< enough crystals are collected: the gate starts to sink
     WindedBreath,    ///< the breath that repeats while the player is winded
     FlaskPickup,     ///< a flask of tea was picked up
-    ShadeNear,       ///< the hum that repeats while the shade is near
+    ShadeNear,       ///< the hum, a loop while the shade is near (shadeHumPlays)
     Caught,          ///< the shade reached the player and carries them back to the start
     /// The wind under the intro: one long file, as long as the intro itself, with its
     /// fade in and its fade out inside the file (game/Intro.hpp).
@@ -44,9 +44,8 @@ enum class SoundCue {
     /// A step of the shade: two soft sounds, used in turn (advanceShadeSteps).
     ShadeStep1,
     ShadeStep2,
-    /// The wind of the maze at night. The only cue that is a LOOP: it is not played
-    /// once, it is switched on and off (mazeWindPlays), and its file ends where it
-    /// begins.
+    /// The wind of the maze at night. A LOOP like ShadeNear: it is not played once, it
+    /// is switched on and off (mazeWindPlays), and its file ends where it begins.
     MazeWind,
     /// The shade has noticed the player: it was wandering, and now it heard a noise or
     /// saw them (game::ShadeEvents::alerted). One short, cold sound.
@@ -178,9 +177,9 @@ bool advanceLowBatteryPulse(LowBatteryPulse& pulse, const Round& round, bool fla
 
 /// How long a winded player waits between two breaths, in seconds. The heavy breathing
 /// is one breath played again and again on a clock, like the low battery pulse, and not
-/// a loop of the audio layer: it has to stop with the breath that is running. The wait is
-/// a little longer than the sound of the breath (0.95 s, tools/make_sounds.py): a sound
-/// that starts again before it ended is cut off.
+/// a loop of the audio layer: it has to stop with the breath that is running. The breath
+/// (1.24 s) is a little longer than the wait: the next one starts on another voice of
+/// the sound (audio::AudioEngine::play) while the last one fades.
 constexpr float WINDED_BREATH_SECONDS = 1.1F;
 
 /// The clock of the breathing of a winded player, counted in fixed steps like
@@ -203,20 +202,21 @@ struct WindedBreath {
 /// advanceLowBatteryPulse. A new round resets the clock by assigning a new WindedBreath.
 bool advanceWindedBreath(WindedBreath& breath, bool winded, float stepSeconds);
 
-/// The shade is heard before it is seen: a low hum, again and again, the faster the
-/// nearer the shade is. It is the same kind of clock as the low battery pulse: the hum
-/// is always as loud, and what grows is how often it comes.
+/// The shade is heard before it is seen: a low drone, a loop that comes in while the
+/// shade is near and is louder the nearer it is.
 ///
 /// SHADE_HUM_DISTANCE: from this many metres the hum is heard, measured along the
 /// passages the shade has to walk (Shade::wayMetres, seven cells of the maze), not in
 /// a straight line: a shade behind the next wall with a long way round is not a danger
-/// yet, and one that is coming down the corridor is. Farther away there is silence. The two waits
-/// are the ones at that distance and at no distance at all. In between the wait shrinks evenly. The
-/// short one is a little longer than the sound of the hum (0.69 s, tools/make_sounds.py): a sound
-/// that starts again before it ended is cut off.
+/// yet, and one that is coming down the corridor is. Farther away there is silence. The
+/// two volumes are the ones at no distance and at that distance; in between the volume
+/// falls evenly with the way. The loop comes in over SHADE_HUM_FADE_IN_SECONDS and goes
+/// over SHADE_HUM_FADE_OUT_SECONDS.
 constexpr float SHADE_HUM_DISTANCE = 14.0F;
-constexpr float SHADE_HUM_SLOW_SECONDS = 2.4F;
-constexpr float SHADE_HUM_FAST_SECONDS = 0.7F;
+constexpr float SHADE_HUM_NEAR_VOLUME = 0.8F;
+constexpr float SHADE_HUM_FAR_VOLUME = 0.2F;
+constexpr float SHADE_HUM_FADE_IN_SECONDS = 1.0F;
+constexpr float SHADE_HUM_FADE_OUT_SECONDS = 1.5F;
 
 /// True while the hum sounds: the round is being played, it has a shade, and the way of
 /// the shade to the player is not longer than SHADE_HUM_DISTANCE. A calm round is
@@ -226,28 +226,9 @@ constexpr float SHADE_HUM_FAST_SECONDS = 0.7F;
 /// one that hunts.
 bool shadeHumSounds(const Round& round);
 
-/// The wait between two hums for a distance in metres: SHADE_HUM_FAST_SECONDS at 0,
-/// SHADE_HUM_SLOW_SECONDS at SHADE_HUM_DISTANCE and beyond.
-float shadeHumInterval(float distance);
-
-/// The clock of the hum, counted in fixed steps like LowBatteryPulse.
-struct ShadeHum {
-    /// Seconds until the next hum. 0 means that the next step in which the hum sounds
-    /// hums at once: the first one comes at the moment the shade gets near.
-    float secondsToNextHum = 0.0F;
-};
-
-/// Advances the clock of the hum by one fixed step of stepSeconds seconds, for the round
-/// as it is AFTER the step of the shade (game::updateRoundShade). Returns true when a hum is due
-/// in this step: play SoundCue::ShadeNear then.
-///
-///   - While the hum does not sound (shadeHumSounds) the clock is reset.
-///   - Otherwise it runs, and after a hum the wait is the interval of the present
-///     distance (shadeHumInterval).
-///
-/// One call gives at most one hum, for the same reason as advanceLowBatteryPulse. A new
-/// round resets the clock by assigning a new ShadeHum.
-bool advanceShadeHum(ShadeHum& hum, const Round& round, float stepSeconds);
+/// How loud the loop of the hum plays for a way in metres: SHADE_HUM_NEAR_VOLUME at 0,
+/// SHADE_HUM_FAR_VOLUME at SHADE_HUM_DISTANCE and beyond.
+float shadeHumVolume(float distance);
 
 /// Once the gate is open a far bell tolls, again and again, and every toll is played
 /// louder the fewer passages lie between the player and the exit. The engine has no left
@@ -255,9 +236,8 @@ bool advanceShadeHum(ShadeHum& hum, const Round& round, float stepSeconds);
 /// which is the game people play in a maze anyway.
 ///
 /// GATE_BELL_FIRST_SECONDS: the wait before the first toll, counted from the moment the
-/// gate opens. The gate itself has come to rest by then (its sound is 2.6 s long,
-/// tools/make_sounds.py: the slab settles at 1.36 s, and what is left after 2 s is the
-/// last of the room, 40 dB below the loudest moment of the file).
+/// gate opens. The slab has mostly come to rest by then: its sound is 3.66 s long, and
+/// the first toll falls into the last of its rumble.
 /// The wait between two tolls is a setting (GateSettings::bellSeconds, 6 s): a little
 /// more than twice the sound of the bell (2.95 s), so there is silence between two tolls.
 /// At the shortest wait (GATE_BELL_MIN_SECONDS) three tolls ring at once and the fourth
@@ -453,6 +433,12 @@ struct MazeWindRequest {
 ///     back with the round.
 ///   - On every other screen only while a sample runs.
 bool mazeWindPlays(const MazeWindRequest& request);
+
+/// True while the loop of the hum is heard: a round is played with the menu camera off,
+/// the window is the active one (sample is not asked), and shadeHumSounds says so. The
+/// application asks once per frame, like the wind, and sets the volume of the loop to
+/// shadeHumVolume of the way.
+bool shadeHumPlays(const MazeWindRequest& request, const Round& round);
 
 /// The theme of the main menu: music. It is no cue: it is not a short sound that says
 /// something happened, it has a volume of its own (GameSettings::musicVolume) and its

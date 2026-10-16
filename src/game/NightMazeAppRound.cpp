@@ -198,9 +198,8 @@ void NightMazeApp::beginRound() {
     // (Player::staminaSettings), which the debug UI may have changed, stay.
     m_windedBreath = {};
     m_player.stamina = {};
-    // The hum of the shade starts anew as well. The shade itself is part of the round:
-    // startRound has put it back in its start cell, with its grace time ahead of it.
-    m_shadeHum = {};
+    // The shade itself is part of the round: startRound has put it back in its start
+    // cell, with its grace time ahead of it.
     // The bell of the gate is silent until the gate opens again, and every wall a lever
     // had opened is back, so the ways to the exit are counted anew.
     m_gateBell = {};
@@ -458,10 +457,7 @@ bool NightMazeApp::stepShade(double fixedDt, float walkedMetres, bool pickedUp) 
     if (shadeEvents.banished) {
         playCue(SoundCue::ShadeBanish);
     }
-    // Its hum, on a clock like the pulse: more often the nearer the shade is.
-    if (advanceShadeHum(m_shadeHum, m_round, static_cast<float>(fixedDt))) {
-        playCue(SoundCue::ShadeNear);
-    }
+    // Its hum is a loop, said in every frame (updateAmbience).
     // Its steps, while it walks and is near: quieter the farther it still has to go.
     CuePlay step;
     if (advanceShadeSteps(m_shadeSteps, m_round, step)) {

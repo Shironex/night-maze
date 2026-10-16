@@ -489,6 +489,14 @@ void NightMazeApp::updateAmbience(bool windowFocused) {
     const float fadeIn = sample ? MAZE_WIND_SAMPLE_FADE_IN_SECONDS : MAZE_WIND_FADE_IN_SECONDS;
     m_audio.setLoop(soundCueIndex(SoundCue::MazeWind), wind,
                     wind ? fadeIn : MAZE_WIND_FADE_OUT_SECONDS);
+    // The hum of the shade: a loop while it is near, louder the nearer (game::shadeHumPlays).
+    const bool hum = shadeHumPlays(
+        {.mode = m_mode, .windowFocused = windowFocused, .menuCamera = m_menuCamera.enabled},
+        m_round);
+    m_audio.setLoop(soundCueIndex(SoundCue::ShadeNear), hum,
+                    hum ? SHADE_HUM_FADE_IN_SECONDS : SHADE_HUM_FADE_OUT_SECONDS);
+    m_audio.setLoopVolume(soundCueIndex(SoundCue::ShadeNear),
+                          shadeHumVolume(m_round.shade.wayMetres));
     // The wind follows the fade to black of a catch and the way back up from it. Only the
     // ambient group is touched, so the other sounds keep their level.
     m_audio.setGroupVolume(audio::SoundGroup::Ambient,
