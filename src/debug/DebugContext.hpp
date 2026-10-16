@@ -137,8 +137,11 @@ struct DebugContext {
     game::SkyboxSettings& skybox;
     /// The switch and the elevation of the village on the ridge, editable.
     game::VillageSettings& village;
-    /// Shader program of the grass, editable: reloaded like texturedShader.
+    /// Shader program of the grass with the geometry shader, editable: reloaded like
+    /// texturedShader.
     gfx::Shader& grassShader;
+    /// Shader program of the instanced grass, editable: reloaded like texturedShader.
+    gfx::Shader& grassInstancedShader;
     /// The height scale and the wireframe switch of the terrain, editable.
     game::TerrainSettings& terrain;
     /// The switch, the density, the blade height and the wind of the grass, editable.
@@ -146,6 +149,8 @@ struct DebugContext {
     /// How many tufts of grass are drawn. A plain number, copied when the context is
     /// built: the debug window only shows it.
     std::size_t grassTuftCount;
+    /// How many chunks the tufts are grouped into, copied like grassTuftCount.
+    std::size_t grassChunkCount;
     /// Shader program of the composite pass, editable: reloaded like texturedShader.
     gfx::Shader& compositeShader;
     /// Shader program of the attachment previews, editable: reloaded like texturedShader.

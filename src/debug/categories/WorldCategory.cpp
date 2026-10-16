@@ -57,9 +57,12 @@ constexpr float MAX_BLADE_HEIGHT = 0.8F;
 constexpr float MIN_WIND_STRENGTH = 0.0F;
 constexpr float MAX_WIND_STRENGTH = 3.0F;
 
-// The blades one tuft is made of: BLADE_COUNT in assets/shaders/grass.geom. It is only
-// used to show a number, so a wrong value here changes nothing that is drawn.
-constexpr int BLADES_PER_TUFT = 3;
+// The two ways the blades are made, in the order of game::GrassPath.
+constexpr const char* GRASS_PATH_ITEMS = "Instanced\0Geometry shader\0";
+
+// The distances of the LOD, in metres: from right in front of the eye to the far end of
+// the land.
+constexpr float MIN_LOD_DISTANCE = 0.0F;
 
 // ---- Reflections -----------------------------------------------------------------------
 
@@ -216,8 +219,17 @@ void drawGrass(Page& page, const DebugContext& context) {
     page.beginCard("Grass");
 
     page.toggle("Grass", &settings.enabled,
-                "Blades of grass at the foot of the walls and on the hills. The geometry "
-                "shader makes the blades of every tuft.");
+                "Blades of grass at the foot of the walls and on the hills. The graphics "
+                "card makes the blades of every tuft, in one of the two ways below.");
+    int pathIndex = static_cast<int>(settings.path);
+    if (page.combo("Path", &pathIndex, GRASS_PATH_ITEMS,
+                   "How the blades are made. Instanced: one small mesh of three blades is "
+                   "drawn once per tuft (glDrawElementsInstanced), the default. Geometry "
+                   "shader: one point per tuft goes in, grass.geom writes the blades. Both "
+                   "draw the same blades from common/grass_blade.glsl. A Mac imitates the "
+                   "geometry stage in its driver, so there the instanced path is faster.")) {
+        settings.path = static_cast<game::GrassPath>(pathIndex);
+    }
     // The row only asks: the game places the tufts at the start of its next frame.
     if (page.slider("Density", &settings.density, MIN_DENSITY, game::MAX_GRASS_DENSITY,
                     "%.1f per m",
@@ -225,16 +237,32 @@ void drawGrass(Page& page, const DebugContext& context) {
                     "hills follows in proportion.")) {
         settings.replant = true;
     }
-    // These two are uniforms of the grass program: they change the blades the geometry
-    // shader builds, and no tuft has to be placed again.
+    // These two are uniforms of the grass programs: they change the blades the card
+    // builds, and no tuft has to be placed again.
     page.slider("Blade height", &settings.bladeHeight, MIN_BLADE_HEIGHT, MAX_BLADE_HEIGHT, "%.2f m",
                 "The height of the tallest blades: from stubble to knee high.");
     page.slider("Wind strength", &settings.windStrength, MIN_WIND_STRENGTH, MAX_WIND_STRENGTH,
                 "%.2f", "How far the blades sway: 0 is still air, 1 the default breeze.");
-    // One tuft is one point in the vertex buffer. The blades are made of it by the
-    // geometry shader, so their number is not stored anywhere.
+    page.toggle("Chunk culling", &settings.chunkCulling,
+                "The tufts are grouped into squares of 4 m (chunks). On: a chunk whose box "
+                "lies outside the view is not drawn. Only while Frustum culling in "
+                "Diagnostics is on too, which also shows how many chunks were drawn.");
+    page.toggle("Distance LOD", &settings.distanceLod,
+                "On: far tufts have fewer blades. The third blade shrinks away behind "
+                "the near distance, the second behind the far one. Each tuft starts at "
+                "its own distance and a blade shrinks over 4 m, so nothing pops. The "
+                "first blade stays at every distance.");
+    page.slider("LOD near", &settings.lodNear, MIN_LOD_DISTANCE, game::MAX_GRASS_LOD_DISTANCE,
+                "%.1f m", "Behind this distance the third blade of a tuft shrinks away.");
+    page.slider("LOD far", &settings.lodFar, MIN_LOD_DISTANCE, game::MAX_GRASS_LOD_DISTANCE,
+                "%.1f m",
+                "Behind this distance the second blade of a tuft shrinks away. Never "
+                "before the third one: a value below LOD near counts as LOD near.");
+    // One tuft is one entry in the buffer of tufts. The blades are made of it on the
+    // card, so their number is not stored anywhere: at most three per tuft.
     const int tufts = static_cast<int>(context.grassTuftCount);
-    page.stat("Tufts", "%d (%d blades)", tufts, tufts * BLADES_PER_TUFT);
+    page.stat("Tufts", "%d (up to %d blades)", tufts, tufts * game::GRASS_BLADES_PER_TUFT);
+    page.stat("Chunks", "%d", static_cast<int>(context.grassChunkCount));
 
     page.endCard();
 }

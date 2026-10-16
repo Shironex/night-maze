@@ -32,6 +32,7 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <span>
 #include <string>
 
 namespace debug {
@@ -39,7 +40,7 @@ namespace debug {
 namespace {
 
 // How many shader programs the game has.
-constexpr int SHADER_COUNT = 14;
+constexpr int SHADER_COUNT = 15;
 
 // A triangle is three indices.
 constexpr std::uint32_t INDICES_PER_TRIANGLE = 3;
@@ -115,8 +116,8 @@ void drawRenderWork(Page& page, const DebugContext& context) {
     page.stat("Uniform lookups", "%d", static_cast<int>(counters.uniformLookups));
     page.stat("Texture binds", "%d", static_cast<int>(counters.textureBinds));
     page.note("One frame of the game, without this window and the menu. Triangles are the "
-              "ones handed to the card: the blades of the grass are made there and not "
-              "counted.");
+              "ones handed to the card: the instanced grass counts the blades of every "
+              "copy, the blades the geometry shader makes on the card are not counted.");
     page.toggle("Frustum culling", &context.frustumCulling,
                 "On: a wall, a pillar or another object whose box lies outside of what "
                 "a pass sees is not drawn in that pass. The scene tests against the "
@@ -129,6 +130,9 @@ void drawRenderWork(Page& page, const DebugContext& context) {
     drawCulledPass(page, "Scene objects", passes.reading(game::GpuPass::Scene));
     drawCulledPass(page, "Flashlight objects", passes.reading(game::GpuPass::FlashlightShadow));
     drawCulledPass(page, "Reflection objects", passes.reading(game::GpuPass::Reflections));
+    // The chunks of the grass, tested against the same frustum as the scene. Only while
+    // the chunk culling of the grass is on too (World, Terrain and grass).
+    drawCulledPass(page, "Grass chunks", passes.reading(game::GpuPass::Grass));
     page.endCard();
 }
 
@@ -190,16 +194,25 @@ void drawAudio(Page& page, const DebugContext& context) {
     page.endCard();
 }
 
+// The name of a program in the list: the name of its fragment shader without its ending
+// ("lit" for lit.frag). Nearly every program has a fragment shader of its own. The two
+// grass programs share grass.frag, so a program whose fragment shader another program
+// of the list has too is named after its vertex shader ("grass" and "grass_instanced").
+std::string shaderName(const gfx::Shader& shader, std::span<gfx::Shader* const> all) {
+    const bool shared = std::ranges::any_of(all, [&shader](const gfx::Shader* other) {
+        return other != &shader && other->fragmentPath() == shader.fragmentPath();
+    });
+    return core::pathText(shared ? shader.vertexPath().stem() : shader.fragmentPath().stem());
+}
+
 // One program: its name and how its last load went, under it its files, and under
 // them the error message of a failed load.
-void drawShaderStatus(const gfx::Shader& shader) {
-    // The name is the name of the fragment shader without its ending ("lit" for
-    // lit.frag): every program has a fragment shader of its own. The line below shows
+void drawShaderStatus(const gfx::Shader& shader, const std::string& name) {
+    // The name comes from shaderName. The line below shows
     // the file names, joined by " + " in the order the stages run: the vertex shader,
     // the geometry shader of a program that has one, the fragment shader. The full
     // paths, one per line, are in the tooltip. ImGui expects UTF-8, which
     // core::pathText returns.
-    const std::string name = core::pathText(shader.fragmentPath().stem());
     std::string files = core::pathText(shader.vertexPath().filename());
     std::string fullPaths = core::pathText(shader.vertexPath());
     if (shader.hasGeometryStage()) {
@@ -247,11 +260,11 @@ void drawShaders(Page& page, const DebugContext& context) {
     // A list of all programs, so that a new program is one more entry here. The array
     // holds pointers, because a reference cannot be an element of an array.
     const std::array<gfx::Shader*, SHADER_COUNT> shaders = {
-        &context.texturedShader,       &context.colorShader,       &context.litShader,
-        &context.gouraudShader,        &context.skyboxShader,      &context.grassShader,
-        &context.compositeShader,      &context.previewShader,     &context.brightPassShader,
-        &context.blurShader,           &context.shadowDepthShader, &context.minimapShader,
-        &context.minimapOverlayShader, &context.reflectShader};
+        &context.texturedShader,       &context.colorShader,          &context.litShader,
+        &context.gouraudShader,        &context.skyboxShader,         &context.grassShader,
+        &context.grassInstancedShader, &context.compositeShader,      &context.previewShader,
+        &context.brightPassShader,     &context.blurShader,           &context.shadowDepthShader,
+        &context.minimapShader,        &context.minimapOverlayShader, &context.reflectShader};
 
     page.beginCard("Shaders");
     // One button reloads every program: after editing a file there is no need to know
@@ -261,16 +274,16 @@ void drawShaders(Page& page, const DebugContext& context) {
     // reload fails keeps working with its previous version, and the others are
     // reloaded all the same.
     if (page.buttons("Shaders", "Reload shaders", nullptr,
-                     "Reads the files of all 14 shader programs again and builds them. "
+                     "Reads the files of all 15 shader programs again and builds them. "
                      "A program that fails keeps its previous version.") == 1) {
         for (gfx::Shader* shader : shaders) {
             shader->reload();
         }
     }
 
-    if (page.beginBlock("shader programs list status errors files vert frag geom")) {
+    if (page.beginBlock("shader programs list status errors files vert frag geom instanced")) {
         for (const gfx::Shader* shader : shaders) {
-            drawShaderStatus(*shader);
+            drawShaderStatus(*shader, shaderName(*shader, shaders));
         }
     }
     page.endCard();
