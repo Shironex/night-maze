@@ -64,6 +64,9 @@ struct LoadedSound {
     // True while the loop of this sound is switched on (AudioEngine::setLoop). A loop
     // runs on the first voice.
     bool loopOn = false;
+    // True from fadeOut until the next play: stopAll leaves such a sound alone, so its
+    // fade ends it and not a cut.
+    bool fadingOut = false;
 
     LoadedSound() = default;
     LoadedSound(const LoadedSound&) = delete;
@@ -297,6 +300,15 @@ void AudioEngine::play(std::size_t index, float volume) {
     // The next voice in turn: the one that has been ringing the longest, and nearly
     // always one that has ended. The voice before it is left alone and rings out.
     LoadedSound& loaded = *found;
+    // A fade out (fadeOut) leaves every voice with its loudness at 0 and a moment at
+    // which it stops: both are taken back, or the play would be silent or end at once.
+    if (loaded.fadingOut) {
+        loaded.fadingOut = false;
+        for (Voice& voice : loaded.voices) {
+            ma_sound_set_stop_time_in_pcm_frames(&voice.sound, NEVER);
+            ma_sound_set_fade_in_pcm_frames(&voice.sound, 1.0F, 1.0F, 0);
+        }
+    }
     ma_sound& sound = loaded.voices.at(loaded.nextVoice).sound;
     loaded.nextVoice = (loaded.nextVoice + 1) % VOICE_COUNT;
     // The volume of this play, written every time: the voice still holds the number
@@ -323,7 +335,7 @@ void AudioEngine::stopAll() {
     // the call only leaves a note for the audio thread. The place a voice has reached
     // does not matter: play rewinds a voice before it starts it.
     for (const std::unique_ptr<LoadedSound>& loaded : m_backend->sounds) {
-        if (loaded == nullptr) {
+        if (loaded == nullptr || loaded->fadingOut) {
             continue;
         }
         for (Voice& voice : loaded->voices) {
@@ -363,6 +375,31 @@ void AudioEngine::setLoop(std::size_t index, bool on, float fadeSeconds) {
     ma_sound_set_stop_time_in_pcm_frames(&sound, NEVER);
     ma_sound_set_fade_in_pcm_frames(&sound, from, 1.0F, fadeFrames);
     ma_sound_start(&sound);
+}
+
+void AudioEngine::setLoopVolume(std::size_t index, float volume) {
+    LoadedSound* loaded = m_backend == nullptr ? nullptr : m_backend->sound(index);
+    if (loaded == nullptr) {
+        return;
+    }
+    // The volume of the voice, which miniaudio multiplies with the fade of setLoop: the
+    // two never undo each other.
+    ma_sound_set_volume(&loaded->voices.front().sound, std::clamp(volume, 0.0F, 1.0F));
+}
+
+void AudioEngine::fadeOut(std::size_t index, float fadeSeconds) {
+    LoadedSound* loaded = m_backend == nullptr ? nullptr : m_backend->sound(index);
+    if (loaded == nullptr) {
+        return;
+    }
+    loaded->fadingOut = true;
+    // Every voice that still rings goes down to 0 over the fade and stops there. The
+    // fade starts at the loudness the voice has, so there is no jump.
+    for (Voice& voice : loaded->voices) {
+        if (ma_sound_is_playing(&voice.sound) == MA_TRUE) {
+            ma_sound_stop_with_fade_in_pcm_frames(&voice.sound, m_backend->frames(fadeSeconds));
+        }
+    }
 }
 
 bool AudioEngine::isLooping(std::size_t index) const {

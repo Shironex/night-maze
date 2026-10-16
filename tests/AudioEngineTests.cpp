@@ -452,3 +452,92 @@ TEST_CASE("a loop that is switched off and on again goes on from where it stoppe
     CHECK(best < 0.01F * peak(resumed));
     CHECK(differenceAt(0) > 0.5F * peak(resumed));
 }
+
+TEST_CASE("the music of a round and the second theme go round without a tick") {
+    // The three loops cut from recordings (assets/audio/README.md) and their lengths in
+    // whole seconds: the material after the loop end is crossfaded into the head, and
+    // the file starts at a quiet sample of both channels.
+    struct Loop {
+        const char* file;
+        std::size_t seconds;
+    };
+    for (const Loop loop : {Loop{.file = "maze_ambient.flac", .seconds = 48},
+                            Loop{.file = "shade_chase.flac", .seconds = 52},
+                            Loop{.file = "menu_theme_v2.flac", .seconds = 108}}) {
+        const std::string name = loop.file;
+        CAPTURE(name);
+        AudioEngine engine(AudioOutput::None);
+        const std::array<SoundFile, 1> files = {soundFile(loop.file, SoundGroup::Music)};
+        engine.load(files);
+        REQUIRE(engine.lengthSeconds(0) == doctest::Approx(static_cast<double>(loop.seconds)));
+        engine.setLoop(0, true, 0.0F);
+        const std::size_t seam = loop.seconds * RATE;
+        engine.render(seam - 2 * RATE);
+        const std::vector<float> mixed = engine.render(3 * RATE);
+        // Peaks are kept below -1 dBTP: well under 0.89 after the conversion.
+        CHECK(peak(mixed) < 0.89F);
+        constexpr std::size_t AROUND = 64;
+        const std::size_t at = 2 * RATE;
+        for (const std::size_t channel : {std::size_t{0}, std::size_t{1}}) {
+            const std::vector<float> one = channelOf(mixed, channel);
+            const std::span<const float> samples(one);
+            const float before = largestStep(samples.subspan(at - RATE, RATE - AROUND));
+            const float across = largestStep(samples.subspan(at - AROUND, 2 * AROUND));
+            CHECK(before > 0.0F);
+            CHECK(across <= before);
+            const float last = peak(samples.subspan(at - RATE / 10, RATE / 10));
+            const float first = peak(samples.subspan(at, RATE / 10));
+            CHECK(first > 0.4F * last);
+            CHECK(first < 2.5F * last);
+        }
+    }
+}
+
+TEST_CASE("the volume of a loop scales it on top of its fade") {
+    const std::array<SoundFile, 1> files = {soundFile("maze_wind.wav", SoundGroup::Ambient)};
+    AudioEngine full(AudioOutput::None);
+    full.load(files);
+    full.setLoop(0, true, 0.0F);
+    const float loud = peak(renderLeft(full, 2.0));
+
+    // The same loop at 0.4: the very same sound, 0.4 times as loud. Changed back, it is
+    // as loud as before, and the fade of setLoop still works on top of it.
+    AudioEngine ducked(AudioOutput::None);
+    ducked.load(files);
+    ducked.setLoopVolume(0, 0.4F);
+    ducked.setLoop(0, true, 0.0F);
+    CHECK(peak(renderLeft(ducked, 2.0)) == doctest::Approx(0.4F * loud).epsilon(0.02));
+    ducked.setLoopVolume(0, 1.0F);
+    renderLeft(ducked, 0.1);
+    ducked.setLoop(0, false, 0.5F);
+    renderLeft(ducked, 0.6);
+    CHECK(peak(renderLeft(ducked, 0.5)) == 0.0F);
+}
+
+TEST_CASE("a played sound fades out without a click, stopAll does not cut the fade") {
+    AudioEngine engine(AudioOutput::None);
+    const std::array<SoundFile, 1> files = {soundFile("intro_wind.wav", SoundGroup::Music)};
+    engine.load(files);
+    engine.play(0);
+    renderLeft(engine, 5.0);
+    const float ordinary = 1.01F * largestStep(renderLeft(engine, 1.0));
+    REQUIRE(ordinary > 0.0F);
+
+    // Half way through the fade stopAll comes (the ending card is left): the fade goes on.
+    engine.fadeOut(0, 1.0F);
+    const std::vector<float> first = renderLeft(engine, 0.5);
+    engine.stopAll();
+    const std::vector<float> second = renderLeft(engine, 0.7);
+    CHECK(largestStep(first) <= ordinary);
+    CHECK(largestStep(second) <= ordinary);
+    CHECK(peak(std::span(second).first(RATE / 10)) > 0.0F);
+    CHECK(peak(std::span(second).last(RATE / 10)) == 0.0F);
+
+    // Played again, it sounds from its beginning at full loudness, and stopAll stops it.
+    engine.play(0);
+    renderLeft(engine, 5.0);
+    CHECK(peak(renderLeft(engine, 1.0)) > 0.5F * ordinary);
+    engine.stopAll();
+    renderLeft(engine, 0.1);
+    CHECK(peak(renderLeft(engine, 0.5)) == 0.0F);
+}

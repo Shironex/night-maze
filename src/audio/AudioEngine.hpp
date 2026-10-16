@@ -18,7 +18,7 @@ namespace audio {
 enum class SoundGroup {
     Effects = 0, ///< everything that happens: clicks, pickups, steps, warnings
     Ambient,     ///< the air of a place: wind
-    Music,       ///< the theme of the menu
+    Music,       ///< the theme of the menu and the quiet music under a round
 };
 
 /// How many groups there are: the number of entries of SoundGroup.
@@ -127,6 +127,20 @@ public:
     /// loaded.
     void setLoop(std::size_t index, bool on, float fadeSeconds);
 
+    /// How loud the loop of sound number index plays, from 0 to 1, on top of its fade:
+    /// the loudness heard is this times where the fade of setLoop has got to. For
+    /// a level that moves while the loop runs (one loop made quieter under another).
+    /// The change is at once, so the caller moves it in small steps, one per frame.
+    /// Does nothing without a device and for a sound that is not loaded.
+    void setLoopVolume(std::size_t index, float volume);
+
+    /// Fades out every copy of sound number index that is still playing, over
+    /// fadeSeconds, and stops it at the end of the fade. For a long sound started with
+    /// play that must not go on over the next screen. stopAll leaves such a sound alone
+    /// until it is played again, so the fade ends it and not a cut. Does nothing without
+    /// a device and for a sound that is not loaded.
+    void fadeOut(std::size_t index, float fadeSeconds);
+
     /// True while the loop of sound number index is switched on (also while it still
     /// fades in). False from the moment it is switched off, although it is heard
     /// a moment longer while it fades out.
@@ -141,7 +155,8 @@ public:
     /// the main menu. Each sound can be played again afterwards, from its beginning.
     ///
     /// The rule for loops: stopAll never touches one. A loop that is on stays on, and
-    /// one that is fading out finishes its fade. Only setLoop ends a loop, so whoever
+    /// one that is fading out finishes its fade. The same for a sound that fadeOut is
+    /// fading. Only setLoop ends a loop, so whoever
     /// decides about the loops (the rule game::mazeWindPlays, asked in every frame) is
     /// the one place that can leave one running or end it.
     /// Does nothing without a device.
