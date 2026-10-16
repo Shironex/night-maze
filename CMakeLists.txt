@@ -438,6 +438,8 @@ add_executable(night_maze
     src/debug/MazePlan.cpp
     src/debug/MazePlan.hpp
     src/debug/Pictures.cpp
+    src/debug/PerfProbe.cpp
+    src/debug/PerfProbe.hpp
     src/debug/Pictures.hpp
     src/debug/RawTextureSampler.cpp
     src/debug/RawTextureSampler.hpp

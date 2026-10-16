@@ -2,6 +2,7 @@
 #include "core/Log.hpp"
 #include "debug/DebugContext.hpp"
 #include "debug/DebugUI.hpp"
+#include "debug/PerfProbe.hpp"
 #include "game/NightMazeApp.hpp"
 #include "gfx/RenderStats.hpp"
 
@@ -10,8 +11,12 @@
 #include <cstddef>
 #include <cstdlib>
 #include <exception>
+#include <optional>
 #include <span>
 #include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 namespace {
 
@@ -21,8 +26,10 @@ namespace {
 /// but nothing in game/ includes debug code, so the game never depends on the panels.
 class DebugNightMazeApp final : public game::NightMazeApp {
 public:
-    /// options is what the command line asked for (game::parseStartOptions).
-    explicit DebugNightMazeApp(const game::StartOptions& options) : game::NightMazeApp(options) {}
+    /// options is what the command line asked for (game::parseStartOptions). probe is
+    /// the measuring aid of the switch --perf-probe, or empty.
+    DebugNightMazeApp(const game::StartOptions& options, std::optional<debug::PerfProbe> probe)
+        : game::NightMazeApp(options), m_probe(std::move(probe)) {}
 
 protected:
     void onRender(double alpha) override {
@@ -164,6 +171,25 @@ protected:
         // the focus, typing belongs to it, like for a text field of a panel.
         input().setKeyboardBlocked(m_debugUI.wantsKeyboard() || menuUi().wantsKeyboard());
         input().setMouseBlocked(m_debugUI.wantsMouse());
+
+        // The measuring aid (debug/PerfProbe.hpp), when the switch asked for it. It ends
+        // the program once it has measured everything.
+        if (m_probe && m_probe->afterFrame(debug::PerfProbeFrame{
+                           .time = time(),
+                           .cpuTimes = cpuTimes(),
+                           .counters = gfx::renderCounters(),
+                           .gpuPasses = gpuPasses(),
+                           .mode = gameMode(),
+                           .vsync = m_vsync,
+                           .frustumCulling = frustumCulling(),
+                           .grass = grassSettings(),
+                           .lighting = lighting(),
+                           .viewMode = viewMode(),
+                           .player = player(),
+                           .camera = camera(),
+                       })) {
+            window().requestClose();
+        }
     }
 
 private:
@@ -180,7 +206,15 @@ private:
     // measuring, so it lives here and not in the settings of the player: every run
     // starts with vsync on.
     bool m_vsync = true;
+
+    // The measuring aid of the switch --perf-probe, or empty.
+    std::optional<debug::PerfProbe> m_probe;
 };
+
+// The switch of the measuring aid (debug/PerfProbe.hpp). It is a tool of the debug
+// build of the game, so it is taken out of the command line here, before the switches
+// of the game are read.
+constexpr std::string_view PERF_PROBE_SWITCH = "--perf-probe";
 
 } // namespace
 
@@ -190,7 +224,24 @@ int main(int argc, char** argv) {
     // The switches are read before the window is opened: a mistyped one ends the
     // program with a line in the log and the list of switches, not with a game that
     // silently ignores it.
-    const std::span<const char* const> arguments(argv + 1, static_cast<std::size_t>(argc - 1));
+    const std::span<const char* const> allArguments(argv + 1, static_cast<std::size_t>(argc - 1));
+    std::vector<const char*> arguments;
+    std::optional<debug::PerfProbe> probe;
+    for (std::size_t i = 0; i < allArguments.size(); ++i) {
+        if (allArguments[i] != PERF_PROBE_SWITCH) {
+            arguments.push_back(allArguments[i]);
+            continue;
+        }
+        std::string error = "--perf-probe needs a value";
+        const std::optional<debug::PerfProbeSpec> spec =
+            i + 1 < allArguments.size() ? debug::parsePerfProbeSpec(allArguments[++i], error)
+                                        : std::nullopt;
+        if (!spec) {
+            core::logError(error);
+            return EXIT_FAILURE;
+        }
+        probe.emplace(*spec);
+    }
     const game::StartOptionsResult start = game::parseStartOptions(arguments);
     if (!start.error.empty()) {
         core::logError(start.error);
@@ -199,7 +250,7 @@ int main(int argc, char** argv) {
     }
 
     try {
-        DebugNightMazeApp app(start.options);
+        DebugNightMazeApp app(start.options, std::move(probe));
         app.run();
     } catch (const std::exception& error) {
         // Startup failures (no window, no OpenGL 4.1) arrive here as exceptions.
