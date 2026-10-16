@@ -40,6 +40,18 @@ function(night_maze_enable_warnings target)
     endif()
 endfunction()
 
+# The same floats on every system, for every target from here on (our own code; the
+# third-party libraries above keep their defaults). Clang and GCC may fuse a * b + c
+# into one instruction (FMA) that rounds once instead of twice, and Clang does so by
+# default on Apple silicon; MSVC does not. A seed must build the same world on Windows
+# and on macOS (Tonight's hedge is one maze for every player), and the tests pin
+# checksums of float results: with fusing, the grass of a seed sat a few bits apart on
+# macOS (seen in the macos job of the CI on 2026-10-16). -ffp-contract=off keeps the two
+# roundings, as MSVC does.
+if(NOT MSVC)
+    add_compile_options(-ffp-contract=off)
+endif()
+
 # ---- engine: reusable layers (assets, core, gfx and scene now; renderer later) --------
 add_library(engine STATIC
     src/assets/AssetCache.cpp
