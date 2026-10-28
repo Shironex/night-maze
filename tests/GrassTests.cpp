@@ -59,6 +59,8 @@ game::MazeWorld withoutTrampledGround(game::MazeWorld world) {
     world.hasGate = false;
     world.stileWall.reset();
     world.sheep.clear();
+    // The walls, hedgerows and buildings of the land cover ground too.
+    world.land = {};
     return world;
 }
 
@@ -248,7 +250,9 @@ TEST_CASE("every tuft stands on the ground and has a random number from 0 to 1")
 }
 
 TEST_CASE("the hills get a sparse scatter that keeps away from the maze") {
-    const game::MazeWorld world = testWorld();
+    // Without the land, whose walls and buildings take tufts away from the count.
+    game::MazeWorld world = testWorld();
+    world.land = {};
     constexpr float DENSITY = game::DEFAULT_GRASS_DENSITY;
     const std::vector<game::GrassTuft> tufts = game::placeGrass(world, DENSITY);
     const std::size_t onWalls = wallTuftCount(world, DENSITY);

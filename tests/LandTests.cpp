@@ -5,6 +5,7 @@
 #include "assets/ImageLoader.hpp"
 #include "assets/ObjLoader.hpp"
 #include "core/Files.hpp"
+#include "game/Grass.hpp"
 #include "game/LandMeshes.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/Minimap.hpp"
@@ -407,4 +408,29 @@ TEST_CASE("a landmark is seen only in the frustum and over the walls") {
     CHECK_FALSE(game::landmarkInSight(eye, ahead, frustum, wall));
     const std::vector<scene::Aabb> aside{{.min = {4.0F, 0.0F, -2.2F}, .max = {6.0F, 3.0F, -2.0F}}};
     CHECK(game::landmarkInSight(eye, ahead, frustum, aside));
+}
+
+TEST_CASE("the land knows where its walls, hedgerows and buildings cover the ground") {
+    const game::MazeWorld world = realWorld(16, 3);
+    const game::Land& land = world.land;
+    REQUIRE_FALSE(land.fieldLines.empty());
+    const game::FieldLine& line = land.fieldLines.front();
+    const glm::vec2 middle = (line.from + line.to) / 2.0F;
+    CHECK(game::landCoversGround(land, middle.x, middle.y));
+    // Far off every line, piece and the fold: the middle of the maze.
+    const glm::vec3 centre = world.startPosition;
+    CHECK_FALSE(game::landCoversGround(land, centre.x, centre.z));
+}
+
+TEST_CASE("no grass grows through the field walls, the hedgerows or the buildings") {
+    forEveryWorld([](const game::MazeWorld& world) {
+        const std::vector<game::GrassTuft> tufts = game::placeGrass(world, 2.5F);
+        std::size_t covered = 0;
+        for (const game::GrassTuft& tuft : tufts) {
+            if (game::landCoversGround(world.land, tuft.position.x, tuft.position.z)) {
+                ++covered;
+            }
+        }
+        CHECK(covered == 0);
+    });
 }

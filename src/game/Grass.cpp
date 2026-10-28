@@ -2,6 +2,7 @@
 #include "game/Grass.hpp"
 
 #include "game/GateLamp.hpp"
+#include "game/Land.hpp"
 #include "game/MazeGenerator.hpp"
 #include "game/MazeLayout.hpp"
 #include "game/MazeWorld.hpp"
@@ -137,6 +138,10 @@ bool grassIsTrampled(const MazeWorld& world, float x, float z) {
     }
     // Under a stone sheep: grass does not grow through stone.
     if (stoneSheepBareGround(world, x, z)) {
+        return true;
+    }
+    // Under the field walls, the hedgerows and the buildings of the land.
+    if (landCoversGround(world.land, x, z)) {
         return true;
     }
     // A maze of one cell has no gate, so nobody walks up to one.

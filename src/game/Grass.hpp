@@ -173,7 +173,8 @@ std::vector<GrassTuft> placeGrass(const MazeWorld& world, float density);
 /// that tell the exit from an ordinary dead end. A maze without a gate has none of that.
 /// The other bare place is the ground in front of the stile of the start cell
 /// (game::stileWornGround), in a world that has one (MazeWorld::stileWall). And no grass
-/// grows under a stone sheep (game::stoneSheepBareGround).
+/// grows under a stone sheep (game::stoneSheepBareGround), nor under the field walls, the
+/// hedgerows and the buildings of the land around the maze (game::landCoversGround).
 bool grassIsTrampled(const MazeWorld& world, float x, float z);
 
 /// The tufts that stand in one square of GRASS_CHUNK_SIZE: a range of GrassChunks::tufts.

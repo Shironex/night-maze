@@ -770,6 +770,46 @@ float landStreamDistance(const LandShape& shape, float along) {
            LAND_STREAM_WANDER * std::sin(along * glm::two_pi<float>() / STREAM_WAVE + phase);
 }
 
+bool landCoversGround(const Land& land, float x, float z) {
+    const glm::vec2 point{x, z};
+    for (const FieldLine& line : land.fieldLines) {
+        const float halfWidth =
+            (line.kind == FieldLineKind::Wall ? LAND_WALL_BASE : LAND_HEDGE_WIDTH) / 2.0F;
+        if (distanceToLine(point, line.from, line.to) < halfWidth + LAND_BARE_MARGIN) {
+            return true;
+        }
+    }
+    if (land.foldCentre) {
+        const glm::vec2 offset = point - *land.foldCentre;
+        const float onRing = std::abs(glm::length(offset) - LAND_FOLD_RADIUS);
+        // The gap of the fold, as an angle either side of the way it faces.
+        const float halfGap = LAND_FOLD_GAP / 2.0F / LAND_FOLD_RADIUS;
+        const float fromGap = std::abs(
+            std::remainder(std::atan2(offset.y, offset.x) - glm::radians(land.foldGapYawDegrees),
+                           glm::two_pi<float>()));
+        if (onRing < LAND_WALL_BASE / 2.0F + LAND_BARE_MARGIN && fromGap > halfGap) {
+            return true;
+        }
+    }
+    // The floor of a building: most of the circle placement keeps around it. The circle
+    // reaches the corners of the roof, the walls stand inside it.
+    constexpr float FLOOR_SHARE = 0.8F;
+    for (std::size_t i = 0; i < land.nearCount && i < land.pieces.size(); ++i) {
+        const LandPiece& piece = land.pieces[i];
+        const bool building = piece.model == LandModel::Farmhouse ||
+                              piece.model == LandModel::Barn ||
+                              piece.model == LandModel::Woodshed || piece.model == LandModel::Rick;
+        if (!building) {
+            continue;
+        }
+        const float radius = landModelShape(piece.model).radius * piece.scale * FLOOR_SHARE;
+        if (glm::length(point - glm::vec2{piece.position.x, piece.position.z}) < radius) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool landKeepsRevealClear(const glm::vec3& camera, Direction villageSide, const glm::vec3& top) {
     const glm::vec2 offset{top.x - camera.x, top.z - camera.z};
     const float distance = glm::length(offset);

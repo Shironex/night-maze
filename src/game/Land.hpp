@@ -268,6 +268,13 @@ float landStreamDistance(const LandShape& shape, float along);
 /// clear (landKeepsRevealClear).
 Land placeLand(const MazeWorld& world, float heightScale);
 
+/// Whether the ground at (x, z) lies under something of the land that grass cannot grow
+/// through: the foot of a field wall or of the fold (with LAND_BARE_MARGIN around it), a
+/// hedgerow, or the floor of a house, a barn, a shed or the rick of the near band. Trees
+/// are not: grass grows between their roots. game::placeGrass leaves these places out.
+bool landCoversGround(const Land& land, float x, float z);
+constexpr float LAND_BARE_MARGIN = 0.1F;
+
 /// Whether a piece whose top is at top keeps the view of the reveal camera clear: false
 /// when it lies within LAND_REVEAL_CONE_DEGREES of the bearing to the village, as seen from
 /// camera, and rises more than LAND_REVEAL_CLEAR_DEGREES above it.
