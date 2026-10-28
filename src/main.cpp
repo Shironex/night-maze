@@ -41,6 +41,11 @@ protected:
         // The frame of the game, with the menu of its screen on top (ui::UiLayer). The
         // debug UI follows, on top of both.
         game::NightMazeApp::onRender(alpha);
+        // The picture the measuring aid asked for, without the panels drawn below.
+        if (m_probe) {
+            const core::Size size = window().framebufferSize();
+            m_probe->writeShotIfDue(size.width, size.height);
+        }
 
         // The menu camera shows the game alone: in the frame it is switched on the
         // panels are hidden, and in the frame it is switched off they come back as they
@@ -183,6 +188,8 @@ protected:
                            .vsync = m_vsync,
                            .frustumCulling = frustumCulling(),
                            .grass = grassSettings(),
+                           .village = villageSettings(),
+                           .minimap = minimapSettings(),
                            .lighting = lighting(),
                            .viewMode = viewMode(),
                            .player = player(),

@@ -9,12 +9,17 @@
 #include "game/Grass.hpp"
 #include "game/Lighting.hpp"
 #include "game/MazeRenderer.hpp"
+#include "game/Minimap.hpp"
 #include "game/Player.hpp"
+#include "game/Village.hpp"
 #include "scene/Camera.hpp"
+
+#include <glad/gl.h>
 
 #include <algorithm>
 #include <array>
 #include <cstdio>
+#include <fstream>
 #include <string>
 
 namespace debug {
@@ -87,6 +92,8 @@ std::optional<PerfProbeSpec> parsePerfProbeSpec(std::string_view text, std::stri
             spec.warmupSeconds = number;
         } else if (name == "rounds" && parseNumber(value, number) && number >= 1.0) {
             spec.rounds = static_cast<int>(number);
+        } else if (name == "shot" && !value.empty()) {
+            spec.shotPath = value;
         } else if (name == "pose") {
             const std::vector<std::string> numbers = split(value, ',');
             std::array<double, 5> pose{};
@@ -168,6 +175,17 @@ void PerfProbe::applyConfig(const std::string& config, const PerfProbeFrame& fra
             frame.lighting.mode = game::LightingMode::Unlit;
         } else if (word == "uvview") {
             frame.viewMode = game::ViewMode::Uvs;
+        } else if (word == "land") {
+            frame.village.landEnabled = true;
+        } else if (word == "noland") {
+            frame.village.landEnabled = false;
+        } else if (word == "map") {
+            frame.minimap.pinned = true;
+        } else if (word.starts_with("fov=")) {
+            double fov = 0.0;
+            if (parseNumber(word.substr(std::string("fov=").size()), fov) && fov > 0.0) {
+                frame.camera.fovDegrees = static_cast<float>(fov);
+            }
         } else {
             std::fprintf(stdout, "PERF unknown word '%s' in config '%s'\n", word.c_str(),
                          config.c_str());
@@ -239,6 +257,12 @@ bool PerfProbe::afterFrame(const PerfProbeFrame& frame) {
     // This frame belongs to the window m_index: it was drawn with its config.
     const double seconds = frame.time.deltaSeconds();
     m_secondsInWindow += seconds;
+    // The picture of the config, once, when its warmup ends in the first round.
+    if (!m_spec.shotPath.empty() && m_index < configCount &&
+        m_secondsInWindow - seconds <= m_spec.warmupSeconds &&
+        m_secondsInWindow > m_spec.warmupSeconds) {
+        m_shotDue = configOf(m_index);
+    }
     if (m_secondsInWindow > m_spec.warmupSeconds) {
         Window& window = m_window;
         window.alwaysPlaying = window.alwaysPlaying && playing;
@@ -281,6 +305,32 @@ bool PerfProbe::afterFrame(const PerfProbeFrame& frame) {
     }
     applyConfig(configOf(m_index), frame);
     return false;
+}
+
+void PerfProbe::writeShotIfDue(int width, int height) {
+    if (m_shotDue.empty() || width <= 0 || height <= 0) {
+        return;
+    }
+    // The back buffer of the window, as the next swap will show it: rows bottom first,
+    // three bytes a pixel, packed.
+    std::vector<unsigned char> pixels(static_cast<std::size_t>(width) *
+                                      static_cast<std::size_t>(height) * 3U);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    glReadBuffer(GL_BACK);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+
+    const std::string path = m_spec.shotPath + "-" + m_shotDue + ".ppm";
+    std::ofstream file(path, std::ios::binary);
+    file << "P6\n" << width << ' ' << height << "\n255\n";
+    const std::size_t row = static_cast<std::size_t>(width) * 3U;
+    for (int y = height - 1; y >= 0; --y) {
+        file.write(reinterpret_cast<const char*>(pixels.data() + static_cast<std::size_t>(y) * row),
+                   static_cast<std::streamsize>(row));
+    }
+    std::fprintf(stdout, "PERF shot %s\n", path.c_str());
+    std::fflush(stdout);
+    m_shotDue.clear();
 }
 
 } // namespace debug

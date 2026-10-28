@@ -23,6 +23,8 @@ class GpuPassTimers;
 struct GrassSettings;
 struct LightingSettings;
 struct Player;
+struct VillageSettings;
+struct MinimapSettings;
 enum class ViewMode;
 } // namespace game
 
@@ -58,6 +60,10 @@ namespace debug {
 //                           looks (degrees). The player flies there (noclip), so the
 //                           place can be in the air. Without it the player stays where
 //                           the round started (--start-cell, --start-yaw).
+//     shot=<path>           a picture of every config, read back from the window when its
+//                           warmup ends in the first round, written as
+//                           <path>-<config>.ppm (binary PPM). The game writes it itself:
+//                           nothing captures the screen. The debug panels are not on it.
 //
 // A config is one or more words joined by '+': "off" (no grass), "on", "geom" (the
 // geometry shader), "inst" (instanced), "cull" and "nocull" (the chunk culling of the
@@ -66,7 +72,10 @@ namespace debug {
 // (the frustum culling of the whole scene). For pictures only: "unlit" (the lighting mode
 // Unlit, where the grass is shown at full brightness), "nowind" (still blades, so two
 // pictures can be compared pixel by pixel) and "uvview" (the debug view of the
-// texture coordinates, where every blade is a gradient from black to green).
+// texture coordinates, where every blade is a gradient from black to green), and
+// "fov=<degrees>" (the field of view of the camera, 22 is the one of the reveal of the
+// village), "land" and "noland" (the land around the maze, game/Land.hpp) and "map" (the
+// held map, pinned on the screen).
 
 /// Where the player stands and looks during a measurement.
 struct PerfProbePose {
@@ -82,6 +91,7 @@ struct PerfProbeSpec {
     double warmupSeconds = 2.0;
     int rounds = 3;
     std::optional<PerfProbePose> pose;
+    std::string shotPath;
 };
 
 /// Reads the text of the switch. Empty, with a message in error, when a part is not
@@ -99,6 +109,8 @@ struct PerfProbeFrame {
     bool& vsync;
     bool& frustumCulling;
     game::GrassSettings& grass;
+    game::VillageSettings& village;
+    game::MinimapSettings& minimap;
     game::LightingSettings& lighting;
     game::ViewMode& viewMode;
     game::Player& player;
@@ -113,6 +125,11 @@ public:
     /// Called once per frame, after the frame was drawn. Returns true when every window
     /// has been measured: the program should then close.
     bool afterFrame(const PerfProbeFrame& frame);
+
+    /// Called once per frame after the picture of the game is complete and before the
+    /// debug panels are drawn over it: writes the picture that afterFrame asked for, if
+    /// any. width and height are the size of the framebuffer of the window in pixels.
+    void writeShotIfDue(int width, int height);
 
 private:
     // The sums of one measured window.
@@ -142,6 +159,8 @@ private:
     double m_secondsInWindow = 0.0;
     int m_framesInRound = 0;
     Window m_window;
+    // The config whose picture the next writeShotIfDue writes, or empty.
+    std::string m_shotDue;
 };
 
 } // namespace debug
