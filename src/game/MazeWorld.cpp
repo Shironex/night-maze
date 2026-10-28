@@ -162,6 +162,9 @@ void placeOnTerrain(MazeWorld& world, const Heightmap& heightmap, float heightSc
     // The levers and the notes hang on the walls at a height above the ground, so they
     // follow the ground too.
     placeInteractablesOnTerrain(world.interactables, terrain);
+
+    // The land comes last: it stands on the terrain and keeps clear of the exit.
+    world.land = placeLand(world, heightScale);
 }
 
 std::vector<MazeCell> flaskCells(const MazeWorld& world, int wantedCount) {

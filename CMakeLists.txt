@@ -197,6 +197,10 @@ add_library(game_logic STATIC
     src/game/Intro.hpp
     src/game/KeyBindings.cpp
     src/game/KeyBindings.hpp
+    src/game/Land.cpp
+    src/game/Land.hpp
+    src/game/LandMeshes.cpp
+    src/game/LandMeshes.hpp
     src/game/Ledger.cpp
     src/game/Ledger.hpp
     src/game/Lighting.cpp

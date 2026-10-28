@@ -3,6 +3,7 @@
 
 #include "game/Crystals.hpp"
 #include "game/Interactables.hpp"
+#include "game/Land.hpp"
 #include "game/Maze.hpp"
 #include "game/MazeLayout.hpp"
 #include "game/StoneSheep.hpp"
@@ -161,6 +162,10 @@ struct MazeWorld {
     /// (game::placeStoneSheep), standing on the terrain, and a model matrix for each.
     std::vector<StoneSheep> sheep;
     std::vector<glm::mat4> sheepMatrices;
+
+    /// The land around the maze (game::placeLand): built at the end of placeOnTerrain from
+    /// a generator of its own, so it moves nothing above.
+    Land land;
 };
 
 /// Camera yaw, in degrees, that looks in the given direction: 0 for North (-Z), 90 for
