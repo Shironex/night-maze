@@ -29,6 +29,15 @@ uniform vec3 uTint;
 // Black for everything else. Only the normal picture (view 0) uses it.
 uniform vec3 uEmissive;
 
+// The village on the ridge and the far silhouettes only, black for everything else
+// (game::VillageRenderer, game::LandRenderer::drawFarBand). This program draws them
+// without light, so their ridge and hills would be one flat dark cut-out against the sky.
+// uFarLight is a little light of the moon and the sky on top of the picture: all of it on
+// a face that looks up and is turned to the moon (uMoonToward, length 1), half of it on a
+// face that does one of the two, none on a face that does neither. So the slopes part.
+uniform vec3 uFarLight;
+uniform vec3 uMoonToward;
+
 // What to show. The numbers are the values of game::ViewMode in C++.
 //   0: the texture multiplied by the tint (the normal picture)
 //   1: the normal as a colour (with normal mapping: the normal from the normal map)
@@ -70,6 +79,8 @@ void main() {
         // light of strength 1. The glow is added to that light, so a crystal stands
         // out here too.
         vec3 texel = texture(uTexture, vUv).rgb;
-        fragColor = vec4(texel * uTint * (vec3(1.0) + uEmissive), 1.0);
+        vec3 n = normalize(vNormal);
+        float lit = 0.5 * (max(n.y, 0.0) + max(dot(n, uMoonToward), 0.0));
+        fragColor = vec4(texel * uTint * (vec3(1.0) + uEmissive) + uFarLight * lit, 1.0);
     }
 }

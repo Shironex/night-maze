@@ -174,9 +174,13 @@ void LandRenderer::draw(const gfx::Shader& shader, const scene::Frustum* frustum
     drawIfAny(shader, m_ring, *m_groundTexture, *m_groundNormalMap, NO_TINT, IDENTITY);
     drawIfAny(shader, m_walls, *m_wallTexture, *m_wallNormalMap, NO_TINT, IDENTITY);
     drawIfAny(shader, m_hedges, *m_hedgeTexture, *m_hedgeNormalMap, NO_TINT, IDENTITY);
+    // The rim catches the outline of a crown or a roof. The ground has none: seen from the
+    // maze, all of it far out is seen almost edge-on.
+    shader.setVec3(RIM_LIGHT_UNIFORM, LAND_RIM_LIGHT);
     for (const ModelBatch& batch : m_batches) {
         drawModel(shader, batch.model, batch.matrices, batch.boxes, frustum);
     }
+    shader.setVec3(RIM_LIGHT_UNIFORM, NO_GLOW);
 
     // The stream and the windows have no highlight: water this dark would show the
     // flashlight as a white spot, and a lit window shows its own light only.
@@ -193,6 +197,21 @@ void LandRenderer::draw(const gfx::Shader& shader, const scene::Frustum* frustum
     shader.setFloat(SPECULAR_STRENGTH_UNIFORM, specularStrength);
 }
 
+void setLandLight(const gfx::Shader& shader, const MazeWorld& world) {
+    const glm::vec3 to{static_cast<float>(world.maze.width()) * CELL_SIZE, 0.0F,
+                       static_cast<float>(world.maze.height()) * CELL_SIZE};
+    shader.setVec3(SKY_FILL_UNIFORM, LAND_SKY_FILL);
+    shader.setVec3(LAND_FROM_UNIFORM, glm::vec3{0.0F});
+    shader.setVec3(LAND_TO_UNIFORM, to);
+    shader.setFloat(LAND_FADE_UNIFORM, TERRAIN_MARGIN);
+}
+
+void clearLandLight(const gfx::Shader& shader) {
+    shader.setVec3(SKY_FILL_UNIFORM, NO_GLOW);
+    shader.setVec3(RIM_LIGHT_UNIFORM, NO_GLOW);
+    shader.setFloat(LAND_FADE_UNIFORM, 0.0F);
+}
+
 void LandRenderer::drawShadowCasters(const gfx::Shader& shader,
                                      const scene::Frustum* frustum) const {
     drawIfAny(shader, m_walls, *m_wallTexture, *m_wallNormalMap, NO_TINT, IDENTITY);
@@ -206,8 +225,10 @@ void LandRenderer::drawShadowCasters(const gfx::Shader& shader,
 }
 
 void LandRenderer::drawFarBand(const gfx::Shader& shader, Direction villageSide, float farPlane,
-                               float elevationDegrees, int nightsLit, float newestStrength) const {
+                               float elevationDegrees, int nightsLit, float newestStrength,
+                               const glm::vec3& towardMoon) const {
     const glm::vec3 amber = gfx::srgbToLinear(GATE_LAMP_WARM_COLOR);
+    shader.setVec3(MOON_TOWARD_UNIFORM, towardMoon);
     for (int i = 0; i < FAR_SILHOUETTE_COUNT; ++i) {
         const auto silhouette = static_cast<FarSilhouette>(i);
         const glm::mat4 matrix =
@@ -215,6 +236,7 @@ void LandRenderer::drawFarBand(const gfx::Shader& shader, Direction villageSide,
         const ModelBatch& batch =
             m_batches.at(static_cast<std::size_t>(farSilhouetteModel(silhouette)));
         shader.setVec3(EMISSIVE_UNIFORM, NO_GLOW);
+        shader.setVec3(FAR_LIGHT_UNIFORM, VILLAGE_FAR_LIGHT);
         if (batch.model != nullptr) {
             for (const assets::ModelPart& part : batch.model->parts) {
                 drawMesh(shader, batch.model->mesh, *part.texture, *part.normalMap, SILHOUETTE_TINT,
@@ -222,6 +244,7 @@ void LandRenderer::drawFarBand(const gfx::Shader& shader, Direction villageSide,
             }
         }
         const int night = farSilhouetteNight(silhouette);
+        shader.setVec3(FAR_LIGHT_UNIFORM, NO_GLOW);
         if (night <= nightsLit) {
             shader.setVec3(EMISSIVE_UNIFORM, glm::vec3{VILLAGE_LIGHT_GLOW});
             drawIfAny(shader, m_silhouetteWindows.at(static_cast<std::size_t>(i)), *m_white,

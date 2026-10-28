@@ -42,9 +42,11 @@ public:
     ///
     /// matrix is game::villageMatrix. newestStrength, 0 to 1, is how much of the lights of
     /// the last lit night is there (game::villageNewLightStrength): the nights before it
-    /// are all there. The function sets uEmissive and leaves it black.
+    /// are all there. towardMoon (length 1) is the way to the moon, for the little light
+    /// of the moon and the sky the village gets (VILLAGE_FAR_LIGHT). The function sets
+    /// uEmissive and uFarLight and leaves them black.
     void draw(const gfx::Shader& shader, const glm::mat4& matrix, int nightsLit,
-              float newestStrength) const;
+              float newestStrength, const glm::vec3& towardMoon) const;
 
 private:
     // Not owned. nullptr when the model could not be loaded.

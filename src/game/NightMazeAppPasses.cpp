@@ -378,11 +378,16 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
     // the shadows off.
     setShadowUniformsOf(shader);
 
-    // The ground first, then what stands on it, as in drawUnlitMaze.
+    // The ground first, then what stands on it, as in drawUnlitMaze. The terrain gets the
+    // light of the land too, outside the maze, so the two meet without a step.
+    if (m_villageSettings.landEnabled) {
+        setLandLight(shader, m_mazeWorld);
+    }
     m_terrainRenderer.draw(shader, m_terrainSettings.wireframe);
     if (m_villageSettings.landEnabled) {
         m_landRenderer.draw(shader, frustum, m_frameNightLights.nightsLit,
                             m_frameNightLights.newestStrength, m_lighting.specularStrength);
+        clearLandLight(shader);
     }
     m_mazeRenderer.draw(shader, m_mazeWorld, m_wallMatrices, m_mazeSettings.wallVariants,
                         MazeParts::All, m_mazeBounds, frustum);
@@ -578,14 +583,17 @@ void NightMazeApp::drawVillage(const glm::mat4& view, const glm::mat4& projectio
     m_texturedShader.setInt(VIEW_MODE_UNIFORM, static_cast<int>(m_viewMode));
     m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
     setModelSamplers(m_texturedShader);
+    // The way to the moon: the opposite of the way its light travels.
+    const glm::vec3 towardMoon = -moonDirection(m_lighting);
     m_villageRenderer.draw(
         m_texturedShader,
         villageMatrix(villageSide(m_mazeWorld), farPlane, m_villageSettings.elevationDegrees),
-        nightsLit, newestStrength);
+        nightsLit, newestStrength, towardMoon);
     // The mill and the church tower on other bearings of the ridge.
     if (m_villageSettings.landEnabled) {
         m_landRenderer.drawFarBand(m_texturedShader, villageSide(m_mazeWorld), farPlane,
-                                   m_villageSettings.elevationDegrees, nightsLit, newestStrength);
+                                   m_villageSettings.elevationDegrees, nightsLit, newestStrength,
+                                   towardMoon);
     }
 }
 

@@ -31,6 +31,29 @@ uniform vec3 uTint;
 // own the source of the light would be the darkest thing around it.
 uniform vec3 uEmissive;
 
+// The land around the maze only (game::setLandLight), black for everything else. The
+// land lies far out, where the moon alone leaves a hill a flat dark shape against the sky.
+// uSkyFill is light from the sky, more on a face that looks up than on one that leans
+// away, so the slopes of a hill part from each other. uRimLight lights a face the more the
+// eye sees it edge-on, so the outline of a crown or a roof catches a little light against
+// the sky. Both grow from nothing at the border of the maze (the box from uLandFrom to
+// uLandTo, x and z) to all of it uLandFade metres out, so the ground of the maze and the
+// land meet without a step. With uLandFade at 0 there is none of either.
+uniform vec3 uSkyFill;
+uniform vec3 uRimLight;
+uniform vec3 uLandFrom;
+uniform vec3 uLandTo;
+uniform float uLandFade;
+
+// How much of the light of the land a point gets: 0 in the maze, 1 from uLandFade out.
+float landShare(vec3 position) {
+    if (uLandFade <= 0.0) {
+        return 0.0;
+    }
+    vec2 outside = max(max(uLandFrom.xz - position.xz, position.xz - uLandTo.xz), 0.0);
+    return smoothstep(0.0, uLandFade, length(outside));
+}
+
 // Output: the color written to the HDR framebuffer of the scene (red, green, blue,
 // alpha), as a LINEAR colour that may be brighter than 1.
 out vec4 fragColor;
@@ -88,6 +111,11 @@ void main() {
     //
     // The glow of the surface itself (uEmissive) joins the diffuse light. It does not
     // depend on any light of the scene, so a crystal glows in the darkest corner too.
+    vec3 toEye = normalize(uCameraPosition.xyz - vWorldPosition);
+    float edge = 1.0 - max(dot(normal, toEye), 0.0);
+    diffuse += landShare(vWorldPosition) *
+               (uSkyFill * (0.5 + 0.5 * normal.y) + uRimLight * (edge * edge * edge));
+
     vec3 surface = texture(uTexture, vUv).rgb * uTint;
     fragColor = vec4(surface * (diffuse + uEmissive) + specular, 1.0);
 }

@@ -46,6 +46,13 @@ constexpr float VILLAGE_CLEAR_EYE_HEIGHT = 60.0F;
 /// one of a village 257 m away, and nothing of it is cut off by the far plane.
 constexpr float VILLAGE_FAR_SHARE = 0.9F;
 
+/// The light of the moon and the sky on the village, its ridge and the far silhouettes,
+/// which the textured program draws without light (uFarLight in textured.frag), a linear
+/// colour: about what the tinted stone of the village shows, so the slopes of the ridge
+/// and its hill part from each other and its outline is less hard. It stays darker than
+/// the sky above it.
+constexpr glm::vec3 VILLAGE_FAR_LIGHT{0.004F, 0.005F, 0.012F};
+
 /// How strongly a lit window glows, compared with its colour: the same kind of number as
 /// GATE_LAMP_GLOW_STRENGTH (5). A window is two pixels wide, so the bloom has to carry it.
 constexpr float VILLAGE_LIGHT_GLOW = 7.0F;

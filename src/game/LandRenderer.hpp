@@ -29,6 +29,20 @@ namespace game {
 
 struct MazeWorld;
 
+/// The light of the sky and the moonlit edges the land gets in the lit program (lit.frag),
+/// linear colours. Little: on level ground far out the sky fill is about four times the
+/// ambient light, under a third of the moon, and the rim only shows where a
+/// crown or a roof is seen edge-on. It stays a dark night, but a crest and the crowns on it
+/// read as shapes and not as one flat black cut-out.
+constexpr glm::vec3 LAND_SKY_FILL{0.02F, 0.028F, 0.05F};
+constexpr glm::vec3 LAND_RIM_LIGHT{0.04F, 0.06F, 0.12F};
+
+/// Gives the lit program the light of the land (LAND_SKY_FILL, and the box of the maze it
+/// grows from over TERRAIN_MARGIN): call it before the terrain and the land are drawn, and
+/// clearLandLight after them, so nothing else gets it. LandRenderer::draw adds the rim.
+void setLandLight(const gfx::Shader& shader, const MazeWorld& world);
+void clearLandLight(const gfx::Shader& shader);
+
 /// The OpenGL side of game::Land. The places are plain data (game::placeLand) and the
 /// triangles of what is built in code too (game/LandMeshes.hpp). This class owns the
 /// meshes they are copied into, the model matrices and boxes of the pieces, and the meshes
@@ -62,9 +76,11 @@ public:
 
     /// Draws the mill and the church tower of the far band and the windows of those whose
     /// night is lit. shader is the textured program, prepared as for VillageRenderer::draw
-    /// (uView without its translation). Leaves uEmissive black.
+    /// (uView without its translation), and gets the same light of the moon and the sky
+    /// (towardMoon, VILLAGE_FAR_LIGHT). Leaves uEmissive and uFarLight black.
     void drawFarBand(const gfx::Shader& shader, Direction villageSide, float farPlane,
-                     float elevationDegrees, int nightsLit, float newestStrength) const;
+                     float elevationDegrees, int nightsLit, float newestStrength,
+                     const glm::vec3& towardMoon) const;
 
     /// What was uploaded, for the perf probe and the tests of the budget.
     std::size_t pieceCount() const { return m_pieceCount; }

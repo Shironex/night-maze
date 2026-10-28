@@ -57,9 +57,13 @@ VillageRenderer::VillageRenderer(assets::AssetCache& assets)
 }
 
 void VillageRenderer::draw(const gfx::Shader& shader, const glm::mat4& matrix, int nightsLit,
-                           float newestStrength) const {
+                           float newestStrength, const glm::vec3& towardMoon) const {
     shader.setVec3(EMISSIVE_UNIFORM, NO_GLOW);
+    shader.setVec3(FAR_LIGHT_UNIFORM, VILLAGE_FAR_LIGHT);
+    shader.setVec3(MOON_TOWARD_UNIFORM, towardMoon);
     drawTinted(shader, m_village, VILLAGE_TINT, matrix);
+    // The lights show their own light only.
+    shader.setVec3(FAR_LIGHT_UNIFORM, NO_GLOW);
 
     // The lights are amber, the colour of the open gate: the one warm colour of the
     // night. textured.frag shows tint * (1 + glow), so a light that is coming on is dimmed

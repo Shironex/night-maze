@@ -28,6 +28,23 @@ constexpr const char* TINT_UNIFORM = "uTint";
 /// as a linear colour. Black for everything except the crystals.
 constexpr const char* EMISSIVE_UNIFORM = "uEmissive";
 
+/// lit.frag only: the light of the sky the land around the maze gets on top of the light
+/// of the scene, a linear colour, all of it on a face that looks straight up and half on
+/// an upright one, the moonlit edge of its crowns and roofs, all of it on a face seen
+/// edge-on, and the box of the maze (x and z) both grow from over uLandFade metres. Black
+/// and 0 for everything else (game::setLandLight, game::clearLandLight).
+constexpr const char* SKY_FILL_UNIFORM = "uSkyFill";
+constexpr const char* RIM_LIGHT_UNIFORM = "uRimLight";
+constexpr const char* LAND_FROM_UNIFORM = "uLandFrom";
+constexpr const char* LAND_TO_UNIFORM = "uLandTo";
+constexpr const char* LAND_FADE_UNIFORM = "uLandFade";
+
+/// textured.frag only: a little light of the moon and the sky on the village on the ridge
+/// and the far silhouettes, a linear colour, and the way to the moon it comes from. Black
+/// for everything else (game::VillageRenderer and game::LandRenderer set and reset it).
+constexpr const char* FAR_LIGHT_UNIFORM = "uFarLight";
+constexpr const char* MOON_TOWARD_UNIFORM = "uMoonToward";
+
 /// common/normal_map.glsl, so lit.frag and textured.frag: the sampler of the normal map
 /// (the number of a second texture unit) and the switch of normal mapping (1 on, 0 off).
 constexpr const char* NORMAL_MAP_UNIFORM = "uNormalMap";
