@@ -9,7 +9,9 @@
 #include "game/LandMeshes.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/Minimap.hpp"
+#include "game/Player.hpp"
 #include "game/Round.hpp"
+#include "game/Settings.hpp"
 #include "game/Terrain.hpp"
 #include "game/Village.hpp"
 #include "scene/Frustum.hpp"
@@ -433,4 +435,103 @@ TEST_CASE("no grass grows through the field walls, the hedgerows or the building
         }
         CHECK(covered == 0);
     });
+}
+
+namespace {
+
+// The views down a corridor that runs straight to the border wall, from up to
+// BORDER_CELLS - 1 cells before it, looking level along it with the field of view of the
+// settings, and how many of them show the crown of a tree or a roof of the land over the
+// walls: a point of a piece at one of CROWN_SHARES of its height in the frustum, with
+// nothing of the maze in the way. The eye is the one of the player.
+struct BorderViews {
+    int views = 0;
+    int withNear = 0;
+    int withAny = 0;
+};
+
+constexpr int BORDER_CELLS = 6;
+constexpr std::array<float, 4> CROWN_SHARES{0.7F, 0.8F, 0.9F, 1.0F};
+
+BorderViews borderViews(const game::MazeWorld& world) {
+    const glm::mat4 projection = glm::perspective(glm::radians(game::DEFAULT_FIELD_OF_VIEW_DEGREES),
+                                                  16.0F / 9.0F, 0.1F, 100.0F);
+    const int width = world.maze.width();
+    const int height = world.maze.height();
+    BorderViews result;
+    for (int z = 0; z < height; ++z) {
+        for (int x = 0; x < width; ++x) {
+            for (const game::Direction side : game::ALL_DIRECTIONS) {
+                const int toBorder = side == game::Direction::North   ? z
+                                     : side == game::Direction::South ? height - 1 - z
+                                     : side == game::Direction::West  ? x
+                                                                      : width - 1 - x;
+                if (toBorder == 0 || toBorder >= BORDER_CELLS) {
+                    continue;
+                }
+                bool open = true;
+                for (int k = 0; k < toBorder && open; ++k) {
+                    open = !world.maze.hasWall(x + k * game::columnStep(side),
+                                               z + k * game::rowStep(side), side);
+                }
+                if (!open) {
+                    continue;
+                }
+                const glm::vec3 centre = game::cellCenter(x, z);
+                const glm::vec3 eye{
+                    centre.x, world.terrain.heightAt(centre.x, centre.z) + game::Player::EYE_HEIGHT,
+                    centre.z};
+                const float yaw = glm::radians(game::yawTowards(side));
+                const glm::vec3 ahead{std::sin(yaw), 0.0F, -std::cos(yaw)};
+                const glm::mat4 view = glm::lookAt(eye, eye + ahead, {0.0F, 1.0F, 0.0F});
+                const scene::Frustum frustum = scene::frustumFromMatrix(projection * view);
+                bool seenNear = false;
+                bool seenAny = false;
+                for (std::size_t i = 0; i < world.land.pieces.size() && !seenNear; ++i) {
+                    const game::LandPiece& piece = world.land.pieces[i];
+                    const float top = game::landPieceTop(piece);
+                    bool shows = false;
+                    for (const float share : CROWN_SHARES) {
+                        const glm::vec3 crown{piece.position.x,
+                                              glm::mix(piece.position.y, top, share),
+                                              piece.position.z};
+                        shows =
+                            shows || game::landmarkInSight(eye, crown, frustum, world.colliders);
+                    }
+                    if (shows) {
+                        seenAny = true;
+                        seenNear = seenNear || i < world.land.nearCount;
+                    }
+                }
+                ++result.views;
+                result.withNear += seenNear ? 1 : 0;
+                result.withAny += seenAny ? 1 : 0;
+            }
+        }
+    }
+    return result;
+}
+
+} // namespace
+
+TEST_CASE("most corridor views towards the border show a crown or a roof over the walls") {
+    // The near band alone, and with the middle band, which stands higher and farther out.
+    // Measured 2026-10-28: 41 and 65 % before the trees and roofs were made taller and the
+    // near trees more, 65 and 81 % after.
+    BorderViews all;
+    for (const int size : {10, 16, 22}) {
+        for (std::uint32_t seed = 0; seed < 6; ++seed) {
+            CAPTURE(size);
+            CAPTURE(seed);
+            const BorderViews one = borderViews(realWorld(size, seed));
+            all.views += one.views;
+            all.withNear += one.withNear;
+            all.withAny += one.withAny;
+        }
+    }
+    REQUIRE(all.views > 0);
+    const float near = static_cast<float>(all.withNear) / static_cast<float>(all.views);
+    const float any = static_cast<float>(all.withAny) / static_cast<float>(all.views);
+    CHECK(near > 0.6F);
+    CHECK(any > 0.75F);
 }

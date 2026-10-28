@@ -41,16 +41,16 @@ constexpr float QUARTER_TURN_DEGREES = 90.0F;
 // tools/blender/build_land_pieces.py scales it to. The copse is built 9 m high, and the
 // decimation takes the thin tips of its tallest twigs: it ends 8.4 m high.
 constexpr std::array<LandModelShape, LAND_MODEL_COUNT> MODEL_SHAPES{{
-    {.radius = 2.4F, .height = 7.5F},                  // Oak
-    {.radius = 1.8F, .height = 5.0F},                  // Hawthorn
-    {.radius = 2.0F, .height = 7.0F},                  // DeadOak
-    {.radius = 4.0F, .height = 5.5F, .windows = true}, // Farmhouse
-    {.radius = 3.6F, .height = 5.0F},                  // Barn
-    {.radius = 2.2F, .height = 2.8F},                  // Woodshed
-    {.radius = 2.0F, .height = 2.6F},                  // Rick
-    {.radius = 2.0F, .height = 7.0F},                  // DeadOakFar
+    {.radius = 3.2F, .height = 9.8F},                  // Oak
+    {.radius = 2.2F, .height = 5.9F},                  // Hawthorn
+    {.radius = 2.6F, .height = 9.0F},                  // DeadOak
+    {.radius = 4.5F, .height = 7.0F, .windows = true}, // Farmhouse
+    {.radius = 4.2F, .height = 6.5F},                  // Barn
+    {.radius = 2.5F, .height = 3.2F},                  // Woodshed
+    {.radius = 3.1F, .height = 4.0F},                  // Rick
+    {.radius = 2.6F, .height = 8.8F},                  // DeadOakFar
     {.radius = 4.5F, .height = 8.4F},                  // Copse
-    {.radius = 4.0F, .height = 5.5F, .windows = true}, // FarmhouseFar
+    {.radius = 5.0F, .height = 7.0F, .windows = true}, // FarmhouseFar
     {.radius = 3.4F, .height = 5.5F, .windows = true}, // Cottage
     {.radius = 3.8F, .height = 5.5F},                  // StandingStone
     {.radius = 3.4F, .height = 6.5F},                  // Dovecote
@@ -81,17 +81,20 @@ constexpr int TRIES_PER_PIECE = 40;
 // and never more than the most: a large maze has a longer band, and the land keeps to a
 // budget of triangles (about 150,000 for everything it draws). The middle line of the
 // near band is 7.75 m out, of the middle band 27 m.
-constexpr float NEAR_TREE_SPACING = 13.0F;
+constexpr float NEAR_TREE_SPACING = 10.0F;
 constexpr float MIDDLE_TREE_SPACING = 18.0F;
 constexpr float MIDDLE_COPSE_SPACING = 36.0F;
-constexpr int MOST_NEAR_TREES = 13;
-constexpr int MOST_MIDDLE_TREES = 16;
-constexpr int MOST_COPSES = 8;
+constexpr int MOST_NEAR_TREES = 17;
+constexpr int MOST_MIDDLE_TREES = 12;
+constexpr int MOST_COPSES = 7;
 constexpr float NEAR_BAND_MIDDLE = 7.75F;
 constexpr float MIDDLE_BAND_MIDDLE = 27.0F;
 
 // A tree may lean over a wall: only this share of its crown has to keep off a field line.
 constexpr float TREE_LINE_SHARE = 0.4F;
+// A house, a barn or a shed: its circle reaches past the corners of its walls, which are
+// squared to the field grid, so only this share of it has to keep off a field line.
+constexpr float HOUSE_LINE_SHARE = 0.75F;
 // Two pieces may stand this close, as a share of their two radii added: crowns and roofs
 // can overlap a little.
 constexpr float PIECE_SPACING_SHARE = 0.8F;
@@ -100,7 +103,7 @@ constexpr float PIECE_SPACING_SHARE = 0.8F;
 constexpr float OAK_SHARE = 0.3F;
 constexpr float HAWTHORN_SHARE = 0.35F;
 // Trees and ricks are scaled a little, so no two look the same.
-constexpr float SMALLEST_TREE = 0.8F;
+constexpr float SMALLEST_TREE = 0.85F;
 constexpr float LARGEST_TREE = 1.15F;
 
 // The shed stands near the farmhouse: this far from its middle.
@@ -136,7 +139,7 @@ struct SilhouettePlace {
     float scale;
 };
 constexpr std::array<SilhouettePlace, FAR_SILHOUETTE_COUNT> SILHOUETTE_PLACES{{
-    {.bearingDegrees = 50.0F, .footHeight = 2.0F, .scale = 4.0F},
+    {.bearingDegrees = 50.0F, .footHeight = 2.0F, .scale = 3.15F},
     {.bearingDegrees = -35.0F, .footHeight = 2.0F, .scale = 4.5F},
 }};
 
@@ -506,14 +509,18 @@ void placeNearBand(Placement& placement, float fieldTurn) {
     const float length = bandLength(world, NEAR_BAND_MIDDLE);
 
     // The farmhouse with its shed, the barn and the rick first: they are the largest.
-    const Wanted house{.model = LandModel::Farmhouse, .squareToFields = true};
+    const Wanted house{
+        .model = LandModel::Farmhouse, .lineShare = HOUSE_LINE_SHARE, .squareToFields = true};
     if (const std::optional<LandPiece> farmhouse = placeOne(placement, house, fieldTurn)) {
-        Wanted shed{.model = LandModel::Woodshed, .squareToFields = true};
+        Wanted shed{
+            .model = LandModel::Woodshed, .lineShare = HOUSE_LINE_SHARE, .squareToFields = true};
         shed.near = glm::vec2{farmhouse->position.x, farmhouse->position.z};
         shed.nearDistance = SHED_FARTHEST;
         placeOne(placement, shed, fieldTurn);
     }
-    placeOne(placement, {.model = LandModel::Barn, .squareToFields = true}, fieldTurn);
+    placeOne(placement,
+             {.model = LandModel::Barn, .lineShare = HOUSE_LINE_SHARE, .squareToFields = true},
+             fieldTurn);
     placeOne(placement,
              {.model = LandModel::Rick,
               .scale = randomBetween(placement.generator, SMALLEST_TREE, LARGEST_TREE)},

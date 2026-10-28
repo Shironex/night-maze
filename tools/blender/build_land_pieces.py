@@ -76,16 +76,16 @@ class Piece:
 # standing stone is the granite tor, the dovecote is the moor cottage, the watch hut is the
 # woodshed.
 PIECES = (
-    Piece("oak", "rowan_tree_tripo.glb", 7.5, 6000, 0, "rowan", 512, sink=0.3),
-    Piece("hawthorn", "hawthorn_tree_tripo.glb", 5.0, 4500, 0, "hawthorn", 512, sink=0.25),
-    Piece("dead_oak", "dead_oak_tripo.glb", 7.0, 3000, 1200, "dead_oak", 512, sink=0.3),
-    Piece("farmhouse", "stone_cottage_tripo.glb", 5.5, 4000, 1500, "stone_cottage", 1024,
+    Piece("oak", "rowan_tree_tripo.glb", 10.0, 6000, 0, "rowan", 512, sink=0.3),
+    Piece("hawthorn", "hawthorn_tree_tripo.glb", 6.0, 3500, 0, "hawthorn", 512, sink=0.25),
+    Piece("dead_oak", "dead_oak_tripo.glb", 9.0, 3000, 1200, "dead_oak", 512, sink=0.3),
+    Piece("farmhouse", "stone_cottage_tripo.glb", 7.0, 4000, 1500, "stone_cottage", 1024,
           windows=True),
     Piece("cottage", "moor_cottage_tripo.glb", 5.5, 0, 1500, "moor_cottage", 1024,
           windows=True),
-    Piece("barn", "ruined_barn_tripo.glb", 5.0, 3500, 0, "ruined_barn", 1024),
-    Piece("woodshed", "log_woodshed_tripo.glb", 2.8, 2000, 0, "log_woodshed", 512),
-    Piece("rick", "peat_stack_tripo.glb", 2.6, 1500, 0, "peat_stack", 512, sink=0.15),
+    Piece("barn", "ruined_barn_tripo.glb", 6.5, 3500, 0, "ruined_barn", 1024),
+    Piece("woodshed", "log_woodshed_tripo.glb", 3.2, 2000, 0, "log_woodshed", 512),
+    Piece("rick", "peat_stack_tripo.glb", 4.0, 1500, 0, "peat_stack", 512, sink=0.15),
     # The decimation takes the tips of the tallest twigs: the copse ends 8.4 m high.
     Piece("copse", "dead_oak_tripo.glb", 9.0, 0, 2400, "dead_oak", 512, sink=0.3, copies=3),
     Piece("standing_stone", "granite_tor_tripo.glb", 5.5, 0, 3000, "granite_tor", 1024),

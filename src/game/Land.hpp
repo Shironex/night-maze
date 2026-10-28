@@ -100,7 +100,7 @@ constexpr float LAND_WALL_SINK = 0.15F;
 /// The tallest piece of the near band stands at most this high over its foot: an oak at
 /// the largest scale. The box of the moon shadow reaches this high over the terrain
 /// (game::shadowCasterBounds).
-constexpr float LAND_NEAR_TALLEST = 9.0F;
+constexpr float LAND_NEAR_TALLEST = 11.5F;
 
 /// The round sheepfold: the same wall in a ring of this radius, with a gap to walk in.
 constexpr float LAND_FOLD_RADIUS = 3.0F;
