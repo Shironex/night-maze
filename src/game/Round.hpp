@@ -188,6 +188,10 @@ struct Round {
     /// Which cells of the maze the player has seen in this round (game/Discovery.hpp):
     /// what the minimap shows. A round that was not started has a grid without cells.
     Discovery discovery;
+    /// Which landmarks of the land the player has seen in this round, in the order of
+    /// game::landmarks (game::landmarkInSight). The map shows a seen one on its edge. A
+    /// landmark stays seen until the round ends.
+    std::vector<bool> landmarksSeen;
 
     /// Which levers of the maze are pulled, in the order of Interactables::levers
     /// (game::startInteractables). A pulled lever stays pulled until the round ends.

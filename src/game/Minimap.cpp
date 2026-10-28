@@ -3,6 +3,7 @@
 // notes, the tick towards the open gate, player).
 #include "game/Minimap.hpp"
 
+#include "game/Land.hpp"
 #include "game/MazeLayout.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -75,6 +76,12 @@ constexpr float EXIT_TICK_LENGTH = 1.0F;
 constexpr float MIN_EXIT_TICK_PIXELS = 10.0F;
 constexpr float EXIT_TICK_HALF_WIDTH = 0.45F;
 
+// The picture of a seen landmark on the edge of the map: half of its size in metres and
+// at least in pixels, and how much larger its plate is.
+constexpr float LANDMARK_ICON_HALF_SIZE = 1.0F;
+constexpr float MIN_LANDMARK_ICON_PIXELS = 12.0F;
+constexpr float LANDMARK_PLATE_SHARE = 1.25F;
+
 // A rectangle is two triangles of three vertices, a diamond too.
 constexpr std::size_t VERTICES_PER_QUAD = 6;
 
@@ -141,6 +148,47 @@ void addLantern(std::vector<MinimapVertex>& vertices, const glm::vec2& center, f
     const float footHalfHeight = LANTERN_FOOT_HEIGHT * scale / 2.0F;
     addRectangle(vertices, {center.x, bottom + footHalfHeight},
                  {halfWidth + overhang, footHalfHeight}, MINIMAP_LANTERN_FRAME_COLOR);
+}
+
+// The picture of one landmark, a little drawing of its kind around centre, size metres
+// from its middle to its edge. Up on the map is towards smaller z.
+void addLandmarkIcon(std::vector<MinimapVertex>& vertices, LandModel model, const glm::vec2& centre,
+                     float size) {
+    const glm::vec3 stone = MINIMAP_LANDMARK_COLOR;
+    const glm::vec3 hole = MINIMAP_BACKGROUND_COLOR;
+    const auto at = [&centre, size](float x, float z) { return centre + glm::vec2{x, z} * size; };
+    const auto rectangle = [&](float x, float z, float halfX, float halfZ, const glm::vec3& color) {
+        addRectangle(vertices, at(x, z), glm::vec2{halfX, halfZ} * size, color);
+    };
+    const float plate = LANDMARK_PLATE_SHARE;
+    rectangle(0.0F, 0.0F, plate, plate, MINIMAP_BACKGROUND_COLOR);
+    switch (model) {
+    case LandModel::StandingStone:
+        // A tall stone with a hole through it.
+        rectangle(0.0F, 0.0F, 0.38F, 0.9F, stone);
+        rectangle(0.0F, -0.35F, 0.16F, 0.16F, hole);
+        break;
+    case LandModel::Dovecote:
+        // A round house under a pointed roof.
+        rectangle(0.0F, 0.4F, 0.55F, 0.5F, stone);
+        addTriangle(vertices, at(0.0F, -0.95F), at(-0.8F, -0.1F), at(0.8F, -0.1F), stone);
+        break;
+    case LandModel::ChapelGable:
+        // A gable end with its arched window.
+        rectangle(0.0F, 0.45F, 0.6F, 0.45F, stone);
+        addTriangle(vertices, at(0.0F, -0.95F), at(-0.6F, 0.0F), at(0.6F, 0.0F), stone);
+        rectangle(0.0F, 0.15F, 0.14F, 0.3F, hole);
+        break;
+    case LandModel::WatchHut:
+        // A hut on a post.
+        rectangle(0.0F, -0.3F, 0.65F, 0.4F, stone);
+        rectangle(0.0F, 0.45F, 0.12F, 0.45F, stone);
+        break;
+    default:
+        // A cairn: a heap of stones.
+        addTriangle(vertices, at(0.0F, -0.9F), at(-0.85F, 0.85F), at(0.85F, 0.85F), stone);
+        break;
+    }
 }
 
 } // namespace
@@ -399,7 +447,26 @@ std::vector<MinimapVertex> buildMinimapVertices(const MazeWorld& world, const Ro
         }
     }
 
-    // 8. The player, last, so nothing covers it. Yaw 0 looks north, which is towards
+    // 8. The landmarks the player has seen, on the edge of the map towards them, pulled in
+    // by their plate so the whole picture is inside.
+    const std::vector<LandmarkView> views = landmarks(world.land);
+    const float iconSize =
+        atLeastPixels(LANDMARK_ICON_HALF_SIZE, MIN_LANDMARK_ICON_PIXELS, metresPerPixel);
+    for (std::size_t i = 0; i < views.size() && i < round.landmarksSeen.size(); ++i) {
+        if (!round.landmarksSeen[i]) {
+            continue;
+        }
+        const glm::vec2 landmark = mapPoint(views[i].top);
+        if (const std::optional<glm::vec2> edgePoint = minimapExitTick(maze, place, landmark)) {
+            const glm::vec2 towards = glm::normalize(landmark - place);
+            // The plate is a square: pulled in along the line until it is inside.
+            const float pull = iconSize * LANDMARK_PLATE_SHARE /
+                               std::max(std::abs(towards.x), std::abs(towards.y));
+            addLandmarkIcon(vertices, views[i].model, *edgePoint - towards * pull, iconSize);
+        }
+    }
+
+    // 9. The player, last, so nothing covers it. Yaw 0 looks north, which is towards
     // smaller z, and the yaw grows clockwise seen from above. So "forward" on the map
     // is (sin yaw, -cos yaw), the x and z of scene::Camera::forward for a level look,
     // and "to the right" is that direction turned by a quarter: (cos yaw, sin yaw).

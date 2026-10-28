@@ -137,6 +137,9 @@ constexpr glm::vec3 MINIMAP_LANTERN_FRAME_COLOR{0.80F, 0.82F, 0.86F};
 /// The tick on the edge of the map that points towards the open gate: the amber of the
 /// lit lantern, a shade lighter.
 constexpr glm::vec3 MINIMAP_EXIT_TICK_COLOR{1.0F, 0.66F, 0.24F};
+/// The landmarks of the land on the edge of the map: pale stone, on a plate of the
+/// background colour that keeps them apart from the walls they may touch.
+constexpr glm::vec3 MINIMAP_LANDMARK_COLOR{0.82F, 0.78F, 0.66F};
 /// A crystal that is still there: turquoise.
 constexpr glm::vec3 MINIMAP_CRYSTAL_COLOR{0.34F, 0.84F, 0.79F};
 /// A flask of tea that is still there: a light rose, the one colour of the map that is
@@ -214,7 +217,12 @@ struct MinimapPlayer {
 ///      (minimapExitTick). It is there only while the exit cell is not shown (its
 ///      lantern replaces it once it is), and never before the gate opens: until then
 ///      the map says nothing about a cell the player has not seen,
-///   8. the player: a triangle that points where the camera looks. It is always drawn,
+///   8. for every landmark of the land the player has seen (Round::landmarksSeen): a
+///      small picture of it on the edge of the map, on the straight line from the player
+///      to it (minimapExitTick), on a plate of the background colour. Each of the five
+///      kinds has a picture of its own: a holed stone, a dovecote, a gable, a hut on its
+///      post and a cairn,
+///   9. the player: a triangle that points where the camera looks. It is always drawn,
 ///      also outside the maze (where the picture may cut it off).
 ///
 /// The shade is NOT on the map: the player has to find it with the flashlight. Only with

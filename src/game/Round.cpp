@@ -169,6 +169,7 @@ Round startRound(const MazeWorld& world, const GameplaySettings& settings) {
     // cell and the straight corridors that leave it. It is done here and not left to
     // the first step, so that the very first frame already shows it.
     round.discovery = Discovery(world.maze.width(), world.maze.height());
+    round.landmarksSeen.assign(world.land.landmarkCount, false);
     discoverAround(round.discovery, world.maze, world.startPosition);
 
     // The levers: none is pulled, so every wall stands. The round gets its own copy of
