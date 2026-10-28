@@ -1,6 +1,6 @@
 # The land around the maze is real models in two bands inside 40 m of the border, and the ridge stays drawn with the sky
-Status: planned (2026-10-15), not built; it is the next release, before the tumbled walls and the gate seals
-Code: src/game/Land.hpp, src/game/Land.cpp, src/game/LandRenderer.cpp, src/game/Terrain.hpp, src/game/Village.hpp, src/game/Campaign.hpp, src/game/Minimap.cpp, tools/blender/build_land_*.py, tests/LandTests.cpp
+Status: accepted (2026-10-15), built 2026-10-28 with stand-in models (list below); it is the next release, before the tumbled walls and the gate seals
+Code: src/game/Land.hpp, src/game/Land.cpp, src/game/LandMeshes.cpp, src/game/LandRenderer.cpp, src/game/MazeWorld.cpp, src/game/Minimap.cpp, src/game/NightMazeAppPasses.cpp, src/game/NightMazeAppRender.cpp, src/game/Shadows.cpp, src/debug/PerfProbe.cpp, tools/blender/build_land_pieces.py, tools/blender/build_land_hedge.py, tests/LandTests.cpp
 
 Context: Beyond the border wall there is the margin of the terrain (`TERRAIN_MARGIN`, 14 m of hills up to 4.5 m, a sparse scatter of grass) and then nothing until the ridge, which is drawn with the sky about 79 m out on the screen ([village-on-the-ridge](village-on-the-ridge.md)). The end lines say the light walks across the land, and the land is empty. The planned landmarks over the walls were a few lone shapes on that empty land.
 
@@ -32,3 +32,11 @@ Decided by the user on 2026-10-15: night 5 lights no land windows, so the player
 Still open, with the default the plan assumes:
 1. The hawthorn: only outer trees (default), or one more inside the maze in a free corner cell with the trunk box of the old plan, which joins the exclusion rules of the sheep.
 2. The stream: a dark matte strip (default), or the reflection of the puddles laid along it.
+
+Built on 2026-10-28, what differs from the plan:
+- Stand-ins, until their own model is generated (each is one line of `PIECES` in `build_land_pieces.py`, or of the silhouette table in `Land.cpp`): the oak is the rowan (7.5 m, a tree in leaf, so it has no far version and stands only in the near band), the hay rick is the peat stack (2.6 m, should be 4 m), the copse is three dead oaks (8.4 m after decimation), the standing stone is the granite tor (5.5 m, no hole), the dovecote is the moor cottage (6.5 m), the watch hut is the log woodshed (5 m, no window), the mill is the far farmhouse scaled 4 times (about 22 m) and the church tower the chapel gable scaled 4.5 times (about 31.5 m). The farmhouse is the stone cottage (5.5 m, not 7 m) and has two windows. The bridge is not built.
+- The ring wears `ground.png` like the terrain, not a meadow picture of its own. The hedge picture is a side view of a generated hedge (`build_land_hedge.py`).
+- The land windows glow at 8, more than the village, because they stand in the thick of the fog and only the bloom carries them.
+- The perf probe takes `land` and `noland` to switch the land, `fov=` and `map`, and `shot=` writes the frame to a file.
+
+Measured on the M3 (2026-10-28, Release, `--play --calm --seed 7`, the window size of the settings): at the start the land adds 27 draws and 69,000 triangles after culling, and 76 draws and 197,000 triangles with culling off (both shadow passes included). On the reveal (fov 22) it adds 16 draws and 31,000 triangles. The pieces of one maze are at most 82 models and 140,000 triangles, and the meshes built in code at most 12,000 (`tests/LandTests.cpp`). At the start the frame time does not move (10.1 ms either way). On the reveal it grows by about 1.15 ms (5.6 to 6.8 ms), all of it in the scene pass, which is over the line above. It is fill, not draws: the land now covers half of that picture, where the sky was, with the lit program. Leaving out the ring saves about 0.35 ms of it and leaving out the pieces about 0.3 ms, so merging the far versions would not win it back. Open: whether that is accepted for a reveal of a few seconds. The 4070 Ti is not measured.
