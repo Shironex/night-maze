@@ -267,10 +267,22 @@ TEST_CASE("the models of the land are as high as placement thinks") {
                         error);
         float lowest = 1000.0F;
         float highest = -1000.0F;
+        glm::vec2 groundMin{1000.0F};
+        glm::vec2 groundMax{-1000.0F};
         for (const gfx::Vertex& vertex : obj.vertices) {
             lowest = std::min(lowest, vertex.position.y);
             highest = std::max(highest, vertex.position.y);
+            groundMin = glm::min(groundMin, glm::vec2{vertex.position.x, vertex.position.z});
+            groundMax = glm::max(groundMax, glm::vec2{vertex.position.x, vertex.position.z});
         }
+        // The radius placement keeps around a piece is about half of its wider side: less
+        // for a tree, whose crown may reach over a neighbour, a little more for a cottage
+        // with its yard. A model swapped for one of another shape fails here, and the
+        // build script prints the numbers to put into MODEL_SHAPES.
+        const glm::vec2 ground = groundMax - groundMin;
+        const float halfWidth = std::max(ground.x, ground.y) / 2.0F;
+        CHECK(game::landModelShape(model).radius >= 0.55F * halfWidth);
+        CHECK(game::landModelShape(model).radius <= 1.3F * halfWidth);
         // The build sinks a model by up to 0.3 m below its origin and scales it to its
         // height from its foot.
         CHECK(highest - lowest ==
