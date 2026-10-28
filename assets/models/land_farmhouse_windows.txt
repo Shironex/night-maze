@@ -1,0 +1,4 @@
+# The windows of land_farmhouse.obj, written by tools/blender/build_land_pieces.py:
+# middle x y z, outward normal x y z, width, height, in metres
+2.430 2.006 0.126 1.000 0.000 -0.000 0.280 0.280
+0.300 2.532 3.230 0.000 0.000 1.000 0.360 0.320

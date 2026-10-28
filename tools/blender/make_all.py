@@ -19,6 +19,8 @@ import build_gate_arch
 import build_gate_bell
 import build_gate_lantern
 import build_lamp_held
+import build_land_hedge
+import build_land_pieces
 import build_milestone
 import build_shade
 import build_splinter
@@ -53,6 +55,9 @@ build_shade.build(shots)
 build_village.build(shots)
 build_stone_sheep.build(shots)
 build_lamp_held.build(shots)
+build_land_pieces.build(shots)
+# The picture of the hedgerows: a photograph of a model, with nothing of its own to review.
+build_land_hedge.build()
 
 # The six faces of the sky. They depend on nothing above: no model uses them.
 make_skybox.build()
