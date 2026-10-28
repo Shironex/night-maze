@@ -60,6 +60,10 @@ struct VillageSettings {
     /// Whether the village is drawn.
     bool enabled = true;
 
+    /// Whether the land around the maze (game/Land.hpp) is drawn: its ground, its pieces,
+    /// its windows and the mill and the church tower of the far band.
+    bool landEnabled = true;
+
     /// Lifts (or sinks) the whole ridge by this many degrees, on top of the 6 degrees
     /// the lane has by itself.
     float elevationDegrees = 0.0F;

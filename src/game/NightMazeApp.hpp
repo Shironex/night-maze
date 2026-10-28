@@ -18,6 +18,7 @@
 #include "game/InteractableRenderer.hpp"
 #include "game/Interaction.hpp"
 #include "game/Intro.hpp"
+#include "game/LandRenderer.hpp"
 #include "game/LightRig.hpp"
 #include "game/Lighting.hpp"
 #include "game/MazeRenderer.hpp"
@@ -1094,6 +1095,20 @@ private:
     /// them up.
     void drawVillageForFrame(const FrameScreen& screen, const FrameView& frame) const;
 
+    /// How many nights of the village and of the land are lit in this frame, and how far
+    /// the newest of them has come on: the rule of the campaign (game::villageNightsLit)
+    /// and the reveal (game::villageNewLightStrength).
+    struct NightLights {
+        int nightsLit = 0;
+        float newestStrength = 1.0F;
+    };
+    NightLights nightLightsFor(const FrameScreen& screen, const FrameView& frame) const;
+
+    /// Marks the landmarks of the land the player sees in this frame as seen
+    /// (Round::landmarksSeen, game::landmarkInSight): only while the round takes input,
+    /// from the eye of the player and through the walls of the maze.
+    void sightLandmarks(const FrameScreen& screen, const FrameView& frame);
+
     /// Everything after the scene is complete: the previews of the attachments, the
     /// bloom and the composite pass, which brings the HDR picture to the window.
     void finishPicture(core::Size framebuffer, const FrameView& frame);
@@ -1137,6 +1152,7 @@ private:
     VillageRenderer m_villageRenderer;
     InteractableRenderer m_interactableRenderer;
     TerrainRenderer m_terrainRenderer;
+    LandRenderer m_landRenderer;
     GrassRenderer m_grassRenderer;
     PuddleRenderer m_puddleRenderer;
     ColliderLines m_colliderLines;
@@ -1274,6 +1290,9 @@ private:
     // drawn again when this number is not the one it was drawn with
     // (StaticShadowKey::groundVersion).
     std::uint32_t m_groundVersion = 0;
+    // The lit nights of this frame (nightLightsFor), set before the scene is drawn: the
+    // windows of the land in the scene pass and the village after it show the same.
+    NightLights m_frameNightLights;
 
     // Whether the map was drawn in the last frame (mapOnScreen). Set in onRender.
     bool m_mapOnScreen = false;

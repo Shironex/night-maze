@@ -152,6 +152,8 @@ void NightMazeApp::uploadGround() {
     // The triangles are built on the CPU (plain data, covered by tests) and copied to
     // the graphics card in one piece.
     m_terrainRenderer.upload(buildTerrainMesh(m_mazeWorld.terrain));
+    // The land around the maze stands on the terrain and was placed with it.
+    m_landRenderer.upload(m_mazeWorld);
     // The grass stands on the terrain, so new ground means new places for it.
     plantGrass();
     // The puddles lie on the terrain too: new ground means new water levels, and a new

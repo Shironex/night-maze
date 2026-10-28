@@ -161,6 +161,9 @@ struct StaticShadowKey {
     /// Whether the shaped walls are drawn with their own models (MazeSettings::wallVariants).
     /// A crowned or a broken wall has another outline than a plain one.
     bool wallVariants = true;
+    /// Whether the land around the maze is drawn (VillageSettings::landEnabled): its near
+    /// band casts shadows.
+    bool land = true;
     /// Which depth program drew the layer (gfx::Shader::loadCount): a reload may have
     /// changed where it puts a vertex.
     std::uint32_t depthProgramLoads = 0;

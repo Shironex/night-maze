@@ -206,6 +206,7 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
       m_villageRenderer(m_assets),
       m_interactableRenderer(m_assets),
       m_terrainRenderer(m_assets),
+      m_landRenderer(m_assets),
       m_puddleRenderer(m_assets),
       // The background of the main menu: the video unless the command line asked for
       // something else. Opening the video waits for its first frame.

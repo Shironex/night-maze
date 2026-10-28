@@ -64,6 +64,10 @@ void drawScene(Page& page, const DebugContext& context) {
     page.toggle("Village", &context.village.enabled,
                 "The village on the ridge beyond the gate. It is drawn like the sky, "
                 "centred on the eye, but with real depth, so walls hide it.");
+    page.toggle("Land", &context.village.landEnabled,
+                "The land around the maze: the ring of ground beyond the hills, the field "
+                "walls, hedgerows, trees, houses, landmarks and lit windows, and the mill "
+                "and the church tower beside the village.");
     page.slider("Village elevation", &context.village.elevationDegrees, MIN_VILLAGE_ELEVATION,
                 MAX_VILLAGE_ELEVATION, "%.1f deg",
                 "Lifts or sinks the ridge. At 0 the lane lies 6 degrees above the horizon "

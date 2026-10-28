@@ -127,6 +127,8 @@ void NightMazeApp::onRender(double alpha) {
         m_pick = pickForFrame(frame.view, frame.projection, frame.eye, cursorCaptured);
         handleInteraction(cursorCaptured);
     }
+    sightLandmarks(screen, frame);
+
     // The debug view draws this copy, which stands still while "freeze" is set.
     if (!m_pickDebug.freezeRay) {
         m_shownPick = m_pick;
@@ -163,6 +165,7 @@ void NightMazeApp::onRender(double alpha) {
     // and beginScene below binds the scene framebuffer with its viewport again.
     drawMoonShadowMap();
     drawFlashlightShadowMap(frameLighting, flashlight);
+    m_frameNightLights = nightLightsFor(screen, frame);
 
     // The HDR framebuffer of the scene, cleared, and the lights of the frame. The scene
     // pass is measured in three parts that follow each other (game::GpuPass): what
@@ -697,12 +700,11 @@ scene::LightSet NightMazeApp::uploadLights(const LightingSettings& frameLighting
     return lights;
 }
 
-void NightMazeApp::drawVillageForFrame(const FrameScreen& screen, const FrameView& frame) const {
-    // The village on the ridge, before the sky and after everything of the maze: it lies
-    // near the far plane, so the maze has already filled most of the pixels it would
-    // cover. How many nights of it are lit is a rule of the campaign. The live scene
-    // behind a menu and a maze of free play show the progress of the campaign, a night
-    // shows itself, and the intro, which tells that the lamps have gone out, shows none.
+NightMazeApp::NightLights NightMazeApp::nightLightsFor(const FrameScreen& screen,
+                                                       const FrameView& frame) const {
+    // How many nights are lit is a rule of the campaign. The live scene behind a menu and
+    // a maze of free play show the progress of the campaign, a night shows itself, and the
+    // intro, which tells that the lamps have gone out, shows none.
     const bool ownNight = m_playedNight != 0 && !usesMenuCamera(m_mode);
     const bool nightWon = m_mode == GameMode::RoundEnd || m_mode == GameMode::VillageBeat ||
                           m_mode == GameMode::EndingCard;
@@ -712,7 +714,30 @@ void NightMazeApp::drawVillageForFrame(const FrameScreen& screen, const FrameVie
     // The lights of the night that was just won come on while the reveal looks at them.
     const float newestLight =
         frame.reveal ? villageNewLightStrength(static_cast<float>(m_revealSeconds)) : 1.0F;
-    drawVillage(frame.view, frame.projection, frame.camera.farPlane, nightsLit, newestLight);
+    return {.nightsLit = nightsLit, .newestStrength = newestLight};
+}
+
+void NightMazeApp::sightLandmarks(const FrameScreen& screen, const FrameView& frame) {
+    if (!screen.roundInput || !m_villageSettings.landEnabled) {
+        return;
+    }
+    const std::vector<LandmarkView> views = landmarks(m_mazeWorld.land);
+    const scene::Frustum frustum = scene::frustumFromMatrix(frame.projection * frame.view);
+    for (std::size_t i = 0; i < views.size() && i < m_round.landmarksSeen.size(); ++i) {
+        if (!m_round.landmarksSeen[i] &&
+            landmarkInSight(frame.eye, views[i].top, frustum, m_mazeWorld.colliders)) {
+            m_round.landmarksSeen[i] = true;
+        }
+    }
+}
+
+void NightMazeApp::drawVillageForFrame(const FrameScreen& /*screen*/,
+                                       const FrameView& frame) const {
+    // The village on the ridge, before the sky and after everything of the maze: it lies
+    // near the far plane, so the maze has already filled most of the pixels it would
+    // cover.
+    drawVillage(frame.view, frame.projection, frame.camera.farPlane, m_frameNightLights.nightsLit,
+                m_frameNightLights.newestStrength);
 }
 
 void NightMazeApp::finishPicture(core::Size framebuffer, const FrameView& frame) {

@@ -1,6 +1,7 @@
 // Shadows: the settings of a shadow map, and the math around it that needs no OpenGL.
 #include "game/Shadows.hpp"
 
+#include "game/Land.hpp"
 #include "game/MazeLayout.hpp"
 #include "game/Terrain.hpp"
 #include "scene/LightSpace.hpp"
@@ -27,12 +28,14 @@ ShadowSettings flashlightShadowDefaults() {
 }
 
 scene::Aabb shadowCasterBounds(const Terrain& terrain) {
-    // The gatehouse of the exit is the tallest thing that stands on the ground. One on
-    // the highest point of the land is higher than anything really is: the maze lies in
-    // the low middle. That costs a little depth range and keeps the rule simple.
+    // The tallest things that stand on the ground are the trees of the land around the
+    // maze and the gatehouse of the exit. One on the highest point of the land is higher
+    // than anything really is: the maze lies in the low middle. That costs a little depth
+    // range and keeps the rule simple.
+    const float tallest = std::max(GATE_HOUSE_HEIGHT, LAND_NEAR_TALLEST);
     return {
         .min = {terrain.minX(), terrain.minHeight(), terrain.minZ()},
-        .max = {terrain.maxX(), terrain.maxHeight() + GATE_HOUSE_HEIGHT, terrain.maxZ()},
+        .max = {terrain.maxX(), terrain.maxHeight() + tallest, terrain.maxZ()},
     };
 }
 

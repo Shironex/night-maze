@@ -120,6 +120,7 @@ void NightMazeApp::drawMoonShadowMap() {
                               .mapSize = shadowMapSize(m_moonShadow.resolution),
                               .groundVersion = m_groundVersion,
                               .wallVariants = m_mazeSettings.wallVariants,
+                              .land = m_villageSettings.landEnabled,
                               .depthProgramLoads = m_shadowDepthShader.loadCount()};
 
     // What the graphics card does from here to end() is the measured pass: the copy
@@ -238,6 +239,11 @@ void NightMazeApp::drawFixedShadowCasters(const scene::LightSpace& lightSpace,
     // and read from the world this function depends on no round.
     m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_mazeWorld.wallMatrices,
                         m_mazeSettings.wallVariants, MazeParts::Fixed, m_mazeBounds, frustum);
+    // The near band of the land: its trees, houses, field walls and hedgerows stand on the
+    // terrain, inside the box of the moon. The flashlight culls them with its frustum.
+    if (m_villageSettings.landEnabled) {
+        m_landRenderer.drawShadowCasters(m_shadowDepthShader, frustum);
+    }
 }
 
 void NightMazeApp::drawMovingShadowCasters(const scene::LightSpace& lightSpace,
@@ -329,6 +335,12 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
     // (the depth test sorts it out), it only follows the way the scene is built. The
     // terrain is one mesh and one draw call: it is never left out.
     m_terrainRenderer.draw(m_texturedShader, m_terrainSettings.wireframe);
+    // The land around the maze. Not in the reflection pass: nothing that reflects is
+    // big or near enough to show it.
+    if (m_villageSettings.landEnabled) {
+        m_landRenderer.draw(m_texturedShader, frustum, m_frameNightLights.nightsLit,
+                            m_frameNightLights.newestStrength, 0.0F);
+    }
     m_mazeRenderer.draw(m_texturedShader, m_mazeWorld, m_wallMatrices, m_mazeSettings.wallVariants,
                         MazeParts::All, m_mazeBounds, frustum);
     // The crystals and the gate, with the same program: they show up in the debug
@@ -368,6 +380,10 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
 
     // The ground first, then what stands on it, as in drawUnlitMaze.
     m_terrainRenderer.draw(shader, m_terrainSettings.wireframe);
+    if (m_villageSettings.landEnabled) {
+        m_landRenderer.draw(shader, frustum, m_frameNightLights.nightsLit,
+                            m_frameNightLights.newestStrength, m_lighting.specularStrength);
+    }
     m_mazeRenderer.draw(shader, m_mazeWorld, m_wallMatrices, m_mazeSettings.wallVariants,
                         MazeParts::All, m_mazeBounds, frustum);
     // The crystals and the gate, with the same program and so the same lighting mode.
@@ -566,6 +582,11 @@ void NightMazeApp::drawVillage(const glm::mat4& view, const glm::mat4& projectio
         m_texturedShader,
         villageMatrix(villageSide(m_mazeWorld), farPlane, m_villageSettings.elevationDegrees),
         nightsLit, newestStrength);
+    // The mill and the church tower on other bearings of the ridge.
+    if (m_villageSettings.landEnabled) {
+        m_landRenderer.drawFarBand(m_texturedShader, villageSide(m_mazeWorld), farPlane,
+                                   m_villageSettings.elevationDegrees, nightsLit, newestStrength);
+    }
 }
 
 void NightMazeApp::drawHeldLamp(const glm::mat4& view, const glm::mat4& projection,

@@ -3,6 +3,7 @@
 // the small helpers of the settings.
 #include "game/Shadows.hpp"
 
+#include "game/Land.hpp"
 #include "game/Lighting.hpp"
 #include "game/MazeLayout.hpp"
 #include "game/MazeWorld.hpp"
@@ -216,9 +217,10 @@ TEST_CASE("the caster bounds of the moon hold the land and everything that stand
     CHECK(bounds.min.z == doctest::Approx(world.terrain.minZ()));
     CHECK(bounds.max.z == doctest::Approx(world.terrain.maxZ()));
     CHECK(bounds.min.y == doctest::Approx(world.terrain.minHeight()));
-    // Up to the top of the gatehouse, which is taller than the pillars: its arch and the
-    // lantern on its crown have to cast a shadow of the moon like everything else.
-    CHECK(bounds.max.y == doctest::Approx(world.terrain.maxHeight() + game::GATE_HOUSE_HEIGHT));
+    // Up to the top of the tallest tree of the land, which is taller than the gatehouse,
+    // which is taller than the pillars: everything has to cast a shadow of the moon.
+    CHECK(bounds.max.y == doctest::Approx(world.terrain.maxHeight() + game::LAND_NEAR_TALLEST));
+    CHECK(game::LAND_NEAR_TALLEST > game::GATE_HOUSE_HEIGHT);
     CHECK(game::GATE_HOUSE_HEIGHT > game::PILLAR_HEIGHT);
 
     // Every wall and every pillar.

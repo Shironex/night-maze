@@ -385,6 +385,8 @@ add_executable(night_maze
     src/game/GameplayRenderer.hpp
     src/game/GpuPasses.cpp
     src/game/GpuPasses.hpp
+    src/game/LandRenderer.cpp
+    src/game/LandRenderer.hpp
     src/game/VillageRenderer.cpp
     src/game/VillageRenderer.hpp
     src/game/GrassRenderer.cpp
