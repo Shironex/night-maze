@@ -57,6 +57,8 @@ constexpr std::array<LandModelShape, LAND_MODEL_COUNT> MODEL_SHAPES{{
     {.radius = 3.3F, .height = 7.0F},                  // ChapelGable
     {.radius = 3.8F, .height = 5.0F},                  // WatchHut
     {.radius = 3.5F, .height = 5.0F},                  // Cairn
+    {.radius = 4.5F, .height = 6.9F, .windows = true}, // Mill
+    {.radius = 3.1F, .height = 7.0F, .windows = true}, // ChurchTower
 }};
 
 // The ground under the near band rises from about this share of HILL_RELIEF at the edge
@@ -139,7 +141,7 @@ struct SilhouettePlace {
     float scale;
 };
 constexpr std::array<SilhouettePlace, FAR_SILHOUETTE_COUNT> SILHOUETTE_PLACES{{
-    {.bearingDegrees = 50.0F, .footHeight = 2.0F, .scale = 3.15F},
+    {.bearingDegrees = 50.0F, .footHeight = 2.0F, .scale = 3.2F},
     {.bearingDegrees = -35.0F, .footHeight = 2.0F, .scale = 4.5F},
 }};
 
@@ -683,7 +685,8 @@ std::string_view landModelFile(LandModel model) {
         "land_copse_far",     "land_farmhouse_far",
         "land_cottage_far",   "land_standing_stone_far",
         "land_dovecote_far",  "land_chapel_gable_far",
-        "land_watch_hut_far", "land_cairn_far"};
+        "land_watch_hut_far", "land_cairn_far",
+        "land_mill_far",      "land_church_tower_far"};
     return FILES.at(static_cast<std::size_t>(model));
 }
 
@@ -981,7 +984,7 @@ int farSilhouetteNight(FarSilhouette silhouette) {
 }
 
 LandModel farSilhouetteModel(FarSilhouette silhouette) {
-    return silhouette == FarSilhouette::Mill ? LandModel::FarmhouseFar : LandModel::ChapelGable;
+    return silhouette == FarSilhouette::Mill ? LandModel::Mill : LandModel::ChurchTower;
 }
 
 glm::mat4 farSilhouetteMatrix(FarSilhouette silhouette, Direction villageSide, float farPlane,

@@ -143,8 +143,11 @@ enum class LandModel {
     ChapelGable,
     WatchHut,
     Cairn,
+    // The far band (FarSilhouette), drawn around the eye on the ridge.
+    Mill,
+    ChurchTower,
 };
-constexpr int LAND_MODEL_COUNT = 16;
+constexpr int LAND_MODEL_COUNT = 18;
 
 /// The five landmarks in the order of LandModel, from StandingStone on. A maze gets three:
 /// one on each crest.
@@ -328,8 +331,7 @@ constexpr int FAR_SILHOUETTE_COUNT = 2;
 /// The night that lights each of them: the mill with night 2, the tower with night 4.
 int farSilhouetteNight(FarSilhouette silhouette);
 
-/// The model a silhouette is drawn with. Both are stand-ins until a mill and a church tower
-/// of their own are generated: the far farmhouse and the chapel gable, scaled up.
+/// The model a silhouette is drawn with: LandModel::Mill or LandModel::ChurchTower.
 LandModel farSilhouetteModel(FarSilhouette silhouette);
 
 /// The model matrix of a silhouette, for a view matrix without its translation (like the

@@ -74,7 +74,7 @@ class Piece:
 # Stand-ins (see the comment at the top): the oak is the rowan of the source set (a
 # full-leaf oak is coming), the rick is the peat stack, the copse is three dead oaks, the
 # standing stone is the granite tor, the dovecote is the moor cottage, the watch hut is the
-# woodshed.
+# woodshed, the mill is the stone cottage and the church tower the chapel ruin.
 PIECES = (
     Piece("oak", "rowan_tree_tripo.glb", 10.0, 6000, 0, "rowan", 512, sink=0.3),
     Piece("hawthorn", "hawthorn_tree_tripo.glb", 6.0, 3500, 0, "hawthorn", 512, sink=0.25),
@@ -94,6 +94,13 @@ PIECES = (
           windows=True),
     Piece("watch_hut", "log_woodshed_tripo.glb", 5.0, 0, 3000, "log_woodshed", 512),
     Piece("cairn", "stone_cairn_tripo.glb", 5.0, 0, 3000, "stone_cairn", 1024),
+    # The far band: drawn around the eye on the ridge, like the village (game::FarSilhouette),
+    # and scaled up there (SILHOUETTE_PLACES in src/game/Land.cpp). The windows are found at
+    # this size, where they are the size of the windows of a house.
+    Piece("mill", "stone_cottage_tripo.glb", 7.0, 0, 1500, "stone_cottage", 1024,
+          windows=True),
+    Piece("church_tower", "chapel_ruin_tripo.glb", 7.0, 0, 3000, "chapel_ruin", 1024,
+          windows=True),
 )
 
 # The three trees of a copse, as (x, y, turn in degrees, scale) of each copy, in metres of
@@ -213,7 +220,14 @@ def write_model(mesh, file_name, picture):
     common.assign_textured_material(model, file_name, f"land_{picture}.png",
                                     f"land_{picture}_normal.png")
     common.export_obj(file_name)
-    print(f"{file_name}: {len(mesh.faces)} triangles")
+    # What MODEL_SHAPES in src/game/Land.cpp needs: the height and half of the wider side
+    # on the ground (a test checks the height against the file).
+    xs = [v.co.x for v in mesh.verts]
+    ys = [v.co.y for v in mesh.verts]
+    zs = [v.co.z for v in mesh.verts]
+    half_width = max(max(xs) - min(xs), max(ys) - min(ys)) / 2.0
+    print(f"{file_name}: {len(mesh.faces)} triangles, {max(zs) - min(zs):.2f} m high, "
+          f"half width {half_width:.2f} m")
 
 
 def is_window_texel(texel):

@@ -1,0 +1,3 @@
+# The windows of land_church_tower.obj, written by tools/blender/build_land_pieces.py:
+# middle x y z, outward normal x y z, width, height, in metres
+0.000 3.150 3.151 0.000 0.000 1.000 0.800 1.200
