@@ -16,9 +16,9 @@
 # assets/models/land_<name>_windows.txt. The game lays an amber quad on a window when its
 # night has been won (game::dealLandWindows).
 #
-# Some pieces are stand-ins until their own model is generated: the source named in PIECES
-# is then another model, scaled to the size the real one should have. The list is in
-# docs/decisions/land-around-the-maze.md. A real source drops in by changing its line.
+# Every piece has its own generated model since 2026-10-29; before, some stood in with
+# another model scaled to their size. A new source drops in by changing its line in PIECES
+# (docs/decisions/land-around-the-maze.md).
 #
 # Run from the repository root:
 #   blender --background --factory-startup --python tools/blender/build_land_pieces.py
@@ -74,40 +74,39 @@ class Piece:
     copies: int = 1
 
 
-# The near band holds the trees, the farmhouse with its shed and barn, and a rick. The
-# middle band holds bare trees, copses and cottages: the trees in leaf lose their leaves to
-# shards below about 4,000 triangles, so they have no far version. The landmarks stand on its crests.
-#
-# Stand-ins (see the comment at the top): the oak is the rowan of the source set (a
-# full-leaf oak is coming), the rick is the peat stack, the copse is three dead oaks, the
-# standing stone is the granite tor, the dovecote is the moor cottage, the watch hut is the
-# woodshed, the mill is the stone cottage and the church tower the chapel ruin.
+# The near band holds the trees, the farmhouse with its shed and barn (a farmstead), and a
+# rick. The middle band holds bare trees, copses and cottages: the trees in leaf lose their
+# leaves to shards below about 4,000 triangles, so they have no far version (the oak is
+# bare, but it stays near, where it is seen). The landmarks stand on its crests. The copse
+# is one model of a clump, so it needs no copies.
 PIECES = (
-    Piece("oak", "rowan_tree_tripo.glb", 10.0, 6000, 0, "rowan", 512, sink=0.3),
+    Piece("oak", "land_oak_tripo.glb", 10.0, 6000, 0, "oak", 512, sink=0.3),
     Piece("hawthorn", "hawthorn_tree_tripo.glb", 6.0, 3500, 0, "hawthorn", 512, sink=0.25),
     Piece("dead_oak", "dead_oak_tripo.glb", 9.0, 3000, 1200, "dead_oak", 512, sink=0.3),
-    Piece("farmhouse", "stone_cottage_tripo.glb", 7.0, 4000, 1500, "stone_cottage", 1024,
+    Piece("farmhouse", "stone_farmhouse_tripo.glb", 7.0, 4000, 1500, "farmhouse", 1024,
           windows=True),
-    Piece("cottage", "moor_cottage_tripo.glb", 5.5, 0, 1500, "moor_cottage", 1024,
+    Piece("cottage", "yard_cottage_tripo.glb", 5.5, 0, 1500, "cottage", 1024,
           windows=True),
-    Piece("barn", "ruined_barn_tripo.glb", 6.5, 3500, 0, "ruined_barn", 1024),
+    Piece("barn", "farmstead_tripo.glb", 6.5, 3500, 0, "barn", 1024),
     Piece("woodshed", "log_woodshed_tripo.glb", 3.2, 2000, 0, "log_woodshed", 512),
-    Piece("rick", "peat_stack_tripo.glb", 4.0, 1500, 0, "peat_stack", 512, sink=0.15),
+    Piece("rick", "hay_rick_tripo.glb", 4.0, 2500, 0, "rick", 512, sink=0.15),
     # The decimation takes the tips of the tallest twigs: the copse ends 8.4 m high.
-    Piece("copse", "dead_oak_tripo.glb", 9.0, 0, 2400, "dead_oak", 512, sink=0.3, copies=3),
-    Piece("standing_stone", "granite_tor_tripo.glb", 5.5, 0, 3000, "granite_tor", 1024),
-    Piece("dovecote", "moor_cottage_tripo.glb", 6.5, 0, 3000, "moor_cottage", 1024),
+    Piece("copse", "bare_copse_tripo.glb", 9.0, 0, 2400, "copse", 512, sink=0.3),
+    Piece("standing_stone", "holed_standing_stone_tripo.glb", 5.5, 0, 3000, "standing_stone",
+          1024),
+    Piece("dovecote", "dovecote_tripo.glb", 6.5, 0, 3000, "dovecote", 1024),
     Piece("chapel_gable", "chapel_ruin_tripo.glb", 7.0, 0, 3000, "chapel_ruin", 1024,
           windows=True),
-    Piece("watch_hut", "log_woodshed_tripo.glb", 5.0, 0, 3000, "log_woodshed", 512),
+    Piece("watch_hut", "watch_hut_tripo.glb", 5.0, 0, 3000, "watch_hut", 512),
     Piece("cairn", "stone_cairn_tripo.glb", 5.0, 0, 3000, "stone_cairn", 1024),
     # The far band: drawn around the eye on the ridge, like the village (game::FarSilhouette),
     # and scaled up there (SILHOUETTE_PLACES in src/game/Land.cpp). The windows are found at
     # this size, where they are the size of the windows of a house.
-    Piece("mill", "stone_cottage_tripo.glb", 7.0, 0, 1500, "stone_cottage", 1024,
-          windows=True),
-    Piece("church_tower", "chapel_ruin_tripo.glb", 7.0, 0, 3000, "chapel_ruin", 1024,
-          windows=True),
+    # The windmill has its sails on its back (+Y): turned, they face the eye.
+    Piece("mill", "windmill_tripo.glb", 7.0, 0, 1500, "mill", 1024,
+          windows=True, fallback_height=0.3, turn=180.0),
+    Piece("church_tower", "church_tower_tripo.glb", 7.0, 0, 3000, "church_tower", 1024,
+          windows=True, fallback_height=0.67),
 )
 
 # The three trees of a copse, as (x, y, turn in degrees, scale) of each copy, in metres of

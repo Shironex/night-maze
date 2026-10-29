@@ -37,28 +37,28 @@ constexpr float FULL_TURN_DEGREES = 360.0F;
 constexpr float QUARTER_TURN_DEGREES = 90.0F;
 
 // The shapes of the models, in the order of LandModel. The radius is half of the wider
-// side of the model on the ground (of a tree: half of its crown), the height the one
-// tools/blender/build_land_pieces.py scales it to. The copse is built 9 m high, and the
-// decimation takes the thin tips of its tallest twigs: it ends 8.4 m high.
+// side of the model on the ground (of a tree: about 0.7 of half its crown), the height the
+// one tools/blender/build_land_pieces.py prints for it. The decimation takes a little off
+// the top of some: the twigs of the copse and the finial of the dovecote.
 constexpr std::array<LandModelShape, LAND_MODEL_COUNT> MODEL_SHAPES{{
-    {.radius = 3.2F, .height = 9.8F},                  // Oak
+    {.radius = 3.9F, .height = 10.0F},                 // Oak
     {.radius = 2.2F, .height = 5.9F},                  // Hawthorn
     {.radius = 2.6F, .height = 9.0F},                  // DeadOak
-    {.radius = 4.5F, .height = 7.0F, .windows = true}, // Farmhouse
-    {.radius = 4.2F, .height = 6.5F},                  // Barn
+    {.radius = 4.8F, .height = 7.0F, .windows = true}, // Farmhouse
+    {.radius = 5.6F, .height = 6.5F},                  // Barn
     {.radius = 2.5F, .height = 3.2F},                  // Woodshed
-    {.radius = 3.1F, .height = 4.0F},                  // Rick
+    {.radius = 2.4F, .height = 4.0F},                  // Rick
     {.radius = 2.6F, .height = 8.8F},                  // DeadOakFar
-    {.radius = 4.5F, .height = 8.4F},                  // Copse
-    {.radius = 5.0F, .height = 7.0F, .windows = true}, // FarmhouseFar
-    {.radius = 3.4F, .height = 5.5F, .windows = true}, // Cottage
-    {.radius = 3.8F, .height = 5.5F},                  // StandingStone
-    {.radius = 3.4F, .height = 6.5F},                  // Dovecote
+    {.radius = 4.2F, .height = 8.6F},                  // Copse
+    {.radius = 4.8F, .height = 7.0F, .windows = true}, // FarmhouseFar
+    {.radius = 3.5F, .height = 5.4F, .windows = true}, // Cottage
+    {.radius = 2.1F, .height = 5.5F},                  // StandingStone
+    {.radius = 2.7F, .height = 6.3F},                  // Dovecote
     {.radius = 3.3F, .height = 7.0F},                  // ChapelGable
-    {.radius = 3.8F, .height = 5.0F},                  // WatchHut
+    {.radius = 2.4F, .height = 5.0F},                  // WatchHut
     {.radius = 3.5F, .height = 5.0F},                  // Cairn
-    {.radius = 4.5F, .height = 6.9F, .windows = true}, // Mill
-    {.radius = 3.1F, .height = 7.0F, .windows = true}, // ChurchTower
+    {.radius = 2.9F, .height = 7.0F, .windows = true}, // Mill
+    {.radius = 2.6F, .height = 7.0F, .windows = true}, // ChurchTower
 }};
 
 // The ground under the near band rises from about this share of HILL_RELIEF at the edge
