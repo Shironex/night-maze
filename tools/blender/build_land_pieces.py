@@ -62,6 +62,13 @@ class Piece:
     sink: float = 0.1
     # Whether the windows of the piece are looked for.
     windows: bool = False
+    # Where the one light of a house that shows no window to the rays stands, as a share of
+    # its height (see WINDOW_FALLBACK_SIZE): the church tower has it in its arch, whose
+    # lancets are too narrow for the rays, and the mill below its sails.
+    fallback_height: float = 0.45
+    # How far the source is turned about the vertical axis, in degrees, before anything
+    # else: the front of a piece is -Y in Blender, the side the far silhouettes show.
+    turn: float = 0.0
     # How many copies of the source stand together in one piece (a copse), with their
     # offsets and turns in COPSE_PLACES.
     copies: int = 1
@@ -136,8 +143,7 @@ WINDOW_FILL = 0.4
 # wall show through it.
 WINDOW_OFFSET = 0.04
 # A house that shows no window to the rays (the chapel has empty arches) gets one light in
-# the middle of its front, at this part of its height, as large as WINDOW_FALLBACK_SIZE.
-WINDOW_FALLBACK_HEIGHT = 0.45
+# the middle of its front, at the fallback height of its piece, this large.
 WINDOW_FALLBACK_SIZE = (0.8, 1.2)
 
 
@@ -152,8 +158,11 @@ def cleaned(model):
 
 
 def stand(mesh, piece):
-    """Scales the mesh to the height of the piece and puts its foot on the origin, sunk by
-    piece.sink."""
+    """Turns the mesh by piece.turn, scales it to the height of the piece and puts its foot
+    on the origin, sunk by piece.sink."""
+    if piece.turn:
+        bmesh.ops.rotate(mesh, cent=(0.0, 0.0, 0.0), verts=mesh.verts,
+                         matrix=Matrix.Rotation(math.radians(piece.turn), 3, "Z"))
     zs = [corner.co.z for corner in mesh.verts]
     xs = [corner.co.x for corner in mesh.verts]
     ys = [corner.co.y for corner in mesh.verts]
@@ -298,7 +307,7 @@ def find_windows(mesh, colour, piece):
         # The front is -Y in Blender, the side the exporter turns to +Z of the game.
         ys = [corner.co.y for corner in mesh.verts]
         side = Vector((0, -1, 0))
-        start = Vector((0.0, min(ys) - 1.0, WINDOW_FALLBACK_HEIGHT * piece.height))
+        start = Vector((0.0, min(ys) - 1.0, piece.fallback_height * piece.height))
         point, _, _, _ = tree.ray_cast(start, -side)
         middle = point if point is not None else Vector((0.0, min(ys), start.z))
         windows.append((middle + side * WINDOW_OFFSET, side, *WINDOW_FALLBACK_SIZE))
