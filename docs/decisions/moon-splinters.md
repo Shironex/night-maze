@@ -1,6 +1,6 @@
 # The crystals are drawn as splinters of the moon, and the dark half of one picture keeps their rind from glowing
 Status: accepted (2026-10-15)
-Code: tools/blender/build_splinter.py, tools/blender/make_textures.py, src/game/GameplayRenderer.cpp, tests/assets/ObjLoaderTests.cpp
+Code: tools/blender/build_splinter.py, tools/blender/make_textures.py, src/game/round/GameplayRenderer.cpp, tests/assets/ObjLoaderTests.cpp
 
 Context: The story calls the things the player collects splinters of the moon, and the models were six-sided quartz. A sliver with a strip of grey rind needs two surfaces, one that glows and one that does not, and the shaders have one glow value for a whole model.
 Decision: Two models, a crescent 0.4 m tall (`splinter_a`) and a cluster of it with two smaller copies (`splinter_b`), both cut from generated models by `build_splinter.py`; `CRYSTAL_HEIGHT` is 0.4 and the crystal floats 0.95 m up, so its middle stays 1.15 m up. One picture has two halves, like the lantern: the rind on the left is grey stone and the fracture on the right is pale white-blue; each face is classified by its normal against the centre of a circle fitted to the arc. The glow is the colour times the glow value, so the fracture shines and the rind stays stone. Only the look changes: the code, the settings and the texts still say crystal.

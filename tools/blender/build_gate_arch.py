@@ -45,7 +45,7 @@ SOURCE_FILE = "gate_arch_tripo.glb"
 # matrix of the gate whichever side the player comes from, so everything the game hangs
 # on it is on both faces: the hooks, and the lantern and the bell in the middle.
 #
-# The numbers the game has to agree with are in src/game/GateLamp.hpp (where the lanterns
+# The numbers the game has to agree with are in src/game/round/GateLamp.hpp (where the lanterns
 # and the bell hang) and src/game/maze/MazeLayout.hpp (GATE_HOUSE_HEIGHT, PILLAR_SIZE).
 
 # Two corners of the source closer than this (in its own units) are one corner.
@@ -119,7 +119,7 @@ STRAP_BOX = ((-0.21, 0.0, -0.01), (-0.12, 0.15, 0.48))
 # into the ring of the lantern. The lantern hangs HOOK_ALONG from the middle of the
 # gate and HOOK_OUT in front of it, with its base at HOOK_LANTERN_HEIGHT; it is 0.36 m
 # tall to the top of its ring (build_gate_lantern.py). These are GATE_BRACKET_LANTERN_ALONG,
-# GATE_BRACKET_LANTERN_OUT and GATE_BRACKET_LANTERN_HEIGHT in src/game/GateLamp.hpp.
+# GATE_BRACKET_LANTERN_OUT and GATE_BRACKET_LANTERN_HEIGHT in src/game/round/GateLamp.hpp.
 # The bar leaves the stone of the jamb where a line from the end of the hook, across the
 # doorway towards the pier and the wall, meets it (HOOK_TOWARDS), and reaches HOOK_GRIP
 # into the stone.
@@ -510,7 +510,7 @@ def build(shots):
           f"{min(ys):.3f} to {max(ys):.3f} deep, {max(zs):.3f} m high, "
           f"{len(mesh.faces)} triangles")
     # The two heights the game hangs the big lantern and the bell by
-    # (GATE_COTE_LANTERN_HEIGHT and GATE_BELL_HEIGHT in src/game/GateLamp.hpp).
+    # (GATE_COTE_LANTERN_HEIGHT and GATE_BELL_HEIGHT in src/game/round/GateLamp.hpp).
     print(f"{NAME}: the crown under the big lantern at {crown:.3f} m, the stone over the "
           f"doorway at {soffit:.3f} m, the bell pivot at {soffit + BELL_GRIP:.3f} m")
     for mount in mounts:

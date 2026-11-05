@@ -1,7 +1,7 @@
 // StartOptions: what the command line asks the game to start with.
 #include "game/StartOptions.hpp"
 
-#include "game/Campaign.hpp"
+#include "game/round/Campaign.hpp"
 
 #include <cmath>
 #include <cstddef>

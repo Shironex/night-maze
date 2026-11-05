@@ -1,7 +1,7 @@
 // VillageRenderer: draws the village on the ridge and the lights of its won nights.
 #pragma once
 
-#include "game/Campaign.hpp"
+#include "game/round/Campaign.hpp"
 
 #include <glm/glm.hpp>
 

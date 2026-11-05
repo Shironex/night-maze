@@ -3,30 +3,12 @@
 target_sources(game_logic PRIVATE
     Bloom.cpp
     Bloom.hpp
-    Campaign.cpp
-    Campaign.hpp
-    Crystals.cpp
-    Crystals.hpp
-    Daily.cpp
-    Daily.hpp
-    Difficulty.cpp
-    Difficulty.hpp
-    Discovery.cpp
-    Discovery.hpp
     EnvironmentMapping.cpp
     EnvironmentMapping.hpp
-    Exit.cpp
-    Exit.hpp
-    Flasks.cpp
-    Flasks.hpp
     Fog.cpp
     Fog.hpp
     GameState.cpp
     GameState.hpp
-    GateLamp.cpp
-    GateLamp.hpp
-    Heartstone.cpp
-    Heartstone.hpp
     Interactables.cpp
     Interactables.hpp
     Interaction.cpp
@@ -35,8 +17,6 @@ target_sources(game_logic PRIVATE
     Intro.hpp
     KeyBindings.cpp
     KeyBindings.hpp
-    Ledger.cpp
-    Ledger.hpp
     Lighting.cpp
     Lighting.hpp
     MenuBackground.cpp
@@ -49,8 +29,6 @@ target_sources(game_logic PRIVATE
     Minimap.hpp
     Player.cpp
     Player.hpp
-    Round.cpp
-    Round.hpp
     RoundMusic.cpp
     RoundMusic.hpp
     Settings.cpp
@@ -71,8 +49,6 @@ target_sources(game_logic PRIVATE
 
 # The application and the classes that draw: they need a window and an OpenGL context.
 target_sources(night_maze PRIVATE
-    GameplayRenderer.cpp
-    GameplayRenderer.hpp
     InteractableRenderer.cpp
     InteractableRenderer.hpp
     MenuBackgroundRenderer.cpp
@@ -94,3 +70,4 @@ target_sources(night_maze PRIVATE
 
 add_subdirectory(land)
 add_subdirectory(maze)
+add_subdirectory(round)

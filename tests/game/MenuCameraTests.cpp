@@ -1,8 +1,8 @@
 // Tests of game::MenuCamera: the route, the path in the corridors and the pose over time.
 #include "game/MenuCamera.hpp"
 
-#include "game/Exit.hpp"
 #include "game/maze/MazeLayout.hpp"
+#include "game/round/Exit.hpp"
 #include "scene/Camera.hpp"
 #include "scene/Collider.hpp"
 

@@ -2,11 +2,11 @@
 #include "game/NightMazeApp.hpp"
 
 #include "core/Log.hpp"
-#include "game/Exit.hpp"
-#include "game/GateLamp.hpp"
 #include "game/Interactables.hpp"
 #include "game/Shade.hpp"
 #include "game/land/Puddles.hpp"
+#include "game/round/Exit.hpp"
+#include "game/round/GateLamp.hpp"
 
 #include <GLFW/glfw3.h>
 

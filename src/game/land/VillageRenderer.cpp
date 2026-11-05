@@ -3,8 +3,8 @@
 
 #include "assets/AssetCache.hpp"
 #include "core/Paths.hpp"
-#include "game/GateLamp.hpp"
 #include "game/land/Village.hpp"
+#include "game/round/GateLamp.hpp"
 #include "gfx/ColorSpace.hpp"
 #include "gfx/Shader.hpp"
 #include "render/ModelDraw.hpp"

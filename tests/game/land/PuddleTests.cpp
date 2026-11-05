@@ -354,7 +354,7 @@ TEST_CASE("the puddles of a world lie where the seed put them, in every cell the
     const game::MazeWorld world = game::buildMazeWorld(6, 5, 21, roughHeightmap(), 1.0F);
     std::vector<game::PuddleSpawn> spawns = spawnsOf(world, 0.6F);
     // A puddle the seed put under the heartstone, or under the crystal that made room
-    // for it, is left out of the world (tests/game/HeartstoneTests.cpp).
+    // for it, is left out of the world (tests/game/round/HeartstoneTests.cpp).
     std::erase_if(spawns, [&world](const game::PuddleSpawn& spawn) {
         return spawn.cell == world.heartstone ||
                std::ranges::any_of(world.crystals, [&spawn](const game::CrystalSpawn& crystal) {

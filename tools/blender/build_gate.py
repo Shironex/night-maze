@@ -40,7 +40,7 @@ SOURCE_FILE = "gate_tripo.glb"
 #
 # The gate fills one side of a 2 m maze cell: its two ends disappear in the piers of the
 # arch, which start 0.75 m from the middle. It is lower than the springing of the arch,
-# and the game sinks it by GATE_SINK_DEPTH (3.3 m, src/game/Round.hpp), more than its
+# and the game sinks it by GATE_SINK_DEPTH (3.3 m, src/game/round/Round.hpp), more than its
 # height. The source is narrow, so it is stretched along X and Z by different factors.
 WIDTH = 2.0
 HEIGHT = 2.4
@@ -57,7 +57,7 @@ MERGE_DISTANCE = 0.000001
 # dark grey, stays dark. The grain keeps its contrast, because every texel is scaled
 # alike. At 0.42 the door read as pale stone in the beam of the flashlight, but most of
 # that was the highlight of the stone over it; the game now draws the door with a dull
-# highlight of its own (GATE_DOOR_SPECULAR_STRENGTH in src/game/GameplayRenderer.cpp), and
+# highlight of its own (GATE_DOOR_SPECULAR_STRENGTH in src/game/round/GameplayRenderer.cpp), and
 # the wood is lifted to keep the door about as bright as before.
 WOOD_GAIN = 0.62
 WOOD_TINT = (1.0, 0.88, 0.72)

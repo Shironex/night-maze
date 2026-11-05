@@ -2,11 +2,11 @@
 // they are kept in.
 #pragma once
 
-#include "game/Campaign.hpp"
-#include "game/Daily.hpp"
-#include "game/Difficulty.hpp"
 #include "game/KeyBindings.hpp"
-#include "game/Ledger.hpp"
+#include "game/round/Campaign.hpp"
+#include "game/round/Daily.hpp"
+#include "game/round/Difficulty.hpp"
+#include "game/round/Ledger.hpp"
 
 #include <array>
 #include <cstdint>
@@ -116,7 +116,7 @@ struct GameSettings {
     /// file, so it is kept between two starts of the game.
     int nextStoryLine = 0;
 
-    /// The lamplighter's ledger (game/Ledger.hpp): the story lines whose note the player
+    /// The lamplighter's ledger (game/round/Ledger.hpp): the story lines whose note the player
     /// has opened, in any mode. A line is added when its card comes up. It is the book of
     /// the player: a new campaign does not empty it.
     StoryReadSet storyRead = 0;
@@ -137,7 +137,7 @@ struct GameSettings {
     /// chosen has no such lines, so the game keeps the keys it always had.
     KeyBindings keys = defaultKeyBindings();
 
-    /// The campaign (game/Campaign.hpp): the next night to play, from 1 to
+    /// The campaign (game/round/Campaign.hpp): the next night to play, from 1 to
     /// CAMPAIGN_NIGHT_COUNT, and CAMPAIGN_FINISHED once the last night is won. It moves
     /// on only when a night is won. Like the story line it is not edited on the settings
     /// screen, but it is part of the file.
@@ -152,7 +152,7 @@ struct GameSettings {
     /// until the night is won.
     std::array<int, CAMPAIGN_NIGHT_COUNT> campaignBestSeconds{};
 
-    /// The maze of the day (game/Daily.hpp): the best time of one day, the day it belongs
+    /// The maze of the day (game/round/Daily.hpp): the best time of one day, the day it belongs
     /// to and on how many days such a maze was won. It changes only when a maze of the
     /// day is won.
     DailyRecord daily;

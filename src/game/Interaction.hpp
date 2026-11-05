@@ -3,9 +3,9 @@
 #pragma once
 
 #include "game/Interactables.hpp"
-#include "game/Round.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/round/Round.hpp"
 #include "scene/Collider.hpp"
 #include "scene/Raycast.hpp"
 

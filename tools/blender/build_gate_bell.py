@@ -39,7 +39,7 @@ SOURCE_FILE = "gate_bell_tripo.glb"
 # Everything hangs below it, so every height is negative. The game puts the pivot under
 # the crown of the arch and turns the model around the axis across the gate (Blender Y),
 # so the bell swings along the gate (GATE_BELL_ALONG, GATE_BELL_HEIGHT and
-# GATE_BELL_SWING_DEGREES in src/game/GateLamp.hpp).
+# GATE_BELL_SWING_DEGREES in src/game/round/GateLamp.hpp).
 #
 # From the pivot to the underside of the clapper, the lowest point.
 LENGTH = 0.6

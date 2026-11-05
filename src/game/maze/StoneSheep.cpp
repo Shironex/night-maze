@@ -2,14 +2,14 @@
 // a sheep, where in its cell each one stands and which way it looks: towards the gate.
 #include "game/maze/StoneSheep.hpp"
 
-#include "game/Crystals.hpp"
 #include "game/EnvironmentMapping.hpp"
-#include "game/Exit.hpp"
-#include "game/Flasks.hpp"
-#include "game/GateLamp.hpp"
 #include "game/land/Puddles.hpp"
 #include "game/maze/MazeGenerator.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/round/Crystals.hpp"
+#include "game/round/Exit.hpp"
+#include "game/round/Flasks.hpp"
+#include "game/round/GateLamp.hpp"
 #include "scene/Transform.hpp"
 
 #include <algorithm>

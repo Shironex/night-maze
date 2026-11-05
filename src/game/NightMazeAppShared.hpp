@@ -2,8 +2,8 @@
 // the documents of the menus, and two small helpers.
 #pragma once
 
-#include "game/Campaign.hpp"
 #include "game/GameState.hpp"
+#include "game/round/Campaign.hpp"
 
 #include <array>
 #include <cstddef>

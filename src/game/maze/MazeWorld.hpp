@@ -1,7 +1,6 @@
 // MazeWorld: one generated maze with everything the game needs to draw it and walk in it.
 #pragma once
 
-#include "game/Crystals.hpp"
 #include "game/Interactables.hpp"
 #include "game/land/Land.hpp"
 #include "game/land/Terrain.hpp"
@@ -9,6 +8,7 @@
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/StoneSheep.hpp"
 #include "game/maze/WallVariants.hpp"
+#include "game/round/Crystals.hpp"
 #include "scene/Collider.hpp"
 
 #include <glm/glm.hpp>
@@ -43,7 +43,7 @@ struct MazeSettings {
 
     /// How many crystals the maze should get: a number, or CRYSTAL_COUNT_FROM_SIZE for
     /// one crystal per CELLS_PER_CRYSTAL cells. A new game writes the number of its
-    /// difficulty level here (game/Difficulty.hpp).
+    /// difficulty level here (game/round/Difficulty.hpp).
     int crystalCount = CRYSTAL_COUNT_FROM_SIZE;
 
     /// How many levers and notes the maze should get (see game/Interactables.hpp). They

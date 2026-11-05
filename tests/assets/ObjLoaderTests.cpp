@@ -2,8 +2,8 @@
 #include "assets/ObjLoader.hpp"
 
 #include "assets/Tangents.hpp"
-#include "game/Crystals.hpp"
 #include "game/Lighting.hpp"
+#include "game/round/Crystals.hpp"
 
 #include <doctest/doctest.h>
 
@@ -1003,7 +1003,7 @@ TEST_CASE("loadObj: splinter_a.obj and splinter_b.obj") {
 
         // The origin is the lower point, to the millimetre, and the model is 0.4 m tall,
         // no higher than the game takes a crystal to be: its light hangs above
-        // CRYSTAL_HEIGHT (game/Crystals.hpp).
+        // CRYSTAL_HEIGHT (game/round/Crystals.hpp).
         const Bounds bounds = boundsOf(model);
         CHECK(std::abs(bounds.min.y) < 0.001F);
         CHECK(bounds.max.y > 0.39F);
@@ -1039,7 +1039,7 @@ TEST_CASE("loadObj: heartstone.obj") {
     CHECK(model.indices.size() == 6359U * 3U);
 
     // 0.9 m tall to the centimetre, and no taller than the game takes it to be: its
-    // light hangs above HEARTSTONE_HEIGHT (game/Heartstone.hpp).
+    // light hangs above HEARTSTONE_HEIGHT (game/round/Heartstone.hpp).
     const Bounds bounds = boundsOf(model);
     CHECK(std::abs(bounds.min.y) < 0.001F);
     CHECK(bounds.max.y > 0.89F);

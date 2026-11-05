@@ -4,13 +4,8 @@
 #include "assets/AssetCache.hpp"
 #include "audio/AudioEngine.hpp"
 #include "core/Application.hpp"
-#include "game/Campaign.hpp"
-#include "game/Daily.hpp"
-#include "game/Difficulty.hpp"
 #include "game/EnvironmentMapping.hpp"
 #include "game/GameState.hpp"
-#include "game/GameplayRenderer.hpp"
-#include "game/GateLamp.hpp"
 #include "game/InteractableRenderer.hpp"
 #include "game/Interaction.hpp"
 #include "game/Intro.hpp"
@@ -20,7 +15,6 @@
 #include "game/Minimap.hpp"
 #include "game/MinimapRenderer.hpp"
 #include "game/Player.hpp"
-#include "game/Round.hpp"
 #include "game/RoundMusic.hpp"
 #include "game/Settings.hpp"
 #include "game/Shadows.hpp"
@@ -38,6 +32,12 @@
 #include "game/land/VillageRenderer.hpp"
 #include "game/maze/MazeRenderer.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/round/Campaign.hpp"
+#include "game/round/Daily.hpp"
+#include "game/round/Difficulty.hpp"
+#include "game/round/GameplayRenderer.hpp"
+#include "game/round/GateLamp.hpp"
+#include "game/round/Round.hpp"
 #include "gfx/Shader.hpp"
 #include "render/ColliderLines.hpp"
 #include "render/GpuPasses.hpp"
@@ -92,7 +92,7 @@ constexpr std::size_t NO_STORYBOOK_SOUND = static_cast<std::size_t>(-1);
 ///
 /// A round: the player collects crystals, each one charges the battery of the
 /// flashlight, and when enough of them are collected the gate of the exit opens.
-/// Walking through it wins the round. The rules are in game/Round.hpp, this class feeds
+/// Walking through it wins the round. The rules are in game/round/Round.hpp, this class feeds
 /// them the position of the player and draws their state.
 ///
 /// On the walls hang levers and notes. In every frame a ray is cast from the eye through
@@ -124,13 +124,13 @@ constexpr std::size_t NO_STORYBOOK_SOUND = static_cast<std::size_t>(-1);
 /// a round. Any key ends it, and the title card of the first night follows. The game
 /// itself opens with the main menu.
 ///
-/// The game is played as a campaign of five nights (game/Campaign.hpp): the first entry
+/// The game is played as a campaign of five nights (game/round/Campaign.hpp): the first entry
 /// of the main menu starts the next night, each night begins with a title card and has
 /// a maze, notes and numbers of its own, and the last one ends with the ending card. The
 /// progress is part of the settings file. Next to it is free play: one maze of a chosen
 /// difficulty and seed.
 ///
-/// A game of free play has a difficulty (game/Difficulty.hpp), which decides the size of the
+/// A game of free play has a difficulty (game/round/Difficulty.hpp), which decides the size of the
 /// maze, its crystals, the gate and the battery, and a seed, which decides the maze.
 /// What the player sets on the settings screen (game/Settings.hpp) is used at once and
 /// kept in a small text file in the working directory.
@@ -419,7 +419,7 @@ protected:
     bool shadeInGame() const { return !m_settings.calmNight && !m_calmRun; }
 
     /// True when a maze of free play built now has a shade. daily is the day of a maze
-    /// of the day (game/Daily.hpp), which always has one, whatever the switch "Calm
+    /// of the day (game/round/Daily.hpp), which always has one, whatever the switch "Calm
     /// night" says: it is the same maze for every player. Only a calm run of the command
     /// line takes it away. NO_DAILY_DATE: any other maze of free play (shadeInGame).
     bool shadeInMaze(std::uint32_t daily) const {
@@ -442,7 +442,7 @@ protected:
     const GameSettings& settings() const { return m_settings; }
     int playedNight() const { return m_playedNight; }
 
-    /// The day of the maze of the day that is in play (game/Daily.hpp), or NO_DAILY_DATE,
+    /// The day of the maze of the day that is in play (game/round/Daily.hpp), or NO_DAILY_DATE,
     /// for the HUD: it names the maze in the first seconds of a round.
     std::uint32_t playedDaily() const { return m_playedDaily; }
 
@@ -557,7 +557,7 @@ private:
     /// Starts a new game of free play: the numbers of its difficulty level go into the
     /// request for the maze and into the rules of the round (they overwrite what the
     /// debug UI set there), the maze is built from the seed and its round starts.
-    /// The maze of the day is such a game too: daily is its day (game/Daily.hpp), and it
+    /// The maze of the day is such a game too: daily is its day (game/round/Daily.hpp), and it
     /// then has the shade and the name "Tonight's hedge". NO_DAILY_DATE: free play.
     void startNewGame(const NewGame& newGame, std::uint32_t daily = NO_DAILY_DATE);
 
@@ -1373,7 +1373,7 @@ private:
     // False for a night started from the command line (--night), which has a campaign
     // seed of its own, and after the debug UI changed the campaign under a running night.
     bool m_nightCounts = false;
-    // The day of the maze of the day that is in play (game/Daily.hpp), or NO_DAILY_DATE
+    // The day of the maze of the day that is in play (game/round/Daily.hpp), or NO_DAILY_DATE
     // for every other maze. Set whenever a maze is built (regenerateMaze).
     std::uint32_t m_playedDaily = NO_DAILY_DATE;
     // The last win of a maze of the day: the record after it and whether it was a new

@@ -756,7 +756,7 @@ def lever_pull():
 
 def gate_open():
     # A slab of stone sinking into the ground. It sinks for 1.5 s (GATE_OPEN_SECONDS in
-    # src/game/Round.hpp), then the thud has a second to die away between the walls.
+    # src/game/round/Round.hpp), then the thud has a second to die away between the walls.
     #
     #   - The drag: noise through wide band passes at 240 and 470 Hz and a weaker one
     #     at 900 Hz, stone on stone, behind a low pass. Its loudness wanders (two

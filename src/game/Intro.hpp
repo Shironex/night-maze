@@ -1,10 +1,10 @@
 // Intro: the five cards a campaign begins with, as a script of plain data.
 #pragma once
 
-#include "game/Difficulty.hpp"
 #include "game/MenuCamera.hpp"
 #include "game/SoundCues.hpp"
 #include "game/maze/Maze.hpp"
+#include "game/round/Difficulty.hpp"
 
 #include <array>
 #include <cstddef>
@@ -132,7 +132,7 @@ constexpr float INTRO_HINT_FADE_SECONDS = 0.5F;
 /// How much of the text of a card is there, cardSeconds after the cut to the card, for
 /// a card that takes seconds: 0 during the delay, up along a straight line, 1 for
 /// a while, down again and 0 for the gap at the end. The cards of the intro use it, and
-/// so do the other cards of text of the game (game/Campaign.hpp).
+/// so do the other cards of text of the game (game/round/Campaign.hpp).
 float cardTextOpacity(float cardSeconds, float seconds);
 
 /// How much of the hint "Press any key to skip" is there, seconds after the cards

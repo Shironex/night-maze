@@ -4,14 +4,14 @@
 #include "game/Interaction.hpp"
 
 #include "assets/ObjLoader.hpp"
-#include "game/Discovery.hpp"
 #include "game/Interactables.hpp"
 #include "game/Minimap.hpp"
 #include "game/Player.hpp"
-#include "game/Round.hpp"
 #include "game/land/Terrain.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/round/Discovery.hpp"
+#include "game/round/Round.hpp"
 #include "scene/Camera.hpp"
 #include "scene/Raycast.hpp"
 

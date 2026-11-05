@@ -1,10 +1,10 @@
 // StartOptions: what the command line asks the game to start with.
 #pragma once
 
-#include "game/Daily.hpp"
 #include "game/MenuBackground.hpp"
 #include "game/MenuCamera.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/round/Daily.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -86,7 +86,7 @@ struct StartOptions {
     /// the same, and the campaign in the settings file is neither read nor changed.
     int night = 0;
 
-    /// The day whose maze the game starts in at once (--daily, game/Daily.hpp), or
+    /// The day whose maze the game starts in at once (--daily, game/round/Daily.hpp), or
     /// NO_DAILY_DATE for none. Like --night it skips the main menu and shows no title
     /// card. It is also the day of "Tonight's hedge" for the whole run (fixedDailyDate).
     std::uint32_t daily = NO_DAILY_DATE;

@@ -1,6 +1,6 @@
 # A round keeps its own copy of the maze, and an opened wall stops blocking at the pull
 Status: accepted (2026-10-06)
-Code: src/game/Round.hpp, src/game/Round.cpp, src/game/Minimap.cpp, tests/game/RoundTests.cpp
+Code: src/game/round/Round.hpp, src/game/round/Round.cpp, src/game/Minimap.cpp, tests/game/round/RoundTests.cpp
 
 Context: A lever removes a wall. Discovery, the map and the shade must see that, yet the world is built once and a new round must restore every wall.
 Decision: The round copies the maze at its start and removes the wall from the copy on a pull. The world's maze never changes. The wall's collision box leaves the obstacle list at the pull, not after the 1.5 s sink, like the gate.

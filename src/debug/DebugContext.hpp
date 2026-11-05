@@ -270,7 +270,7 @@ struct DebugContext {
     std::array<int, 5> campaignBestSeconds;
     /// The night of the campaign that is in play, or 0 for free play. A plain value.
     int playedNight;
-    /// The day of the maze of the day that is in play (game/Daily.hpp), or 0 for every
+    /// The day of the maze of the day that is in play (game/round/Daily.hpp), or 0 for every
     /// other maze. A plain value.
     std::uint32_t playedDaily;
     /// What the Gameplay category asks of the campaign, editable: set the next night,
