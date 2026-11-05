@@ -6,9 +6,9 @@
 #include "core/Paths.hpp"
 #include "game/Interaction.hpp"
 #include "game/MazeWorld.hpp"
-#include "game/ModelDraw.hpp"
 #include "game/Round.hpp"
 #include "gfx/Shader.hpp"
+#include "render/ModelDraw.hpp"
 #include "render/ShaderUniforms.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>

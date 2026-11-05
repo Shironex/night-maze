@@ -7,9 +7,9 @@
 #include "game/GateLamp.hpp"
 #include "game/Lighting.hpp"
 #include "game/MazeWorld.hpp"
-#include "game/ModelDraw.hpp"
 #include "game/Round.hpp"
 #include "gfx/Shader.hpp"
+#include "render/ModelDraw.hpp"
 #include "render/ShaderUniforms.hpp"
 #include "scene/Transform.hpp"
 
