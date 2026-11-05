@@ -5,7 +5,7 @@ A record explains why a non-obvious part of the code looks the way it does. Each
 Status words: `accepted (date)` means the code does this today. `planned (date)` means the decision is taken and the code does not exist yet. `superseded by <record>` means the decision is gone and the named record replaces it. An `Earlier:` clause names an older form of a decision that still stands.
 
 ## Rendering
-- [rendering-in-the-game-layer](rendering-in-the-game-layer.md): drawing classes live in src/game
+- [rendering-in-the-game-layer](rendering-in-the-game-layer.md): superseded, drawing classes lived in src/game
 - [linear-colour-pipeline](linear-colour-pipeline.md): decode on read, encode once at the end
 - [aces-tone-mapping](aces-tone-mapping.md): ACES default, two switches
 - [bloom-passes](bloom-passes.md): half resolution, three targets
@@ -85,3 +85,4 @@ Status words: `accepted (date)` means the code does this today. `planned (date)`
 - [releases-by-github-actions](releases-by-github-actions.md): tag build, approved signing
 - [licence](licence.md): MIT code, assets excluded
 - [docs-lean-english](docs-lean-english.md): short English docs only
+- [game-domain-folders](game-domain-folders.md): one folder per domain in src/game, passes in src/render
