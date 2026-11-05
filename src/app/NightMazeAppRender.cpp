@@ -251,8 +251,8 @@ void NightMazeApp::updateScreens() {
     // The intro: the request of the debug UI to play it again, and its frame. Both come
     // before everything below, because the frame may end the intro: the rest of this
     // function then already draws the main menu.
-    if (m_introRequested) {
-        m_introRequested = false;
+    if (m_story.introRequested) {
+        m_story.introRequested = false;
         startIntro();
     }
     if (isIntro(m_mode)) {
@@ -318,7 +318,7 @@ FrameScreen NightMazeApp::frameScreen() const {
     if (!m_menuCamera.enabled) {
         menuCameraSettings.shot = MenuShot::HighGlide;
     }
-    const IntroFrame introMoment = introFrame(static_cast<float>(m_introSeconds));
+    const IntroFrame introMoment = introFrame(static_cast<float>(m_story.introSeconds));
     const IntroCamera introShot = introCamera(introMoment);
     if (intro) {
         menuCameraSettings = introShot.settings;
@@ -428,15 +428,16 @@ bool NightMazeApp::drawMenuBackgroundFrame(core::Size framebuffer) {
 bool NightMazeApp::drawStorybookFrame(core::Size framebuffer) {
     // The intro may have ended in this frame (updateScreens): then the frame is drawn
     // for the screen that follows it.
-    if (!m_storybookPlaying || !isIntro(m_mode) || !m_storybook) {
+    if (!m_story.storybookPlaying || !isIntro(m_mode) || !m_story.storybook) {
         return false;
     }
-    const Storybook& book = *m_storybook;
+    const Storybook& book = *m_story.storybook;
     m_frameState.pick = pickNothing(m_round);
     gfx::Framebuffer::bindDefault(framebuffer.width, framebuffer.height);
     m_renderers.storybookRenderer.draw(framebuffer, book,
-                                       storybookFrame(m_storybookBeatSeconds, book.crossfadeSeconds,
-                                                      static_cast<float>(m_introSeconds)));
+                                       storybookFrame(m_story.storybookBeatSeconds,
+                                                      book.crossfadeSeconds,
+                                                      static_cast<float>(m_story.introSeconds)));
     m_menus.ui.draw(framebuffer);
     return true;
 }
@@ -494,13 +495,13 @@ FrameView NightMazeApp::frameView(double alpha, const FrameScreen& screen, core:
     const glm::vec3 playerEye = eye;
     const bool reveal = villageRevealShown() && !screen.menuCamera;
     if (reveal) {
-        m_revealSeconds += time().deltaSeconds();
+        m_story.revealSeconds += time().deltaSeconds();
         // Beside the card of the result, or in the middle of a picture without one.
         const float aside =
             m_mode == GameMode::RoundEnd ? VILLAGE_REVEAL_BESIDE_CARD_DEGREES : 0.0F;
-        const VillageRevealPose pose =
-            villageRevealPose(m_revealStart, m_mazeWorld.exitPosition, villageSide(m_mazeWorld),
-                              aside, static_cast<float>(m_revealSeconds));
+        const VillageRevealPose pose = villageRevealPose(
+            m_story.revealStart, m_mazeWorld.exitPosition, villageSide(m_mazeWorld), aside,
+            static_cast<float>(m_story.revealSeconds));
         eye = pose.eye;
         frameCamera.yawDegrees = pose.yawDegrees;
         frameCamera.pitchDegrees = pose.pitchDegrees;
@@ -577,8 +578,9 @@ void NightMazeApp::placeShade(double alpha, const FrameScreen& screen, const Fra
             shade.position = cellCenter(cell->x, cell->z);
             shade.position.y = m_mazeWorld.terrain.heightAt(shade.position.x, shade.position.z);
             shade.rotationDegrees = {0.0F, shadeYawDegrees(shade.position, frame.eye), 0.0F};
-            applyShadeSway(shade, shadeSwayPose(0.0F, 0.0F, static_cast<float>(m_introSeconds),
-                                                m_gameplay.shade.sway));
+            applyShadeSway(shade,
+                           shadeSwayPose(0.0F, 0.0F, static_cast<float>(m_story.introSeconds),
+                                         m_gameplay.shade.sway));
             m_frameState.shadeMatrix = shade.matrix();
             m_frameState.shadeHoodBrightness = SHADE_HOOD_REST_BRIGHTNESS;
             m_frameState.shadeHoodStarBoost = 0.0F;
@@ -715,7 +717,7 @@ NightLights NightMazeApp::nightLightsFor(const FrameScreen& screen, const FrameV
                                                           m_settings.campaignNight, m_toolRun);
     // The lights of the night that was just won come on while the reveal looks at them.
     const float newestLight =
-        frame.reveal ? villageNewLightStrength(static_cast<float>(m_revealSeconds)) : 1.0F;
+        frame.reveal ? villageNewLightStrength(static_cast<float>(m_story.revealSeconds)) : 1.0F;
     return {.nightsLit = nightsLit, .newestStrength = newestLight};
 }
 

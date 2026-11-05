@@ -6,6 +6,7 @@
 #include "app/MenuState.hpp"
 #include "app/RenderSettings.hpp"
 #include "app/SceneRenderers.hpp"
+#include "app/StoryState.hpp"
 #include "audio/AudioEngine.hpp"
 #include "core/Application.hpp"
 #include "game/land/Terrain.hpp"
@@ -23,10 +24,8 @@
 #include "game/round/GateLamp.hpp"
 #include "game/round/Round.hpp"
 #include "game/screens/GameState.hpp"
-#include "game/screens/Intro.hpp"
 #include "game/screens/Settings.hpp"
 #include "game/screens/StartOptions.hpp"
-#include "game/screens/Storybook.hpp"
 #include "game/sound/RoundMusic.hpp"
 #include "game/sound/SoundCues.hpp"
 #include "gfx/Shader.hpp"
@@ -45,9 +44,6 @@
 #include <vector>
 
 namespace game {
-
-/// The number of a storybook sound that is not there (NightMazeApp::m_storybookMusicSound).
-constexpr std::size_t NO_STORYBOOK_SOUND = static_cast<std::size_t>(-1);
 
 /// The game itself: a generated maze of textured walls and pillars at night, standing
 /// on gently uneven ground that rises into hills around it (a heightmap terrain), and
@@ -270,7 +266,7 @@ protected:
     /// A round that is being played is given up for it, and this intro ends in the main
     /// menu. Besides the switch --intro and the beginning of a campaign this is the only
     /// way to see the intro.
-    bool& introRequest() { return m_introRequested; }
+    bool& introRequest() { return m_story.introRequested; }
 
     /// The key of every action of the player, as the settings hold them, for the HUD:
     /// it names the keys in its prompts.
@@ -987,12 +983,6 @@ private:
     // and every new terrain, and only read while a frame is drawn.
     MazeBounds m_mazeBounds;
 
-    // The camera of the player at the moment the result of a night came up, and the
-    // seconds since then: what the reveal of the village starts from
-    // (game::villageRevealPose). The clock follows the real time of the frames.
-    VillageRevealPose m_revealStart;
-    double m_revealSeconds = 0.0;
-
     // How the camera is turned. It belongs to the controls, not to the camera.
     float m_mouseSensitivity = DEFAULT_MOUSE_SENSITIVITY;
 
@@ -1059,29 +1049,9 @@ private:
     // chain its GLFW callbacks onto the ones of RmlUi.
     MenuState m_menus;
 
-    // The intro. The clock counts the seconds since the intro began, in the real time of
-    // the frames like the clock of the menu camera: what is shown is a function of it
-    // (game::introFrame).
-    double m_introSeconds = 0.0;
-    // The card whose two lines stand in the document: they are written when the card
-    // changes, not in every frame. INTRO_CARD_COUNT means none yet.
-    std::size_t m_introCardShown = INTRO_CARD_COUNT;
-    // The clock of the title card of a night and of the ending card: seconds since the
-    // card came up (game::nightCardFrame, game::endingCardFrame). The two cards use the
-    // document of the intro.
-    double m_cardSeconds = 0.0;
-    // The storybook intro (game/screens/Storybook.hpp): its manifest when the style of the run
-    // asks for it and the file can be read, the time of each picture (its spoken line
-    // can make it longer), the numbers of its sounds in m_audio (NO_STORYBOOK_SOUND for
-    // none), and whether the intro that plays now is the storybook. It is not when its
-    // pictures cannot be loaded: the classic intro plays then.
-    std::optional<Storybook> m_storybook;
-    std::vector<float> m_storybookBeatSeconds;
-    std::size_t m_storybookMusicSound = NO_STORYBOOK_SOUND;
-    std::vector<std::size_t> m_storybookVoiceSounds;
-    bool m_storybookPlaying = false;
-    // Set by the debug UI: play the intro again (introRequest).
-    bool m_introRequested = false;
+    // The clocks of the intro, of the cards and of the reveal of the village, and the
+    // storybook (StoryState).
+    StoryState m_story;
 
     // The sound device with the sounds of the cues, loaded once in the constructor in
     // the order of game::SoundCue. Without a device it does nothing (audio::AudioEngine).

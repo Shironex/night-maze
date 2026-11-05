@@ -63,11 +63,11 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
     // player as it is now (villageRevealShown decides whether it is shown).
     if (before == GameMode::Playing &&
         (m_mode == GameMode::RoundEnd || m_mode == GameMode::VillageBeat)) {
-        m_revealStart = {.eye = m_camera.position,
-                         .yawDegrees = m_camera.yawDegrees,
-                         .pitchDegrees = m_camera.pitchDegrees,
-                         .fovDegrees = m_camera.fovDegrees};
-        m_revealSeconds = 0.0;
+        m_story.revealStart = {.eye = m_camera.position,
+                               .yawDegrees = m_camera.yawDegrees,
+                               .pitchDegrees = m_camera.pitchDegrees,
+                               .fovDegrees = m_camera.fovDegrees};
+        m_story.revealSeconds = 0.0;
     }
     if (newGame) {
         // "New maze" on the result screen: the same difficulty, another seed. "Play"
@@ -194,11 +194,12 @@ void NightMazeApp::startIntro() {
 }
 
 void NightMazeApp::beginIntroClock() {
-    m_introSeconds = 0.0;
-    m_introCardShown = INTRO_CARD_COUNT;
-    m_storybookPlaying = m_storybook && m_renderers.storybookRenderer.load(
-                                            *m_storybook, core::assetPath(STORYBOOK_FOLDER));
-    if (m_storybook && !m_storybookPlaying) {
+    m_story.introSeconds = 0.0;
+    m_story.introCardShown = INTRO_CARD_COUNT;
+    m_story.storybookPlaying =
+        m_story.storybook &&
+        m_renderers.storybookRenderer.load(*m_story.storybook, core::assetPath(STORYBOOK_FOLDER));
+    if (m_story.storybook && !m_story.storybookPlaying) {
         core::logWarn("Storybook: its pictures cannot be loaded: the classic intro plays");
     }
 }
@@ -239,7 +240,7 @@ void NightMazeApp::showCardFrame(float black, float card,
 }
 
 void NightMazeApp::startStoryCard() {
-    m_cardSeconds = 0.0;
+    m_story.cardSeconds = 0.0;
     // A card that cannot be shown would be seconds of the scene with nothing on it: it
     // is left at once, like at its end.
     if (m_menus.cardDocument == ui::NO_DOCUMENT) {
@@ -271,21 +272,21 @@ void NightMazeApp::updateStoryCard() {
     };
     // Any key and any mouse button skip the card, but not in its first half second:
     // the key that started the night is still down then (StoryCardFrame::skippable).
-    if (frameAt(m_cardSeconds).skippable && anyKeyPressed()) {
+    if (frameAt(m_story.cardSeconds).skippable && anyKeyPressed()) {
         handleGameEvent(GameEvent::CardFinished);
         return;
     }
 
     // The clock follows the real time of the frames, like the one of the intro. The
     // bell of the ending card rings in the frame that passes its moment: once.
-    const double before = m_cardSeconds;
-    m_cardSeconds += time().deltaSeconds();
+    const double before = m_story.cardSeconds;
+    m_story.cardSeconds += time().deltaSeconds();
     const double bell = ENDING_BELL_SECONDS;
-    if (ending && before <= bell && bell < m_cardSeconds) {
+    if (ending && before <= bell && bell < m_story.cardSeconds) {
         playCue(SoundCue::IntroBell);
     }
 
-    const StoryCardFrame frame = frameAt(m_cardSeconds);
+    const StoryCardFrame frame = frameAt(m_story.cardSeconds);
     if (frame.finished) {
         handleGameEvent(GameEvent::CardFinished);
         return;
@@ -295,7 +296,7 @@ void NightMazeApp::updateStoryCard() {
 }
 
 void NightMazeApp::startVillageBeat() {
-    m_cardSeconds = 0.0;
+    m_story.cardSeconds = 0.0;
     if (m_menus.cardDocument == ui::NO_DOCUMENT) {
         return;
     }
@@ -308,17 +309,17 @@ void NightMazeApp::startVillageBeat() {
 void NightMazeApp::updateVillageBeat() {
     // Any key and any mouse button end the look, but not in its first half second, like
     // a card: the key the player walked through the gate with is still down then.
-    if (m_cardSeconds >= static_cast<double>(INTRO_SKIP_DELAY_SECONDS) && anyKeyPressed()) {
+    if (m_story.cardSeconds >= static_cast<double>(INTRO_SKIP_DELAY_SECONDS) && anyKeyPressed()) {
         handleGameEvent(GameEvent::CardFinished);
         return;
     }
-    m_cardSeconds += time().deltaSeconds();
-    if (m_cardSeconds >= static_cast<double>(VILLAGE_BEAT_SECONDS)) {
+    m_story.cardSeconds += time().deltaSeconds();
+    if (m_story.cardSeconds >= static_cast<double>(VILLAGE_BEAT_SECONDS)) {
         handleGameEvent(GameEvent::CardFinished);
         return;
     }
     if (m_menus.cardDocument != ui::NO_DOCUMENT) {
-        showCardFrame(villageBeatBlack(static_cast<float>(m_cardSeconds)), 0.0F, {}, 0.0F);
+        showCardFrame(villageBeatBlack(static_cast<float>(m_story.cardSeconds)), 0.0F, {}, 0.0F);
     }
 }
 
@@ -329,28 +330,28 @@ bool NightMazeApp::villageRevealShown() const {
 }
 
 void NightMazeApp::updateIntro() {
-    if (m_storybookPlaying) {
+    if (m_story.storybookPlaying) {
         updateStorybookIntro();
         return;
     }
     // Any key and any mouse button skip the whole intro. Escape is one of them, and it
     // also arrives as an event of its own before this function runs (onEscapePressed).
     // This function runs once per frame.
-    if (introFrame(static_cast<float>(m_introSeconds)).skippable && anyKeyPressed()) {
+    if (introFrame(static_cast<float>(m_story.introSeconds)).skippable && anyKeyPressed()) {
         handleGameEvent(GameEvent::IntroFinished);
         return;
     }
 
     // The clock follows the real time of the frames. The sounds between the moment
     // before this frame and the moment after it are played now: each one once.
-    const double before = m_introSeconds;
-    m_introSeconds += time().deltaSeconds();
+    const double before = m_story.introSeconds;
+    m_story.introSeconds += time().deltaSeconds();
     for (const SoundCue cue :
-         introCuesBetween(static_cast<float>(before), static_cast<float>(m_introSeconds))) {
+         introCuesBetween(static_cast<float>(before), static_cast<float>(m_story.introSeconds))) {
         playCue(cue);
     }
 
-    const IntroFrame frame = introFrame(static_cast<float>(m_introSeconds));
+    const IntroFrame frame = introFrame(static_cast<float>(m_story.introSeconds));
     if (frame.finished) {
         handleGameEvent(GameEvent::IntroFinished);
         return;
@@ -358,8 +359,8 @@ void NightMazeApp::updateIntro() {
 
     // The two lines, when the card has changed. The cut happens while no text is
     // shown (game::introFrame), so the new lines are never seen replacing the old ones.
-    if (frame.card != m_introCardShown) {
-        m_introCardShown = frame.card;
+    if (frame.card != m_story.introCardShown) {
+        m_story.introCardShown = frame.card;
         // Whether the shadow, the enemy of the game, takes part in it: the fourth card
         // has another second line for a calm night (game::introLines).
         const IntroLines lines = introLines(frame.card, introTellsOfShade());
@@ -372,13 +373,14 @@ void NightMazeApp::updateIntro() {
 }
 
 void NightMazeApp::updateStorybookIntro() {
-    if (!m_storybook) {
+    if (!m_story.storybook) {
         return;
     }
     // Set once in the constructor and never reset, so the reference holds all frame long.
-    const Storybook& book = *m_storybook;
+    const Storybook& book = *m_story.storybook;
     const float crossfade = book.crossfadeSeconds;
-    if (storybookFrame(m_storybookBeatSeconds, crossfade, static_cast<float>(m_introSeconds))
+    if (storybookFrame(m_story.storybookBeatSeconds, crossfade,
+                       static_cast<float>(m_story.introSeconds))
             .skippable &&
         anyKeyPressed()) {
         handleGameEvent(GameEvent::IntroFinished);
@@ -386,28 +388,28 @@ void NightMazeApp::updateStorybookIntro() {
     }
 
     // The music starts with the first frame, each spoken line at its moment: once.
-    const double before = m_introSeconds;
-    m_introSeconds += time().deltaSeconds();
-    if (before <= 0.0 && m_storybookMusicSound != NO_STORYBOOK_SOUND) {
-        m_audio.play(m_storybookMusicSound);
+    const double before = m_story.introSeconds;
+    m_story.introSeconds += time().deltaSeconds();
+    if (before <= 0.0 && m_story.storybookMusicSound != NO_STORYBOOK_SOUND) {
+        m_audio.play(m_story.storybookMusicSound);
     }
     for (const std::size_t beat :
-         storybookVoicesBetween(m_storybookBeatSeconds, static_cast<float>(before),
-                                static_cast<float>(m_introSeconds))) {
-        if (m_storybookVoiceSounds.at(beat) != NO_STORYBOOK_SOUND) {
-            m_audio.play(m_storybookVoiceSounds.at(beat));
+         storybookVoicesBetween(m_story.storybookBeatSeconds, static_cast<float>(before),
+                                static_cast<float>(m_story.introSeconds))) {
+        if (m_story.storybookVoiceSounds.at(beat) != NO_STORYBOOK_SOUND) {
+            m_audio.play(m_story.storybookVoiceSounds.at(beat));
         }
     }
 
-    const StorybookFrame frame =
-        storybookFrame(m_storybookBeatSeconds, crossfade, static_cast<float>(m_introSeconds));
+    const StorybookFrame frame = storybookFrame(m_story.storybookBeatSeconds, crossfade,
+                                                static_cast<float>(m_story.introSeconds));
     if (frame.finished) {
         handleGameEvent(GameEvent::IntroFinished);
         return;
     }
     // The lines change at the cut, where no text is shown (game::cardTextOpacity).
-    if (frame.beat != m_introCardShown) {
-        m_introCardShown = frame.beat;
+    if (frame.beat != m_story.introCardShown) {
+        m_story.introCardShown = frame.beat;
         const StorybookBeat& beat = book.beats.at(frame.beat);
         writeCardLines({beat.lines.at(0).c_str(), beat.lines.at(1).c_str(), "", ""}, false);
     }
@@ -426,7 +428,7 @@ void NightMazeApp::leaveIntro(bool intoNight) {
     m_audio.stopAll();
     // The pictures of the storybook are not needed until the next intro.
     m_renderers.storybookRenderer.unload();
-    m_storybookPlaying = false;
+    m_story.storybookPlaying = false;
     // Seen, to its end or to the key that skipped it. The settings file keeps the line,
     // so files of older versions stay valid, but nothing asks it any more: the intro
     // plays when a campaign begins. An intro that could not be shown at all was not seen.
