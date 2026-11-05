@@ -157,12 +157,12 @@ night_maze_enable_warnings(video)
 
 # ---- audio: plays short sounds through the sound device, with miniaudio ---------------
 # In the order of the layers it stands beside ui and video: it needs the log, the file
-# reader and the paths of engine, and it knows nothing about the game (the game hands it
-# a list of files and later the number of the sound to play; which sound belongs to
-# what is a rule of game_logic, game/SoundCues.hpp). It is a library of its own and not
-# a part of engine for the same reason as ui and video: game_logic links engine, and it
-# should not link miniaudio, which opens the sound device of the computer. The game
-# links it, and so does the test program, which makes the audio engine without a device
+# reader and the paths of engine, and it knows nothing about the game (the game hands it a
+# list of files and later the number of the sound to play; which sound belongs to what is a
+# rule of game_logic, game/sound/SoundCues.hpp). It is a library of its own and not a part
+# of engine for the same reason as ui and video: game_logic links engine, and it should not
+# link miniaudio, which opens the sound device of the computer. The game links it, and so
+# does the test program, which makes the audio engine without a device
 # (audio::AudioOutput::None): no test needs a sound card, and none is heard.
 add_library(audio STATIC)
 # engine is PUBLIC only for the src/ include root, which comes from it: the header of
