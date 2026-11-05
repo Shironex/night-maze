@@ -2,33 +2,24 @@
 #pragma once
 
 #include "app/AppShaders.hpp"
-#include "assets/AssetCache.hpp"
+#include "app/SceneRenderers.hpp"
 #include "audio/AudioEngine.hpp"
 #include "core/Application.hpp"
 #include "game/land/Grass.hpp"
-#include "game/land/GrassRenderer.hpp"
-#include "game/land/LandRenderer.hpp"
-#include "game/land/PuddleRenderer.hpp"
 #include "game/land/Terrain.hpp"
-#include "game/land/TerrainRenderer.hpp"
 #include "game/land/Village.hpp"
-#include "game/land/VillageRenderer.hpp"
 #include "game/lighting/EnvironmentMapping.hpp"
 #include "game/lighting/Lighting.hpp"
 #include "game/lighting/Shadows.hpp"
 #include "game/maze/MazeRenderer.hpp"
 #include "game/maze/MazeWorld.hpp"
-#include "game/menu/MenuBackgroundRenderer.hpp"
 #include "game/menu/MenuCamera.hpp"
 #include "game/minimap/Minimap.hpp"
-#include "game/minimap/MinimapRenderer.hpp"
-#include "game/player/InteractableRenderer.hpp"
 #include "game/player/Interaction.hpp"
 #include "game/player/Player.hpp"
 #include "game/round/Campaign.hpp"
 #include "game/round/Daily.hpp"
 #include "game/round/Difficulty.hpp"
-#include "game/round/GameplayRenderer.hpp"
 #include "game/round/GateLamp.hpp"
 #include "game/round/Round.hpp"
 #include "game/screens/GameState.hpp"
@@ -36,15 +27,10 @@
 #include "game/screens/Settings.hpp"
 #include "game/screens/StartOptions.hpp"
 #include "game/screens/Storybook.hpp"
-#include "game/screens/StorybookRenderer.hpp"
 #include "game/sound/RoundMusic.hpp"
 #include "game/sound/SoundCues.hpp"
 #include "gfx/Shader.hpp"
-#include "render/ColliderLines.hpp"
-#include "render/GpuPasses.hpp"
-#include "render/LightRig.hpp"
 #include "render/PostProcess.hpp"
-#include "render/ShadowMap.hpp"
 #include "render/Skybox.hpp"
 #include "scene/Camera.hpp"
 #include "scene/Collider.hpp"
@@ -193,28 +179,22 @@ protected:
     /// The shader programs, exposed so the debug UI can reload them live.
     AppShaders& shaders() { return m_shaders; }
 
+    /// The objects on the graphics card, read only: the debug UI shows the framebuffers of
+    /// the frame, the shadow maps and the minimap with their sizes, formats and pictures,
+    /// the times of the passes, and counts the puddles and the tufts of grass.
+    const SceneRenderers& renderers() const { return m_renderers; }
+
     /// The settings of the minimap (pin, reveal all, size, opacity), exposed so the debug
     /// UI can edit them live.
     MinimapSettings& minimapSettings() { return m_minimapSettings; }
-
-    /// The minimap, read only: the debug UI shows the size, the format and the picture
-    /// of its framebuffer.
-    const MinimapRenderer& minimapRenderer() const { return m_minimapRenderer; }
 
     /// The settings of the environment mapping (the sky on the crystals and on the
     /// puddles), exposed so the debug UI can edit them live.
     EnvironmentSettings& environmentSettings() { return m_environment; }
 
-    /// How many puddles lie in the maze, for the debug UI.
-    std::size_t puddleCount() const { return m_puddleRenderer.puddleCount(); }
-
     /// The settings of the shadows of the moon (switch, resolution, bias, PCF,
     /// strength), exposed so the debug UI can edit them live.
     ShadowSettings& moonShadowSettings() { return m_moonShadow; }
-
-    /// The shadow map of the moon, read only: the debug UI shows its size, its format
-    /// and its preview picture.
-    const ShadowMap& moonShadowMap() const { return m_moonShadowMap; }
 
     /// The view and the projection the shadow map of the moon was drawn with in the
     /// last frame, read only: the debug UI shows how much ground the map covers.
@@ -223,9 +203,6 @@ protected:
     /// The settings of the shadows of the flashlight, exposed like the ones of the
     /// moon.
     ShadowSettings& flashlightShadowSettings() { return m_flashlightShadow; }
-
-    /// The shadow map of the flashlight, read only, like the one of the moon.
-    const ShadowMap& flashlightShadowMap() const { return m_flashlightShadowMap; }
 
     /// The view and the projection the shadow map of the flashlight was drawn with in
     /// the last frame, read only: the debug UI shows how much the map covers.
@@ -241,14 +218,6 @@ protected:
     /// edit them live.
     PostProcessSettings& postProcessSettings() { return m_postProcessSettings; }
 
-    /// The framebuffers of the frame, read only: the debug UI shows their sizes, their
-    /// formats and pictures of their attachments.
-    const PostProcess& postProcess() const { return m_postProcess; }
-
-    /// The time the graphics card worked on every pass of the last frame and the draw
-    /// calls of each, read only: the debug UI shows them.
-    const GpuPassTimers& gpuPasses() const { return m_gpuPasses; }
-
     /// The height scale and the wireframe switch of the terrain, exposed so the debug UI
     /// can edit them live.
     TerrainSettings& terrainSettings() { return m_terrainSettings; }
@@ -256,12 +225,6 @@ protected:
     /// The switch, the density, the blade height and the wind of the grass, exposed so
     /// the debug UI can edit them live.
     GrassSettings& grassSettings() { return m_grassSettings; }
-
-    /// How many tufts of grass are on the graphics card, for the debug UI.
-    std::size_t grassTuftCount() const { return m_grassRenderer.tuftCount(); }
-
-    /// How many chunks the tufts are grouped into, for the debug UI.
-    std::size_t grassChunkCount() const { return m_grassRenderer.chunkCount(); }
 
     /// The switch and the brightness of the sky, exposed so the debug UI can edit them
     /// live.
@@ -303,7 +266,7 @@ protected:
 
     /// The loaded models and textures, exposed so the debug UI can list them and change
     /// the texture filtering live.
-    assets::AssetCache& assets() { return m_assets; }
+    assets::AssetCache& assets() { return m_renderers.assets; }
 
     /// What the textured shader shows, exposed so the debug UI can switch it live.
     ViewMode& viewMode() { return m_viewMode; }
@@ -1074,39 +1037,10 @@ private:
 
     // OpenGL objects. They are members of a class derived from core::Application, so they
     // are created after the window and its OpenGL context, and destroyed before them.
-    //
-    // Order: members are constructed top to bottom. The renderers of the maze, the
-    // round and the terrain ask m_assets for their models and textures in their
-    // constructors, so they come after it.
-    // The shader programs (AppShaders), loaded from their files first.
+    // Members are constructed top to bottom: the shader programs first, then the models,
+    // the textures, the renderers and the targets of the passes (SceneRenderers).
     AppShaders m_shaders;
-    assets::AssetCache m_assets;
-    MazeRenderer m_mazeRenderer;
-    GameplayRenderer m_gameplayRenderer;
-    VillageRenderer m_villageRenderer;
-    InteractableRenderer m_interactableRenderer;
-    TerrainRenderer m_terrainRenderer;
-    LandRenderer m_landRenderer;
-    GrassRenderer m_grassRenderer;
-    PuddleRenderer m_puddleRenderer;
-    ColliderLines m_colliderLines;
-    LightRig m_lightRig;
-    Skybox m_skybox;
-    // The HDR framebuffer of the scene and the passes after the scene.
-    PostProcess m_postProcess;
-    // The timer queries of the passes of a frame.
-    GpuPassTimers m_gpuPasses;
-    // The depth texture the scene is drawn into from the direction of the moon.
-    ShadowMap m_moonShadowMap;
-    // The depth texture the scene is drawn into from the flashlight.
-    ShadowMap m_flashlightShadowMap;
-    // The framebuffer the minimap is drawn into and the buffer of its triangles.
-    MinimapRenderer m_minimapRenderer;
-    // What is behind the main menu: the video loop, its still picture, or nothing of
-    // its own when the live scene is shown there.
-    MenuBackgroundRenderer m_menuBackground;
-    // The layers of the storybook intro, loaded while it plays.
-    StorybookRenderer m_storybookRenderer;
+    SceneRenderers m_renderers;
 
     // What the player has set: read from the settings file at start-up (the defaults
     // without a file) and written back when it changed. m_savedSettings is what the
@@ -1266,7 +1200,7 @@ private:
     double m_revealSeconds = 0.0;
 
     // How the crystals and the puddles show the sky (edited by the debug UI). The
-    // puddles themselves are not kept: they are placed, handed to m_puddleRenderer and
+    // puddles themselves are not kept: they are placed, handed to m_renderers.puddleRenderer and
     // forgotten, like the tufts of the grass.
     EnvironmentSettings m_environment;
 

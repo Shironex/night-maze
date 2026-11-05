@@ -152,6 +152,7 @@ The class is one header and seven source files, split by what the functions do: 
 The state of the class is held in one member per system, each a struct or a small class in its own header in `src/app`, so the header of `NightMazeApp` reads as the coordinator:
 
 - `AppShaders`: the shader programs, loaded from their files in its constructor.
+- `SceneRenderers`: every other OpenGL object: the `AssetCache` first, then the renderers of the domains, the light buffer, the sky, `PostProcess`, the GPU timers, the two shadow maps, the minimap target, the menu background and the storybook layers.
 
 `src/app/main.cpp` holds the only class that knows both the game and the debug code: `DebugNightMazeApp` derives from `NightMazeApp`, owns `debug::DebugUI`, and draws it after the frame of the game. It hands the debug window a `debug::DebugContext`, a struct of references.
 

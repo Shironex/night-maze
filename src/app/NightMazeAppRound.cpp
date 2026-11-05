@@ -151,9 +151,9 @@ void NightMazeApp::updateMenuCameraSwitch() {
 void NightMazeApp::uploadGround() {
     // The triangles are built on the CPU (plain data, covered by tests) and copied to
     // the graphics card in one piece.
-    m_terrainRenderer.upload(buildTerrainMesh(m_mazeWorld.terrain));
+    m_renderers.terrainRenderer.upload(buildTerrainMesh(m_mazeWorld.terrain));
     // The land around the maze stands on the terrain and was placed with it.
-    m_landRenderer.upload(m_mazeWorld);
+    m_renderers.landRenderer.upload(m_mazeWorld);
     // The grass stands on the terrain, so new ground means new places for it.
     plantGrass();
     // The puddles lie on the terrain too: new ground means new water levels, and a new
@@ -165,19 +165,19 @@ void NightMazeApp::uploadGround() {
     ++m_groundVersion;
     // The boxes the culling tests: the walls, the pillars and the stone sheep stand
     // where the new world has put them, so their boxes are computed again, once, here.
-    m_mazeBounds = m_mazeRenderer.bounds(m_mazeWorld);
+    m_mazeBounds = m_renderers.mazeRenderer.bounds(m_mazeWorld);
 }
 
 void NightMazeApp::layPuddles() {
     m_environment.puddleShare = std::clamp(m_environment.puddleShare, 0.0F, MAX_PUDDLE_SHARE);
     const std::vector<Puddle> puddles = puddlesOnGround(m_mazeWorld, m_environment.puddleShare);
-    m_puddleRenderer.upload(m_mazeWorld.terrain, puddles);
+    m_renderers.puddleRenderer.upload(m_mazeWorld.terrain, puddles);
 }
 
 void NightMazeApp::plantGrass() {
     m_grassSettings.density = std::clamp(m_grassSettings.density, 0.0F, MAX_GRASS_DENSITY);
     const std::vector<GrassTuft> tufts = placeGrass(m_mazeWorld, m_grassSettings.density);
-    m_grassRenderer.upload(tufts);
+    m_renderers.grassRenderer.upload(tufts);
 }
 
 void NightMazeApp::beginRound() {
