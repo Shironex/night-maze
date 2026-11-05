@@ -5,7 +5,6 @@
 #include "game/Intro.hpp"
 #include "game/Lighting.hpp"
 #include "game/MenuCamera.hpp"
-#include "game/Shade.hpp"
 #include "game/Shadows.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeWorld.hpp"
@@ -15,6 +14,7 @@
 #include "game/round/Exit.hpp"
 #include "game/round/Flasks.hpp"
 #include "game/round/Round.hpp"
+#include "game/shade/Shade.hpp"
 #include "scene/Camera.hpp"
 #include "scene/LightSpace.hpp"
 

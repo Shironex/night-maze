@@ -1,7 +1,7 @@
-// Tests of the shade (game/Shade.hpp): where it starts, how it wanders, what it hears and
+// Tests of the shade (game/shade/Shade.hpp): where it starts, how it wanders, what it hears and
 // sees, when the flashlight is on it and burns it away, how it walks and when it catches,
 // and how a round carries it (game/round/Round.hpp).
-#include "game/Shade.hpp"
+#include "game/shade/Shade.hpp"
 
 #include "game/Lighting.hpp"
 #include "game/land/Terrain.hpp"

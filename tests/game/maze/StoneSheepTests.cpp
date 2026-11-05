@@ -4,7 +4,6 @@
 
 #include "assets/ObjLoader.hpp"
 #include "game/EnvironmentMapping.hpp"
-#include "game/Shade.hpp"
 #include "game/land/Grass.hpp"
 #include "game/land/Puddles.hpp"
 #include "game/land/Terrain.hpp"
@@ -19,6 +18,7 @@
 #include "game/round/Flasks.hpp"
 #include "game/round/GateLamp.hpp"
 #include "game/round/Round.hpp"
+#include "game/shade/Shade.hpp"
 #include "scene/Collider.hpp"
 
 #include <doctest/doctest.h>

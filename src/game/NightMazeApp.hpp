@@ -72,7 +72,7 @@ constexpr std::size_t NO_STORYBOOK_SOUND = static_cast<std::size_t>(-1);
 /// moon, by the flashlight of the player and by the glowing crystals. Grass grows along
 /// the walls, and above them is the night sky, a skybox.
 ///
-/// Through the same maze walks the shade (game/Shade.hpp), which moves only while the
+/// Through the same maze walks the shade (game/shade/Shade.hpp), which moves only while the
 /// flashlight is not on it and carries the player back to the start when it gets there.
 /// A calm night has none.
 ///

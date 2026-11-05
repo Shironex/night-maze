@@ -1,6 +1,6 @@
 # The shade has the night in its hood, and the burn shows there
 Status: accepted (2026-10-14)
-Code: tools/blender/build_shade.py, assets/models/shade_hollow.obj, assets/shaders/reflect.frag, src/game/NightMazeAppPasses.cpp, src/game/NightMazeAppRender.cpp, src/game/Shade.hpp
+Code: tools/blender/build_shade.py, assets/models/shade_hollow.obj, assets/shaders/reflect.frag, src/game/NightMazeAppPasses.cpp, src/game/NightMazeAppRender.cpp, src/game/shade/Shade.hpp
 
 Context: the story says the shadow is the hole a fallen piece leaves in the moon, and the 2.5 s of the burn could only be heard.
 Decision: a curved sheet lies 4 mm in front of the face in the hood, the size of what the hood shows of it (26 by 36 cm with its margin behind the brim), a model of its own with the lids of the two sleeves, drawn in the reflections pass. It shows the sky along the look of the eye, turned 0.35 rad about the vertical axis (`uSkyTurn`) and spread by 1 per metre from the middle of the face (`uSkySpread`), with every star drawn 0.3 degrees wider. The sky between the stars goes from 0.2 to 0.9 times the sky on the square of the burn progress. What is brighter than empty sky is added 3 times more at rest and 18 times right before the banish, in a straight line (`uStarBoost`). The sleeves hang empty: the hands of the generated model are taken out, and the holes they leave show the night too (see generated-shade-model).
