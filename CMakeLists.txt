@@ -507,6 +507,7 @@ add_executable(night_maze_tests
     tests/IntroTests.cpp
     tests/KeyBindingsTests.cpp
     tests/LandTests.cpp
+    tests/LayeringTests.cpp
     tests/LedgerTests.cpp
     tests/LightTests.cpp
     tests/LightingTests.cpp
