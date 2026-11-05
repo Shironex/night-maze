@@ -120,7 +120,7 @@ void NightMazeApp::drawCampaignSeed() {
 void NightMazeApp::enterCampaign() {
     // Without the card the intro cannot be shown: the campaign then begins with its
     // first night, like in a run that skips the intro.
-    const bool introPlays = m_campaignIntroPlays && m_cardDocument != ui::NO_DOCUMENT;
+    const bool introPlays = m_campaignIntroPlays && m_menus.cardDocument != ui::NO_DOCUMENT;
     const GameEvent event = campaignEntryEvent(campaignStage(m_settings.campaignNight), introPlays);
     if (event == GameEvent::AskNewCampaign) {
         handleGameEvent(event);
