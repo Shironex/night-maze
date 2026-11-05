@@ -65,8 +65,8 @@ void NightMazeApp::regenerateMaze(int night, std::uint32_t daily) {
     // A night of the campaign has a mix of notes and story lines of its own. They go
     // into a copy: the request above stays the one of free play, with its counter, so
     // a game of free play after a night is what it was before.
-    m_playedNight = night;
-    m_playedDaily = daily;
+    m_session.playedNight = night;
+    m_session.playedDaily = daily;
     const InteractableSettings built =
         night == 0 ? interactables : campaignInteractables(night, interactables);
 
@@ -82,7 +82,7 @@ void NightMazeApp::regenerateMaze(int night, std::uint32_t daily) {
                                  m_mazeSettings.crystalCount);
     // Until a new game or a night says otherwise (startNewGame, startNight), this is
     // a maze of no level.
-    m_playedDifficultyName = CUSTOM_DIFFICULTY_NAME;
+    m_session.playedDifficultyName = CUSTOM_DIFFICULTY_NAME;
     uploadGround();
     beginRound();
     // The menu camera walks the corridors of the maze, so a new maze is a new path.

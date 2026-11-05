@@ -145,13 +145,13 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
       m_mode(startMode(options)),
       // The game "Play" starts: the difficulty of the settings, and the seed of the
       // command line when one was named there. Otherwise the menu rolls one (below).
-      m_newGame{.difficulty = m_settings.difficulty, .seed = options.seed},
-      m_startSeed(options.seed),
-      m_toolRun(options.toolSwitch),
-      m_campaignIntroPlays(campaignIntroPlays(options)),
-      m_fixedDailyDate(fixedDailyDate(options)),
-      m_ledgerCounts(!options.toolSwitch),
-      m_playedDifficultyName(difficultyLevel(m_settings.difficulty).name),
+      m_session{.newGame = {.difficulty = m_settings.difficulty, .seed = options.seed},
+                .startSeed = options.seed,
+                .toolRun = options.toolSwitch,
+                .campaignIntroPlays = campaignIntroPlays(options),
+                .fixedDailyDate = fixedDailyDate(options),
+                .ledgerCounts = !options.toolSwitch,
+                .playedDifficultyName = difficultyLevel(m_settings.difficulty).name},
       m_menus(window()) {
     // The two lit programs and the two grass programs read the lights from the uniform
     // buffer of m_renderers.lightRig. Each program is told once: the shader repeats it by itself
@@ -354,7 +354,8 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     // The seed free play offers for the first game: the one of the command line, or
     // a random one.
     if (options.seedGiven) {
-        m_menus.ui.setValue(m_menus.freePlayDocument, SEED_ID, std::to_string(m_newGame.seed));
+        m_menus.ui.setValue(m_menus.freePlayDocument, SEED_ID,
+                            std::to_string(m_session.newGame.seed));
     } else {
         rollSeed();
     }

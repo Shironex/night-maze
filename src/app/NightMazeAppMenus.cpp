@@ -104,7 +104,7 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
     // one of the campaign (fillRoundEndDocument), and the same rule is asked again here.
     if (action == NEXT_NIGHT_ACTION) {
         if (m_mode == GameMode::RoundEnd && nightEndOffer() == NightEndOffer::NextNight) {
-            beginCampaignNight(m_playedNight + 1);
+            beginCampaignNight(m_session.playedNight + 1);
         }
         return true;
     }
@@ -128,10 +128,11 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
     // a level. The choice is a setting too, so the next start of the game shows it.
     const std::string difficultyPrefix = DIFFICULTY_ID_PREFIX;
     if (action.starts_with(difficultyPrefix)) {
-        if (!difficultyFromKey(action.substr(difficultyPrefix.size()), m_newGame.difficulty)) {
+        if (!difficultyFromKey(action.substr(difficultyPrefix.size()),
+                               m_session.newGame.difficulty)) {
             return false;
         }
-        m_settings.difficulty = m_newGame.difficulty;
+        m_settings.difficulty = m_session.newGame.difficulty;
         fillFreePlayDocument();
         return true;
     }
@@ -322,7 +323,7 @@ bool NightMazeApp::readSeedField() {
         rollSeed();
         return true;
     }
-    if (!parseSeed(text, m_newGame.seed)) {
+    if (!parseSeed(text, m_session.newGame.seed)) {
         m_menus.ui.setText(m_menus.freePlayDocument, SEED_HINT_ID, SEED_HINT_TEXT);
         return false;
     }
@@ -331,8 +332,8 @@ bool NightMazeApp::readSeedField() {
 }
 
 void NightMazeApp::rollSeed() {
-    m_newGame.seed = randomSeed();
-    m_menus.ui.setValue(m_menus.freePlayDocument, SEED_ID, std::to_string(m_newGame.seed));
+    m_session.newGame.seed = randomSeed();
+    m_menus.ui.setValue(m_menus.freePlayDocument, SEED_ID, std::to_string(m_session.newGame.seed));
     m_menus.ui.setText(m_menus.freePlayDocument, SEED_HINT_ID, "");
 }
 
@@ -377,14 +378,14 @@ void NightMazeApp::fillFreePlayDocument() {
     for (const Difficulty difficulty : ALL_DIFFICULTIES) {
         m_menus.ui.setClass(m_menus.freePlayDocument,
                             std::string(DIFFICULTY_ID_PREFIX) + difficultyLevel(difficulty).key,
-                            CHOSEN_CLASS, difficulty == m_newGame.difficulty);
+                            CHOSEN_CLASS, difficulty == m_session.newGame.difficulty);
     }
 
     // The switch "Calm night": a class moves its knob.
     m_menus.ui.setClass(m_menus.freePlayDocument, CALM_NIGHT_ID, ON_CLASS, m_settings.calmNight);
 
     // The info block: what the chosen level means in numbers.
-    const DifficultyLevel& level = difficultyLevel(m_newGame.difficulty);
+    const DifficultyLevel& level = difficultyLevel(m_session.newGame.difficulty);
     m_menus.ui.setText(m_menus.freePlayDocument, INFO_MAZE_ID,
                        std::to_string(level.mazeWidth) + " x " + std::to_string(level.mazeHeight));
     m_menus.ui.setText(
@@ -466,7 +467,7 @@ void NightMazeApp::scrollLedger() {
 
 void NightMazeApp::markOpenNoteRead() {
     // A run driven by a tool writes no progress, like its night and its maze of the day.
-    if (!m_ledgerCounts || !m_round.noteOpen ||
+    if (!m_session.ledgerCounts || !m_round.noteOpen ||
         m_round.noteIndex >= m_mazeWorld.interactables.notes.size()) {
         return;
     }
@@ -481,7 +482,7 @@ void NightMazeApp::markOpenNoteRead() {
 }
 
 void NightMazeApp::fillPauseDocument() {
-    m_menus.ui.setText(m_menus.pauseDocument, DIFFICULTY_ID, m_playedDifficultyName);
+    m_menus.ui.setText(m_menus.pauseDocument, DIFFICULTY_ID, m_session.playedDifficultyName);
     m_menus.ui.setText(m_menus.pauseDocument, SEED_ID, std::to_string(m_mazeWorld.seed));
 }
 
@@ -496,19 +497,19 @@ void NightMazeApp::fillRoundEndDocument() {
     // title. In free play that line is empty and takes no room.
     // After the maze of the day the line says "New best" or names the time to beat, and
     // the row names the day.
-    const bool night = m_playedNight != 0;
-    const bool daily = m_playedDaily != NO_DAILY_DATE;
+    const bool night = m_session.playedNight != 0;
+    const bool daily = m_session.playedDaily != NO_DAILY_DATE;
     std::string line;
     std::string levelName = DIFFICULTY_ROW_NAME;
-    std::string level = m_playedDifficultyName;
+    std::string level = m_session.playedDifficultyName;
     if (night) {
-        line = campaignNight(m_playedNight).endLine;
-        levelName = campaignNightLabel(m_playedNight);
-        level = campaignNight(m_playedNight).title;
+        line = campaignNight(m_session.playedNight).endLine;
+        levelName = campaignNightLabel(m_session.playedNight);
+        level = campaignNight(m_session.playedNight).title;
     } else if (daily) {
-        line = dailyResultLine(m_dailyWin);
+        line = dailyResultLine(m_session.dailyWin);
         levelName = DATE_ROW_NAME;
-        level = dailyDateText(m_playedDaily);
+        level = dailyDateText(m_session.playedDaily);
     }
     m_menus.ui.setText(m_menus.roundEndDocument, NIGHT_LINE_ID, line);
     // After a night the camera shows the village beside the card (villageRevealShown):

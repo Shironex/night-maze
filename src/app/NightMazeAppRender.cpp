@@ -711,12 +711,13 @@ NightLights NightMazeApp::nightLightsFor(const FrameScreen& screen, const FrameV
     // How many nights are lit is a rule of the campaign. The live scene behind a menu and
     // a maze of free play show the progress of the campaign, a night shows itself, and the
     // intro, which tells that the lamps have gone out, shows none.
-    const bool ownNight = m_playedNight != 0 && !usesMenuCamera(m_mode);
+    const bool ownNight = m_session.playedNight != 0 && !usesMenuCamera(m_mode);
     const bool nightWon = m_mode == GameMode::RoundEnd || m_mode == GameMode::VillageBeat ||
                           m_mode == GameMode::EndingCard;
-    const int nightsLit = screen.intro ? 0
-                                       : villageNightsLit(ownNight ? m_playedNight : 0, nightWon,
-                                                          m_settings.campaignNight, m_toolRun);
+    const int nightsLit = screen.intro
+                              ? 0
+                              : villageNightsLit(ownNight ? m_session.playedNight : 0, nightWon,
+                                                 m_settings.campaignNight, m_session.toolRun);
     // The lights of the night that was just won come on while the reveal looks at them.
     const float newestLight =
         frame.reveal ? villageNewLightStrength(static_cast<float>(m_story.revealSeconds)) : 1.0F;
