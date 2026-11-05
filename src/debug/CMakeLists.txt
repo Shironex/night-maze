@@ -9,6 +9,7 @@ target_sources(night_maze PRIVATE
     Hud.hpp
     HudCanvas.cpp
     HudCards.cpp
+    HudColors.hpp
     HudInstruments.cpp
     HudRules.cpp
     HudRules.hpp

@@ -2,8 +2,8 @@
 // the loudness ticks, the sentences that come and go and the name of the night.
 #include "debug/HudShared.hpp"
 
+#include "debug/HudColors.hpp"
 #include "debug/HudRules.hpp"
-#include "debug/Theme.hpp"
 #include "game/Campaign.hpp"
 #include "game/Daily.hpp"
 #include "game/Player.hpp"
@@ -190,7 +190,7 @@ void drawLampGauge(Canvas canvas, const game::Round& round,
     const float thickness = LAMP_RING_THICKNESS * scale;
     const float pathRadius = radius - thickness / 2.0F;
     // The fourth argument is the number of straight pieces: 0 lets ImGui choose.
-    canvas.list->AddCircle(center, pathRadius, ink(canvas, TEXT_COLOR, TRACK_OPACITY), 0,
+    canvas.list->AddCircle(center, pathRadius, ink(canvas, HUD_TEXT_COLOR, TRACK_OPACITY), 0,
                            thickness);
     if (round.battery > 0.0F) {
         // Angles are in radians, 0 points to the right and they grow clockwise (y grows
@@ -216,17 +216,17 @@ void drawLampGauge(Canvas canvas, const game::Round& round,
     // number never disagrees with the label LOW next to it.
     std::snprintf(number.data(), number.size(), "%.0f", std::floor(round.battery * PERCENT));
     const ImVec2 numberPlace{left, top + lineInset(canvas, NUMBER_FONT_SIZE)};
-    drawText(canvas, numberPlace, NUMBER_FONT_SIZE, low ? color : TEXT_COLOR, number.data());
+    drawText(canvas, numberPlace, NUMBER_FONT_SIZE, low ? color : HUD_TEXT_COLOR, number.data());
     // The percent sign is smaller and stands on the same base line as the number.
     const ImVec2 percentPlace{numberPlace.x + textWidth(canvas, NUMBER_FONT_SIZE, number.data()) +
                                   LAMP_PERCENT_GAP * scale,
                               numberPlace.y + baseLine(canvas, NUMBER_FONT_SIZE) -
                                   baseLine(canvas, SMALL_FONT_SIZE)};
-    drawText(canvas, percentPlace, SMALL_FONT_SIZE, TEXT_DIM_COLOR, "%");
+    drawText(canvas, percentPlace, SMALL_FONT_SIZE, HUD_TEXT_DIM_COLOR, "%");
 
     const ImVec2 labelPlace{left, top + numberLine + LAMP_LINE_GAP * scale +
                                       lineInset(canvas, LABEL_FONT_SIZE)};
-    drawSpacedText(canvas, labelPlace, LABEL_FONT_SIZE, low ? color : TEXT_DIM_COLOR,
+    drawSpacedText(canvas, labelPlace, LABEL_FONT_SIZE, low ? color : HUD_TEXT_DIM_COLOR,
                    low ? "LOW" : "LAMP");
 }
 
@@ -249,7 +249,8 @@ void drawCrystalCounter(const Canvas& canvas, const game::Round& round) {
     const float textLeft = right - haveWidth - needWidth;
     const float textTop = corner.y + lineInset(canvas, NUMBER_FONT_SIZE);
     drawText(canvas, {textLeft, textTop}, NUMBER_FONT_SIZE, HUD_CRYSTAL_COLOR, have.data());
-    drawText(canvas, {textLeft + haveWidth, textTop}, NUMBER_FONT_SIZE, TEXT_COLOR, need.data());
+    drawText(canvas, {textLeft + haveWidth, textTop}, NUMBER_FONT_SIZE, HUD_TEXT_COLOR,
+             need.data());
 
     // The little crystal in front of it: a diamond, level with the middle of the row.
     const ImVec2 gem{textLeft - GEM_GAP * scale, corner.y + rowHeight / 2.0F};
@@ -268,7 +269,7 @@ void drawCrystalCounter(const Canvas& canvas, const game::Round& round) {
     const float barTop = corner.y + rowHeight + CRYSTAL_ROW_GAP * scale;
     const float barBottom = barTop + CRYSTAL_BAR_HEIGHT * scale;
     canvas.list->AddRectFilled({barLeft, barTop}, {right, barBottom},
-                               ink(canvas, TEXT_COLOR, TRACK_OPACITY));
+                               ink(canvas, HUD_TEXT_COLOR, TRACK_OPACITY));
     const int total = game::crystalTotal(round);
     // A maze without crystals has nothing to fill the bar with and no place for a tick,
     // and it must not be divided by.
@@ -284,7 +285,7 @@ void drawCrystalCounter(const Canvas& canvas, const game::Round& round) {
         const float overhang = CRYSTAL_TICK_OVERHANG * scale;
         canvas.list->AddRectFilled({tick, barTop - overhang},
                                    {tick + CRYSTAL_TICK_WIDTH * scale, barBottom + overhang},
-                                   ink(canvas, TEXT_COLOR));
+                                   ink(canvas, HUD_TEXT_COLOR));
     }
 
     // The third row, dim: the time at the right edge, and left of it how many crystals
@@ -293,7 +294,7 @@ void drawCrystalCounter(const Canvas& canvas, const game::Round& round) {
     const float subTop = barBottom + CRYSTAL_ROW_GAP * scale + lineInset(canvas, SMALL_FONT_SIZE);
     const std::array<char, TIME_TEXT_SIZE> time = timeText(round.elapsedSeconds);
     const float timeLeft = right - textWidth(canvas, SMALL_FONT_SIZE, time.data());
-    drawText(canvas, {timeLeft, subTop}, SMALL_FONT_SIZE, TEXT_DIM_COLOR, time.data());
+    drawText(canvas, {timeLeft, subTop}, SMALL_FONT_SIZE, HUD_TEXT_DIM_COLOR, time.data());
     const float subRight = timeLeft - CRYSTAL_SUB_GAP * scale;
     if (round.gateOpen) {
         constexpr std::string_view GATE_OPEN = "GATE OPEN";
@@ -307,7 +308,7 @@ void drawCrystalCounter(const Canvas& canvas, const game::Round& round) {
         std::array<char, NUMBER_TEXT_SIZE> all{};
         std::snprintf(all.data(), all.size(), "of %d", total);
         drawText(canvas, {subRight - textWidth(canvas, SMALL_FONT_SIZE, all.data()), subTop},
-                 SMALL_FONT_SIZE, TEXT_DIM_COLOR, all.data());
+                 SMALL_FONT_SIZE, HUD_TEXT_DIM_COLOR, all.data());
     }
 }
 
@@ -357,12 +358,12 @@ void drawStaminaLine(Canvas canvas, const game::Stamina& stamina, float flaskFra
     const float top = middle.y;
     const float bottom = top + STAMINA_LINE_HEIGHT * scale;
     canvas.list->AddRectFilled({middle.x - half, top}, {middle.x + half, bottom},
-                               ink(canvas, TEXT_COLOR, TRACK_OPACITY));
+                               ink(canvas, HUD_TEXT_COLOR, TRACK_OPACITY));
 
     // The two marks at the ends of a full line.
     const float mark = STAMINA_MARK_WIDTH * scale;
     const float overhang = STAMINA_MARK_OVERHANG * scale;
-    const ImU32 markColor = ink(canvas, TEXT_DIM_COLOR);
+    const ImU32 markColor = ink(canvas, HUD_TEXT_DIM_COLOR);
     canvas.list->AddRectFilled({middle.x - half, top - overhang},
                                {middle.x - half + mark, bottom + overhang}, markColor);
     canvas.list->AddRectFilled({middle.x + half - mark, top - overhang},
@@ -432,7 +433,7 @@ void drawNoiseTicks(const Canvas& canvas, const game::Round& round,
     for (int i = 0; i < game::NOISE_TICK_COUNT; ++i) {
         const float height = NOISE_TICK_HEIGHTS.at(static_cast<std::size_t>(i)) * scale;
         const ImU32 color =
-            i < lit ? ink(canvas, TEXT_COLOR) : ink(canvas, TEXT_COLOR, TRACK_OPACITY);
+            i < lit ? ink(canvas, HUD_TEXT_COLOR) : ink(canvas, HUD_TEXT_COLOR, TRACK_OPACITY);
         canvas.list->AddRectFilled({left, bottomMiddle.y - height},
                                    {left + NOISE_TICK_WIDTH * scale, bottomMiddle.y}, color);
         left += step;
@@ -452,7 +453,7 @@ void drawHintLine(Canvas canvas, const game::Round& round, const game::Player& p
     // The sentence that is drawn, how long ago its moment was and how much of it can
     // still be seen.
     std::array<char, HINT_TEXT_SIZE> text{};
-    ImVec4 color = TEXT_COLOR;
+    ImVec4 color = HUD_TEXT_COLOR;
     float newest = FLT_MAX;
     float opacity = 0.0F;
     // Takes a sentence when it can still be seen and is newer than the one so far. True
@@ -558,7 +559,7 @@ void drawNightName(Canvas canvas, const game::Round& round, int playedNight,
 
     const ImVec2 corner = windowPoint(NIGHT_NAME_PLACE);
     drawSpacedText(canvas, {corner.x, corner.y + lineInset(canvas, LABEL_FONT_SIZE)},
-                   LABEL_FONT_SIZE, TEXT_DIM_COLOR, label);
+                   LABEL_FONT_SIZE, HUD_TEXT_DIM_COLOR, label);
     const float titleTop =
         corner.y + (LABEL_FONT_SIZE * LINE_HEIGHT + NIGHT_NAME_LINE_GAP) * canvas.scale;
     drawText(canvas, {corner.x, titleTop + lineInset(canvas, NUMBER_FONT_SIZE)}, NUMBER_FONT_SIZE,

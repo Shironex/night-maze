@@ -2,7 +2,7 @@
 // catch and the "You escaped" card.
 #include "debug/HudShared.hpp"
 
-#include "debug/Theme.hpp"
+#include "debug/HudColors.hpp"
 #include "game/Interaction.hpp"
 #include "game/KeyBindings.hpp"
 #include "game/MazeWorld.hpp"
@@ -193,7 +193,7 @@ void drawPrompt(const Canvas& canvas, const game::PickState& pick, const game::K
     // then outlined.
     canvas.list->AddRectFilled(pillMin, pillMax, ink(canvas, HUD_SHADOW_COLOR, PROMPT_PILL_OPACITY),
                                PROMPT_ROUNDING * scale);
-    canvas.list->AddRect(pillMin, pillMax, ink(canvas, LINE_COLOR), PROMPT_ROUNDING * scale,
+    canvas.list->AddRect(pillMin, pillMax, ink(canvas, HUD_LINE_COLOR), PROMPT_ROUNDING * scale,
                          PROMPT_OUTLINE * scale);
 
     const ImVec4& color = HUD_CROSSHAIR_ACTIVE_COLOR;
