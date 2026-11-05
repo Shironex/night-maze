@@ -71,14 +71,14 @@ void NightMazeApp::regenerateMaze(int night, std::uint32_t daily) {
         night == 0 ? interactables : campaignInteractables(night, interactables);
 
     // The height scale can be typed into its slider too.
-    m_terrainSettings.heightScale =
-        std::clamp(m_terrainSettings.heightScale, MIN_HEIGHT_SCALE, MAX_HEIGHT_SCALE);
+    m_renderSettings.terrainSettings.heightScale = std::clamp(
+        m_renderSettings.terrainSettings.heightScale, MIN_HEIGHT_SCALE, MAX_HEIGHT_SCALE);
 
     // Replaces the maze, its terrain, the model matrices, the collision boxes, the exit,
     // the crystals, the levers and the notes in one assignment. A new maze is a new
     // round.
     m_mazeWorld = buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed,
-                                 m_heightmap, m_terrainSettings.heightScale, built,
+                                 m_heightmap, m_renderSettings.terrainSettings.heightScale, built,
                                  m_mazeSettings.crystalCount);
     // Until a new game or a night says otherwise (startNewGame, startNight), this is
     // a maze of no level.
@@ -90,12 +90,12 @@ void NightMazeApp::regenerateMaze(int night, std::uint32_t daily) {
 }
 
 void NightMazeApp::rebuildTerrain() {
-    m_terrainSettings.heightScale =
-        std::clamp(m_terrainSettings.heightScale, MIN_HEIGHT_SCALE, MAX_HEIGHT_SCALE);
+    m_renderSettings.terrainSettings.heightScale = std::clamp(
+        m_renderSettings.terrainSettings.heightScale, MIN_HEIGHT_SCALE, MAX_HEIGHT_SCALE);
 
     // The world: a new terrain, and the walls, the gate, the start, the exit, the levers
     // and the notes on it.
-    placeOnTerrain(m_mazeWorld, m_heightmap, m_terrainSettings.heightScale);
+    placeOnTerrain(m_mazeWorld, m_heightmap, m_renderSettings.terrainSettings.heightScale);
 
     // What copied heights out of the world. The crystals keep their state (collected or
     // not), only their resting places move. The obstacle list is a copy of the boxes.
@@ -169,14 +169,18 @@ void NightMazeApp::uploadGround() {
 }
 
 void NightMazeApp::layPuddles() {
-    m_environment.puddleShare = std::clamp(m_environment.puddleShare, 0.0F, MAX_PUDDLE_SHARE);
-    const std::vector<Puddle> puddles = puddlesOnGround(m_mazeWorld, m_environment.puddleShare);
+    m_renderSettings.environment.puddleShare =
+        std::clamp(m_renderSettings.environment.puddleShare, 0.0F, MAX_PUDDLE_SHARE);
+    const std::vector<Puddle> puddles =
+        puddlesOnGround(m_mazeWorld, m_renderSettings.environment.puddleShare);
     m_renderers.puddleRenderer.upload(m_mazeWorld.terrain, puddles);
 }
 
 void NightMazeApp::plantGrass() {
-    m_grassSettings.density = std::clamp(m_grassSettings.density, 0.0F, MAX_GRASS_DENSITY);
-    const std::vector<GrassTuft> tufts = placeGrass(m_mazeWorld, m_grassSettings.density);
+    m_renderSettings.grassSettings.density =
+        std::clamp(m_renderSettings.grassSettings.density, 0.0F, MAX_GRASS_DENSITY);
+    const std::vector<GrassTuft> tufts =
+        placeGrass(m_mazeWorld, m_renderSettings.grassSettings.density);
     m_renderers.grassRenderer.upload(tufts);
 }
 

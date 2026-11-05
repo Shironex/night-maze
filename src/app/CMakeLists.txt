@@ -14,6 +14,7 @@ target_sources(night_maze PRIVATE
     NightMazeAppRound.cpp
     NightMazeAppScreens.cpp
     NightMazeAppShared.hpp
+    RenderSettings.hpp
     SceneRenderers.cpp
     SceneRenderers.hpp
     main.cpp
