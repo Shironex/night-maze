@@ -97,8 +97,6 @@ target_sources(game_logic PRIVATE
 
 # The application and the classes that draw: they need a window and an OpenGL context.
 target_sources(night_maze PRIVATE
-    ColliderLines.cpp
-    ColliderLines.hpp
     GameplayRenderer.cpp
     GameplayRenderer.hpp
     GrassRenderer.cpp

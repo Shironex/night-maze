@@ -62,7 +62,7 @@ Directory map:
 - `src/scene`: `Camera`, `Transform`, colliders, ray casts, the frustum of a camera or a light (`Frustum`), lights as plain data.
 - `src/assets`: OBJ and image loaders, `AssetCache`.
 - `src/game`: the rules, the renderers and the application class.
-- `src/render`: the helpers of the passes of a frame that hold no rule of the game: the names of the shader uniforms (`ShaderUniforms.hpp`), the GPU timers of the passes (`GpuPasses`), the uniform buffer of the lights (`LightRig`), the draw of a model with its culling test (`ModelDraw`).
+- `src/render`: the helpers of the passes of a frame that hold no rule of the game: the names of the shader uniforms (`ShaderUniforms.hpp`), the GPU timers of the passes (`GpuPasses`), the uniform buffer of the lights (`LightRig`), the draw of a model with its culling test (`ModelDraw`), the lines of the debug view of the colliders (`ColliderLines`).
 - `src/hud`: the HUD of a round (gauges, counters, crosshair, prompt, cards), drawn with Dear ImGui, its colours, and the arithmetic of its scale and its sentences (`HudRules`).
 - `src/debug`: the debug window and its seven categories in `src/debug/categories`.
 - `assets/shaders` (shared parts in `assets/shaders/common`, full screen passes in `assets/shaders/post`), `assets/ui` (RML documents and one style sheet), `assets/models`, `assets/textures`, `assets/skybox`, `assets/audio`, `assets/video`, `assets/fonts`.
