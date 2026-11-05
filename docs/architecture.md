@@ -159,6 +159,7 @@ The state of the class is held in one member per system, each a struct or a smal
 - `StoryState`: the clocks of the intro, of the cards of the nights and of the reveal of the village, and the storybook with its pictures and sounds.
 - `SoundState`: the `audio::AudioEngine`, what was played last, the sample of the wind, and which loops and music pieces are on.
 - `RoundClocks`: the clocks and counters of a played round that `game::Round` does not hold: the catch, the low battery pulse, the winded breath, the bell of the gate and its swing, the passages to the exit, the steps, the last caught line.
+- `SessionState`: the game in play (the start of the next game, the night and the daily maze being played and what they count) and what the command line said about the run (the start seed, the tool switch, the fixed date of the daily maze, whether the intro plays and the ledger counts).
 
 `src/app/main.cpp` holds the only class that knows both the game and the debug code: `DebugNightMazeApp` derives from `NightMazeApp`, owns `debug::DebugUI`, and draws it after the frame of the game. It hands the debug window a `debug::DebugContext`, a struct of references.
 

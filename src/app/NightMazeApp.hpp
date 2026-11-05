@@ -7,6 +7,7 @@
 #include "app/RenderSettings.hpp"
 #include "app/RoundClocks.hpp"
 #include "app/SceneRenderers.hpp"
+#include "app/SessionState.hpp"
 #include "app/SoundState.hpp"
 #include "app/StoryState.hpp"
 #include "core/Application.hpp"
@@ -268,15 +269,15 @@ protected:
     /// The campaign as the settings file has it (the next night, the seed, the best
     /// times) and the night that is in play (0 in free play), for the debug UI.
     const GameSettings& settings() const { return m_settings; }
-    int playedNight() const { return m_playedNight; }
+    int playedNight() const { return m_session.playedNight; }
 
     /// The day of the maze of the day that is in play (game/round/Daily.hpp), or NO_DAILY_DATE,
     /// for the HUD: it names the maze in the first seconds of a round.
-    std::uint32_t playedDaily() const { return m_playedDaily; }
+    std::uint32_t playedDaily() const { return m_session.playedDaily; }
 
     /// What the debug UI asks of the campaign (game::CampaignRequest): it writes, and the
     /// next frame does it.
-    CampaignRequest& campaignRequest() { return m_campaignRequest; }
+    CampaignRequest& campaignRequest() { return m_session.campaignRequest; }
 
 private:
     // Camera turn for one screen coordinate unit of mouse movement, in degrees. The mouse
@@ -288,7 +289,7 @@ private:
     /// it (beginRound). night is the night of the campaign the maze is built for: its
     /// notes are then the ones of that night (game::campaignInteractables). 0 is a maze
     /// of free play or one the debug UI asked for, with the notes of m_mazeSettings.
-    /// daily is the day of a maze of the day (m_playedDaily), or NO_DAILY_DATE.
+    /// daily is the day of a maze of the day (m_session.playedDaily), or NO_DAILY_DATE.
     void regenerateMaze(int night = 0, std::uint32_t daily = NO_DAILY_DATE);
 
     /// Builds the terrain of the maze in play again with the height scale of
@@ -368,9 +369,9 @@ private:
     /// (game::applySetting) and uses them at once.
     void handleControlChanges();
 
-    /// Reads the seed field of the free play screen into m_newGame.seed. An empty field takes
-    /// a random seed. False when the field holds something that is not a seed: a hint
-    /// is then shown next to it, and the game is not started.
+    /// Reads the seed field of the free play screen into m_session.newGame.seed. An empty field
+    /// takes a random seed. False when the field holds something that is not a seed: a hint is then
+    /// shown next to it, and the game is not started.
     bool readSeedField();
 
     /// Chooses a random seed for the next game and writes it into the seed field of
@@ -594,7 +595,7 @@ private:
     void drawVillage(const glm::mat4& view, const glm::mat4& projection, float farPlane,
                      int nightsLit, float newestStrength) const;
 
-    /// Does what the debug UI asked of the campaign (m_campaignRequest) and clears the
+    /// Does what the debug UI asked of the campaign (m_session.campaignRequest) and clears the
     /// request. Called once per frame.
     void handleCampaignRequest();
 
@@ -988,44 +989,8 @@ private:
     // The screen the game is on. It starts with the main menu, or straight in a round
     // when the command line asked for that.
     GameMode m_mode = GameMode::MainMenu;
-    // The game the button "Play" starts: the difficulty chosen on the free play screen
-    // and the seed its seed field shows.
-    NewGame m_newGame;
-    // The night of the campaign that is in play, 1 to CAMPAIGN_NIGHT_COUNT, or 0 for
-    // a maze of free play and for one the debug UI asked for. Set whenever a maze is
-    // built (regenerateMaze).
-    int m_playedNight = 0;
-    // True when winning the night in play changes the campaign of the settings file.
-    // False for a night started from the command line (--night), which has a campaign
-    // seed of its own, and after the debug UI changed the campaign under a running night.
-    bool m_nightCounts = false;
-    // The day of the maze of the day that is in play (game/round/Daily.hpp), or NO_DAILY_DATE
-    // for every other maze. Set whenever a maze is built (regenerateMaze).
-    std::uint32_t m_playedDaily = NO_DAILY_DATE;
-    // The last win of a maze of the day: the record after it and whether it was a new
-    // best, for the result screen (finishRound).
-    DailyWin m_dailyWin;
-    // What the debug UI asks of the campaign (handleCampaignRequest).
-    CampaignRequest m_campaignRequest;
-    // The seed of the command line (StartOptions::seed): the maze behind the main menu
-    // is built from it again when the intro, which has a maze of its own, is over.
-    std::uint32_t m_startSeed = DEFAULT_MAZE_SEED;
-    // StartOptions::toolSwitch: a run driven by a tool shows the village dark unless it
-    // names its night (game::villageNightsLit).
-    bool m_toolRun = false;
-    // True when a campaign that is begun in this run plays the intro first
-    // (game::campaignIntroPlays of the command line).
-    bool m_campaignIntroPlays = true;
-    // The day of "Tonight's hedge" in a run that must not ask the clock
-    // (game::fixedDailyDate), or NO_DAILY_DATE. Such a run never writes a best time.
-    std::uint32_t m_fixedDailyDate = NO_DAILY_DATE;
-    // True when a note that is read in this run goes into the ledger of the settings
-    // file. False in a run with a tool switch (StartOptions::toolSwitch): its notes are
-    // read by scripts.
-    bool m_ledgerCounts = true;
-    // The name of the difficulty of the game in play, for the pause menu and the
-    // result screen: the name of a level, or "Custom" for a maze the debug UI asked for.
-    std::string m_playedDifficultyName;
+    // The game in play and what the command line said about the run (SessionState).
+    SessionState m_session;
 
     // Whether the window was the active one in the frame before: the frame in which it
     // stops being active pauses a running round.

@@ -20,6 +20,7 @@ target_sources(night_maze PRIVATE
     RoundClocks.hpp
     SceneRenderers.cpp
     SceneRenderers.hpp
+    SessionState.hpp
     SoundState.hpp
     StoryState.hpp
     main.cpp

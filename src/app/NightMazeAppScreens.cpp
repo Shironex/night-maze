@@ -74,9 +74,9 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
         // in free play starts the seed its field shows (handleMenuActions has read
         // it).
         if (event == GameEvent::NewMaze) {
-            m_newGame.seed = randomSeed();
+            m_session.newGame.seed = randomSeed();
         }
-        startNewGame(m_newGame);
+        startNewGame(m_session.newGame);
     } else if (newRound || roundInsteadOfMenu) {
         beginRound();
     }
@@ -165,7 +165,7 @@ void NightMazeApp::showScreen() {
     }
     // The result screen of a night opens with the keyboard on its first button, so Enter
     // carries on. The document names "Play again" (autofocus), which is gone there.
-    if (m_mode == GameMode::RoundEnd && m_playedNight != 0) {
+    if (m_mode == GameMode::RoundEnd && m_session.playedNight != 0) {
         m_menus.ui.focus(m_menus.roundEndDocument, nightEndOffer() == NightEndOffer::NextNight
                                                        ? NEXT_NIGHT_ID
                                                        : BACK_TO_NIGHTS_ID);
@@ -247,14 +247,14 @@ void NightMazeApp::startStoryCard() {
         handleGameEvent(GameEvent::CardFinished);
         return;
     }
-    if (m_mode == GameMode::NightCard && m_playedDaily != NO_DAILY_DATE) {
+    if (m_mode == GameMode::NightCard && m_session.playedDaily != NO_DAILY_DATE) {
         // The maze of the day: its name and its day.
-        const std::string day = dailyDateText(m_playedDaily);
+        const std::string day = dailyDateText(m_session.playedDaily);
         writeCardLines({DAILY_NAME, day.c_str(), "", ""}, true);
     } else if (m_mode == GameMode::NightCard) {
         // "Night 2" and the name of the night.
-        const std::string label = campaignNightLabel(m_playedNight);
-        writeCardLines({label.c_str(), campaignNight(m_playedNight).title, "", ""}, true);
+        const std::string label = campaignNightLabel(m_session.playedNight);
+        writeCardLines({label.c_str(), campaignNight(m_session.playedNight).title, "", ""}, true);
     } else {
         // The ending card: its third line says whether a crystal was left in the maze.
         const bool crystalsLeft = m_round.collectedCount < crystalTotal(m_round);
@@ -326,7 +326,7 @@ void NightMazeApp::updateVillageBeat() {
 bool NightMazeApp::villageRevealShown() const {
     const bool won = m_mode == GameMode::RoundEnd || m_mode == GameMode::VillageBeat ||
                      m_mode == GameMode::EndingCard;
-    return won && m_playedNight != 0 && m_mazeWorld.hasGate;
+    return won && m_session.playedNight != 0 && m_mazeWorld.hasGate;
 }
 
 void NightMazeApp::updateIntro() {
@@ -448,7 +448,7 @@ void NightMazeApp::leaveIntro(bool intoNight) {
     // settings file, with the line of the intro in it. The time is logged, because the
     // menu waits for it: it is the price of an intro with a maze of its own.
     const double started = glfwGetTime();
-    startNewGame({.difficulty = m_newGame.difficulty, .seed = m_startSeed});
+    startNewGame({.difficulty = m_session.newGame.difficulty, .seed = m_session.startSeed});
     core::logInfo("The intro is over: the maze of the main menu was built in " +
                   std::to_string(std::lround((glfwGetTime() - started) * MILLISECONDS_PER_SECOND)) +
                   " ms");

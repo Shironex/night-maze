@@ -62,7 +62,7 @@ void NightMazeApp::startNewGame(const NewGame& newGame, std::uint32_t daily) {
     m_mazeSettings.seed = newGame.seed;
     m_mazeSettings.regenerate = false;
     regenerateMaze(0, daily);
-    m_playedDifficultyName = daily == NO_DAILY_DATE ? level.name : DAILY_NAME;
+    m_session.playedDifficultyName = daily == NO_DAILY_DATE ? level.name : DAILY_NAME;
 
     // The difficulty that was just played is the one free play starts with next time,
     // so it is written to the settings file now.
@@ -89,8 +89,8 @@ void NightMazeApp::startNight(int night, std::uint32_t campaignSeed, bool counts
     m_mazeSettings.seed = campaignNightSeed(campaignSeed, night);
     m_mazeSettings.regenerate = false;
     regenerateMaze(night);
-    m_playedDifficultyName = campaignNightName(night);
-    m_nightCounts = counts;
+    m_session.playedDifficultyName = campaignNightName(night);
+    m_session.nightCounts = counts;
 }
 
 void NightMazeApp::beginCampaignNight(int night) {
@@ -120,7 +120,7 @@ void NightMazeApp::drawCampaignSeed() {
 void NightMazeApp::enterCampaign() {
     // Without the card the intro cannot be shown: the campaign then begins with its
     // first night, like in a run that skips the intro.
-    const bool introPlays = m_campaignIntroPlays && m_menus.cardDocument != ui::NO_DOCUMENT;
+    const bool introPlays = m_session.campaignIntroPlays && m_menus.cardDocument != ui::NO_DOCUMENT;
     const GameEvent event = campaignEntryEvent(campaignStage(m_settings.campaignNight), introPlays);
     if (event == GameEvent::AskNewCampaign) {
         handleGameEvent(event);
@@ -148,7 +148,7 @@ void NightMazeApp::beginCampaignIntro() {
 }
 
 std::uint32_t NightMazeApp::dailyToday() const {
-    return m_fixedDailyDate == NO_DAILY_DATE ? todayLocal() : m_fixedDailyDate;
+    return m_session.fixedDailyDate == NO_DAILY_DATE ? todayLocal() : m_session.fixedDailyDate;
 }
 
 void NightMazeApp::beginDaily() {
@@ -171,11 +171,12 @@ void NightMazeApp::forgetCampaign() {
 
 NightEndOffer NightMazeApp::nightEndOffer() const {
     // The campaign of the settings is already the one after the win (finishRound).
-    return game::nightEndOffer(m_settings.campaignNight, m_playedNight, m_nightCounts);
+    return game::nightEndOffer(m_settings.campaignNight, m_session.playedNight,
+                               m_session.nightCounts);
 }
 
 void NightMazeApp::finishRound() {
-    if (m_playedNight == 0) {
+    if (m_session.playedNight == 0) {
         // A maze of free play is finished: the story goes on after the lines this maze
         // showed. The counter is written now, once, and not at every frame (saveSettings
         // writes only when something changed). The counter is moved on from the line THIS
@@ -189,10 +190,11 @@ void NightMazeApp::finishRound() {
         // The maze of the day: its best time, for the result screen and for the settings
         // file. A day that did not come from the clock (a tool run) was not played: its
         // record is read and never written.
-        if (m_playedDaily != NO_DAILY_DATE) {
-            m_dailyWin = dailyAfterWin(m_settings.daily, m_playedDaily, m_round.elapsedSeconds);
-            if (m_fixedDailyDate == NO_DAILY_DATE) {
-                m_settings.daily = m_dailyWin.record;
+        if (m_session.playedDaily != NO_DAILY_DATE) {
+            m_session.dailyWin =
+                dailyAfterWin(m_settings.daily, m_session.playedDaily, m_round.elapsedSeconds);
+            if (m_session.fixedDailyDate == NO_DAILY_DATE) {
+                m_settings.daily = m_session.dailyWin.record;
             }
         }
         saveSettings();
@@ -205,20 +207,21 @@ void NightMazeApp::finishRound() {
     // night, and the next night when this one was the next. A finished night that is won
     // again can only improve its time. This is the one place the progress is written:
     // being caught, a restart and leaving the night change nothing.
-    if (m_nightCounts) {
-        int& best = m_settings.campaignBestSeconds.at(static_cast<std::size_t>(m_playedNight - 1));
+    if (m_session.nightCounts) {
+        int& best =
+            m_settings.campaignBestSeconds.at(static_cast<std::size_t>(m_session.playedNight - 1));
         best = bestAfterWin(best, m_round.elapsedSeconds);
-        m_settings.campaignNight = nightAfterWin(m_settings.campaignNight, m_playedNight);
+        m_settings.campaignNight = nightAfterWin(m_settings.campaignNight, m_session.playedNight);
         saveSettings();
     }
     // The last night ends with the ending card, every other one with the result screen.
-    handleGameEvent(m_playedNight == CAMPAIGN_NIGHT_COUNT ? GameEvent::CampaignWon
-                                                          : GameEvent::RoundWon);
+    handleGameEvent(m_session.playedNight == CAMPAIGN_NIGHT_COUNT ? GameEvent::CampaignWon
+                                                                  : GameEvent::RoundWon);
 }
 
 void NightMazeApp::handleCampaignRequest() {
-    const CampaignRequest request = m_campaignRequest;
-    m_campaignRequest = {};
+    const CampaignRequest request = m_session.campaignRequest;
+    m_session.campaignRequest = {};
 
     // The round that is being played is won as it stands: the fixed step that follows
     // finds it won and does what a walk through the gate does (finishRound).
@@ -243,7 +246,7 @@ void NightMazeApp::handleCampaignRequest() {
     }
     // A night that is in play belongs to the campaign as it was: winning it now must
     // not write into the one that was just set.
-    m_nightCounts = false;
+    m_session.nightCounts = false;
     saveSettings();
     // A menu that shows the campaign shows the new one at once.
     if (isMenuOpen(m_mode)) {
