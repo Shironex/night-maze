@@ -1,10 +1,10 @@
 // Game HUD: drawHud, which puts the parts of the HUD together and gives them the canvas.
-#include "debug/Hud.hpp"
+#include "hud/Hud.hpp"
 
-#include "debug/HudRules.hpp"
-#include "debug/HudShared.hpp"
 #include "game/Player.hpp"
 #include "game/Round.hpp"
+#include "hud/HudRules.hpp"
+#include "hud/HudShared.hpp"
 
 #include <imgui.h>
 

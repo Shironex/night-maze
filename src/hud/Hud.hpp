@@ -19,8 +19,9 @@ namespace debug {
 /// ImGui frame, in every frame: unlike the debug window it is not hidden by the debug
 /// key, because it is part of the game and not a tool.
 ///
-/// It lives in src/debug only because this is where ImGui is: the game itself must not
-/// include ImGui. world, round, settings, player and pick are read only.
+/// It lives in src/hud, beside the debug UI and not in the game, because it draws with
+/// ImGui and the game itself must not include ImGui. world, round, settings, player and
+/// pick are read only.
 ///
 /// What it shows. Each reading has a place of its own, in a corner or at the bottom
 /// edge, so the middle of the picture stays free and nothing has to move for the map:

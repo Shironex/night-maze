@@ -1,7 +1,7 @@
 // Theme of the debug window: night colours, calm metrics and the panel font.
 #pragma once
 
-#include "debug/HudColors.hpp"
+#include "hud/HudColors.hpp"
 
 // This header shows ImGui types (ImVec4), so it includes imgui.h. Only the .cpp files of
 // src/debug include it, so the rest of the project still does not depend on ImGui.
@@ -13,7 +13,7 @@ namespace debug {
 
 // The colours below have a meaning of their own, so the code of the debug window names
 // them directly (ImGui::PushStyleColor, draw lists). All other colours of the theme are
-// in Theme.cpp. The ones it shares with the HUD are made in HudColors.hpp
+// in Theme.cpp. The ones it shares with the HUD are made in hud/HudColors.hpp
 // (colorFromBytes too), and named here again by what they do in the window.
 
 // ---- Tokens of the debug window --------------------------------------------------------

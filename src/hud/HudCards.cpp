@@ -1,12 +1,12 @@
 // The crosshair, the prompt and the cards of the HUD: the card of a note, the line after a
 // catch and the "You escaped" card.
-#include "debug/HudShared.hpp"
+#include "hud/HudShared.hpp"
 
-#include "debug/HudColors.hpp"
 #include "game/Interaction.hpp"
 #include "game/KeyBindings.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/Round.hpp"
+#include "hud/HudColors.hpp"
 
 #include <imgui.h>
 

@@ -13,10 +13,10 @@ The root `CMakeLists.txt` defines five static libraries and two programs, with t
 | `ui` | `src/ui` | owns RmlUi and draws the menu documents | `engine`, `rmlui_backend` |
 | `video` | `src/video` | plays a video file into a texture with the decoder of the operating system | `engine`, Media Foundation or AVFoundation |
 | `audio` | `src/audio` | plays sounds through miniaudio | `engine`, `miniaudio` |
-| `night_maze` | `src/main.cpp`, the drawing files of `src/game`, `src/debug` | the game | all five, `imgui` |
-| `night_maze_tests` | `tests`, plus `src/debug/HudRules.cpp`, `src/debug/Search.cpp` and `src/video/VideoClock.cpp` | unit tests | `game_logic`, `audio`, `doctest` |
+| `night_maze` | `src/main.cpp`, the drawing files of `src/game`, `src/hud`, `src/debug` | the game | all five, `imgui` |
+| `night_maze_tests` | `tests`, plus `src/hud/HudRules.cpp`, `src/debug/Search.cpp` and `src/video/VideoClock.cpp` | unit tests | `game_logic`, `audio`, `doctest` |
 
-The dependencies go one way. `engine` knows nothing above it. `ui`, `video` and `audio` sit beside each other on top of `engine` and know nothing about the game: the game tells them which document to show, which file to play, which sound to start. They are separate libraries so that `game_logic` does not link RmlUi, the media libraries of a system or miniaudio. Nothing in `src/game` or in the five libraries includes `src/debug`.
+The dependencies go one way. `engine` knows nothing above it. `ui`, `video` and `audio` sit beside each other on top of `engine` and know nothing about the game: the game tells them which document to show, which file to play, which sound to start. They are separate libraries so that `game_logic` does not link RmlUi, the media libraries of a system or miniaudio. Nothing in `src/game` or in the five libraries includes `src/hud` or `src/debug`.
 
 Inside `engine`, `src/core` includes only itself, `src/gfx` uses `src/core`, `src/assets` uses both and the box type of `src/scene` (the bounds of a model), and `src/scene` is math on GLM alone.
 
@@ -46,11 +46,12 @@ src/
   core/ gfx/ scene/ assets/    engine
   ui/ video/ audio/   one library each, beside each other on top of engine
   game/               game_logic (rules) and night_maze (drawing, NightMazeApp)
-  debug/              night_maze: debug window, HUD, categories/
+  hud/                night_maze: the HUD of a round (HudRules also in the tests)
+  debug/              night_maze: debug window, categories/
 tests/
   main.cpp            doctest main
   LayeringTests.cpp   the layering rules
-  core/ gfx/ scene/ assets/ audio/ video/ debug/ game/    one folder per folder of src/
+  core/ gfx/ scene/ assets/ audio/ video/ game/ hud/ debug/    one folder per folder of src/
 ```
 
 Directory map:
@@ -60,7 +61,8 @@ Directory map:
 - `src/scene`: `Camera`, `Transform`, colliders, ray casts, the frustum of a camera or a light (`Frustum`), lights as plain data.
 - `src/assets`: OBJ and image loaders, `AssetCache`.
 - `src/game`: the rules, the renderers and the application class.
-- `src/debug`: the debug window, its seven categories in `src/debug/categories`, and the HUD.
+- `src/hud`: the HUD of a round (gauges, counters, crosshair, prompt, cards), drawn with Dear ImGui, its colours, and the arithmetic of its scale and its sentences (`HudRules`).
+- `src/debug`: the debug window and its seven categories in `src/debug/categories`.
 - `assets/shaders` (shared parts in `assets/shaders/common`, full screen passes in `assets/shaders/post`), `assets/ui` (RML documents and one style sheet), `assets/models`, `assets/textures`, `assets/skybox`, `assets/audio`, `assets/video`, `assets/fonts`.
 - `tests`: one folder per folder of `src/` that has tests (there is none for `src/ui` yet).
 - `tools`: scripts that produce assets and releases: `tools/blender` (models and textures), `tools/make_sounds.py`, `tools/make_music.py`, `tools/record_menu_loop.py`, `tools/capture_showcase.py` (README pictures), `tools/build-notices.mjs` and `tools/release-notes.mjs`, and `tools/move_module.py`, which moves a module between folders.
@@ -78,7 +80,7 @@ An arrow means "includes and links".
 
 ```mermaid
 flowchart TD
-    main["src/main.cpp and src/debug"]
+    main["src/main.cpp, src/debug and src/hud"]
     app["src/game drawing files: NightMazeApp, renderers"]
     logic["game_logic: rule files of src/game"]
     ui["ui: src/ui"]
@@ -229,7 +231,7 @@ They share one pattern. State is plain structs. Behaviour is free functions that
 
 I use two UI libraries on purpose. RmlUi draws what a player meets outside a round: menus, settings and story cards. The documents are `assets/ui/*.rml` with the style sheet `assets/ui/menu.rcss`. `ui::UiLayer` shows one document at a time and reports by name: an element with `data-action` puts its name on a list (`takeActions`), a control with `data-setting` reports its new value (`takeChanges`). `NightMazeApp::handleMenuActions` maps a name to a `GameEvent` with `eventForAction`, or to a command such as a difficulty. `showScreen` picks the document for the current mode. One page scrolls, the ledger: the wheel is handled by RmlUi, and the arrow keys, Page Up, Page Down, Home and End by `NightMazeApp::scrollLedger` through `UiLayer::scrollBy`.
 
-Dear ImGui draws the debug window (key left of 1) and the HUD of a round: counters, bars, crosshair, prompt and the card of a note. The HUD is in the `src/debug/Hud*.cpp` files because only that folder may include ImGui.
+Dear ImGui draws the debug window (key left of 1) and the HUD of a round: counters, bars, crosshair, prompt and the card of a note. The HUD is in `src/hud` and the debug window in `src/debug`: only these two folders may include ImGui. The debug UI calls `drawHud`, and the HUD includes nothing of `src/debug`.
 
 Input routing:
 

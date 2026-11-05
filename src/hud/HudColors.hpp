@@ -18,7 +18,7 @@ constexpr ImVec4 colorFromBytes(int red, int green, int blue, float alpha = 1.0F
 }
 
 // The HUD and the debug window share these colours, so a round and the window over it
-// look like one game. The debug window names them through its own tokens (Theme.hpp).
+// look like one game. The debug window names them through its own tokens (debug/Theme.hpp).
 
 /// Text: the pale, slightly blue white of moonlight.
 inline constexpr ImVec4 HUD_TEXT_COLOR = colorFromBytes(226, 234, 246);

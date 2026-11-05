@@ -1,6 +1,6 @@
 // The rules of the HUD that are plain arithmetic: how large it is drawn and how long
 // a sentence stays.
-#include "debug/HudRules.hpp"
+#include "hud/HudRules.hpp"
 
 #include <algorithm>
 #include <cmath>
