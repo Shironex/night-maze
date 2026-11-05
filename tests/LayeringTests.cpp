@@ -27,14 +27,14 @@ std::filesystem::path sourceRoot() {
 }
 
 // The folders of the engine and of the three libraries beside it: they never include the
-// game or the debug UI.
+// game, the HUD or the debug UI.
 constexpr std::array<std::string_view, 7> ENGINE_FOLDERS = {"core",  "gfx", "scene", "assets",
                                                             "audio", "ui",  "video"};
 
-// The folders a folder of the engine may include besides itself (architecture.md, section 1).
+// The folders a folder may include besides itself (architecture.md, section 1).
 struct AllowedFolders {
     std::string_view folder;
-    std::array<std::string_view, 4> may;
+    std::array<std::string_view, 6> may;
 };
 constexpr std::array<AllowedFolders, 7> ENGINE_ALLOWED = {{
     {.folder = "core", .may = {}},
@@ -44,6 +44,12 @@ constexpr std::array<AllowedFolders, 7> ENGINE_ALLOWED = {{
     {.folder = "ui", .may = {"core", "gfx", "scene", "assets"}},
     {.folder = "video", .may = {"core", "gfx", "scene", "assets"}},
     {.folder = "audio", .may = {"core", "gfx", "scene", "assets"}},
+}};
+
+// The folders above the engine whose includes are limited as well. The HUD reads the game and
+// draws with the engine and ImGui; it never reaches into the debug UI, which calls it.
+constexpr std::array<AllowedFolders, 1> VIEW_ALLOWED = {{
+    {.folder = "hud", .may = {"core", "gfx", "scene", "assets", "ui", "game"}},
 }};
 
 // The headers of gfx/ that hold plain data and math and no OpenGL call, which the rules may
@@ -195,6 +201,25 @@ std::string describe(const Include& include) {
     return include.file + " includes " + include.path;
 }
 
+// Every include of one of our folders that a rule of rules does not allow.
+template <std::size_t Count>
+std::vector<std::string> brokenFolderRules(const std::array<AllowedFolders, Count>& rules) {
+    const std::set<std::string> folders = ourFolders();
+    std::vector<std::string> broken;
+    for (const Include& include : readIncludes()) {
+        const std::string from = topFolder(include.file);
+        const std::string to = topFolder(include.path);
+        if (!include.quoted || !folders.contains(to) || from == to) {
+            continue;
+        }
+        const auto rule = std::ranges::find(rules, from, &AllowedFolders::folder);
+        if (rule != rules.end() && !contains(rule->may, to)) {
+            broken.push_back(describe(include));
+        }
+    }
+    return broken;
+}
+
 // "file includes path", one per broken rule, for the failure message.
 std::string listed(const std::vector<std::string>& lines) {
     std::string text;
@@ -224,7 +249,7 @@ bool needsWindow(const Include& include, bool glfwAllowed) {
         return !contains(GFX_PLAIN_DATA, path);
     }
     return contains(CORE_WINDOW, path) || path == "assets/AssetCache.hpp" || folder == "debug" ||
-           folder == "ui" || folder == "video" || folder == "audio";
+           folder == "hud" || folder == "ui" || folder == "video" || folder == "audio";
 }
 
 } // namespace
@@ -233,7 +258,7 @@ TEST_CASE("the layering check reads the sources and the lists") {
     const std::vector<Include> includes = readIncludes();
     CHECK(includes.size() > 1000);
     const std::set<std::string> folders = ourFolders();
-    for (const std::string_view folder : {"game", "debug"}) {
+    for (const std::string_view folder : {"game", "hud", "debug"}) {
         CHECK(folders.contains(std::string(folder)));
     }
     for (const std::string_view folder : ENGINE_FOLDERS) {
@@ -244,14 +269,15 @@ TEST_CASE("the layering check reads the sources and the lists") {
     CHECK_FALSE(logic.contains("game/MazeRenderer.cpp"));
     CHECK(filesOfTarget("night_maze").contains("main.cpp"));
     CHECK(filesOfTarget("night_maze_tests").contains("debug/Search.cpp"));
+    CHECK(filesOfTarget("night_maze_tests").contains("hud/HudRules.cpp"));
 }
 
-TEST_CASE("the engine's folders never include the game or the debug ui") {
+TEST_CASE("the engine's folders never include the game, the hud or the debug ui") {
     std::vector<std::string> broken;
     for (const Include& include : readIncludes()) {
         const std::string folder = topFolder(include.path);
         if (contains(ENGINE_FOLDERS, topFolder(include.file)) && include.quoted &&
-            (folder == "game" || folder == "debug")) {
+            (folder == "game" || folder == "hud" || folder == "debug")) {
             broken.push_back(describe(include));
         }
     }
@@ -259,27 +285,21 @@ TEST_CASE("the engine's folders never include the game or the debug ui") {
 }
 
 TEST_CASE("each folder of the engine includes only the folders below it") {
-    const std::set<std::string> folders = ourFolders();
-    std::vector<std::string> broken;
-    for (const Include& include : readIncludes()) {
-        const std::string from = topFolder(include.file);
-        const std::string to = topFolder(include.path);
-        if (!include.quoted || !folders.contains(to) || from == to) {
-            continue;
-        }
-        const auto rule = std::ranges::find(ENGINE_ALLOWED, from, &AllowedFolders::folder);
-        if (rule != ENGINE_ALLOWED.end() && !contains(rule->may, to)) {
-            broken.push_back(describe(include));
-        }
-    }
+    const std::vector<std::string> broken = brokenFolderRules(ENGINE_ALLOWED);
     CHECK_MESSAGE(broken.empty(), listed(broken));
 }
 
-TEST_CASE("the game never includes the debug ui") {
+TEST_CASE("the hud includes the game and the engine, never the debug ui") {
+    const std::vector<std::string> broken = brokenFolderRules(VIEW_ALLOWED);
+    CHECK_MESSAGE(broken.empty(), listed(broken));
+}
+
+TEST_CASE("the game never includes the hud or the debug ui") {
     std::vector<std::string> broken;
     for (const Include& include : readIncludes()) {
+        const std::string folder = topFolder(include.path);
         if (topFolder(include.file) == "game" && include.quoted &&
-            topFolder(include.path) == "debug") {
+            (folder == "hud" || folder == "debug")) {
             broken.push_back(describe(include));
         }
     }
