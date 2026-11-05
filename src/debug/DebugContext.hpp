@@ -224,7 +224,7 @@ struct DebugContext {
     /// Whether the HUD of the round is drawn in this frame. The game decides: only
     /// while a round is played and the menu camera is off (NightMazeApp::hudVisible).
     bool hudVisible;
-    /// Whether the map is on the screen in this frame (NightMazeApp::mapOnScreen). The
+    /// Whether the map is on the screen in this frame (game::FrameState::mapOnScreen). The
     /// HUD then leaves out its sentence, whose place the map reaches down to.
     bool mapOnScreen;
     /// How long one loop of the menu camera takes, in seconds: the Player category shows

@@ -190,8 +190,8 @@ void NightMazeApp::beginRound() {
     m_round = startRound(m_mazeWorld, m_gameplay);
     m_obstacles = roundObstacles(m_mazeWorld, m_round);
     // The picking of the round before may name a lever the new maze does not have.
-    m_pick = pickNothing(m_round);
-    m_shownPick = m_pick;
+    m_frameState.pick = pickNothing(m_round);
+    m_frameState.shownPick = m_frameState.pick;
     // A round starts with the light on, also after one that ended in the dark.
     m_lighting.flashlightOn = true;
     // The low battery pulse of the round before must not go on in this one. The cues of
