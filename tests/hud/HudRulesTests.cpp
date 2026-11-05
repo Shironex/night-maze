@@ -1,6 +1,6 @@
 // Tests of the rules of the HUD that are plain arithmetic: its scale and the time of
 // a sentence.
-#include "debug/HudRules.hpp"
+#include "hud/HudRules.hpp"
 
 #include <doctest/doctest.h>
 

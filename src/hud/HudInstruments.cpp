@@ -1,13 +1,13 @@
 // The corner instruments of the HUD: the lamp gauge, the crystal counter, the stamina line,
 // the loudness ticks, the sentences that come and go and the name of the night.
-#include "debug/HudShared.hpp"
+#include "hud/HudShared.hpp"
 
-#include "debug/HudColors.hpp"
-#include "debug/HudRules.hpp"
 #include "game/Campaign.hpp"
 #include "game/Daily.hpp"
 #include "game/Player.hpp"
 #include "game/Round.hpp"
+#include "hud/HudColors.hpp"
+#include "hud/HudRules.hpp"
 
 #include <glm/gtc/constants.hpp>
 

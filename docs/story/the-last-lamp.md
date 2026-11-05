@@ -224,7 +224,7 @@ No crystal left (replaces "No crystal is left to find."). This line shows only w
 
 - H4: `You took every one. The moon will look harder.`
 
-Card header (replaces "A note on the wall" in `src/debug/Hud.cpp`):
+Card header (replaces "A note on the wall" in `src/hud/Hud.cpp`):
 
 - H5: `Chalk on the stone`
 
@@ -267,13 +267,13 @@ Cheapest first. No implementation here, only where it would land.
 
 | # | Change | Size | Files |
 |---|---|---|---|
-| 1 | Swap the text: the flavour table (6 lines become 24), the hint subject and verb, the "no crystal left" line, the card header, the round end title. All lines already pass the 60 character ASCII test. | small | `src/game/Interactables.cpp` (`FLAVOUR_LINES`, `noteText`), `src/debug/Hud.cpp` (`drawNoteCard`), `assets/ui/round_end.rml`, `tests/game/InteractablesTests.cpp` (exact strings), `docs/modules/game/interactables.md` |
+| 1 | Swap the text: the flavour table (6 lines become 24), the hint subject and verb, the "no crystal left" line, the card header, the round end title. All lines already pass the 60 character ASCII test. | small | `src/game/Interactables.cpp` (`FLAVOUR_LINES`, `noteText`), `src/hud/Hud.cpp` (`drawNoteCard`), `assets/ui/round_end.rml`, `tests/game/InteractablesTests.cpp` (exact strings), `docs/modules/game/interactables.md` |
 | 2 | One line under the round end title, chosen by difficulty (later by night, and E5c or E5c-all by whether any crystal was left). | small | `assets/ui/round_end.rml`, `src/game/NightMazeApp.cpp` (`fillRoundEndDocument`) |
 | 3 | New sound files and cues: wind bed, bell, a "caught" cue. | small code, plus the audio work | `src/game/SoundCues.hpp` and `.cpp`, `assets/audio/` |
 | 4 | Two parts. (a) Inside one maze, the story notes are handed their lines nearest to the start first; `passageDistances` already exists and the levers already use it. (b) Which lines a maze gets stays a choice, not always "from line 1": in the campaign it is the night's pool, and outside the campaign a counter saved in the settings file ("next unread line") moves the window on after each finished maze, wrapping at the end. Without (b) every default maze (3 notes, so 1 story note) would show N01 and nothing else, ever. Until (b) exists, keep today's rule, where the seed picks the first line. The tests pin only that a line index is in range and that lines do not repeat inside a maze (checked in `tests/game/InteractablesTests.cpp`), not which line a seed shows. | small for (a), small to medium for (b) | `src/game/Interactables.cpp` (`placeInteractables`), `src/game/Settings.cpp` for (b), `tests/game/InteractablesTests.cpp` |
 | 5 | Note mix as data: a count of story notes and a count of hint notes instead of `i % 3`. | small to medium | `src/game/Interactables.hpp` and `.cpp` (`InteractableSettings`, `placeInteractables`), the Maze tab of the debug window, `tests/game/InteractablesTests.cpp` |
 | 6 | Tags on lines: which night a line belongs to, and whether it needs the shadow. Lets Calm skip the [S] lines and lets a night draw from its own pool. | small to medium | `src/game/Interactables.hpp` and `.cpp` (the table becomes a table of structs, `flavourLine` grows), tests |
-| 7 | The caught line over the play view. Depends on the shadow existing; the line itself is a timed HUD message. | small, but blocked by the enemy (the largest item, not in this list) | `src/game/Round.hpp` and `.cpp` (which line, how long), `src/debug/Hud.cpp` or a small RmlUi document |
+| 7 | The caught line over the play view. Depends on the shadow existing; the line itself is a timed HUD message. | small, but blocked by the enemy (the largest item, not in this list) | `src/game/Round.hpp` and `.cpp` (which line, how long), `src/hud/Hud.cpp` or a small RmlUi document |
 | 8 | A text card screen in RmlUi: two to four lines, fade in and out. Used by the intro cards and by the ending card. | medium | new `assets/ui/card.rml`, `assets/ui/menu.rcss`, `src/ui/UiLayer.*`, `src/game/NightMazeApp.cpp` |
 | 9 | An intro state: a script of entries (shot, seed, difficulty, time offset, seconds, two lines, cue) played before the main menu on first launch, any key skips. The camera is already a pure function of maze, settings and seconds. The cost is building the seed 1 Easy maze for the intro and then the real one, and a "seen the intro" flag in the settings file. | medium | `src/game/GameState.hpp` and `.cpp` (`GameMode::Intro`, events), `src/game/NightMazeApp.cpp`, `src/game/Settings.cpp`, `tests/game/GameStateTests.cpp` |
 | 9b | Alternative to 9, cheaper, listed here only because it replaces it: record the intro as a video with the existing script and play it with the existing menu video player, cards drawn by item 8 on top. No intro maze to build. Costs a second binary file that goes stale when the graphics change. | small to medium | `tools/record_menu_loop.py` (a second shot list), `assets/video/`, `src/game/NightMazeApp.cpp` |
