@@ -5,10 +5,10 @@
 #include "core/GlCheck.hpp"
 #include "game/ModelDraw.hpp"
 #include "game/Puddles.hpp"
-#include "game/ShaderUniforms.hpp"
 #include "gfx/ColorSpace.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/Texture2D.hpp"
+#include "render/ShaderUniforms.hpp"
 
 namespace game {
 

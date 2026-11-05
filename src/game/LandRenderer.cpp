@@ -8,11 +8,11 @@
 #include "game/LandMeshes.hpp"
 #include "game/MazeWorld.hpp"
 #include "game/ModelDraw.hpp"
-#include "game/ShaderUniforms.hpp"
 #include "game/Village.hpp"
 #include "gfx/ColorSpace.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/Texture2D.hpp"
+#include "render/ShaderUniforms.hpp"
 #include "scene/Frustum.hpp"
 
 #include <algorithm>

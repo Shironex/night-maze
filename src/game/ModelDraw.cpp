@@ -2,11 +2,11 @@
 #include "game/ModelDraw.hpp"
 
 #include "assets/AssetCache.hpp"
-#include "game/ShaderUniforms.hpp"
 #include "gfx/Mesh.hpp"
 #include "gfx/RenderStats.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/Texture2D.hpp"
+#include "render/ShaderUniforms.hpp"
 #include "scene/Collider.hpp"
 #include "scene/Frustum.hpp"
 #include "scene/Transform.hpp"

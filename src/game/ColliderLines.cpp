@@ -2,10 +2,10 @@
 // view of the collisions and of the picking ray.
 #include "game/ColliderLines.hpp"
 
-#include "game/ShaderUniforms.hpp"
 #include "gfx/ColorSpace.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/Vertex.hpp"
+#include "render/ShaderUniforms.hpp"
 #include "scene/Transform.hpp"
 
 #include <glm/gtc/constants.hpp>

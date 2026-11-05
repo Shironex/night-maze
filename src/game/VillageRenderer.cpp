@@ -5,10 +5,10 @@
 #include "core/Paths.hpp"
 #include "game/GateLamp.hpp"
 #include "game/ModelDraw.hpp"
-#include "game/ShaderUniforms.hpp"
 #include "game/Village.hpp"
 #include "gfx/ColorSpace.hpp"
 #include "gfx/Shader.hpp"
+#include "render/ShaderUniforms.hpp"
 
 #include <algorithm>
 #include <string>

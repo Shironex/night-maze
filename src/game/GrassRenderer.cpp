@@ -3,9 +3,9 @@
 
 #include "core/GlCheck.hpp"
 #include "game/MazeRenderer.hpp"
-#include "game/ShaderUniforms.hpp"
 #include "gfx/RenderStats.hpp"
 #include "gfx/Shader.hpp"
+#include "render/ShaderUniforms.hpp"
 #include "scene/Collider.hpp"
 #include "scene/Frustum.hpp"
 

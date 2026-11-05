@@ -6,8 +6,8 @@
 #include "game/Exit.hpp"
 #include "game/Interactables.hpp"
 #include "game/ModelDraw.hpp"
-#include "game/ShaderUniforms.hpp"
 #include "gfx/ColorSpace.hpp"
+#include "render/ShaderUniforms.hpp"
 #include "scene/Frustum.hpp"
 #include "scene/Transform.hpp"
 
@@ -22,7 +22,7 @@ namespace game {
 namespace {
 
 // The names of the uniforms (MODEL_UNIFORM, VIEW_UNIFORM, PROJECTION_UNIFORM and the
-// others) are in game/ShaderUniforms.hpp, shared with the classes that draw the maze.
+// others) are in render/ShaderUniforms.hpp, shared with the classes that draw the maze.
 
 // Colours of the collision lines (red, green, blue): the boxes of the maze in yellow,
 // the box and the reach of the player in green, the box of the gate in orange, the

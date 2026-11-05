@@ -132,7 +132,6 @@ target_sources(night_maze PRIVATE
     PostProcess.hpp
     PuddleRenderer.cpp
     PuddleRenderer.hpp
-    ShaderUniforms.hpp
     ShadowMap.cpp
     ShadowMap.hpp
     Skybox.cpp

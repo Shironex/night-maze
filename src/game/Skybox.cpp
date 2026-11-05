@@ -6,9 +6,9 @@
 #include "core/Log.hpp"
 #include "core/Paths.hpp"
 #include "game/MazeRenderer.hpp"
-#include "game/ShaderUniforms.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/Vertex.hpp"
+#include "render/ShaderUniforms.hpp"
 
 #include <array>
 #include <cstddef>
