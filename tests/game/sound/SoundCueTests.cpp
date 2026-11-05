@@ -1,8 +1,8 @@
-// Tests of game/SoundCues.hpp: the table of the cues, the cue of the flashlight key, the
+// Tests of game/sound/SoundCues.hpp: the table of the cues, the cue of the flashlight key, the
 // cues of a fixed step (with the one of a flask), the clock of the low battery pulse,
 // the clock of the breathing of a winded player, the hum and the steps of the shade, the
 // steps of the player, the rule of the wind of the maze and the bell of the open gate.
-#include "game/SoundCues.hpp"
+#include "game/sound/SoundCues.hpp"
 
 #include "game/land/Terrain.hpp"
 #include "game/maze/Maze.hpp"

@@ -1,5 +1,5 @@
 // SoundCues: which short sounds the game plays and the rules that decide when.
-#include "game/SoundCues.hpp"
+#include "game/sound/SoundCues.hpp"
 
 #include "game/player/Player.hpp"
 
@@ -21,7 +21,7 @@ struct SoundCueInfo {
 // The table of the cues, in the order of the enum SoundCue: entry number i belongs to
 // the cue with the number i. The array has exactly SOUND_CUE_COUNT entries, so a cue
 // added to the enum and to the count without a line here leaves an entry with two null
-// pointers, which the tests find (tests/game/SoundCueTests.cpp).
+// pointers, which the tests find (tests/game/sound/SoundCueTests.cpp).
 constexpr std::array<SoundCueInfo, SOUND_CUE_COUNT> SOUND_CUES = {{
     {.file = "audio/flashlight_on.wav", .name = "flashlight on"},
     {.file = "audio/flashlight_off.wav", .name = "flashlight off"},

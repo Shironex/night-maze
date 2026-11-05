@@ -45,7 +45,7 @@ enum class AudioOutput {
 ///
 /// It knows nothing about the game. Whoever owns it hands it a list of sound files once
 /// (load) and from then on names a sound by its place in that list. What a sound means,
-/// and when it is played, is decided elsewhere (game/SoundCues.hpp).
+/// and when it is played, is decided elsewhere (game/sound/SoundCues.hpp).
 ///
 /// The work is done by the miniaudio library. This header does not include it: all of
 /// its objects are in the struct Backend, which only AudioEngine.cpp knows. The code

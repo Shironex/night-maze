@@ -9,12 +9,8 @@ target_sources(game_logic PRIVATE
     Fog.hpp
     Lighting.cpp
     Lighting.hpp
-    RoundMusic.cpp
-    RoundMusic.hpp
     Shadows.cpp
     Shadows.hpp
-    SoundCues.cpp
-    SoundCues.hpp
     Vignette.cpp
     Vignette.hpp
 )
@@ -40,3 +36,4 @@ add_subdirectory(player)
 add_subdirectory(round)
 add_subdirectory(screens)
 add_subdirectory(shade)
+add_subdirectory(sound)

@@ -134,10 +134,10 @@ To add a sound and a cue:
 
 1. Write a function in `make_sounds.py` that builds the samples, add a line to `SOUNDS` and its checks to `checks()`.
 2. Run the script and then `--report`.
-3. Add a value to the `SoundCue` enum in `src/game/SoundCues.hpp`, raise `SOUND_CUE_COUNT`, and add the matching line to the table in `src/game/SoundCues.cpp`, in the order of the enum. A test (`tests/game/SoundCueTests.cpp`) fails if a cue has no table line.
+3. Add a value to the `SoundCue` enum in `src/game/sound/SoundCues.hpp`, raise `SOUND_CUE_COUNT`, and add the matching line to the table in `src/game/sound/SoundCues.cpp`, in the order of the enum. A test (`tests/game/sound/SoundCueTests.cpp`) fails if a cue has no table line.
 4. Add the code that plays the cue and a row to `assets/audio/README.md`. Set `.ambient = true` in the table for a wind.
 
-A sound that another piece of code times itself by has its length written there: the clocks of the hum, the breath and the bell in `src/game/SoundCues.hpp`, and the last card of the intro in `src/game/screens/Intro.cpp`. Check them when a sound gets longer.
+A sound that another piece of code times itself by has its length written there: the clocks of the hum, the breath and the bell in `src/game/sound/SoundCues.hpp`, and the last card of the intro in `src/game/screens/Intro.cpp`. Check them when a sound gets longer.
 
 ## Music
 
@@ -153,7 +153,7 @@ python tools/make_music.py --report
 
 The script also holds the three sketches the theme was chosen from. `--sketches <folder>` writes them as WAV files, and `--route sampled --tools <folder>` plays them from recorded instruments that are not in the repository (the script lists them). Neither is part of a plain run, and the game uses none of it.
 
-To change the piece, edit its notes in `SKETCHES` and run the script and `--report` again. The level is `THEME_PEAK_DB`. Where the game plays it is `game::menuThemePlays` in `src/game/SoundCues.cpp`.
+To change the piece, edit its notes in `SKETCHES` and run the script and `--report` again. The level is `THEME_PEAK_DB`. Where the game plays it is `game::menuThemePlays` in `src/game/sound/SoundCues.cpp`.
 
 ## Menu video and launcher loop
 

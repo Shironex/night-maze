@@ -1,6 +1,6 @@
 # The menu theme is a FLAC loop in a music group of its own
 Status: accepted (2026-10-09)
-Code: src/audio/AudioEngine.hpp, src/game/SoundCues.hpp, src/game/SoundCues.cpp, src/game/screens/Settings.hpp, src/game/NightMazeApp.cpp, tools/make_music.py, cmake/Dependencies.cmake
+Code: src/audio/AudioEngine.hpp, src/game/sound/SoundCues.hpp, src/game/sound/SoundCues.cpp, src/game/screens/Settings.hpp, src/game/NightMazeApp.cpp, tools/make_music.py, cmake/Dependencies.cmake
 
 Context: I chose a theme for the main menu, 72.7 s of stereo that loops. As a WAV file it is 12.8 MB, more than twice all 23 sounds together, and the engine decodes every file fully into memory.
 Decision: the theme ships as assets/audio/menu_theme.flac (2.9 MB, 16 bit, 44 100 Hz, stereo), written by make_music.py itself, and miniaudio is built with its FLAC decoder. It plays in a third sound group, Music, with a music_volume setting that starts at 60 of 100. game::menuThemePlays names every screen: the theme plays on the main menu and its pages and nowhere else, fades in over 2.5 s and out over 1.5 s, and goes on from where it stopped. A screen added without a line there does not compile.

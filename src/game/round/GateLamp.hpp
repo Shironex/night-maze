@@ -51,7 +51,7 @@ constexpr glm::vec3 GATE_LAMP_COLD_COLOR{0.55F, 0.65F, 1.0F};
 constexpr glm::vec3 GATE_LAMP_WARM_COLOR{1.0F, 0.72F, 0.33F};
 
 /// How long the bell of the open gate waits between two tolls, in seconds
-/// (game::advanceGateBell in game/SoundCues.hpp). It is written here, next to the other
+/// (game::advanceGateBell in game/sound/SoundCues.hpp). It is written here, next to the other
 /// numbers of the gate that the debug UI edits.
 constexpr float GATE_BELL_SECONDS = 6.0F;
 

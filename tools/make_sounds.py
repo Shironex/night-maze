@@ -1,5 +1,5 @@
 # Makes the sounds of the game: twenty-three WAV files in assets/audio, one per sound cue
-# (the table of the cues is in src/game/SoundCues.cpp, and the file names there and here
+# (the table of the cues is in src/game/sound/SoundCues.cpp, and the file names there and here
 # must stay the same).
 #
 # Run from the repository root, on any system:
@@ -115,7 +115,7 @@ PEAK_DB = {
     # The steps of the player are heard twice a second for a whole round, so they are
     # among the quietest sounds: about as present as the breath, and below the hum of
     # the shade, which is a warning. (A walked step is played at 0.6 of this, a sprinted
-    # one in full: FOOTSTEP_WALK_VOLUME in src/game/SoundCues.hpp.)
+    # one in full: FOOTSTEP_WALK_VOLUME in src/game/sound/SoundCues.hpp.)
     "footstep_1.wav": -14.0,
     "footstep_2.wav": -14.0,
     "footstep_3.wav": -14.0,
@@ -130,7 +130,7 @@ PEAK_DB = {
     "shade_banish.wav": -14.0,
     # The bell of the open gate tolls every few seconds until the round ends, so it is
     # softer than the one bell of the intro, and the game turns it down further with
-    # the distance (gateBellVolume in src/game/SoundCues.hpp).
+    # the distance (gateBellVolume in src/game/sound/SoundCues.hpp).
     "gate_bell.wav": -12.0,
     # The heartstone is heard once in a maze. It stands just behind the crystal: it is
     # the same glass, and its low ring carries more than its peak says.
@@ -868,7 +868,7 @@ def winded_breath():
     #
     # A low pass at 2600 Hz keeps the breath soft (no "s" in it) and a high pass at
     # 250 Hz keeps it from rumbling. The whole sound is 0.95 s long: the breaths come
-    # every 1.1 s (WINDED_BREATH_SECONDS in src/game/SoundCues.hpp), and a breath that
+    # every 1.1 s (WINDED_BREATH_SECONDS in src/game/sound/SoundCues.hpp), and a breath that
     # started again before the last one ended would be cut off.
     generator = random.Random(8)
     sound = silence(0.95)
@@ -1230,7 +1230,7 @@ def footstep(seed, pitch, brush_at):
     #   - The room: a little of the stone walls, heard in the last tenth of a second.
     #
     # The file is 0.34 s long: shorter than the wait between two steps of a sprint
-    # (0.36 s, FOOTSTEP_SPRINT_METRES in src/game/SoundCues.hpp at 5.5 m/s).
+    # (0.36 s, FOOTSTEP_SPRINT_METRES in src/game/sound/SoundCues.hpp at 5.5 m/s).
     generator = random.Random(seed)
     sound = silence(0.26)
 
@@ -1276,7 +1276,7 @@ def shade_step(seed, pitch):
     #     else in the maze, and what reaches the player is mostly the walls.
     #
     # Two files, a little apart in pitch, played in turn. Each is 0.6 s long, and the
-    # steps of the shade come every 0.65 s (SHADE_STEP_METRES in src/game/SoundCues.hpp
+    # steps of the shade come every 0.65 s (SHADE_STEP_METRES in src/game/sound/SoundCues.hpp
     # at 4 m/s).
     generator = random.Random(seed)
     sound = silence(0.32)
@@ -1384,7 +1384,7 @@ RATES = {"maze_wind.wav": SAMPLE_RATE // 2}
 LOOPS = ("maze_wind.wav",)
 
 
-# The file of every sound. The names are the ones in src/game/SoundCues.cpp.
+# The file of every sound. The names are the ones in src/game/sound/SoundCues.cpp.
 SOUNDS = [
     ("flashlight_on.wav", flashlight_on),
     ("flashlight_off.wav", flashlight_off),
