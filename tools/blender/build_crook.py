@@ -92,7 +92,7 @@ ROPE_SIDES = 5
 ROPE_TOP = (0.0, -0.05, -0.045)
 ROPE_AT_RING = (0.0, -0.042, -0.305)
 # The game hangs the lever this far above the ground (LEVER_MOUNT_HEIGHT in
-# src/game/Interactables.hpp). The rope has to know it, because it ends in the ground:
+# src/game/player/Interactables.hpp). The rope has to know it, because it ends in the ground:
 # when one side changes, the other has to change too.
 MOUNT_HEIGHT = 1.2
 # Where the rope meets the turf: 0.26 m in front of the wall, a little to the right, and
@@ -152,15 +152,15 @@ UV_RULES = {
 # These numbers are not used for the geometry, only for the check in check_pick_box below.
 # They must stay in step with the constants of the game.
 # The game places the pivot this far in front of the wall face, in the middle of the board
-# (LEVER_PIVOT_DEPTH in src/game/Interaction.hpp): on the pin, inside the block.
+# (LEVER_PIVOT_DEPTH in src/game/player/Interaction.hpp): on the pin, inside the block.
 PIVOT_DEPTH = 0.05
 # The game turns the crook by this angle up or down around the game X axis
-# (LEVER_HANDLE_UP_DEGREES and LEVER_HANDLE_DOWN_DEGREES in src/game/Interaction.hpp).
+# (LEVER_HANDLE_UP_DEGREES and LEVER_HANDLE_DOWN_DEGREES in src/game/player/Interaction.hpp).
 HANDLE_SWING_DEGREES = 55.0
 # The box the game tests the mouse ray against when the player clicks on the lever: its
 # width, its height (both centred on the origin of the post) and how far it reaches out
 # from the wall (LEVER_BOX_WIDTH, LEVER_BOX_HEIGHT and LEVER_BOX_DEPTH in
-# src/game/Interactables.hpp).
+# src/game/player/Interactables.hpp).
 PICK_BOX_WIDTH = 0.3
 PICK_BOX_HEIGHT = 0.64
 PICK_BOX_DEPTH = 0.26
@@ -480,7 +480,7 @@ def check_pick_box(post, ring_first_vertex, handle):
             ok = ok and fits(x, out, up)
     print(f"The crook reaches {reach_out:.4f} m out of the wall and {reach_up:.4f} m up or down")
     if not ok:
-        raise ValueError("The lever does not fit into its pick box (src/game/Interactables.hpp)")
+        raise ValueError("The lever does not fit into its pick box (src/game/player/Interactables.hpp)")
 
 
 def build(shots):

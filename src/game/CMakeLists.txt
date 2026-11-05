@@ -9,14 +9,8 @@ target_sources(game_logic PRIVATE
     Fog.hpp
     GameState.cpp
     GameState.hpp
-    Interactables.cpp
-    Interactables.hpp
-    Interaction.cpp
-    Interaction.hpp
     Intro.cpp
     Intro.hpp
-    KeyBindings.cpp
-    KeyBindings.hpp
     Lighting.cpp
     Lighting.hpp
     MenuBackground.cpp
@@ -27,8 +21,6 @@ target_sources(game_logic PRIVATE
     MenuCameraShared.hpp
     Minimap.cpp
     Minimap.hpp
-    Player.cpp
-    Player.hpp
     RoundMusic.cpp
     RoundMusic.hpp
     Settings.cpp
@@ -49,8 +41,6 @@ target_sources(game_logic PRIVATE
 
 # The application and the classes that draw: they need a window and an OpenGL context.
 target_sources(night_maze PRIVATE
-    InteractableRenderer.cpp
-    InteractableRenderer.hpp
     MenuBackgroundRenderer.cpp
     MenuBackgroundRenderer.hpp
     MinimapRenderer.cpp
@@ -70,4 +60,5 @@ target_sources(night_maze PRIVATE
 
 add_subdirectory(land)
 add_subdirectory(maze)
+add_subdirectory(player)
 add_subdirectory(round)

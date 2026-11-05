@@ -1,7 +1,7 @@
 // Debug context: the data the debug window may read or edit during one frame.
 #pragma once
 
-#include "game/KeyBindings.hpp"
+#include "game/player/KeyBindings.hpp"
 #include "gfx/RenderStats.hpp"
 
 #include <array>

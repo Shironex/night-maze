@@ -2,11 +2,11 @@
 // its rules.
 #pragma once
 
-#include "game/Interactables.hpp"
 #include "game/Lighting.hpp"
 #include "game/Shade.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/player/Interactables.hpp"
 #include "game/round/Discovery.hpp"
 #include "game/round/Flasks.hpp"
 #include "game/round/GateLamp.hpp"

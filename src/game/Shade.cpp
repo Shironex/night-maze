@@ -3,10 +3,10 @@
 // of the lamp. It carries the player back to the start when it reaches them.
 #include "game/Shade.hpp"
 
-#include "game/Player.hpp"
 #include "game/land/Terrain.hpp"
 #include "game/maze/MazeGenerator.hpp"
 #include "game/maze/MazeLayout.hpp"
+#include "game/player/Player.hpp"
 #include "game/round/Exit.hpp"
 #include "scene/Raycast.hpp"
 

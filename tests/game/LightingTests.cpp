@@ -1,8 +1,8 @@
 // Tests of game::Lighting: the settings of the lighting and the lights built for one frame.
 #include "game/Lighting.hpp"
 
-#include "game/Player.hpp"
 #include "game/SoundCues.hpp"
+#include "game/player/Player.hpp"
 #include "gfx/ColorSpace.hpp"
 #include "scene/Camera.hpp"
 #include "scene/LightSpace.hpp"

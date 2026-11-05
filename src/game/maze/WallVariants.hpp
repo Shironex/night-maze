@@ -2,8 +2,8 @@
 // carry a crown of stone twigs or have lost a coping stone.
 #pragma once
 
-#include "game/Interactables.hpp"
 #include "game/maze/Maze.hpp"
+#include "game/player/Interactables.hpp"
 
 #include <array>
 #include <cstddef>

@@ -7,10 +7,10 @@
 #include "game/GameState.hpp"
 #include "game/Lighting.hpp"
 #include "game/Minimap.hpp"
-#include "game/Player.hpp"
 #include "game/land/Grass.hpp"
 #include "game/land/Village.hpp"
 #include "game/maze/MazeRenderer.hpp"
+#include "game/player/Player.hpp"
 #include "render/GpuPasses.hpp"
 #include "scene/Camera.hpp"
 

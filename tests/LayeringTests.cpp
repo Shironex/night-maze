@@ -81,7 +81,7 @@ constexpr std::array<AllowedInclude, 1> RENDER_INCLUDES_ALLOWED = {{
 // Known exception: the key bindings include GLFW only for the numbers of the keys
 // (GLFW_KEY_W and the others) as default bindings. Nothing in the file opens a window or
 // calls GLFW, and the test program links it without one.
-constexpr std::array<std::string_view, 1> LOGIC_GLFW_ALLOWED = {"game/KeyBindings.cpp"};
+constexpr std::array<std::string_view, 1> LOGIC_GLFW_ALLOWED = {"game/player/KeyBindings.cpp"};
 
 // One #include line of a source file.
 struct Include {

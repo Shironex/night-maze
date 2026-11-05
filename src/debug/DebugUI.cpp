@@ -4,8 +4,8 @@
 #include "core/Window.hpp"
 #include "debug/DebugContext.hpp"
 #include "debug/Theme.hpp"
-#include "game/Player.hpp"
 #include "game/Shadows.hpp"
+#include "game/player/Player.hpp"
 #include "hud/Hud.hpp"
 #include "render/PostProcess.hpp"
 

@@ -2,8 +2,8 @@
 #include "game/NightMazeApp.hpp"
 
 #include "core/Log.hpp"
-#include "game/Interactables.hpp"
 #include "game/NightMazeAppShared.hpp"
+#include "game/player/Interactables.hpp"
 #include "game/round/Ledger.hpp"
 
 #include <GLFW/glfw3.h>

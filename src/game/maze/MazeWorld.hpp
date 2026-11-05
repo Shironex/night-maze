@@ -1,13 +1,13 @@
 // MazeWorld: one generated maze with everything the game needs to draw it and walk in it.
 #pragma once
 
-#include "game/Interactables.hpp"
 #include "game/land/Land.hpp"
 #include "game/land/Terrain.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/StoneSheep.hpp"
 #include "game/maze/WallVariants.hpp"
+#include "game/player/Interactables.hpp"
 #include "game/round/Crystals.hpp"
 #include "scene/Collider.hpp"
 
@@ -46,7 +46,7 @@ struct MazeSettings {
     /// difficulty level here (game/round/Difficulty.hpp).
     int crystalCount = CRYSTAL_COUNT_FROM_SIZE;
 
-    /// How many levers and notes the maze should get (see game/Interactables.hpp). They
+    /// How many levers and notes the maze should get (see game/player/Interactables.hpp). They
     /// are placed when the maze is built, so a new number shows after "regenerate" too.
     InteractableSettings interactables;
 

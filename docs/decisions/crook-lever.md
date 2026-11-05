@@ -1,6 +1,6 @@
 # A lever is a shepherd's crook with a rope, and the wall it opens carries an iron ring
 Status: accepted (2026-10-09)
-Code: tools/blender/build_crook.py, src/game/Interactables.hpp, src/game/Interaction.hpp, src/game/Interaction.cpp, src/game/InteractableRenderer.cpp
+Code: tools/blender/build_crook.py, src/game/player/Interactables.hpp, src/game/player/Interaction.hpp, src/game/player/Interaction.cpp, src/game/player/InteractableRenderer.cpp
 
 Context: The story says "Shepherds roped their gates under the turf. Pull. Listen." but the lever was an iron switch plate with a brass knob, and nothing told a wall a lever opens from any other wall.
 Decision: The lever is an oak board with a crook on an iron pin and a rope through a ring into the turf. The crook swings 55 degrees up and down around the old pivot, and the slack rope is swapped for a taut one when the crook is nine tenths down. The pick box grew from 0.3 by 0.4 by 0.25 m to 0.3 by 0.64 by 0.26 m. The wall a lever opens has an iron ring 0.42 m above the ground on both faces, which sinks with it and cannot be picked. No rule of the lever changed: its place, its sound, its timing and its words are the same.

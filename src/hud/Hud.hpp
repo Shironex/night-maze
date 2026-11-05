@@ -3,7 +3,7 @@
 // card of a note and the "You escaped" card.
 #pragma once
 
-#include "game/KeyBindings.hpp"
+#include "game/player/KeyBindings.hpp"
 
 namespace game {
 struct GameplaySettings;

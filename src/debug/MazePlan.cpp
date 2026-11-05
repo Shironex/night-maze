@@ -3,10 +3,10 @@
 #include "debug/MazePlan.hpp"
 
 #include "debug/Theme.hpp"
-#include "game/Interactables.hpp"
-#include "game/Player.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/player/Interactables.hpp"
+#include "game/player/Player.hpp"
 #include "game/round/Round.hpp"
 #include "scene/Camera.hpp"
 

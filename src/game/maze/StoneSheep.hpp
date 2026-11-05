@@ -2,9 +2,9 @@
 // a sheep, where in its cell each one stands and which way it looks: towards the gate.
 #pragma once
 
-#include "game/Interactables.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeLayout.hpp"
+#include "game/player/Interactables.hpp"
 #include "scene/Collider.hpp"
 
 #include <glm/glm.hpp>

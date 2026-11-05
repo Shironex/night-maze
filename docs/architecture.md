@@ -20,7 +20,7 @@ The dependencies go one way. `engine` knows nothing above it. `ui`, `video` and 
 
 Inside `engine`, `src/core` includes only itself, `src/gfx` uses `src/core`, `src/assets` uses both and the box type of `src/scene` (the bounds of a model), and `src/scene` is math on GLM alone.
 
-`tests/LayeringTests.cpp` checks these rules on every test run. It reads the `#include` lines of `src/` and the source lists of the CMake files, and fails with the list of includes that break a rule: an engine folder that reaches the game, `src/render`, the HUD or the debug UI or a folder above its own, `src/render` including anything but the engine folders and the headers of `game_logic` (the plain data of the game, never a drawing file of `src/game`), `src/game` including `src/hud` or `src/debug`, `src/hud` including anything but `src/game`, the engine folders and `src/ui` (so never `src/debug`, which may include the HUD), a file of `game_logic` (or a file of `src/` that the test program compiles) including OpenGL, GLFW, ImGui, the window, `src/render` or a `gfx` header other than the plain data ones (`Vertex.hpp`, `ColorSpace.hpp`, `CoverFit.hpp`). Two allowed exceptions are named in the test: `src/game/KeyBindings.cpp` includes GLFW for the numbers of the keys only, and `src/render/Skybox.cpp` includes `src/game/maze/MazeRenderer.hpp` for the enum `game::ViewMode` only.
+`tests/LayeringTests.cpp` checks these rules on every test run. It reads the `#include` lines of `src/` and the source lists of the CMake files, and fails with the list of includes that break a rule: an engine folder that reaches the game, `src/render`, the HUD or the debug UI or a folder above its own, `src/render` including anything but the engine folders and the headers of `game_logic` (the plain data of the game, never a drawing file of `src/game`), `src/game` including `src/hud` or `src/debug`, `src/hud` including anything but `src/game`, the engine folders and `src/ui` (so never `src/debug`, which may include the HUD), a file of `game_logic` (or a file of `src/` that the test program compiles) including OpenGL, GLFW, ImGui, the window, `src/render` or a `gfx` header other than the plain data ones (`Vertex.hpp`, `ColorSpace.hpp`, `CoverFit.hpp`). Two allowed exceptions are named in the test: `src/game/player/KeyBindings.cpp` includes GLFW for the numbers of the keys only, and `src/render/Skybox.cpp` includes `src/game/maze/MazeRenderer.hpp` for the enum `game::ViewMode` only.
 
 `src/game` is split between two targets. The files that need no window are in `game_logic`. The files that draw (`NightMazeApp`, the `*Renderer` classes) are in the executable. The helpers of the passes that hold no rule of the game (`PostProcess`, `ShadowMap`, `Skybox`, `LightRig` and the others) are in `src/render`, in the executable too.
 
@@ -49,6 +49,7 @@ src/
                       its rules (game_logic) and its renderers (night_maze)
     land/             the ground, the grass, the puddles, the land around the maze, the village
     maze/             the maze, its walls, the stile and the stone sheep
+    player/           the player and stamina, picking, the levers and notes, the key bindings
     round/            a round and its pickups, the gate, the campaign, the ledger, the day
   render/             night_maze: helpers of the passes of a frame, no rules of the game
   hud/                night_maze: the HUD of a round (HudRules also in the tests)
@@ -69,6 +70,7 @@ Directory map:
 - `src/game`: the application class (`NightMazeApp`), and one folder per domain, each with its rules and its renderers:
   - `src/game/land`: the ground (`Terrain`), the tufts of grass, the puddles, the land around the maze with the triangles built in code (`LandMeshes`), the village on the ridge, and their renderers.
   - `src/game/maze`: the grid of the maze, its generator and layout, the built world of a seed (`MazeWorld`), the worn wall variants, the stile, the stone sheep and `MazeRenderer`.
+  - `src/game/player`: the player and its stamina (`Player`), the levers and notes (`Interactables`) and their renderer, picking (`Interaction`), the key bindings.
   - `src/game/round`: a round (`Round`) and what is placed in it from the seed (exit, crystals, flasks, the heartstone, the gate lamp), the cells seen so far (`Discovery`), the campaign, the difficulty, the ledger, the maze of the day (`Daily`), and `GameplayRenderer`.
 - `src/render`: the helpers of the passes of a frame that hold no rule of the game: the names of the shader uniforms (`ShaderUniforms.hpp`), the GPU timers of the passes (`GpuPasses`), the uniform buffer of the lights (`LightRig`), the draw of a model with its culling test (`ModelDraw`), the lines of the debug view of the colliders (`ColliderLines`), the HDR target, the bloom and the composite pass (`PostProcess`), the depth targets of the shadows (`ShadowMap`), the sky cube (`Skybox`).
 - `src/hud`: the HUD of a round (gauges, counters, crosshair, prompt, cards), drawn with Dear ImGui, its colours, and the arithmetic of its scale and its sentences (`HudRules`).
@@ -224,7 +226,7 @@ The rules are in `game_logic`, as header and source pairs with tests:
 - Maze: `src/game/maze/Maze.hpp`, `MazeGenerator.hpp`, `MazeLayout.hpp`, and the ground `src/game/land/Terrain.hpp`. `MazeWorld.hpp` puts them together.
 - Placement from the seed: `buildMazeWorld` calls the generator and then `Exit.hpp`, `Crystals.hpp`, `Heartstone.hpp` (the one big splinter, in the farthest dead end), `Interactables.hpp` (levers and notes) and `WallVariants.hpp`. Flasks (`Flasks.hpp`) are placed by `startRound`, because their count belongs to the difficulty. The same seed gives the same maze and objects on every system.
 - Round: `src/game/round/Round.hpp` (`startRound`, `updateRound`), with `Interaction.hpp` for picking and `Discovery.hpp` for what the map shows.
-- Player and stamina: `src/game/Player.hpp`.
+- Player and stamina: `src/game/player/Player.hpp`.
 - Enemy: `src/game/Shade.hpp`.
 - Campaign, intro and difficulty: `Campaign.hpp`, `Intro.hpp`, `Difficulty.hpp`.
 - The ledger: `Ledger.hpp` (the set of story lines that were read, its codes in the settings file, the set of a file from before the ledger, the groups and the counter of the page).

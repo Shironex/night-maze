@@ -2,7 +2,7 @@
 // progress through them.
 #pragma once
 
-#include "game/Interactables.hpp"
+#include "game/player/Interactables.hpp"
 
 #include <array>
 #include <cstddef>

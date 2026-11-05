@@ -63,7 +63,7 @@
         </div>
         <p class="keys">Left and right move a slider | Esc: back</p>
     </div>
-    <!-- The part "Controls": one row per action of the player (game/KeyBindings.hpp), with
+    <!-- The part "Controls": one row per action of the player (game/player/KeyBindings.hpp), with
          the key the action is on as a button. The id of a button is the name of its line in
          the settings file. A click on it (or Enter) makes it wait for the next key press,
          which becomes the key of the action. The names, the keys and the line under the

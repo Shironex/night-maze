@@ -2,7 +2,7 @@
 // they are kept in.
 #pragma once
 
-#include "game/KeyBindings.hpp"
+#include "game/player/KeyBindings.hpp"
 #include "game/round/Campaign.hpp"
 #include "game/round/Daily.hpp"
 #include "game/round/Difficulty.hpp"
@@ -132,7 +132,7 @@ struct GameSettings {
     /// a file of this one is read by an older game.
     bool introSeen = false;
 
-    /// The key of every action of the player (game/KeyBindings.hpp), edited in the
+    /// The key of every action of the player (game/player/KeyBindings.hpp), edited in the
     /// part "Controls" of the settings screen. A file written before the keys could be
     /// chosen has no such lines, so the game keeps the keys it always had.
     KeyBindings keys = defaultKeyBindings();

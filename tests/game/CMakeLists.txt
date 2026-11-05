@@ -3,15 +3,11 @@ target_sources(night_maze_tests PRIVATE
     EnvironmentMappingTests.cpp
     FogTests.cpp
     GameStateTests.cpp
-    InteractablesTests.cpp
-    InteractionTests.cpp
     IntroTests.cpp
-    KeyBindingsTests.cpp
     LightingTests.cpp
     MenuBackgroundTests.cpp
     MenuCameraTests.cpp
     MinimapTests.cpp
-    PlayerTests.cpp
     RoundMusicTests.cpp
     SettingsTests.cpp
     ShadeTests.cpp
@@ -25,4 +21,5 @@ target_sources(night_maze_tests PRIVATE
 
 add_subdirectory(land)
 add_subdirectory(maze)
+add_subdirectory(player)
 add_subdirectory(round)

@@ -1,6 +1,6 @@
 // Interaction: what the picking ray of a frame points at in a round, what the player can
 // do with it, and where the models of the levers and the notes hang.
-#include "game/Interaction.hpp"
+#include "game/player/Interaction.hpp"
 
 #include "scene/Transform.hpp"
 

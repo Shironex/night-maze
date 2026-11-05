@@ -8,7 +8,7 @@
 #include "debug/Widgets.hpp"
 #include "game/Minimap.hpp"
 #include "game/MinimapRenderer.hpp"
-#include "game/Player.hpp"
+#include "game/player/Player.hpp"
 #include "game/round/Campaign.hpp"
 #include "game/round/GateLamp.hpp"
 #include "game/round/Round.hpp"

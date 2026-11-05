@@ -1,6 +1,6 @@
 // Key bindings: the actions of the player, the key each one is on, and the names of
 // the keys.
-#include "game/KeyBindings.hpp"
+#include "game/player/KeyBindings.hpp"
 
 // Only for the numbers of the keys (GLFW_KEY_W and the others): nothing here opens
 // a window or calls a function of GLFW.

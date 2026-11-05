@@ -1,7 +1,7 @@
 // Tests of game/Settings: the settings of the player and the text of their file.
 #include "game/Settings.hpp"
 
-#include "game/Interactables.hpp"
+#include "game/player/Interactables.hpp"
 
 #include <doctest/doctest.h>
 

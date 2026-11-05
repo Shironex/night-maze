@@ -1,15 +1,15 @@
 // Tests of the levers and the notes in a world and in a round (placement, pulling, the
 // opened wall, the note card) and of game::Interaction (the picking of a frame). The last
 // tests read the model files of the lever.
-#include "game/Interaction.hpp"
+#include "game/player/Interaction.hpp"
 
 #include "assets/ObjLoader.hpp"
-#include "game/Interactables.hpp"
 #include "game/Minimap.hpp"
-#include "game/Player.hpp"
 #include "game/land/Terrain.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/player/Interactables.hpp"
+#include "game/player/Player.hpp"
 #include "game/round/Discovery.hpp"
 #include "game/round/Round.hpp"
 #include "scene/Camera.hpp"

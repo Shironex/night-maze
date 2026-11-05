@@ -1,7 +1,7 @@
 // Ledger: the lamplighter's ledger, the lines of the story the player has read.
 #include "game/round/Ledger.hpp"
 
-#include "game/Interactables.hpp"
+#include "game/player/Interactables.hpp"
 #include "game/round/Campaign.hpp"
 
 #include <bit>

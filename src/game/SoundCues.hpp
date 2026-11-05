@@ -191,7 +191,7 @@ struct WindedBreath {
 };
 
 /// Advances the clock of the breathing by one fixed step of stepSeconds seconds. winded
-/// is Stamina::winded after the step (game/Player.hpp). Returns true when a breath is
+/// is Stamina::winded after the step (game/player/Player.hpp). Returns true when a breath is
 /// due in this step: play SoundCue::WindedBreath then.
 ///
 ///   - While the player is not winded the clock is reset: the next time the stamina
