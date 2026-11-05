@@ -4,9 +4,9 @@
 
 #include "game/Interaction.hpp"
 #include "game/KeyBindings.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/Player.hpp"
 #include "game/Round.hpp"
+#include "game/maze/MazeWorld.hpp"
 
 #include <imgui.h>
 

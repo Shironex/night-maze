@@ -40,7 +40,7 @@ SOURCE_FILE = "stone_sheep_tripo.glb"
 # script turns it half a circle about the vertical axis. It is then scaled so that it is
 # LENGTH long from the nose to the end of the tail, and the origin is in the middle of
 # that length and of the width, on the ground. The box of the game (STONE_SHEEP_LENGTH in
-# src/game/StoneSheep.hpp) is exactly as long. A lying sheep is round, and at 0.9 m it
+# src/game/maze/StoneSheep.hpp) is exactly as long. A lying sheep is round, and at 0.9 m it
 # reached into the walls when it lies across a corner, so it is shorter than the standing
 # one was.
 LENGTH = 0.75

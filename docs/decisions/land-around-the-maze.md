@@ -1,6 +1,6 @@
 # The land around the maze is real models in two bands inside 40 m of the border, and the ridge stays drawn with the sky
 Status: accepted (2026-10-15), built 2026-10-28 with stand-in models, which got their own generated models on 2026-10-29 (below); it is the next release, before the tumbled walls and the gate seals
-Code: src/game/Land.hpp, src/game/Land.cpp, src/game/LandMeshes.cpp, src/game/LandRenderer.cpp, src/game/MazeWorld.cpp, src/game/Minimap.cpp, src/game/NightMazeAppPasses.cpp, src/game/NightMazeAppRender.cpp, src/game/Shadows.cpp, src/debug/PerfProbe.cpp, tools/blender/build_land_pieces.py, tools/blender/build_land_hedge.py, tests/game/LandTests.cpp
+Code: src/game/Land.hpp, src/game/Land.cpp, src/game/LandMeshes.cpp, src/game/LandRenderer.cpp, src/game/maze/MazeWorld.cpp, src/game/Minimap.cpp, src/game/NightMazeAppPasses.cpp, src/game/NightMazeAppRender.cpp, src/game/Shadows.cpp, src/debug/PerfProbe.cpp, tools/blender/build_land_pieces.py, tools/blender/build_land_hedge.py, tests/game/LandTests.cpp
 
 Context: Beyond the border wall there is the margin of the terrain (`TERRAIN_MARGIN`, 14 m of hills up to 4.5 m, a sparse scatter of grass) and then nothing until the ridge, which is drawn with the sky about 79 m out on the screen ([village-on-the-ridge](village-on-the-ridge.md)). The end lines say the light walks across the land, and the land is empty. The planned landmarks over the walls were a few lone shapes on that empty land.
 

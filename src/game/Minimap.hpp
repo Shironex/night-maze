@@ -3,9 +3,9 @@
 // notes, the tick towards the open gate, player).
 #pragma once
 
-#include "game/Maze.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/Round.hpp"
+#include "game/maze/Maze.hpp"
+#include "game/maze/MazeWorld.hpp"
 
 #include <glm/glm.hpp>
 

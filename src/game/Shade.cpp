@@ -4,10 +4,10 @@
 #include "game/Shade.hpp"
 
 #include "game/Exit.hpp"
-#include "game/MazeGenerator.hpp"
-#include "game/MazeLayout.hpp"
 #include "game/Player.hpp"
 #include "game/Terrain.hpp"
+#include "game/maze/MazeGenerator.hpp"
+#include "game/maze/MazeLayout.hpp"
 #include "scene/Raycast.hpp"
 
 #include <glm/gtc/constants.hpp>

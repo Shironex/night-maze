@@ -1,7 +1,7 @@
 // Discovery: which cells of the maze the player has seen so far in this round.
 #include "game/Discovery.hpp"
 
-#include "game/MazeLayout.hpp"
+#include "game/maze/MazeLayout.hpp"
 
 #include <algorithm>
 #include <cstddef>

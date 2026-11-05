@@ -2,9 +2,9 @@
 #pragma once
 
 #include "game/Daily.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/MenuBackground.hpp"
 #include "game/MenuCamera.hpp"
+#include "game/maze/MazeWorld.hpp"
 
 #include <cstdint>
 #include <optional>

@@ -1,15 +1,15 @@
 // StoneSheep: the flock that went to stone with the hedge. Which cells of a maze hold
 // a sheep, where in its cell each one stands and which way it looks: towards the gate.
-#include "game/StoneSheep.hpp"
+#include "game/maze/StoneSheep.hpp"
 
 #include "game/Crystals.hpp"
 #include "game/EnvironmentMapping.hpp"
 #include "game/Exit.hpp"
 #include "game/Flasks.hpp"
 #include "game/GateLamp.hpp"
-#include "game/MazeGenerator.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/Puddles.hpp"
+#include "game/maze/MazeGenerator.hpp"
+#include "game/maze/MazeWorld.hpp"
 #include "scene/Transform.hpp"
 
 #include <algorithm>

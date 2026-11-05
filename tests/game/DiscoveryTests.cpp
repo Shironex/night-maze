@@ -2,9 +2,9 @@
 // how a round starts and updates it.
 #include "game/Discovery.hpp"
 
-#include "game/MazeLayout.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/Round.hpp"
+#include "game/maze/MazeLayout.hpp"
+#include "game/maze/MazeWorld.hpp"
 
 #include <doctest/doctest.h>
 

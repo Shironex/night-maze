@@ -2,9 +2,9 @@
 // into its picture and which shapes it is drawn from.
 #include "game/Minimap.hpp"
 
-#include "game/MazeLayout.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/Round.hpp"
+#include "game/maze/MazeLayout.hpp"
+#include "game/maze/MazeWorld.hpp"
 
 #include <doctest/doctest.h>
 

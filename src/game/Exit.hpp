@@ -1,8 +1,8 @@
 // Exit: which cell of a maze is the exit, where its gate stands and where the round is won.
 #pragma once
 
-#include "game/Maze.hpp"
-#include "game/MazeLayout.hpp"
+#include "game/maze/Maze.hpp"
+#include "game/maze/MazeLayout.hpp"
 #include "scene/Collider.hpp"
 
 #include <vector>

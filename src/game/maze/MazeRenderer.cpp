@@ -1,11 +1,11 @@
 // MazeRenderer: draws the walls, the pillars, the stile and the stone sheep of a maze with
 // their models.
-#include "game/MazeRenderer.hpp"
+#include "game/maze/MazeRenderer.hpp"
 
 #include "assets/AssetCache.hpp"
 #include "core/Paths.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/Round.hpp"
+#include "game/maze/MazeWorld.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/Texture2D.hpp"
 #include "render/ModelDraw.hpp"
@@ -25,12 +25,12 @@ constexpr const char* WALL_MODEL_FILE = "models/wall_straight.obj";
 constexpr const char* PILLAR_MODEL_FILE = "models/wall_pillar.obj";
 
 // The stile of the start cell: the wall with the notch and the steps, which is drawn in
-// place of the wall model on one segment, and the post beside it (game/Stile.hpp).
+// place of the wall model on one segment, and the post beside it (game/maze/Stile.hpp).
 constexpr const char* STILE_MODEL_FILE = "models/stile.obj";
 constexpr const char* STILE_POST_MODEL_FILE = "models/stile_post.obj";
 
 // A stone sheep: 0.9 m long, with its head along +X and its origin on the ground under
-// its middle (game/StoneSheep.hpp).
+// its middle (game/maze/StoneSheep.hpp).
 constexpr const char* STONE_SHEEP_MODEL_FILE = "models/stone_sheep.obj";
 
 // The models of the two shaped looks, Crowned and Broken, in the order of WallVariant.

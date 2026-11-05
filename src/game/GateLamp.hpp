@@ -4,8 +4,8 @@
 #pragma once
 
 #include "game/Lighting.hpp"
-#include "game/Maze.hpp"
-#include "game/MazeWorld.hpp"
+#include "game/maze/Maze.hpp"
+#include "game/maze/MazeWorld.hpp"
 
 #include <glm/glm.hpp>
 

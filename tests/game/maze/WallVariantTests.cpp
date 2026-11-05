@@ -1,9 +1,9 @@
 // Tests of game::WallVariants: which walls of a maze look worn, which carry a crown or
 // a broken coping, and which stay plain.
-#include "game/WallVariants.hpp"
+#include "game/maze/WallVariants.hpp"
 
-#include "game/MazeLayout.hpp"
-#include "game/MazeWorld.hpp"
+#include "game/maze/MazeLayout.hpp"
+#include "game/maze/MazeWorld.hpp"
 
 #include <doctest/doctest.h>
 

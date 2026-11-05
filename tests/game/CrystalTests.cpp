@@ -2,9 +2,9 @@
 #include "game/Crystals.hpp"
 
 #include "game/Exit.hpp"
-#include "game/MazeGenerator.hpp"
-#include "game/MazeLayout.hpp"
-#include "game/MazeWorld.hpp"
+#include "game/maze/MazeGenerator.hpp"
+#include "game/maze/MazeLayout.hpp"
+#include "game/maze/MazeWorld.hpp"
 #include "scene/Light.hpp"
 
 #include <doctest/doctest.h>

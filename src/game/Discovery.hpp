@@ -1,7 +1,7 @@
 // Discovery: which cells of the maze the player has seen so far in this round.
 #pragma once
 
-#include "game/Maze.hpp"
+#include "game/maze/Maze.hpp"
 
 #include <glm/glm.hpp>
 

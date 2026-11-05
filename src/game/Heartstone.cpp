@@ -3,7 +3,7 @@
 
 #include "game/Crystals.hpp"
 #include "game/Exit.hpp"
-#include "game/MazeLayout.hpp"
+#include "game/maze/MazeLayout.hpp"
 
 #include <cmath>
 #include <cstddef>

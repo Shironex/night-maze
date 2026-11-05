@@ -8,9 +8,9 @@
 #include "game/Heartstone.hpp"
 #include "game/Interactables.hpp"
 #include "game/Lighting.hpp"
-#include "game/Maze.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/Shade.hpp"
+#include "game/maze/Maze.hpp"
+#include "game/maze/MazeWorld.hpp"
 #include "scene/Collider.hpp"
 
 #include <glm/glm.hpp>

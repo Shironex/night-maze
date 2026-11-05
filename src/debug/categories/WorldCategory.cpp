@@ -8,8 +8,8 @@
 #include "game/EnvironmentMapping.hpp"
 #include "game/Grass.hpp"
 #include "game/Interactables.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/Terrain.hpp"
+#include "game/maze/MazeWorld.hpp"
 
 #include <imgui.h>
 

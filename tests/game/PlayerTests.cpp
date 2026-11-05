@@ -2,9 +2,9 @@
 // noclip flight.
 #include "game/Player.hpp"
 
-#include "game/MazeGenerator.hpp"
-#include "game/MazeLayout.hpp"
 #include "game/Terrain.hpp"
+#include "game/maze/MazeGenerator.hpp"
+#include "game/maze/MazeLayout.hpp"
 
 #include <doctest/doctest.h>
 

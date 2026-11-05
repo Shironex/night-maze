@@ -2,8 +2,8 @@
 // camera that rises over the gate to show it after a night of the campaign is won.
 #pragma once
 
-#include "game/Maze.hpp"
-#include "game/MazeWorld.hpp"
+#include "game/maze/Maze.hpp"
+#include "game/maze/MazeWorld.hpp"
 
 #include <glm/glm.hpp>
 

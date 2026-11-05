@@ -1,7 +1,7 @@
 // MazeLayout: where the cells, walls and pillars of a maze stand in the world.
 #pragma once
 
-#include "game/Maze.hpp"
+#include "game/maze/Maze.hpp"
 #include "scene/Collider.hpp"
 
 #include <glm/glm.hpp>

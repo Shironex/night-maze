@@ -4,7 +4,7 @@
 #include "game/Minimap.hpp"
 
 #include "game/Land.hpp"
-#include "game/MazeLayout.hpp"
+#include "game/maze/MazeLayout.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>
 

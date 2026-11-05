@@ -2,8 +2,8 @@
 // their models.
 #pragma once
 
-#include "game/MazeWorld.hpp"
-#include "game/WallVariants.hpp"
+#include "game/maze/MazeWorld.hpp"
+#include "game/maze/WallVariants.hpp"
 #include "scene/Collider.hpp"
 
 #include <glm/glm.hpp>

@@ -75,7 +75,7 @@ struct AllowedInclude {
 // (which picture the debug views show), and that enum is declared in the header of the maze
 // renderer, a drawing file of src/game. Nothing else of that header is used.
 constexpr std::array<AllowedInclude, 1> RENDER_INCLUDES_ALLOWED = {{
-    {.file = "render/Skybox.cpp", .path = "game/MazeRenderer.hpp"},
+    {.file = "render/Skybox.cpp", .path = "game/maze/MazeRenderer.hpp"},
 }};
 
 // Known exception: the key bindings include GLFW only for the numbers of the keys
@@ -284,7 +284,7 @@ TEST_CASE("the layering check reads the sources and the lists") {
     }
     const std::set<std::string> logic = filesOfTarget("game_logic");
     CHECK(logic.contains("game/Round.cpp"));
-    CHECK_FALSE(logic.contains("game/MazeRenderer.cpp"));
+    CHECK_FALSE(logic.contains("game/maze/MazeRenderer.cpp"));
     CHECK(filesOfTarget("night_maze").contains("main.cpp"));
     CHECK(filesOfTarget("night_maze_tests").contains("debug/Search.cpp"));
     CHECK(filesOfTarget("night_maze_tests").contains("hud/HudRules.cpp"));

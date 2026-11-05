@@ -1,6 +1,6 @@
 // Stile: where the stile of the start cell stands, what of it blocks the way and where
 // feet have worn the grass away in front of it.
-#include "game/Stile.hpp"
+#include "game/maze/Stile.hpp"
 
 #include <algorithm>
 #include <cmath>

@@ -1,10 +1,10 @@
 // WallVariants: which wall segments of a maze look cracked, mossy or damaged, and which
 // carry a crown of stone twigs or have lost a coping stone.
-#include "game/WallVariants.hpp"
+#include "game/maze/WallVariants.hpp"
 
-#include "game/MazeGenerator.hpp"
-#include "game/MazeLayout.hpp"
-#include "game/Stile.hpp"
+#include "game/maze/MazeGenerator.hpp"
+#include "game/maze/MazeLayout.hpp"
+#include "game/maze/Stile.hpp"
 
 #include <algorithm>
 #include <cstdlib>

@@ -3,8 +3,8 @@
 // windows light up.
 #pragma once
 
-#include "game/Maze.hpp"
 #include "game/Terrain.hpp"
+#include "game/maze/Maze.hpp"
 #include "scene/Collider.hpp"
 
 #include <glm/glm.hpp>

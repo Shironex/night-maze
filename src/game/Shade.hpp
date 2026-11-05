@@ -3,7 +3,7 @@
 // of the lamp. It carries the player back to the start when it reaches them.
 #pragma once
 
-#include "game/Maze.hpp"
+#include "game/maze/Maze.hpp"
 #include "scene/Collider.hpp"
 
 #include <glm/glm.hpp>

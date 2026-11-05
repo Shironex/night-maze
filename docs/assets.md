@@ -48,11 +48,11 @@ A note is chalk drawn on the stone, not an object: `chalk_lamp` for a line of th
 
 ### The stile
 
-`stile` is one wall segment with a notch 0.7 m wide, where the wall is 2.4 m high, and four through-stones that climb to it. The game draws it in place of `wall_straight` on the north border wall of the start cell (`src/game/Stile.hpp`). The stones are boxes, each turned a few degrees by a fixed seed. Every piece of the wall is a closed box where it can be seen, so the notch shows stone and never the inside of the wall. `stile_post` is the oak post beside the steps, a generated model with an iron band and a nub of a hook. It has its own picture, `stile_post.png`, and is squeezed across into the footprint of the old post (x 0.75 to 0.85 m, y -0.37 to -0.27 m, Blender), the wood stretched along the grain and the iron bands keeping their height. It reaches from 0.15 m into the ground to 3.29 m, above the 3.15 m pillars. The post stands 1 cm clear of where a wall across the end of the segment would be, because the start cell is a corner. Neither model has transparency or a second material.
+`stile` is one wall segment with a notch 0.7 m wide, where the wall is 2.4 m high, and four through-stones that climb to it. The game draws it in place of `wall_straight` on the north border wall of the start cell (`src/game/maze/Stile.hpp`). The stones are boxes, each turned a few degrees by a fixed seed. Every piece of the wall is a closed box where it can be seen, so the notch shows stone and never the inside of the wall. `stile_post` is the oak post beside the steps, a generated model with an iron band and a nub of a hook. It has its own picture, `stile_post.png`, and is squeezed across into the footprint of the old post (x 0.75 to 0.85 m, y -0.37 to -0.27 m, Blender), the wood stretched along the grain and the iron bands keeping their height. It reaches from 0.15 m into the ground to 3.29 m, above the 3.15 m pillars. The post stands 1 cm clear of where a wall across the end of the segment would be, because the start cell is a corner. Neither model has transparency or a second material.
 
 ### The stone sheep
 
-`stone_sheep` is one model for the whole flock: a generated lying sheep, curled up, with its head along +X, which is east. `build_stone_sheep.py` scales it to 0.75 m from the nose to the end of the tail and squeezes it across to 0.4 m (the source is 0.54 m wide at that length), so it is 0.51 m high, and puts the origin on the ground under the middle of its length. The game turns the model to one of eight directions (`sheepYawDegrees` in `src/game/StoneSheep.hpp`). The belly reaches 0.1 m into the ground. I squeezed it and did not widen its collision box, because the passage rules of the tests would not hold (see [decisions/generated-models.md](decisions/generated-models.md)). `stone_sheep.png` is its own 1024 picture of pale curled stone.
+`stone_sheep` is one model for the whole flock: a generated lying sheep, curled up, with its head along +X, which is east. `build_stone_sheep.py` scales it to 0.75 m from the nose to the end of the tail and squeezes it across to 0.4 m (the source is 0.54 m wide at that length), so it is 0.51 m high, and puts the origin on the ground under the middle of its length. The game turns the model to one of eight directions (`sheepYawDegrees` in `src/game/maze/StoneSheep.hpp`). The belly reaches 0.1 m into the ground. I squeezed it and did not widen its collision box, because the passage rules of the tests would not hold (see [decisions/generated-models.md](decisions/generated-models.md)). `stone_sheep.png` is its own 1024 picture of pale curled stone.
 
 ### The lever
 
@@ -99,7 +99,7 @@ The ridge has no ends: it is the rim of the hollow and runs the whole way round 
 3. Keep the order of the calls: `create_mesh_object`, a UV projection, `assign_textured_material`, `export_obj`.
 4. A new texture goes into `build()` in `make_textures.py`, as a colour picture and a normal map from the same pattern.
 5. Import the script and call its `build(shots)` in `make_all.py`.
-6. Load the file in the code. Models are not discovered: each renderer names its files, for example `WALL_MODEL_FILE` in `src/game/MazeRenderer.cpp`.
+6. Load the file in the code. Models are not discovered: each renderer names its files, for example `WALL_MODEL_FILE` in `src/game/maze/MazeRenderer.cpp`.
 7. Run the script with `--shots`, look at the renders, run it twice and check that the second run changes nothing.
 
 ## The OBJ and MTL subset

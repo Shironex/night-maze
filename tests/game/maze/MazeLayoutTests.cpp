@@ -1,7 +1,7 @@
 // Tests of the world-space layout of a maze: cells, wall segments, pillars and boxes.
-#include "game/MazeLayout.hpp"
+#include "game/maze/MazeLayout.hpp"
 
-#include "game/MazeGenerator.hpp"
+#include "game/maze/MazeGenerator.hpp"
 
 #include <doctest/doctest.h>
 

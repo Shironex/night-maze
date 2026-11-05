@@ -4,11 +4,11 @@
 #include "game/Crystals.hpp"
 #include "game/Interactables.hpp"
 #include "game/Land.hpp"
-#include "game/Maze.hpp"
-#include "game/MazeLayout.hpp"
-#include "game/StoneSheep.hpp"
 #include "game/Terrain.hpp"
-#include "game/WallVariants.hpp"
+#include "game/maze/Maze.hpp"
+#include "game/maze/MazeLayout.hpp"
+#include "game/maze/StoneSheep.hpp"
+#include "game/maze/WallVariants.hpp"
 #include "scene/Collider.hpp"
 
 #include <glm/glm.hpp>

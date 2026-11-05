@@ -229,7 +229,7 @@ def clean_post(model):
 
 
 def check_post(mesh):
-    """Stops when the post is not where the game (src/game/Stile.hpp) expects it."""
+    """Stops when the post is not where the game (src/game/maze/Stile.hpp) expects it."""
     xs = [corner.co.x for corner in mesh.verts]
     ys = [corner.co.y for corner in mesh.verts]
     zs = [corner.co.z for corner in mesh.verts]

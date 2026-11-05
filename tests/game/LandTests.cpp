@@ -7,13 +7,13 @@
 #include "core/Files.hpp"
 #include "game/Grass.hpp"
 #include "game/LandMeshes.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/Minimap.hpp"
 #include "game/Player.hpp"
 #include "game/Round.hpp"
 #include "game/Settings.hpp"
 #include "game/Terrain.hpp"
 #include "game/Village.hpp"
+#include "game/maze/MazeWorld.hpp"
 #include "scene/Frustum.hpp"
 
 #include <doctest/doctest.h>

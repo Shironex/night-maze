@@ -2,7 +2,7 @@
 #include "game/GrassRenderer.hpp"
 
 #include "core/GlCheck.hpp"
-#include "game/MazeRenderer.hpp"
+#include "game/maze/MazeRenderer.hpp"
 #include "gfx/RenderStats.hpp"
 #include "gfx/Shader.hpp"
 #include "render/ShaderUniforms.hpp"
