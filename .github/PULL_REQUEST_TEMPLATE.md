@@ -9,7 +9,7 @@
 - [ ] The issue was agreed before I wrote the fix, and this pull request is small: one fix, one logical change per commit.
 - [ ] Commits and the title look like `type(scope): lowercase summary`, for example `fix(game): ...`.
 - [ ] `make check` is green in the Visual Studio developer shell (about 35 minutes), or I say below why I could not run it. CI runs a smaller set: the Release build, `ctest`, the notices check and the release feed.
-- [ ] A fix for code that needs no window comes with a doctest case in `tests/` (a new file is also listed in `CMakeLists.txt`).
+- [ ] A fix for code that needs no window comes with a doctest case in `tests/` (a new file is also listed in the `CMakeLists.txt` of its folder).
 - [ ] If I changed a dependency in `cmake/Dependencies.cmake`: I ran `node tools/build-notices.mjs --deps build/release/_deps` and committed `THIRD-PARTY-NOTICES.txt`.
 - [ ] I did not edit `CHANGELOG.md` or the version in `CMakeLists.txt`. I write those at release time.
 - [ ] I did not change a model, texture, sound, the music, the video, interface art or anything in `docs/story/`. Those are not open to pull requests. Shaders and the menu documents under `assets/` are code and are fine.

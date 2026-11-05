@@ -30,8 +30,8 @@ the command line switches and the problems I expect. Three things are easy to mi
   and it needs the Visual Studio developer shell. CI runs less (the Release build, `ctest`, the
   notices check and the release feed), and clang-tidy is not in CI.
 - The tests are doctest cases in `tests/` for code that needs no window. A fix for such code should
-  come with a test that fails without it. The test files are listed by hand in `CMakeLists.txt`, so
-  a new file has to be added there.
+  come with a test that fails without it. The test files are listed by hand in the `CMakeLists.txt` of
+  their folder, so a new file has to be added there.
 - The switches reproduce a maze fast. Example, the second night in a fixed maze without the shadow:
   `night_maze.exe --night 2 --seed 7 --calm`.
 
