@@ -192,8 +192,8 @@ void NightMazeApp::startIntro() {
 void NightMazeApp::beginIntroClock() {
     m_introSeconds = 0.0;
     m_introCardShown = INTRO_CARD_COUNT;
-    m_storybookPlaying =
-        m_storybook && m_storybookRenderer.load(*m_storybook, core::assetPath(STORYBOOK_FOLDER));
+    m_storybookPlaying = m_storybook && m_renderers.storybookRenderer.load(
+                                            *m_storybook, core::assetPath(STORYBOOK_FOLDER));
     if (m_storybook && !m_storybookPlaying) {
         core::logWarn("Storybook: its pictures cannot be loaded: the classic intro plays");
     }
@@ -421,7 +421,7 @@ void NightMazeApp::leaveIntro(bool intoNight) {
     // and the spoken lines of the storybook.
     m_audio.stopAll();
     // The pictures of the storybook are not needed until the next intro.
-    m_storybookRenderer.unload();
+    m_renderers.storybookRenderer.unload();
     m_storybookPlaying = false;
     // Seen, to its end or to the key that skipped it. The settings file keeps the line,
     // so files of older versions stay valid, but nothing asks it any more: the intro

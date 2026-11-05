@@ -125,16 +125,9 @@ Heightmap loadHeightmap() {
 
 NightMazeApp::NightMazeApp(const StartOptions& options)
     : core::Application(INITIAL_WIDTH, INITIAL_HEIGHT, "Night Maze"),
-      m_mazeRenderer(m_assets),
-      m_gameplayRenderer(m_assets),
-      m_villageRenderer(m_assets),
-      m_interactableRenderer(m_assets),
-      m_terrainRenderer(m_assets),
-      m_landRenderer(m_assets),
-      m_puddleRenderer(m_assets),
       // The background of the main menu: the video unless the command line asked for
       // something else. Opening the video waits for its first frame.
-      m_menuBackground(options.menuBackground),
+      m_renderers(options.menuBackground),
       // The settings file is read before the first maze is built: the maze has the size
       // of the difficulty that was chosen last.
       m_settings(loadSettings()),
@@ -161,14 +154,14 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
       m_playedDifficultyName(difficultyLevel(m_settings.difficulty).name),
       m_ui(window()) {
     // The two lit programs and the two grass programs read the lights from the uniform
-    // buffer of m_lightRig. Each program is told once: the shader repeats it by itself
+    // buffer of m_renderers.lightRig. Each program is told once: the shader repeats it by itself
     // after a reload.
-    m_lightRig.connect(m_shaders.litShader);
-    m_lightRig.connect(m_shaders.gouraudShader);
-    m_lightRig.connect(m_shaders.grassShader);
-    m_lightRig.connect(m_shaders.grassInstancedShader);
+    m_renderers.lightRig.connect(m_shaders.litShader);
+    m_renderers.lightRig.connect(m_shaders.gouraudShader);
+    m_renderers.lightRig.connect(m_shaders.grassShader);
+    m_renderers.lightRig.connect(m_shaders.grassInstancedShader);
     // The reflect program lights the crystals and the puddles with the same lights.
-    m_lightRig.connect(m_shaders.reflectShader);
+    m_renderers.lightRig.connect(m_shaders.reflectShader);
 
     // The rules of the first round are the ones of the same difficulty level as the
     // first maze (the gate and the battery). The number of flasks is among them, and

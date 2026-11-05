@@ -51,7 +51,7 @@ void NightMazeApp::onRender(double alpha) {
     // 0, and the timers of the passes read what the graphics card has answered since
     // the last frame. Their averages are refreshed together with the FPS.
     gfx::resetRenderCounters();
-    m_gpuPasses.beginFrame(time().fpsRefreshed());
+    m_renderers.gpuPasses.beginFrame(time().fpsRefreshed());
 
     // What the menus, the intro and the cards do in this frame, and the pause of a round
     // whose window is no longer the active one. All of it comes first, because it can
@@ -170,17 +170,17 @@ void NightMazeApp::onRender(double alpha) {
     // The HDR framebuffer of the scene, cleared, and the lights of the frame. The scene
     // pass is measured in three parts that follow each other (game::GpuPass): what
     // stands in the maze, the grass, and the rest.
-    m_gpuPasses.begin(GpuPass::Scene);
+    m_renderers.gpuPasses.begin(GpuPass::Scene);
     if (!beginScenePass(framebuffer)) {
-        m_gpuPasses.end();
+        m_renderers.gpuPasses.end();
         return;
     }
     const scene::LightSet lights = uploadLights(frameLighting, flashlight, lamp, frame.eye);
 
     drawMaze(frame.view, frame.projection);
-    m_gpuPasses.begin(GpuPass::Grass);
+    m_renderers.gpuPasses.begin(GpuPass::Grass);
     drawGrass(frame.view, frame.projection);
-    m_gpuPasses.begin(GpuPass::Reflections);
+    m_renderers.gpuPasses.begin(GpuPass::Reflections);
     // The reflection pass: the crystals and the puddles, which show the sky. The
     // crystals are opaque and write depth like the walls. The puddles are blended over
     // the ground that is already drawn and write no depth (game::PuddleRenderer), so
@@ -208,13 +208,13 @@ void NightMazeApp::onRender(double alpha) {
     // drawn earlier (the depth test sorts opaque things out). Only something that does
     // not write depth, like a transparent effect, would have to come after the sky.
     if (m_skyboxSettings.enabled) {
-        m_skybox.draw(m_shaders.skyboxShader, frame.view, frame.projection, m_skyboxSettings,
-                      m_viewMode);
+        m_renderers.skybox.draw(m_shaders.skyboxShader, frame.view, frame.projection,
+                                m_skyboxSettings, m_viewMode);
     }
 
     // The lamp in the hand, on top of the scene and in front of every wall.
     drawHeldLamp(frame.view, frame.projection, frameLighting, lights);
-    m_gpuPasses.end();
+    m_renderers.gpuPasses.end();
 
     // The scene is complete. The passes that read it bring it to the window.
     finishPicture(framebuffer, frame);
@@ -225,9 +225,9 @@ void NightMazeApp::onRender(double alpha) {
     // scene was drawn from. Only while the key is held in a round (game::showsMap): the
     // pause menu, the result screen and the menu camera have no map.
     if (map) {
-        m_gpuPasses.begin(GpuPass::Minimap);
+        m_renderers.gpuPasses.begin(GpuPass::Minimap);
         drawMinimap(framebuffer, frame.feet);
-        m_gpuPasses.end();
+        m_renderers.gpuPasses.end();
     }
 
     // The menu comes last in this function, on top of the finished frame. The debug UI
@@ -411,16 +411,16 @@ bool NightMazeApp::drawMenuBackgroundFrame(core::Size framebuffer) {
     // question: a video whose decoder gave up is replaced by the still or by the live
     // scene there, and the live scene is drawn below like any other frame.
     if (usesMenuCamera(m_mode)) {
-        m_menuBackground.update(time().deltaSeconds());
+        m_renderers.menuBackground.update(time().deltaSeconds());
     }
-    if (drawsScene(m_mode, coversWindow(m_menuBackground.background()))) {
+    if (drawsScene(m_mode, coversWindow(m_renderers.menuBackground.background()))) {
         return false;
     }
     // Nothing is picked under a menu, as in the frames that draw the scene.
     m_pick = pickNothing(m_round);
     // The picture goes straight into the window, like the composite pass does.
     gfx::Framebuffer::bindDefault(framebuffer.width, framebuffer.height);
-    m_menuBackground.draw(framebuffer);
+    m_renderers.menuBackground.draw(framebuffer);
     m_ui.draw(framebuffer);
     return true;
 }
@@ -434,9 +434,9 @@ bool NightMazeApp::drawStorybookFrame(core::Size framebuffer) {
     const Storybook& book = *m_storybook;
     m_pick = pickNothing(m_round);
     gfx::Framebuffer::bindDefault(framebuffer.width, framebuffer.height);
-    m_storybookRenderer.draw(framebuffer, book,
-                             storybookFrame(m_storybookBeatSeconds, book.crossfadeSeconds,
-                                            static_cast<float>(m_introSeconds)));
+    m_renderers.storybookRenderer.draw(framebuffer, book,
+                                       storybookFrame(m_storybookBeatSeconds, book.crossfadeSeconds,
+                                                      static_cast<float>(m_introSeconds)));
     m_ui.draw(framebuffer);
     return true;
 }
@@ -637,7 +637,7 @@ bool NightMazeApp::beginScenePass(core::Size framebuffer) {
     // The shadow passes above may have left their own framebuffer bound, so the window
     // is bound again first: the debug UI is drawn after this function and must land
     // there.
-    if (!m_postProcess.beginScene(framebuffer)) {
+    if (!m_renderers.postProcess.beginScene(framebuffer)) {
         gfx::Framebuffer::bindDefault(framebuffer.width, framebuffer.height);
         return false;
     }
@@ -697,7 +697,7 @@ scene::LightSet NightMazeApp::uploadLights(const LightingSettings& frameLighting
     }
     const std::vector<PointLightSpot> frameLights = nearestPointLightSpots(pointLights, eye);
     const scene::LightSet lights = buildLightSet(frameLighting, flashlight, frameLights);
-    m_lightRig.upload(lights, eye);
+    m_renderers.lightRig.upload(lights, eye);
     return lights;
 }
 
@@ -749,8 +749,8 @@ void NightMazeApp::finishPicture(core::Size framebuffer, const FrameView& frame)
 
     // The pictures of the attachments, only while the debug UI shows them.
     if (m_postProcessSettings.previews) {
-        m_postProcess.drawPreviews(m_shaders.previewShader, m_postProcessSettings,
-                                   frame.camera.nearPlane, frame.camera.farPlane);
+        m_renderers.postProcess.drawPreviews(m_shaders.previewShader, m_postProcessSettings,
+                                             frame.camera.nearPlane, frame.camera.farPlane);
     }
 
     // The two debug views show data as colours (a normal, a texture coordinate), not
@@ -773,9 +773,9 @@ void NightMazeApp::finishPicture(core::Size framebuffer, const FrameView& frame)
     // The bloom: the bright parts of the finished scene, blurred in targets of half the
     // size. It is called in every frame, also with the bloom switched off: it then
     // draws nothing and tells the composite pass so.
-    m_gpuPasses.begin(GpuPass::Bloom);
-    m_postProcess.drawBloom(m_shaders.brightPassShader, m_shaders.blurShader,
-                            m_shaders.previewShader, compositeSettings);
+    m_renderers.gpuPasses.begin(GpuPass::Bloom);
+    m_renderers.postProcess.drawBloom(m_shaders.brightPassShader, m_shaders.blurShader,
+                                      m_shaders.previewShader, compositeSettings);
 
     // The fog of the last pass finds the place in the world every pixel shows. For that
     // it needs the way back from the screen to the world: the inverse of the two
@@ -787,9 +787,10 @@ void NightMazeApp::finishPicture(core::Size framebuffer, const FrameView& frame)
     // The last pass: back to the window, and the HDR picture goes into it with the fog,
     // the bloom, exposure, tone mapping, the vignette and the sRGB encoding. The debug
     // UI is drawn after this function returns (main.cpp), straight into the window.
-    m_gpuPasses.begin(GpuPass::Composite);
-    m_postProcess.composite(m_shaders.compositeShader, compositeSettings, framebuffer, sceneView);
-    m_gpuPasses.end();
+    m_renderers.gpuPasses.begin(GpuPass::Composite);
+    m_renderers.postProcess.composite(m_shaders.compositeShader, compositeSettings, framebuffer,
+                                      sceneView);
+    m_renderers.gpuPasses.end();
 }
 
 PickState NightMazeApp::pickForFrame(const glm::mat4& view, const glm::mat4& projection,
@@ -896,10 +897,10 @@ void NightMazeApp::drawMinimap(core::Size framebuffer, const glm::vec3& feet) {
                              minimapMetresPerPixel(maze, rect.size), m_gameplay.shade.showOnMap);
 
     // The offscreen pass, and then the picture into the middle of the window.
-    if (m_minimapRenderer.drawMap(m_shaders.minimapShader, vertices, minimapProjection(maze),
-                                  rect.size)) {
-        m_minimapRenderer.drawOverlay(m_shaders.minimapOverlayShader, rect,
-                                      m_minimapSettings.opacity, framebuffer);
+    if (m_renderers.minimapRenderer.drawMap(m_shaders.minimapShader, vertices,
+                                            minimapProjection(maze), rect.size)) {
+        m_renderers.minimapRenderer.drawOverlay(m_shaders.minimapOverlayShader, rect,
+                                                m_minimapSettings.opacity, framebuffer);
     }
 }
 
