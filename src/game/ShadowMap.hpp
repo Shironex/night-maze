@@ -155,7 +155,7 @@ private:
 
 /// Sets the uniforms one shadow map has in common/shadows.glsl, in the program shader,
 /// which must be in use. names are the names of those uniforms (MOON_SHADOW_UNIFORMS or
-/// FLASHLIGHT_SHADOW_UNIFORMS in game/ShaderUniforms.hpp) and unit is the texture unit
+/// FLASHLIGHT_SHADOW_UNIFORMS in render/ShaderUniforms.hpp) and unit is the texture unit
 /// of bindForSampling.
 ///
 /// Call it in every frame for every program that includes common/shadows.glsl, also

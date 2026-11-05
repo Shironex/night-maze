@@ -13,7 +13,7 @@ The root `CMakeLists.txt` defines five static libraries and two programs, with t
 | `ui` | `src/ui` | owns RmlUi and draws the menu documents | `engine`, `rmlui_backend` |
 | `video` | `src/video` | plays a video file into a texture with the decoder of the operating system | `engine`, Media Foundation or AVFoundation |
 | `audio` | `src/audio` | plays sounds through miniaudio | `engine`, `miniaudio` |
-| `night_maze` | `src/main.cpp`, the drawing files of `src/game`, `src/hud`, `src/debug` | the game | all five, `imgui` |
+| `night_maze` | `src/main.cpp`, the drawing files of `src/game`, `src/render`, `src/hud`, `src/debug` | the game | all five, `imgui` |
 | `night_maze_tests` | `tests`, plus `src/hud/HudRules.cpp`, `src/debug/Search.cpp` and `src/video/VideoClock.cpp` | unit tests | `game_logic`, `audio`, `doctest` |
 
 The dependencies go one way. `engine` knows nothing above it. `ui`, `video` and `audio` sit beside each other on top of `engine` and know nothing about the game: the game tells them which document to show, which file to play, which sound to start. They are separate libraries so that `game_logic` does not link RmlUi, the media libraries of a system or miniaudio. Nothing in `src/game` or in the five libraries includes `src/hud` or `src/debug`.
@@ -46,6 +46,7 @@ src/
   core/ gfx/ scene/ assets/    engine
   ui/ video/ audio/   one library each, beside each other on top of engine
   game/               game_logic (rules) and night_maze (drawing, NightMazeApp)
+  render/             night_maze: helpers of the passes of a frame, no rules of the game
   hud/                night_maze: the HUD of a round (HudRules also in the tests)
   debug/              night_maze: debug window, categories/
 tests/
@@ -61,6 +62,7 @@ Directory map:
 - `src/scene`: `Camera`, `Transform`, colliders, ray casts, the frustum of a camera or a light (`Frustum`), lights as plain data.
 - `src/assets`: OBJ and image loaders, `AssetCache`.
 - `src/game`: the rules, the renderers and the application class.
+- `src/render`: the helpers of the passes of a frame that hold no rule of the game: the names of the shader uniforms (`ShaderUniforms.hpp`).
 - `src/hud`: the HUD of a round (gauges, counters, crosshair, prompt, cards), drawn with Dear ImGui, its colours, and the arithmetic of its scale and its sentences (`HudRules`).
 - `src/debug`: the debug window and its seven categories in `src/debug/categories`.
 - `assets/shaders` (shared parts in `assets/shaders/common`, full screen passes in `assets/shaders/post`), `assets/ui` (RML documents and one style sheet), `assets/models`, `assets/textures`, `assets/skybox`, `assets/audio`, `assets/video`, `assets/fonts`.

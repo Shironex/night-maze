@@ -5,10 +5,10 @@
 #include "core/GlCheck.hpp"
 #include "core/Paths.hpp"
 #include "game/ModelDraw.hpp"
-#include "game/ShaderUniforms.hpp"
 #include "game/Terrain.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/Texture2D.hpp"
+#include "render/ShaderUniforms.hpp"
 
 #include <cstdint>
 #include <span>
