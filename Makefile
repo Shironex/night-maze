@@ -17,11 +17,14 @@ endif
 # in external/ and build/ is never checked).
 # On Windows make may have no Unix shell (started from PowerShell it runs commands directly
 # or through cmd.exe, where "find" is a different program), so the files are listed by make
-# itself. $(wildcard) does not search subfolders: each pattern is one folder level, and
-# src/ is at most two levels deep. A deeper folder needs one more pattern here.
+# itself. $(wildcard) does not search subfolders: each pattern is one folder level. src/ is
+# covered to four folder levels (src/game/<domain>/<part>/<file>) and tests/, which mirrors
+# it, to three. A deeper folder needs one more pattern here.
 ifeq ($(OS),Windows_NT)
-    SOURCES := $(wildcard src/*.cpp src/*/*.cpp src/*/*/*.cpp tests/*.cpp)
-    HEADERS := $(wildcard src/*.hpp src/*/*.hpp src/*/*/*.hpp tests/*.hpp)
+    SOURCES := $(wildcard src/*.cpp src/*/*.cpp src/*/*/*.cpp src/*/*/*/*.cpp src/*/*/*/*/*.cpp \
+        tests/*.cpp tests/*/*.cpp tests/*/*/*.cpp tests/*/*/*/*.cpp)
+    HEADERS := $(wildcard src/*.hpp src/*/*.hpp src/*/*/*.hpp src/*/*/*/*.hpp src/*/*/*/*/*.hpp \
+        tests/*.hpp tests/*/*.hpp tests/*/*/*.hpp tests/*/*/*/*.hpp)
 else
     SOURCES := $(shell find src tests -name '*.cpp')
     HEADERS := $(shell find src tests -name '*.hpp')
@@ -33,7 +36,7 @@ endif
 # Objective-C++ file needs the headers of macOS: on Windows it cannot be checked at
 # all, and on macOS the check was never run, because the file was written on Windows.
 ifeq ($(OS),Windows_NT)
-    OBJCXX_SOURCES := $(wildcard src/*.mm src/*/*.mm src/*/*/*.mm)
+    OBJCXX_SOURCES := $(wildcard src/*.mm src/*/*.mm src/*/*/*.mm src/*/*/*/*.mm src/*/*/*/*/*.mm)
 else
     OBJCXX_SOURCES := $(shell find src -name '*.mm')
 endif
