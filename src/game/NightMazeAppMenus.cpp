@@ -410,7 +410,7 @@ void NightMazeApp::fillLedgerDocument() {
     m_ui.setText(m_ledgerDocument, LEDGER_COUNT_ID, ledgerCounterText(m_settings.storyRead));
     // The two pages, written as RML: a heading per night, then its lines. A line that
     // was read is its text, any other a ruled blank in one of three widths. The texts
-    // hold no character that RML would read as a tag (tests/LedgerTests.cpp).
+    // hold no character that RML would read as a tag (tests/game/LedgerTests.cpp).
     std::array<std::string, LEDGER_PAGE_IDS.size()> pages;
     const std::vector<LedgerGroup> groups = ledgerGroups(m_settings.storyRead);
     for (std::size_t i = 0; i < groups.size(); ++i) {

@@ -1,6 +1,6 @@
 # Collisions are own boxes moved one axis at a time, with no physics engine
 Status: accepted (2026-10-05)
-Code: src/scene/Collider.hpp, src/scene/Collider.cpp, src/game/Player.cpp, tests/ColliderTests.cpp
+Code: src/scene/Collider.hpp, src/scene/Collider.cpp, src/game/Player.cpp, tests/scene/ColliderTests.cpp
 
 Context: The player must slide along walls. The world is only axis-aligned walls and pillars, and the ground is read, not collided with.
 Decision: A small box test and a function that moves the player's box along x, then z, then y, measuring the free distance on each axis. Spheres give yes or no answers only.

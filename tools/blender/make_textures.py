@@ -96,7 +96,7 @@ WALL_JOINT_COLOR = (0.17, 0.15, 0.13)
 # white (one pixel in a hundred); 0.24 is about as bright as they go without that.
 WALL_LIGHT = 0.24
 # A worn wall may differ from the plain wall by this share of its light, and the share of
-# a channel in the sum of the three by this much (the limits of tests/ImageLoaderTests.cpp).
+# a channel in the sum of the three by this much (the limits of tests/assets/ImageLoaderTests.cpp).
 # The pictures keep their own colour: the moss stays green.
 WALL_LIGHT_TOLERANCE = 0.05
 WALL_COLOUR_SHARE_TOLERANCE = 0.03

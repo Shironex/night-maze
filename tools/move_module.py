@@ -5,14 +5,13 @@ Run from anywhere, with Python 3.9 or newer, on macOS or Windows:
     python3 tools/move_module.py [--dry-run] SOURCE [SOURCE ...] FOLDER
 
 SOURCE is a module's stem (src/game/Bloom moves Bloom.hpp and Bloom.cpp, whichever exist) or
-one file (src/main.cpp, tests/BloomTests.cpp). FOLDER is where they go (src/render). Paths are
-relative to the repository root, with / or \\. Examples:
+one file (src/main.cpp, tests/game/BloomTests.cpp). FOLDER is where they go (src/render).
+Paths are relative to the repository root, with / or \\. A module and its test go to two
+folders, so they are two calls:
 
     python3 tools/move_module.py --dry-run src/game/Bloom src/render
-    python3 tools/move_module.py src/game/Bloom tests/game/BloomTests.cpp src/render
-
-The second line is two calls in practice: the test goes to tests/render, so move it with its
-own FOLDER (python3 tools/move_module.py tests/game/BloomTests.cpp tests/render).
+    python3 tools/move_module.py src/game/Bloom src/render
+    python3 tools/move_module.py tests/game/BloomTests.cpp tests/render
 
 For every file it:
   1. moves it with git mv, so git log --follow keeps its history;

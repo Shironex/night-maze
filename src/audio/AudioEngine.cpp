@@ -112,7 +112,7 @@ std::unique_ptr<LoadedSound> loadSound(ma_engine& engine, ma_sound_group& group,
     // In a loop it sits right at the place where the file starts again, and a loop
     // that began at a loud sample would tick there on every round. So the file of
     // a loop has to begin where its wave crosses 0 (tools/make_sounds.py puts the seam
-    // there, and tests/AudioEngineTests.cpp measures the result).
+    // there, and tests/audio/AudioEngineTests.cpp measures the result).
     ma_decoder_config decoderConfig =
         ma_decoder_config_init(ma_format_f32, 0, ma_engine_get_sample_rate(&engine));
     ma_uint64 frameCount = 0;

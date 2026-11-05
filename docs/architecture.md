@@ -14,7 +14,7 @@ The root `CMakeLists.txt` defines five static libraries and two programs, with t
 | `video` | `src/video` | plays a video file into a texture with the decoder of the operating system | `engine`, Media Foundation or AVFoundation |
 | `audio` | `src/audio` | plays sounds through miniaudio | `engine`, `miniaudio` |
 | `night_maze` | `src/main.cpp`, the drawing files of `src/game`, `src/debug` | the game | all five, `imgui` |
-| `night_maze_tests` | `tests`, plus `src/debug/Search.cpp` and `src/video/VideoClock.cpp` | unit tests | `game_logic`, `audio`, `doctest` |
+| `night_maze_tests` | `tests`, plus `src/debug/HudRules.cpp`, `src/debug/Search.cpp` and `src/video/VideoClock.cpp` | unit tests | `game_logic`, `audio`, `doctest` |
 
 The dependencies go one way. `engine` knows nothing above it. `ui`, `video` and `audio` sit beside each other on top of `engine` and know nothing about the game: the game tells them which document to show, which file to play, which sound to start. They are separate libraries so that `game_logic` does not link RmlUi, the media libraries of a system or miniaudio. Nothing in `src/game` or in the five libraries includes `src/debug`.
 
@@ -24,7 +24,7 @@ Inside `engine`, `src/core` includes only itself, `src/gfx` uses `src/core`, `sr
 
 `src/game` is split between two targets. The files that need no window are in `game_logic`. The files that draw (`NightMazeApp`, the `*Renderer` classes, `PostProcess`, `ShadowMap`, `Skybox`, `LightRig`) are in the executable.
 
-What runs without a window or an OpenGL context: all of `game_logic`, the math in `src/scene`, the file loaders and shader text functions in `engine`, and the audio engine when it is made with `audio::AudioOutput::None`. The 60 test files in `tests` cover that.
+What runs without a window or an OpenGL context: all of `game_logic`, the math in `src/scene`, the file loaders and shader text functions in `engine`, and the audio engine when it is made with `audio::AudioOutput::None`. The 63 test files in `tests` cover that, in folders that mirror `src/` (`tests/game/RoundTests.cpp` tests `src/game/Round.cpp`), plus `tests/LayeringTests.cpp`, which checks the layering rules below.
 
 | Library | Version | Used by |
 |---|---|---|
@@ -37,6 +37,22 @@ What runs without a window or an OpenGL context: all of `game_logic`, the math i
 | Dear ImGui | 1.92.9b, docking branch | `night_maze` only |
 | doctest | 2.5.3 | `night_maze_tests` only |
 
+Layout (every folder under `src/` and `tests/` also holds its `CMakeLists.txt`):
+
+```
+CMakeLists.txt        targets, links, options; add_subdirectory(src) and (tests)
+src/
+  main.cpp            night_maze: the game with its debug UI
+  core/ gfx/ scene/ assets/    engine
+  ui/ video/ audio/   one library each, beside each other on top of engine
+  game/               game_logic (rules) and night_maze (drawing, NightMazeApp)
+  debug/              night_maze: debug window, HUD, categories/
+tests/
+  main.cpp            doctest main
+  LayeringTests.cpp   the layering rules
+  core/ gfx/ scene/ assets/ audio/ video/ debug/ game/    one folder per folder of src/
+```
+
 Directory map:
 
 - `src/core`: `Application`, `Window`, `Input`, `Time`, `PeriodicAverage`, logging, `GL_CHECK`, paths.
@@ -46,6 +62,7 @@ Directory map:
 - `src/game`: the rules, the renderers and the application class.
 - `src/debug`: the debug window, its seven categories in `src/debug/categories`, and the HUD.
 - `assets/shaders` (shared parts in `assets/shaders/common`, full screen passes in `assets/shaders/post`), `assets/ui` (RML documents and one style sheet), `assets/models`, `assets/textures`, `assets/skybox`, `assets/audio`, `assets/video`, `assets/fonts`.
+- `tests`: one folder per folder of `src/` that has tests (there is none for `src/ui` yet).
 - `tools`: scripts that produce assets and releases: `tools/blender` (models and textures), `tools/make_sounds.py`, `tools/make_music.py`, `tools/record_menu_loop.py`, `tools/capture_showcase.py` (README pictures), `tools/build-notices.mjs` and `tools/release-notes.mjs`, and `tools/move_module.py`, which moves a module between folders.
 
 Rules for new code:
@@ -243,4 +260,4 @@ What the launcher expects from a game build is what `.github/workflows/release.y
 - Add a debug control: a reference in `src/debug/DebugContext.hpp`, filled in `src/main.cpp`, and the widget in one file of `src/debug/categories`. Keep `controlCount` in `src/debug/Categories.hpp` right.
 - Add a menu screen: a mode, its events and predicates in `src/game/GameState.cpp`, a document in `assets/ui` next to `assets/ui/pause.rml`, then `showScreen` in `src/game/NightMazeAppScreens.cpp` and a fill function in `src/game/NightMazeAppMenus.cpp`. Say whether it has the menu theme: a line in `menuThemeScreen` in `src/game/SoundCues.cpp` and in the table of its test. The build stops until the line is there.
 
-The matching test files are `tests/SettingsTests.cpp`, `tests/SoundCueTests.cpp`, `tests/FlaskTests.cpp`, `tests/RoundTests.cpp` and `tests/GameStateTests.cpp`.
+The matching test files are `tests/game/SettingsTests.cpp`, `tests/game/SoundCueTests.cpp`, `tests/game/FlaskTests.cpp`, `tests/game/RoundTests.cpp` and `tests/game/GameStateTests.cpp`.

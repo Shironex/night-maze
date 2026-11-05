@@ -96,7 +96,7 @@ DECIMATE_RATIO = 0.25
 
 # The size and the place of the village. The old village of the script, as seen from the
 # eye, reached from 4.7 degrees left to 5.7 degrees right of the middle (10.4 degrees
-# across, which tests/VillageTests.cpp counts on for the reveal) and from the lane, 6
+# across, which tests/game/VillageTests.cpp counts on for the reveal) and from the lane, 6
 # degrees up, to the cap of its tower, 9 degrees up. The new one is no larger: it is
 # scaled by SCALE metres per unit of the source, its middle is put in front of the eye,
 # its front on the upper edge of the ridge and the ground behind its field wall at the

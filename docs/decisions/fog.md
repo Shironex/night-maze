@@ -1,6 +1,6 @@
 # Fog is computed in the composite pass from a position rebuilt from depth, with height taken at the pixel
 Status: accepted (2026-10-05)
-Code: assets/shaders/post/composite.frag, src/game/Fog.hpp, tests/FogTests.cpp
+Code: assets/shaders/post/composite.frag, src/game/Fog.hpp, tests/game/FogTests.cpp
 
 Context: The fog has to lie low in the corridors, keep the moon clear and not move when the camera turns.
 Decision: The shader rebuilds each pixel's world position from depth with the inverse view projection. Distance is eye to that point, and the height factor is taken once at the point. The sky has no special case: depth 1 gives a high point, so it stays clear.

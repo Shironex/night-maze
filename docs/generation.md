@@ -96,7 +96,7 @@ Rerolls of a weak model. The first two rolls of `crook_post` both became doors, 
 |---|---|---|---|---|
 | crook_post | Not generated | Prop | A small flat rectangular board of weathered grey oak lying flat on the ground, seen from above, only 0.3 m wide and 0.6 m long and 5 cm thick, like a plaque, two black iron straps across it, one short thick iron pin standing straight up from its middle, a small iron ring lying beside the pin, nothing behind it and nothing around it. | Same limits as the row above. The build stands it up on the wall. |
 
-New wall picture, from the Image tab (about 2 credits). Append the seamless line from Wall pictures above. A darker picture also means loosening the test that keeps a worn picture within 5 % of the plain wall's brightness (`tests/ImageLoaderTests.cpp`). The frost and damp variants and the ground pictures of the five nights have no prompt yet.
+New wall picture, from the Image tab (about 2 credits). Append the seamless line from Wall pictures above. A darker picture also means loosening the test that keeps a worn picture within 5 % of the plain wall's brightness (`tests/assets/ImageLoaderTests.cpp`). The frost and damp variants and the ground pictures of the five nights have no prompt yet.
 
 | Name | Status | Prompt for the picture |
 |---|---|---|

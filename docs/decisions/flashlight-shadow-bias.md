@@ -1,6 +1,6 @@
 # The flashlight shadow bias moves the point in world space, in metres
 Status: accepted (2026-10-06)
-Code: assets/shaders/common/shadows.glsl, src/game/Shadows.cpp, tests/ShadowTests.cpp
+Code: assets/shaders/common/shadows.glsl, src/game/Shadows.cpp, tests/game/ShadowTests.cpp
 
 Context: The flashlight map is a perspective projection, so one depth step means 2 cm near the hand and about 2 m at 10 m.
 Decision: The bias stays in metres up to the shader, which moves the point towards the light by that length before projecting it. Defaults are 0.01 plus 0.13 times one minus the cosine.

@@ -6,7 +6,7 @@
 namespace debug {
 
 // This file knows nothing about ImGui: it is plain text handling, so the unit tests can
-// check it (tests/SearchTests.cpp).
+// check it (tests/debug/SearchTests.cpp).
 
 /// True when text contains every word of query. The words of the query are separated
 /// by spaces, their order does not matter, and upper and lower case letters count as
