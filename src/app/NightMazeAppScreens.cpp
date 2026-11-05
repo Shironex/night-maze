@@ -2,7 +2,7 @@
 // cards of text.
 #include "app/NightMazeApp.hpp"
 
-#include "app/NightMazeAppShared.hpp"
+#include "app/MenuNames.hpp"
 #include "core/Log.hpp"
 #include "core/Paths.hpp"
 

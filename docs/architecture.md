@@ -42,7 +42,8 @@ Layout (every folder under `src/` and `tests/` also holds its `CMakeLists.txt`):
 ```
 CMakeLists.txt        targets, links, options; add_subdirectory(src) and (tests)
 src/
-  app/                night_maze: main.cpp (the game with its debug UI) and NightMazeApp
+  app/                night_maze: main.cpp (the game with its debug UI), NightMazeApp, the
+                      state it holds (one header per system), ScenePasses, MenuNames
   core/ gfx/ scene/ assets/    engine
   ui/ video/ audio/   one library each, beside each other on top of engine
   game/               one folder per domain below, each with its rules (game_logic) and its
@@ -73,7 +74,7 @@ Directory map:
 - `src/gfx`: wrappers of OpenGL objects, the shader loader with its `#include` step, and the counters of a frame (`RenderStats`).
 - `src/scene`: `Camera`, `Transform`, colliders, ray casts, the frustum of a camera or a light (`Frustum`), lights as plain data.
 - `src/assets`: OBJ and image loaders, `AssetCache`.
-- `src/app`: the entry point and the class that joins the game with the debug UI (`main.cpp`), and the application class that holds the game together (`NightMazeApp`, see section 3).
+- `src/app`: the entry point and the class that joins the game with the debug UI (`main.cpp`), the application class that holds the game together (`NightMazeApp`), the structs that hold its state one system each, the passes that draw the world (`ScenePasses`) and the names shared with the menu documents (`MenuNames.hpp`), see section 3.
 - `src/game`: one folder per domain, each with its rules and its renderers:
   - `src/game/land`: the ground (`Terrain`), the tufts of grass, the puddles, the land around the maze with the triangles built in code (`LandMeshes`), the village on the ridge, and their renderers.
   - `src/game/lighting`: the settings and the math the renderers and the passes read: the lights (`Lighting`), the shadow maps (`Shadows`), the reflections of the sky (`EnvironmentMapping`), `Bloom`, `Fog` and `Vignette`. No renderer: the passes are in `src/render`.
@@ -147,7 +148,7 @@ The loop uses a fixed timestep. `core::Time` collects the real time of each fram
 
 `game::NightMazeApp` (`src/app/NightMazeApp.hpp`) is the game. It owns the shader programs, the `AssetCache`, the renderers, two shadow maps, `PostProcess`, the settings, the current `MazeWorld`, `Round`, `Player`, camera and `GameMode`, the `ui::UiLayer` and the `audio::AudioEngine`. Member order is construction order, and some of it matters: the settings file is read before the first maze is built, and the UI layer exists before the debug UI so that Dear ImGui can chain its GLFW callbacks onto the ones of RmlUi.
 
-The class is one header and six source files, split by what the functions do: `NightMazeApp.cpp` (the constructor, the settings and the sounds), `NightMazeAppScreens.cpp` (the change of screens, the intro and the cards), `NightMazeAppMenus.cpp` (the menu documents and their controls), `NightMazeAppCampaign.cpp` (the start of a game or a night and the won round), `NightMazeAppRound.cpp` (the maze being built and `onUpdate`) and `NightMazeAppRender.cpp` (`onRender`, the picking and the minimap). The shadow passes and the `draw*` functions of the scene pass are a class of their own, `ScenePasses` (`ScenePasses.cpp`), which `onRender` calls. The names the code shares with the `.rml` documents are in `NightMazeAppShared.hpp`.
+The class is one header and six source files, split by what the functions do: `NightMazeApp.cpp` (the constructor, the settings and the sounds), `NightMazeAppScreens.cpp` (the change of screens, the intro and the cards), `NightMazeAppMenus.cpp` (the menu documents and their controls), `NightMazeAppCampaign.cpp` (the start of a game or a night and the won round), `NightMazeAppRound.cpp` (the maze being built and `onUpdate`) and `NightMazeAppRender.cpp` (`onRender`, the picking and the minimap). The shadow passes and the `draw*` functions of the scene pass are a class of their own, `ScenePasses` (`ScenePasses.cpp`), which `onRender` calls. The names the code shares with the `.rml` documents are in `MenuNames.hpp`.
 
 The state of the class is held in one member per system, each a struct or a small class in its own header in `src/app`, so the header of `NightMazeApp` reads as the coordinator:
 

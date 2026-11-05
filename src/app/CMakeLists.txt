@@ -6,6 +6,7 @@ target_sources(night_maze PRIVATE
     AppShaders.cpp
     AppShaders.hpp
     FrameState.hpp
+    MenuNames.hpp
     MenuState.hpp
     NightMazeApp.cpp
     NightMazeApp.hpp
@@ -14,7 +15,6 @@ target_sources(night_maze PRIVATE
     NightMazeAppRender.cpp
     NightMazeAppRound.cpp
     NightMazeAppScreens.cpp
-    NightMazeAppShared.hpp
     RenderSettings.hpp
     RoundClocks.hpp
     ScenePasses.cpp

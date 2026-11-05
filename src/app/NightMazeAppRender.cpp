@@ -1,7 +1,7 @@
 // The Night Maze application: the frame, the picking and the minimap.
 #include "app/NightMazeApp.hpp"
 
-#include "app/NightMazeAppShared.hpp"
+#include "app/MenuNames.hpp"
 #include "core/GlCheck.hpp"
 #include "core/Log.hpp"
 #include "game/round/GateLamp.hpp"

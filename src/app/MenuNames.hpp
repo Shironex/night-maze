@@ -1,5 +1,6 @@
-// What more than one of the NightMazeApp*.cpp files uses: the names the code shares with
-// the documents of the menus, and two small helpers.
+// The names the code shares with the documents of the menus (their files, the ids of
+// their elements, their classes and the actions of their buttons), the random seed the
+// menus offer and the test for the two screens of the ledger.
 #pragma once
 
 #include "game/round/Campaign.hpp"
