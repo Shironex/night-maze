@@ -12,7 +12,7 @@
 #include "game/Player.hpp"
 #include "game/Round.hpp"
 #include "game/SoundCues.hpp"
-#include "game/Terrain.hpp"
+#include "game/land/Terrain.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "scene/Camera.hpp"

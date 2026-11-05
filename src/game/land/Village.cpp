@@ -1,6 +1,6 @@
 // Village: the village on the ridge beyond the gate, where it stands in the sky, and the
 // camera that rises over the gate to show it after a night of the campaign is won.
-#include "game/Village.hpp"
+#include "game/land/Village.hpp"
 
 #include "game/GateLamp.hpp"
 

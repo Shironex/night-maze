@@ -7,7 +7,7 @@
 #include "core/Log.hpp"
 #include "core/Paths.hpp"
 #include "game/NightMazeAppShared.hpp"
-#include "game/Puddles.hpp"
+#include "game/land/Puddles.hpp"
 #include "render/ModelDraw.hpp"
 
 #include <algorithm>

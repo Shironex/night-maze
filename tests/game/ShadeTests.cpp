@@ -9,7 +9,7 @@
 #include "game/Lighting.hpp"
 #include "game/Player.hpp"
 #include "game/Round.hpp"
-#include "game/Terrain.hpp"
+#include "game/land/Terrain.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"

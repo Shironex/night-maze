@@ -1,10 +1,10 @@
 // VillageRenderer: draws the village on the ridge and the lights of its won nights.
-#include "game/VillageRenderer.hpp"
+#include "game/land/VillageRenderer.hpp"
 
 #include "assets/AssetCache.hpp"
 #include "core/Paths.hpp"
 #include "game/GateLamp.hpp"
-#include "game/Village.hpp"
+#include "game/land/Village.hpp"
 #include "gfx/ColorSpace.hpp"
 #include "gfx/Shader.hpp"
 #include "render/ModelDraw.hpp"

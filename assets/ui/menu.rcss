@@ -991,7 +991,7 @@ button.gone, .row.gone {
 
 /* ---- the result of a night of the campaign --------------------------------------------- */
 /* The camera rises over the gate and shows the village on the ridge in the left half of
-   the picture (game/Village.hpp). The card moves to the right, and the dim layer is clear
+   the picture (game/land/Village.hpp). The card moves to the right, and the dim layer is clear
    on the left and as dark as ever behind the card. */
 body.dim.reveal {
     background-color: transparent;

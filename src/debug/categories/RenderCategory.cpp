@@ -6,7 +6,7 @@
 #include "debug/DebugContext.hpp"
 #include "debug/Widgets.hpp"
 #include "game/Lighting.hpp"
-#include "game/Village.hpp"
+#include "game/land/Village.hpp"
 #include "game/maze/MazeRenderer.hpp"
 #include "gfx/Texture2D.hpp"
 #include "render/Skybox.hpp"

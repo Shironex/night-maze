@@ -1,9 +1,9 @@
 // Land: the land around the maze. Its ground beyond the terrain (the ring), the field
 // walls and hedgerows, the trees, houses and landmarks that stand on it, and where their
 // windows light up.
-#include "game/Land.hpp"
+#include "game/land/Land.hpp"
 
-#include "game/Village.hpp"
+#include "game/land/Village.hpp"
 #include "game/maze/MazeGenerator.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "scene/Frustum.hpp"

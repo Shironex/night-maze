@@ -42,14 +42,14 @@ SOURCE_FILE = "village_tripo.glb"
 #
 # The origin of these models is not their base: it is the EYE that looks at them. The game
 # draws the village like the sky, centred on the camera (game::villageMatrix in
-# src/game/Village.hpp), so it is only ever seen from the origin. That has two
+# src/game/land/Village.hpp), so it is only ever seen from the origin. That has two
 # consequences. The numbers below are angles as much as lengths: the lane lies 257 m out
 # and 27 m up, which is 6 degrees above the horizon. And the top of the ridge in front of
 # the village is never seen from below: the ridge is one slope, and its upper edge hides
 # the foot of the village.
 #
 # The numbers the game has to agree with are VILLAGE_REACH, the two of the lane and the two
-# of the foot of the ridge in src/game/Village.hpp.
+# of the foot of the ridge in src/game/land/Village.hpp.
 LANE_DISTANCE = 257.0
 LANE_HEIGHT = 27.0
 
@@ -96,7 +96,7 @@ DECIMATE_RATIO = 0.25
 
 # The size and the place of the village. The old village of the script, as seen from the
 # eye, reached from 4.7 degrees left to 5.7 degrees right of the middle (10.4 degrees
-# across, which tests/game/VillageTests.cpp counts on for the reveal) and from the lane, 6
+# across, which tests/game/land/VillageTests.cpp counts on for the reveal) and from the lane, 6
 # degrees up, to the cap of its tower, 9 degrees up. The new one is no larger: it is
 # scaled by SCALE metres per unit of the source, its middle is put in front of the eye,
 # its front on the upper edge of the ridge and the ground behind its field wall at the
@@ -151,7 +151,7 @@ RIM_STEPS = 32
 # The foot of the slope, all the way round: this far out and this far below the eye, which
 # is 45 degrees down. The game draws the model 0.31 times as large, so the foot lies 62 m
 # under the camera, deep in the fog for every camera up to VILLAGE_CLEAR_EYE_HEIGHT in
-# src/game/Village.hpp, and no lower edge is seen. The two numbers are
+# src/game/land/Village.hpp, and no lower edge is seen. The two numbers are
 # VILLAGE_FOOT_DISTANCE and VILLAGE_FOOT_DEPTH there.
 RIM_FOOT_DISTANCE = 200.0
 RIM_FOOT_Z = -200.0

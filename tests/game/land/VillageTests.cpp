@@ -1,6 +1,6 @@
-// Tests of game/Village: the side the village lies on, its place in the sky, the camera
+// Tests of game/land/Village: the side the village lies on, its place in the sky, the camera
 // that rises to show it and the timing of its lights.
-#include "game/Village.hpp"
+#include "game/land/Village.hpp"
 
 #include "assets/ObjLoader.hpp"
 #include "game/Campaign.hpp"

@@ -1,5 +1,5 @@
 // GrassRenderer: draws the grass, in chunks, with instancing or with the geometry shader.
-#include "game/GrassRenderer.hpp"
+#include "game/land/GrassRenderer.hpp"
 
 #include "core/GlCheck.hpp"
 #include "game/maze/MazeRenderer.hpp"

@@ -2,8 +2,8 @@
 // field walls and the sheepfold, the hedgerows, the stream and the lit windows.
 #pragma once
 
-#include "game/Land.hpp"
-#include "game/Terrain.hpp"
+#include "game/land/Land.hpp"
+#include "game/land/Terrain.hpp"
 
 #include <span>
 #include <vector>

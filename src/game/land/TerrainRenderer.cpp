@@ -1,10 +1,10 @@
 // TerrainRenderer: draws the terrain, one large mesh with the ground texture.
-#include "game/TerrainRenderer.hpp"
+#include "game/land/TerrainRenderer.hpp"
 
 #include "assets/AssetCache.hpp"
 #include "core/GlCheck.hpp"
 #include "core/Paths.hpp"
-#include "game/Terrain.hpp"
+#include "game/land/Terrain.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/Texture2D.hpp"
 #include "render/ModelDraw.hpp"

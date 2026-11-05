@@ -74,7 +74,7 @@ namespace debug {
 // pictures can be compared pixel by pixel) and "uvview" (the debug view of the
 // texture coordinates, where every blade is a gradient from black to green), and
 // "fov=<degrees>" (the field of view of the camera, 22 is the one of the reveal of the
-// village), "land" and "noland" (the land around the maze, game/Land.hpp) and "map" (the
+// village), "land" and "noland" (the land around the maze, game/land/Land.hpp) and "map" (the
 // held map, pinned on the screen).
 
 /// Where the player stands and looks during a measurement.

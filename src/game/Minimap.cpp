@@ -3,7 +3,7 @@
 // notes, the tick towards the open gate, player).
 #include "game/Minimap.hpp"
 
-#include "game/Land.hpp"
+#include "game/land/Land.hpp"
 #include "game/maze/MazeLayout.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>

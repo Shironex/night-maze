@@ -2,7 +2,7 @@
 #pragma once
 
 #include "game/Crystals.hpp"
-#include "game/Terrain.hpp"
+#include "game/land/Terrain.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "scene/Collider.hpp"

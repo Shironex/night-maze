@@ -1,7 +1,7 @@
 // GrassRenderer: draws the grass, in chunks, with instancing or with the geometry shader.
 #pragma once
 
-#include "game/Grass.hpp"
+#include "game/land/Grass.hpp"
 #include "gfx/Buffer.hpp"
 #include "gfx/VertexArray.hpp"
 
