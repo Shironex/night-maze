@@ -86,3 +86,4 @@ Status words: `accepted (date)` means the code does this today. `planned (date)`
 - [licence](licence.md): MIT code, assets excluded
 - [docs-lean-english](docs-lean-english.md): short English docs only
 - [game-domain-folders](game-domain-folders.md): one folder per domain in src/game, passes in src/render
+- [app-folder-and-state](app-folder-and-state.md): the application in src/app, its state in one struct per system
