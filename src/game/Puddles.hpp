@@ -3,7 +3,7 @@
 #pragma once
 
 #include "game/Crystals.hpp"
-#include "game/Maze.hpp"
+#include "game/maze/Maze.hpp"
 #include "gfx/Vertex.hpp"
 
 #include <glm/glm.hpp>

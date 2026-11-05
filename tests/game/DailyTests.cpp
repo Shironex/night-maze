@@ -4,7 +4,7 @@
 
 #include "game/Campaign.hpp"
 #include "game/Difficulty.hpp"
-#include "game/MazeWorld.hpp"
+#include "game/maze/MazeWorld.hpp"
 
 #include <doctest/doctest.h>
 

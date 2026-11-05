@@ -1,7 +1,7 @@
 // Crystals: how many a maze gets, which cells they float in and how they move and glow.
 #pragma once
 
-#include "game/Maze.hpp"
+#include "game/maze/Maze.hpp"
 
 #include <glm/glm.hpp>
 

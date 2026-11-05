@@ -46,7 +46,7 @@ SOURCE_FILE = "gate_arch_tripo.glb"
 # on it is on both faces: the hooks, and the lantern and the bell in the middle.
 #
 # The numbers the game has to agree with are in src/game/GateLamp.hpp (where the lanterns
-# and the bell hang) and src/game/MazeLayout.hpp (GATE_HOUSE_HEIGHT, PILLAR_SIZE).
+# and the bell hang) and src/game/maze/MazeLayout.hpp (GATE_HOUSE_HEIGHT, PILLAR_SIZE).
 
 # Two corners of the source closer than this (in its own units) are one corner.
 MERGE_DISTANCE = 0.000001

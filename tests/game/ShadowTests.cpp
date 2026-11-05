@@ -5,10 +5,10 @@
 
 #include "game/Land.hpp"
 #include "game/Lighting.hpp"
-#include "game/MazeLayout.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/Player.hpp"
 #include "game/Terrain.hpp"
+#include "game/maze/MazeLayout.hpp"
+#include "game/maze/MazeWorld.hpp"
 #include "scene/Camera.hpp"
 #include "scene/Collider.hpp"
 #include "scene/Light.hpp"

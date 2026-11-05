@@ -1,11 +1,11 @@
 // MazeWorld: one generated maze with everything the game needs to draw it and walk in it.
-#include "game/MazeWorld.hpp"
+#include "game/maze/MazeWorld.hpp"
 
 #include "game/Exit.hpp"
 #include "game/Flasks.hpp"
 #include "game/Heartstone.hpp"
-#include "game/MazeGenerator.hpp"
-#include "game/Stile.hpp"
+#include "game/maze/MazeGenerator.hpp"
+#include "game/maze/Stile.hpp"
 #include "scene/Transform.hpp"
 
 #include <algorithm>

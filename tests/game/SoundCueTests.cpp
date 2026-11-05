@@ -6,12 +6,12 @@
 
 #include "game/Exit.hpp"
 #include "game/GameState.hpp"
-#include "game/Maze.hpp"
-#include "game/MazeLayout.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/Player.hpp"
 #include "game/Round.hpp"
 #include "game/Terrain.hpp"
+#include "game/maze/Maze.hpp"
+#include "game/maze/MazeLayout.hpp"
+#include "game/maze/MazeWorld.hpp"
 
 #include <doctest/doctest.h>
 

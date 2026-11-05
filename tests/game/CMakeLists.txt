@@ -20,10 +20,6 @@ target_sources(night_maze_tests PRIVATE
     LandTests.cpp
     LedgerTests.cpp
     LightingTests.cpp
-    MazeGeneratorTests.cpp
-    MazeLayoutTests.cpp
-    MazeTests.cpp
-    MazeWorldTests.cpp
     MenuBackgroundTests.cpp
     MenuCameraTests.cpp
     MinimapTests.cpp
@@ -37,11 +33,10 @@ target_sources(night_maze_tests PRIVATE
     SkyboxTests.cpp
     SoundCueTests.cpp
     StartOptionsTests.cpp
-    StileTests.cpp
-    StoneSheepTests.cpp
     StorybookTests.cpp
     TerrainTests.cpp
     VignetteTests.cpp
     VillageTests.cpp
-    WallVariantTests.cpp
 )
+
+add_subdirectory(maze)

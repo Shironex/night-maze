@@ -2,8 +2,8 @@
 #include "game/Shadows.hpp"
 
 #include "game/Land.hpp"
-#include "game/MazeLayout.hpp"
 #include "game/Terrain.hpp"
+#include "game/maze/MazeLayout.hpp"
 #include "scene/LightSpace.hpp"
 
 #include <algorithm>

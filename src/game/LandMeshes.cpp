@@ -3,7 +3,7 @@
 #include "game/LandMeshes.hpp"
 
 #include "assets/Tangents.hpp"
-#include "game/MazeLayout.hpp"
+#include "game/maze/MazeLayout.hpp"
 
 #include <glm/gtc/constants.hpp>
 

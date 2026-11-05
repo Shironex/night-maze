@@ -1,5 +1,5 @@
 // Tests of game::randomBelow and game::generateMaze.
-#include "game/MazeGenerator.hpp"
+#include "game/maze/MazeGenerator.hpp"
 
 #include <doctest/doctest.h>
 

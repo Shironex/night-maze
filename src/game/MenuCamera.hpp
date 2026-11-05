@@ -1,8 +1,8 @@
 // MenuCamera: a camera that travels through the maze by itself, the picture behind the menu.
 #pragma once
 
-#include "game/Maze.hpp"
-#include "game/MazeWorld.hpp"
+#include "game/maze/Maze.hpp"
+#include "game/maze/MazeWorld.hpp"
 
 #include <glm/glm.hpp>
 

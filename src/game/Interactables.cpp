@@ -2,7 +2,7 @@
 #include "game/Interactables.hpp"
 
 #include "game/Exit.hpp"
-#include "game/MazeGenerator.hpp"
+#include "game/maze/MazeGenerator.hpp"
 
 #include <algorithm>
 #include <array>

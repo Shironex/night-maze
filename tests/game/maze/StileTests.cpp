@@ -1,6 +1,6 @@
 // Tests of game::Stile: which wall of the start cell carries the stile, where its
 // collision box stands and what it must never be in the way of, and the bare ground.
-#include "game/Stile.hpp"
+#include "game/maze/Stile.hpp"
 
 #include "assets/ObjLoader.hpp"
 #include "game/Daily.hpp"
@@ -9,11 +9,11 @@
 #include "game/GateLamp.hpp"
 #include "game/Grass.hpp"
 #include "game/Interactables.hpp"
-#include "game/MazeLayout.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/Player.hpp"
 #include "game/Puddles.hpp"
-#include "game/WallVariants.hpp"
+#include "game/maze/MazeLayout.hpp"
+#include "game/maze/MazeWorld.hpp"
+#include "game/maze/WallVariants.hpp"
 #include "scene/Collider.hpp"
 
 #include <doctest/doctest.h>

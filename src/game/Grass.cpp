@@ -3,12 +3,12 @@
 
 #include "game/GateLamp.hpp"
 #include "game/Land.hpp"
-#include "game/MazeGenerator.hpp"
-#include "game/MazeLayout.hpp"
-#include "game/MazeWorld.hpp"
-#include "game/Stile.hpp"
-#include "game/StoneSheep.hpp"
 #include "game/Terrain.hpp"
+#include "game/maze/MazeGenerator.hpp"
+#include "game/maze/MazeLayout.hpp"
+#include "game/maze/MazeWorld.hpp"
+#include "game/maze/Stile.hpp"
+#include "game/maze/StoneSheep.hpp"
 
 #include <algorithm>
 #include <array>

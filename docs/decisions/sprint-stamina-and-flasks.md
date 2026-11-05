@@ -1,6 +1,6 @@
 # Sprint costs stamina, and flasks of tea hidden in dead ends refill it
 Status: accepted (2026-10-08)
-Code: src/game/Player.hpp, src/game/Player.cpp, src/game/Flasks.hpp, src/game/Flasks.cpp, src/game/MazeWorld.cpp
+Code: src/game/Player.hpp, src/game/Player.cpp, src/game/Flasks.hpp, src/game/Flasks.cpp, src/game/maze/MazeWorld.cpp
 
 Context: Testers held sprint all the time, so walking never mattered.
 Decision: A full bar drains in 6 s of sprint, refills after 1 s of rest in 4 s, and an empty bar leaves the player winded until it is half full. A flask of tea, a thing from the story's world and not a brand, fills the bar and makes sprint free for 20 s. Flasks lie in dead ends, three of which are kept free of crystals.

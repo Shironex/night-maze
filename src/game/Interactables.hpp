@@ -2,9 +2,9 @@
 #pragma once
 
 #include "game/Crystals.hpp"
-#include "game/Maze.hpp"
-#include "game/MazeLayout.hpp"
 #include "game/Terrain.hpp"
+#include "game/maze/Maze.hpp"
+#include "game/maze/MazeLayout.hpp"
 #include "scene/Collider.hpp"
 #include "scene/Raycast.hpp"
 

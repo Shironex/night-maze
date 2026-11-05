@@ -2,7 +2,7 @@
 #pragma once
 
 #include "assets/ImageLoader.hpp"
-#include "game/MazeLayout.hpp"
+#include "game/maze/MazeLayout.hpp"
 #include "gfx/Vertex.hpp"
 
 #include <glm/glm.hpp>

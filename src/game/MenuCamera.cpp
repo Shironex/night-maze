@@ -2,8 +2,8 @@
 // walk and the high glide.
 #include "game/MenuCamera.hpp"
 
-#include "game/MazeLayout.hpp"
 #include "game/MenuCameraShared.hpp"
+#include "game/maze/MazeLayout.hpp"
 #include "scene/Camera.hpp"
 
 #include <algorithm>

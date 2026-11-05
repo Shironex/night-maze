@@ -1,5 +1,5 @@
 // Tests of game::MazeWorld: model matrices, collision boxes and the start of a built maze.
-#include "game/MazeWorld.hpp"
+#include "game/maze/MazeWorld.hpp"
 
 #include <doctest/doctest.h>
 

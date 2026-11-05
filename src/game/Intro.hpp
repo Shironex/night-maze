@@ -2,9 +2,9 @@
 #pragma once
 
 #include "game/Difficulty.hpp"
-#include "game/Maze.hpp"
 #include "game/MenuCamera.hpp"
 #include "game/SoundCues.hpp"
+#include "game/maze/Maze.hpp"
 
 #include <array>
 #include <cstddef>

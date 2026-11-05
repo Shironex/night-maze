@@ -5,8 +5,8 @@
 
 #include "game/Campaign.hpp"
 #include "game/Difficulty.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/StartOptions.hpp"
+#include "game/maze/MazeWorld.hpp"
 
 #include <cstdint>
 #include <string_view>

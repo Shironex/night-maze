@@ -5,7 +5,7 @@
 #include "core/GlCheck.hpp"
 #include "core/Log.hpp"
 #include "core/Paths.hpp"
-#include "game/MazeRenderer.hpp"
+#include "game/maze/MazeRenderer.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/Vertex.hpp"
 #include "render/ShaderUniforms.hpp"

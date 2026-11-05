@@ -6,10 +6,10 @@
 #include "game/Campaign.hpp"
 #include "game/Fog.hpp"
 #include "game/GateLamp.hpp"
-#include "game/Maze.hpp"
-#include "game/MazeLayout.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/MenuCamera.hpp"
+#include "game/maze/Maze.hpp"
+#include "game/maze/MazeLayout.hpp"
+#include "game/maze/MazeWorld.hpp"
 #include "scene/Camera.hpp"
 
 #include <doctest/doctest.h>

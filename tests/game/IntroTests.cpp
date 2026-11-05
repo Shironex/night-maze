@@ -4,10 +4,10 @@
 
 #include "game/Difficulty.hpp"
 #include "game/Lighting.hpp"
-#include "game/Maze.hpp"
-#include "game/MazeLayout.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/MenuCamera.hpp"
+#include "game/maze/Maze.hpp"
+#include "game/maze/MazeLayout.hpp"
+#include "game/maze/MazeWorld.hpp"
 
 #include <doctest/doctest.h>
 #include <glm/glm.hpp>

@@ -3,7 +3,7 @@
 #pragma once
 
 #include "game/Interactables.hpp"
-#include "game/Maze.hpp"
+#include "game/maze/Maze.hpp"
 
 #include <array>
 #include <cstddef>

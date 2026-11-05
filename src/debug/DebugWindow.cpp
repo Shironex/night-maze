@@ -14,7 +14,7 @@
 #include "debug/categories/RenderCategory.hpp"
 #include "debug/categories/WorldCategory.hpp"
 #include "game/GameState.hpp"
-#include "game/MazeWorld.hpp"
+#include "game/maze/MazeWorld.hpp"
 
 #include <imgui.h>
 

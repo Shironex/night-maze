@@ -2,7 +2,7 @@
 #include "game/Flasks.hpp"
 
 #include "game/Exit.hpp"
-#include "game/MazeLayout.hpp"
+#include "game/maze/MazeLayout.hpp"
 
 #include <algorithm>
 #include <cstddef>

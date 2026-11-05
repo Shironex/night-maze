@@ -45,14 +45,6 @@ target_sources(game_logic PRIVATE
     Ledger.hpp
     Lighting.cpp
     Lighting.hpp
-    Maze.cpp
-    Maze.hpp
-    MazeGenerator.cpp
-    MazeGenerator.hpp
-    MazeLayout.cpp
-    MazeLayout.hpp
-    MazeWorld.cpp
-    MazeWorld.hpp
     MenuBackground.cpp
     MenuBackground.hpp
     MenuCamera.cpp
@@ -79,10 +71,6 @@ target_sources(game_logic PRIVATE
     SoundCues.hpp
     StartOptions.cpp
     StartOptions.hpp
-    Stile.cpp
-    Stile.hpp
-    StoneSheep.cpp
-    StoneSheep.hpp
     Storybook.cpp
     Storybook.hpp
     Terrain.cpp
@@ -91,8 +79,6 @@ target_sources(game_logic PRIVATE
     Vignette.hpp
     Village.cpp
     Village.hpp
-    WallVariants.cpp
-    WallVariants.hpp
 )
 
 # The application and the classes that draw: they need a window and an OpenGL context.
@@ -105,8 +91,6 @@ target_sources(night_maze PRIVATE
     InteractableRenderer.hpp
     LandRenderer.cpp
     LandRenderer.hpp
-    MazeRenderer.cpp
-    MazeRenderer.hpp
     MenuBackgroundRenderer.cpp
     MenuBackgroundRenderer.hpp
     MinimapRenderer.cpp
@@ -129,3 +113,5 @@ target_sources(night_maze PRIVATE
     VillageRenderer.cpp
     VillageRenderer.hpp
 )
+
+add_subdirectory(maze)

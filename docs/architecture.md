@@ -9,18 +9,18 @@ The root `CMakeLists.txt` defines five static libraries and two programs, with t
 | Target | Sources | Purpose | Links |
 |---|---|---|---|
 | `engine` | `src/core`, `src/gfx`, `src/scene`, `src/assets` | window, input, clock, OpenGL wrappers, camera and collision math, file loaders | `glad`, `glfw`, GLM, `stb_image` |
-| `game_logic` | the rule files of `src/game` | everything about the game that is plain data and math | `engine` |
+| `game_logic` | the rule files of the domain folders of `src/game` | everything about the game that is plain data and math | `engine` |
 | `ui` | `src/ui` | owns RmlUi and draws the menu documents | `engine`, `rmlui_backend` |
 | `video` | `src/video` | plays a video file into a texture with the decoder of the operating system | `engine`, Media Foundation or AVFoundation |
 | `audio` | `src/audio` | plays sounds through miniaudio | `engine`, `miniaudio` |
-| `night_maze` | `src/main.cpp`, the drawing files of `src/game`, `src/render`, `src/hud`, `src/debug` | the game | all five, `imgui` |
+| `night_maze` | `src/main.cpp`, `NightMazeApp` and the drawing files of the domain folders of `src/game`, `src/render`, `src/hud`, `src/debug` | the game | all five, `imgui` |
 | `night_maze_tests` | `tests`, plus `src/hud/HudRules.cpp`, `src/debug/Search.cpp` and `src/video/VideoClock.cpp` | unit tests | `game_logic`, `audio`, `doctest` |
 
 The dependencies go one way. `engine` knows nothing above it. `ui`, `video` and `audio` sit beside each other on top of `engine` and know nothing about the game: the game tells them which document to show, which file to play, which sound to start. They are separate libraries so that `game_logic` does not link RmlUi, the media libraries of a system or miniaudio. Nothing in `src/game` or in the five libraries includes `src/hud` or `src/debug`.
 
 Inside `engine`, `src/core` includes only itself, `src/gfx` uses `src/core`, `src/assets` uses both and the box type of `src/scene` (the bounds of a model), and `src/scene` is math on GLM alone.
 
-`tests/LayeringTests.cpp` checks these rules on every test run. It reads the `#include` lines of `src/` and the source lists of the CMake files, and fails with the list of includes that break a rule: an engine folder that reaches the game, `src/render`, the HUD or the debug UI or a folder above its own, `src/render` including anything but the engine folders and the headers of `game_logic` (the plain data of the game, never a drawing file of `src/game`), `src/game` including `src/hud` or `src/debug`, `src/hud` including anything but `src/game`, the engine folders and `src/ui` (so never `src/debug`, which may include the HUD), a file of `game_logic` (or a file of `src/` that the test program compiles) including OpenGL, GLFW, ImGui, the window, `src/render` or a `gfx` header other than the plain data ones (`Vertex.hpp`, `ColorSpace.hpp`, `CoverFit.hpp`). Two allowed exceptions are named in the test: `src/game/KeyBindings.cpp` includes GLFW for the numbers of the keys only, and `src/render/Skybox.cpp` includes `src/game/MazeRenderer.hpp` for the enum `game::ViewMode` only.
+`tests/LayeringTests.cpp` checks these rules on every test run. It reads the `#include` lines of `src/` and the source lists of the CMake files, and fails with the list of includes that break a rule: an engine folder that reaches the game, `src/render`, the HUD or the debug UI or a folder above its own, `src/render` including anything but the engine folders and the headers of `game_logic` (the plain data of the game, never a drawing file of `src/game`), `src/game` including `src/hud` or `src/debug`, `src/hud` including anything but `src/game`, the engine folders and `src/ui` (so never `src/debug`, which may include the HUD), a file of `game_logic` (or a file of `src/` that the test program compiles) including OpenGL, GLFW, ImGui, the window, `src/render` or a `gfx` header other than the plain data ones (`Vertex.hpp`, `ColorSpace.hpp`, `CoverFit.hpp`). Two allowed exceptions are named in the test: `src/game/KeyBindings.cpp` includes GLFW for the numbers of the keys only, and `src/render/Skybox.cpp` includes `src/game/maze/MazeRenderer.hpp` for the enum `game::ViewMode` only.
 
 `src/game` is split between two targets. The files that need no window are in `game_logic`. The files that draw (`NightMazeApp`, the `*Renderer` classes) are in the executable. The helpers of the passes that hold no rule of the game (`PostProcess`, `ShadowMap`, `Skybox`, `LightRig` and the others) are in `src/render`, in the executable too.
 
@@ -45,7 +45,9 @@ src/
   main.cpp            night_maze: the game with its debug UI
   core/ gfx/ scene/ assets/    engine
   ui/ video/ audio/   one library each, beside each other on top of engine
-  game/               game_logic (rules) and night_maze (drawing, NightMazeApp)
+  game/               night_maze: NightMazeApp; one folder per domain below, each with
+                      its rules (game_logic) and its renderers (night_maze)
+    maze/             the maze, its walls, the stile and the stone sheep
   render/             night_maze: helpers of the passes of a frame, no rules of the game
   hud/                night_maze: the HUD of a round (HudRules also in the tests)
   debug/              night_maze: debug window, categories/
@@ -53,6 +55,7 @@ tests/
   main.cpp            doctest main
   LayeringTests.cpp   the layering rules
   core/ gfx/ scene/ assets/ audio/ video/ game/ hud/ debug/    one folder per folder of src/
+  game/maze/ ...      one folder per domain folder of src/game
 ```
 
 Directory map:
@@ -61,7 +64,8 @@ Directory map:
 - `src/gfx`: wrappers of OpenGL objects, the shader loader with its `#include` step, and the counters of a frame (`RenderStats`).
 - `src/scene`: `Camera`, `Transform`, colliders, ray casts, the frustum of a camera or a light (`Frustum`), lights as plain data.
 - `src/assets`: OBJ and image loaders, `AssetCache`.
-- `src/game`: the rules, the renderers and the application class.
+- `src/game`: the application class (`NightMazeApp`), and one folder per domain, each with its rules and its renderers:
+  - `src/game/maze`: the grid of the maze, its generator and layout, the built world of a seed (`MazeWorld`), the worn wall variants, the stile, the stone sheep and `MazeRenderer`.
 - `src/render`: the helpers of the passes of a frame that hold no rule of the game: the names of the shader uniforms (`ShaderUniforms.hpp`), the GPU timers of the passes (`GpuPasses`), the uniform buffer of the lights (`LightRig`), the draw of a model with its culling test (`ModelDraw`), the lines of the debug view of the colliders (`ColliderLines`), the HDR target, the bloom and the composite pass (`PostProcess`), the depth targets of the shadows (`ShadowMap`), the sky cube (`Skybox`).
 - `src/hud`: the HUD of a round (gauges, counters, crosshair, prompt, cards), drawn with Dear ImGui, its colours, and the arithmetic of its scale and its sentences (`HudRules`).
 - `src/debug`: the debug window and its seven categories in `src/debug/categories`.
@@ -213,7 +217,7 @@ flowchart TD
 
 The rules are in `game_logic`, as header and source pairs with tests:
 
-- Maze: `src/game/Maze.hpp`, `MazeGenerator.hpp`, `MazeLayout.hpp`, `Terrain.hpp`. `MazeWorld.hpp` puts them together.
+- Maze: `src/game/maze/Maze.hpp`, `MazeGenerator.hpp`, `MazeLayout.hpp`, and the ground `src/game/Terrain.hpp`. `MazeWorld.hpp` puts them together.
 - Placement from the seed: `buildMazeWorld` calls the generator and then `Exit.hpp`, `Crystals.hpp`, `Heartstone.hpp` (the one big splinter, in the farthest dead end), `Interactables.hpp` (levers and notes) and `WallVariants.hpp`. Flasks (`Flasks.hpp`) are placed by `startRound`, because their count belongs to the difficulty. The same seed gives the same maze and objects on every system.
 - Round: `src/game/Round.hpp` (`startRound`, `updateRound`), with `Interaction.hpp` for picking and `Discovery.hpp` for what the map shows.
 - Player and stamina: `src/game/Player.hpp`.

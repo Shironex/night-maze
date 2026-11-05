@@ -4,9 +4,9 @@
 
 #include "assets/ImageLoader.hpp"
 #include "game/EnvironmentMapping.hpp"
-#include "game/MazeLayout.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/Terrain.hpp"
+#include "game/maze/MazeLayout.hpp"
+#include "game/maze/MazeWorld.hpp"
 #include "scene/Collider.hpp"
 
 #include <doctest/doctest.h>

@@ -3,9 +3,9 @@
 // windows light up.
 #include "game/Land.hpp"
 
-#include "game/MazeGenerator.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/Village.hpp"
+#include "game/maze/MazeGenerator.hpp"
+#include "game/maze/MazeWorld.hpp"
 #include "scene/Frustum.hpp"
 #include "scene/Raycast.hpp"
 

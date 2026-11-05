@@ -3,7 +3,7 @@
 #include "game/MenuCameraShared.hpp"
 
 #include "game/Exit.hpp"
-#include "game/MazeLayout.hpp"
+#include "game/maze/MazeLayout.hpp"
 
 #include <glm/gtc/constants.hpp>
 

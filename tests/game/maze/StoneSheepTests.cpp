@@ -1,6 +1,6 @@
 // Tests of game::StoneSheep: how many sheep a maze gets, which cells they take, where in
 // its cell each one stands, which way it looks and what it must never be in the way of.
-#include "game/StoneSheep.hpp"
+#include "game/maze/StoneSheep.hpp"
 
 #include "assets/ObjLoader.hpp"
 #include "game/Campaign.hpp"
@@ -12,13 +12,13 @@
 #include "game/GateLamp.hpp"
 #include "game/Grass.hpp"
 #include "game/Interactables.hpp"
-#include "game/MazeLayout.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/Player.hpp"
 #include "game/Puddles.hpp"
 #include "game/Round.hpp"
 #include "game/Shade.hpp"
 #include "game/Terrain.hpp"
+#include "game/maze/MazeLayout.hpp"
+#include "game/maze/MazeWorld.hpp"
 #include "scene/Collider.hpp"
 
 #include <doctest/doctest.h>

@@ -2,7 +2,7 @@
 #include "game/MenuCamera.hpp"
 
 #include "game/Exit.hpp"
-#include "game/MazeLayout.hpp"
+#include "game/maze/MazeLayout.hpp"
 #include "scene/Camera.hpp"
 #include "scene/Collider.hpp"
 

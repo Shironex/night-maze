@@ -1,5 +1,5 @@
 // MazeLayout: where the cells, walls and pillars of a maze stand in the world.
-#include "game/MazeLayout.hpp"
+#include "game/maze/MazeLayout.hpp"
 
 #include <cmath>
 

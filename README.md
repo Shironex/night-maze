@@ -211,7 +211,7 @@ The full steps, the prerequisites and what `make check` does are in [docs/buildi
 
 | Folder | What is in it |
 | --- | --- |
-| `src/` | The game and its engine code: `core`, `gfx`, `scene`, `assets`, `game`, `audio`, `video`, `ui`, `debug` |
+| `src/` | The game and its engine code: `core`, `gfx`, `scene`, `assets`, `game` (one folder per domain), `render`, `hud`, `audio`, `video`, `ui`, `debug` |
 | `assets/` | Shaders, textures, models, skybox, menu documents, fonts, sounds and the menu video. All of it ships with the game |
 | `tests/` | Unit tests, in folders that mirror `src/` |
 | `tools/` | Scripts that make assets (sounds, the menu loop, Blender scripts), the release notes and the README pictures |

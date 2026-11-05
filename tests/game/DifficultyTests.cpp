@@ -3,11 +3,11 @@
 
 #include "game/Crystals.hpp"
 #include "game/Lighting.hpp"
-#include "game/Maze.hpp"
-#include "game/MazeWorld.hpp"
 #include "game/MenuCamera.hpp"
 #include "game/Round.hpp"
 #include "game/Shadows.hpp"
+#include "game/maze/Maze.hpp"
+#include "game/maze/MazeWorld.hpp"
 #include "scene/Camera.hpp"
 #include "scene/LightSpace.hpp"
 

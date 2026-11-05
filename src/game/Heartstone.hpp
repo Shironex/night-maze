@@ -1,7 +1,7 @@
 // Heartstone: the one big splinter of a maze, which dead end it floats in and how it moves.
 #pragma once
 
-#include "game/Maze.hpp"
+#include "game/maze/Maze.hpp"
 
 #include <glm/glm.hpp>
 
