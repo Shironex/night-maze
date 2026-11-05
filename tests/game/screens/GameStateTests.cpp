@@ -1,5 +1,5 @@
-// Tests of game/GameState: the screens of the game and the rules between them.
-#include "game/GameState.hpp"
+// Tests of game/screens/GameState: the screens of the game and the rules between them.
+#include "game/screens/GameState.hpp"
 
 #include <doctest/doctest.h>
 

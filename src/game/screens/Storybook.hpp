@@ -16,7 +16,7 @@ namespace game {
 // application (NightMazeApp) loads the pictures and the sounds the file names, counts
 // the seconds and asks what to show (storybookFrame). StorybookRenderer draws it.
 //
-// The storybook is the other way to tell the intro (game/Intro.hpp tells it live with
+// The storybook is the other way to tell the intro (game/screens/Intro.hpp tells it live with
 // the menu camera): five to seven painted pictures, each cut into a few layers that
 // drift and grow slowly, one over the other, with a spoken line and a line of text. The
 // game plays it when assets/intro/storybook.txt can be read, unless the switch
@@ -29,7 +29,7 @@ constexpr const char* STORYBOOK_FOLDER = "intro";
 constexpr const char* STORYBOOK_MANIFEST_FILE = "storybook.txt";
 
 /// The most layers one picture can have, and the most lines of text under it (the card
-/// of the intro shows two, game/Intro.hpp).
+/// of the intro shows two, game/screens/Intro.hpp).
 constexpr std::size_t MAX_STORYBOOK_LAYERS = 4;
 constexpr std::size_t STORYBOOK_LINE_COUNT = 2;
 

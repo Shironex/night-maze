@@ -5,20 +5,14 @@
 #include "audio/AudioEngine.hpp"
 #include "core/Application.hpp"
 #include "game/EnvironmentMapping.hpp"
-#include "game/GameState.hpp"
-#include "game/Intro.hpp"
 #include "game/Lighting.hpp"
 #include "game/MenuBackgroundRenderer.hpp"
 #include "game/MenuCamera.hpp"
 #include "game/Minimap.hpp"
 #include "game/MinimapRenderer.hpp"
 #include "game/RoundMusic.hpp"
-#include "game/Settings.hpp"
 #include "game/Shadows.hpp"
 #include "game/SoundCues.hpp"
-#include "game/StartOptions.hpp"
-#include "game/Storybook.hpp"
-#include "game/StorybookRenderer.hpp"
 #include "game/land/Grass.hpp"
 #include "game/land/GrassRenderer.hpp"
 #include "game/land/LandRenderer.hpp"
@@ -38,6 +32,12 @@
 #include "game/round/GameplayRenderer.hpp"
 #include "game/round/GateLamp.hpp"
 #include "game/round/Round.hpp"
+#include "game/screens/GameState.hpp"
+#include "game/screens/Intro.hpp"
+#include "game/screens/Settings.hpp"
+#include "game/screens/StartOptions.hpp"
+#include "game/screens/Storybook.hpp"
+#include "game/screens/StorybookRenderer.hpp"
 #include "gfx/Shader.hpp"
 #include "render/ColliderLines.hpp"
 #include "render/GpuPasses.hpp"
@@ -106,7 +106,7 @@ constexpr std::size_t NO_STORYBOOK_SOUND = static_cast<std::size_t>(-1);
 /// through the maze alone (game/MenuCamera.hpp). The round stands still meanwhile, and
 /// the keys and the mouse of the round are ignored.
 ///
-/// The game is always on one screen (game/GameState.hpp): the intro, the main menu, free
+/// The game is always on one screen (game/screens/GameState.hpp): the intro, the main menu, free
 /// play, the list of campaign nights, a title card, a round being played, the pause
 /// menu, the result of a won round, the ending card or the settings. The round runs
 /// only while it is played. The menus are documents drawn by RmlUi (ui::UiLayer) on top
@@ -118,7 +118,7 @@ constexpr std::size_t NO_STORYBOOK_SOUND = static_cast<std::size_t>(-1);
 /// Such a background covers the whole window, so in those frames the scene is not drawn
 /// at all (game::drawsScene): no shadow maps, no HDR picture, no bloom.
 ///
-/// A campaign begins with the intro (game/Intro.hpp): five cards of text, the first on
+/// A campaign begins with the intro (game/screens/Intro.hpp): five cards of text, the first on
 /// black and the others over pictures the menu camera takes in one fixed maze, with
 /// a wind and a few sounds under them. It is played live, by the same code that draws
 /// a round. Any key ends it, and the title card of the first night follows. The game
@@ -132,7 +132,7 @@ constexpr std::size_t NO_STORYBOOK_SOUND = static_cast<std::size_t>(-1);
 ///
 /// A game of free play has a difficulty (game/round/Difficulty.hpp), which decides the size of the
 /// maze, its crystals, the gate and the battery, and a seed, which decides the maze.
-/// What the player sets on the settings screen (game/Settings.hpp) is used at once and
+/// What the player sets on the settings screen (game/screens/Settings.hpp) is used at once and
 /// kept in a small text file in the working directory.
 ///
 /// The game has short sounds (the click of the flashlight, a crystal, a lever, the
@@ -1432,7 +1432,7 @@ private:
     // card came up (game::nightCardFrame, game::endingCardFrame). The two cards use the
     // document of the intro.
     double m_cardSeconds = 0.0;
-    // The storybook intro (game/Storybook.hpp): its manifest when the style of the run
+    // The storybook intro (game/screens/Storybook.hpp): its manifest when the style of the run
     // asks for it and the file can be read, the time of each picture (its spoken line
     // can make it longer), the numbers of its sounds in m_audio (NO_STORYBOOK_SOUND for
     // none), and whether the intro that plays now is the storybook. It is not when its

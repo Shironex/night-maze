@@ -1,6 +1,6 @@
 # The intro can be told as a storybook of painted layers
 Status: accepted (2026-10-15). Earlier: the live intro of [intro-played-live](intro-played-live.md), which stays as the fallback.
-Code: src/game/Storybook.hpp, src/game/Storybook.cpp, src/game/StorybookRenderer.cpp, src/game/NightMazeAppScreens.cpp, assets/intro/storybook.txt
+Code: src/game/screens/Storybook.hpp, src/game/screens/Storybook.cpp, src/game/screens/StorybookRenderer.cpp, src/game/NightMazeAppScreens.cpp, assets/intro/storybook.txt
 
 Context: the five cards over camera shots read as weak, and I want to compare richer intros in the game before choosing one.
 Decision: when `assets/intro/storybook.txt` can be read, the intro shows its beats: two to four PNG layers per beat that drift and zoom at their own speeds, a crossfade between beats, the same card for the text, an optional spoken line per beat and optional music. `--intro-style classic` plays the live intro instead, and a manifest or a layer that fails falls back to it. The switch is not a tool switch, so a new campaign can be compared in both styles.

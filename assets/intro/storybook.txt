@@ -1,7 +1,7 @@
 # The storybook intro: the beats of docs/story/intro-storyboard.md.
 # One painted picture a beat for now (generated, cropped from the picks named in the
 # storyboard); parallax layers can replace each later. The words are explained in
-# src/game/Storybook.hpp and in the storyboard.
+# src/game/screens/Storybook.hpp and in the storyboard.
 #
 # Add the music with a line "music intro_theme.flac". A beat with a "voice" line stays
 # until its line has ended. The voice lines are ElevenLabs takes, trimmed, peaked at

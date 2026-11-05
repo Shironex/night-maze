@@ -1,5 +1,5 @@
 // Intro: the five cards a campaign begins with, as a script of plain data.
-#include "game/Intro.hpp"
+#include "game/screens/Intro.hpp"
 
 #include <algorithm>
 

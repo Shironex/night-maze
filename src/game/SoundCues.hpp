@@ -1,8 +1,8 @@
 // SoundCues: which short sounds the game plays and the rules that decide when.
 #pragma once
 
-#include "game/GameState.hpp"
 #include "game/round/Round.hpp"
+#include "game/screens/GameState.hpp"
 
 #include <cstddef>
 #include <vector>
@@ -33,7 +33,7 @@ enum class SoundCue {
     ShadeNear,       ///< the hum, a loop while the shade is near (shadeHumPlays)
     Caught,          ///< the shade reached the player and carries them back to the start
     /// The wind under the intro: one long file, as long as the intro itself, with its
-    /// fade in and its fade out inside the file (game/Intro.hpp).
+    /// fade in and its fade out inside the file (game/screens/Intro.hpp).
     IntroWind,
     IntroBell, ///< one far bell of the village, in the intro
     /// A step of the player: three sounds of the same kind, used in turn

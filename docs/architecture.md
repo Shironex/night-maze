@@ -51,6 +51,7 @@ src/
     maze/             the maze, its walls, the stile and the stone sheep
     player/           the player and stamina, picking, the levers and notes, the key bindings
     round/            a round and its pickups, the gate, the campaign, the ledger, the day
+    screens/          the screens and their events, the intro, the settings, the command line
     shade/            the enemy
   render/             night_maze: helpers of the passes of a frame, no rules of the game
   hud/                night_maze: the HUD of a round (HudRules also in the tests)
@@ -73,6 +74,7 @@ Directory map:
   - `src/game/maze`: the grid of the maze, its generator and layout, the built world of a seed (`MazeWorld`), the worn wall variants, the stile, the stone sheep and `MazeRenderer`.
   - `src/game/player`: the player and its stamina (`Player`), the levers and notes (`Interactables`) and their renderer, picking (`Interaction`), the key bindings.
   - `src/game/round`: a round (`Round`) and what is placed in it from the seed (exit, crystals, flasks, the heartstone, the gate lamp), the cells seen so far (`Discovery`), the campaign, the difficulty, the ledger, the maze of the day (`Daily`), and `GameplayRenderer`.
+  - `src/game/screens`: the state machine of the screens (`GameState`), the classic intro and the storybook intro with its renderer, the settings file (`Settings`) and the command line (`StartOptions`).
   - `src/game/shade`: the enemy: how it wanders, hears, hunts and burns (`Shade`). It has no renderer of its own: `GameplayRenderer` in `src/game/round` draws it with the other things of a round.
 - `src/render`: the helpers of the passes of a frame that hold no rule of the game: the names of the shader uniforms (`ShaderUniforms.hpp`), the GPU timers of the passes (`GpuPasses`), the uniform buffer of the lights (`LightRig`), the draw of a model with its culling test (`ModelDraw`), the lines of the debug view of the colliders (`ColliderLines`), the HDR target, the bloom and the composite pass (`PostProcess`), the depth targets of the shadows (`ShadowMap`), the sky cube (`Skybox`).
 - `src/hud`: the HUD of a round (gauges, counters, crosshair, prompt, cards), drawn with Dear ImGui, its colours, and the arithmetic of its scale and its sentences (`HudRules`).
@@ -200,7 +202,7 @@ flowchart TD
 
 ## 5. The game state machine
 
-`src/game/GameState.hpp` holds one enum of screens, `GameMode`, one enum of events, `GameEvent`, and the pure function `nextMode(mode, event)`. The application keeps one `GameMode`, sends events through `handleGameEvent`, and asks predicates such as `updatesRound`, `isMenuOpen`, `showsHud` and `drawsScene` instead of deciding per screen. An event that means nothing on a screen changes nothing.
+`src/game/screens/GameState.hpp` holds one enum of screens, `GameMode`, one enum of events, `GameEvent`, and the pure function `nextMode(mode, event)`. The application keeps one `GameMode`, sends events through `handleGameEvent`, and asks predicates such as `updatesRound`, `isMenuOpen`, `showsHud` and `drawsScene` instead of deciding per screen. An event that means nothing on a screen changes nothing.
 
 | Mode | What it is | Leaves on |
 |---|---|---|
@@ -270,10 +272,10 @@ What the launcher expects from a game build is what `.github/workflows/release.y
 
 ## 10. Where to start reading
 
-- Add a setting: the field and its name in `src/game/Settings.hpp` and `src/game/Settings.cpp`, the control in `assets/ui/settings.rml`, then `fillSettingsDocument` and `handleControlChanges` in `src/game/NightMazeAppMenus.cpp`.
+- Add a setting: the field and its name in `src/game/screens/Settings.hpp` and `src/game/screens/Settings.cpp`, the control in `assets/ui/settings.rml`, then `fillSettingsDocument` and `handleControlChanges` in `src/game/NightMazeAppMenus.cpp`.
 - Add a sound cue: the enum entry, the count and the table row in `src/game/SoundCues.hpp` and `src/game/SoundCues.cpp`, the sound in `tools/make_sounds.py`, and one `playCue` call in the `src/game/NightMazeApp*.cpp` file where the thing happens.
 - Add a pickup: follow the flask. Placement rules in `src/game/round/Flasks.cpp`, state and collection in `src/game/round/Round.cpp` (`startRound`, `updateRound`), drawing in `src/game/round/GameplayRenderer.cpp`.
 - Add a debug control: a reference in `src/debug/DebugContext.hpp`, filled in `src/main.cpp`, and the widget in one file of `src/debug/categories`. Keep `controlCount` in `src/debug/Categories.hpp` right.
-- Add a menu screen: a mode, its events and predicates in `src/game/GameState.cpp`, a document in `assets/ui` next to `assets/ui/pause.rml`, then `showScreen` in `src/game/NightMazeAppScreens.cpp` and a fill function in `src/game/NightMazeAppMenus.cpp`. Say whether it has the menu theme: a line in `menuThemeScreen` in `src/game/SoundCues.cpp` and in the table of its test. The build stops until the line is there.
+- Add a menu screen: a mode, its events and predicates in `src/game/screens/GameState.cpp`, a document in `assets/ui` next to `assets/ui/pause.rml`, then `showScreen` in `src/game/NightMazeAppScreens.cpp` and a fill function in `src/game/NightMazeAppMenus.cpp`. Say whether it has the menu theme: a line in `menuThemeScreen` in `src/game/SoundCues.cpp` and in the table of its test. The build stops until the line is there.
 
-The matching test files are `tests/game/SettingsTests.cpp`, `tests/game/SoundCueTests.cpp`, `tests/game/round/FlaskTests.cpp`, `tests/game/round/RoundTests.cpp` and `tests/game/GameStateTests.cpp`.
+The matching test files are `tests/game/screens/SettingsTests.cpp`, `tests/game/SoundCueTests.cpp`, `tests/game/round/FlaskTests.cpp`, `tests/game/round/RoundTests.cpp` and `tests/game/screens/GameStateTests.cpp`.

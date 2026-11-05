@@ -6,7 +6,6 @@
 #include "assets/ObjLoader.hpp"
 #include "core/Files.hpp"
 #include "game/Minimap.hpp"
-#include "game/Settings.hpp"
 #include "game/land/Grass.hpp"
 #include "game/land/LandMeshes.hpp"
 #include "game/land/Terrain.hpp"
@@ -14,6 +13,7 @@
 #include "game/maze/MazeWorld.hpp"
 #include "game/player/Player.hpp"
 #include "game/round/Round.hpp"
+#include "game/screens/Settings.hpp"
 #include "scene/Frustum.hpp"
 
 #include <doctest/doctest.h>

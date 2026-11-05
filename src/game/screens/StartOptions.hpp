@@ -19,9 +19,9 @@ namespace game {
 // the menu camera, in a chosen maze and at a chosen place, so the picture can be
 // recorded without touching the keyboard.
 
-/// How the intro is told (--intro-style): with painted pictures (game/Storybook.hpp)
+/// How the intro is told (--intro-style): with painted pictures (game/screens/Storybook.hpp)
 /// when assets/intro/storybook.txt can be read, or always live in the engine
-/// (game/Intro.hpp).
+/// (game/screens/Intro.hpp).
 enum class IntroStyle {
     Storybook,
     Classic,

@@ -184,7 +184,7 @@ public:
 
     /// How long sound number index is, in seconds. 0 without a device, for a number that
     /// was not loaded and for a sound whose file failed to load. The storybook intro
-    /// holds a picture for as long as its spoken line lasts (game/Storybook.hpp).
+    /// holds a picture for as long as its spoken line lasts (game/screens/Storybook.hpp).
     float lengthSeconds(std::size_t index) const;
 
     /// How many frames the engine mixes per second (one frame is one sample per

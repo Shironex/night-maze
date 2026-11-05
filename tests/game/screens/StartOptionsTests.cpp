@@ -1,5 +1,5 @@
 // Tests of game::parseStartOptions: the switches of the command line.
-#include "game/StartOptions.hpp"
+#include "game/screens/StartOptions.hpp"
 
 #include <doctest/doctest.h>
 

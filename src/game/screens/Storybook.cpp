@@ -1,7 +1,7 @@
 // Storybook: the intro as painted pictures in layers, read from a small text file.
-#include "game/Storybook.hpp"
+#include "game/screens/Storybook.hpp"
 
-#include "game/Intro.hpp"
+#include "game/screens/Intro.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -55,7 +55,7 @@ std::string_view nextWord(std::string_view& text) {
 }
 
 // A number from minimum to maximum, written as a whole word. strtof and not from_chars,
-// like game/StartOptions.cpp: the standard library of Apple clang cannot read a float
+// like game/screens/StartOptions.cpp: the standard library of Apple clang cannot read a float
 // with from_chars yet.
 bool readNumber(std::string_view word, float minimum, float maximum, float& number) {
     const std::string text(word);

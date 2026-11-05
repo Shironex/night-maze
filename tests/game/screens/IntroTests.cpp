@@ -1,6 +1,6 @@
-// Tests of game/Intro.hpp: the script of the intro, what it shows at a moment, where its
+// Tests of game/screens/Intro.hpp: the script of the intro, what it shows at a moment, where its
 // camera is and when its sounds are played.
-#include "game/Intro.hpp"
+#include "game/screens/Intro.hpp"
 
 #include "game/Lighting.hpp"
 #include "game/MenuCamera.hpp"

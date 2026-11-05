@@ -1,5 +1,5 @@
 // StartOptions: what the command line asks the game to start with.
-#include "game/StartOptions.hpp"
+#include "game/screens/StartOptions.hpp"
 
 #include "game/round/Campaign.hpp"
 

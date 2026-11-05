@@ -7,10 +7,6 @@ target_sources(game_logic PRIVATE
     EnvironmentMapping.hpp
     Fog.cpp
     Fog.hpp
-    GameState.cpp
-    GameState.hpp
-    Intro.cpp
-    Intro.hpp
     Lighting.cpp
     Lighting.hpp
     MenuBackground.cpp
@@ -23,16 +19,10 @@ target_sources(game_logic PRIVATE
     Minimap.hpp
     RoundMusic.cpp
     RoundMusic.hpp
-    Settings.cpp
-    Settings.hpp
     Shadows.cpp
     Shadows.hpp
     SoundCues.cpp
     SoundCues.hpp
-    StartOptions.cpp
-    StartOptions.hpp
-    Storybook.cpp
-    Storybook.hpp
     Vignette.cpp
     Vignette.hpp
 )
@@ -52,12 +42,11 @@ target_sources(night_maze PRIVATE
     NightMazeAppRound.cpp
     NightMazeAppScreens.cpp
     NightMazeAppShared.hpp
-    StorybookRenderer.cpp
-    StorybookRenderer.hpp
 )
 
 add_subdirectory(land)
 add_subdirectory(maze)
 add_subdirectory(player)
 add_subdirectory(round)
+add_subdirectory(screens)
 add_subdirectory(shade)

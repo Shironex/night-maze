@@ -2,7 +2,7 @@
 // progress through them.
 #include "game/round/Campaign.hpp"
 
-#include "game/Intro.hpp"
+#include "game/screens/Intro.hpp"
 
 #include <algorithm>
 #include <stdexcept>

@@ -1,6 +1,6 @@
 # Sound has looping wind, footsteps on distance walked and volume groups
 Status: accepted (2026-10-08)
-Code: src/audio/AudioEngine.hpp, src/game/SoundCues.hpp, src/game/SoundCues.cpp, src/game/Settings.hpp, tools/make_sounds.py
+Code: src/audio/AudioEngine.hpp, src/game/SoundCues.hpp, src/game/SoundCues.cpp, src/game/screens/Settings.hpp, tools/make_sounds.py
 
 Context: single sounds were not enough. The maze needed wind that never stops, and steps that match how fast the player moves.
 Decision: loops are switched on and off with a fade. Footsteps follow a clock of distance walked, 1.5 m a step walking and 2.0 m sprinting, not time. Sounds belong to effects, ambient or music, each with its own volume under the master.
