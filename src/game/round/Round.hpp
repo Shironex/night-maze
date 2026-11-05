@@ -3,7 +3,6 @@
 #pragma once
 
 #include "game/Lighting.hpp"
-#include "game/Shade.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "game/player/Interactables.hpp"
@@ -11,6 +10,7 @@
 #include "game/round/Flasks.hpp"
 #include "game/round/GateLamp.hpp"
 #include "game/round/Heartstone.hpp"
+#include "game/shade/Shade.hpp"
 #include "scene/Collider.hpp"
 
 #include <glm/glm.hpp>
@@ -75,7 +75,7 @@ struct GameplaySettings {
     /// here. A new number shows when the round is started again.
     int flaskCount = 1;
 
-    /// The numbers of the shade, the enemy of the round (game/Shade.hpp), and the switch
+    /// The numbers of the shade, the enemy of the round (game/shade/Shade.hpp), and the switch
     /// that says whether the round has one at all. A new game switches it off for a calm
     /// night.
     ShadeSettings shade;
@@ -214,7 +214,7 @@ struct Round {
     bool noteOpen = false;
     std::size_t noteIndex = 0;
 
-    /// The shade of the round (game/Shade.hpp): where it is and whether it is lit. Not
+    /// The shade of the round (game/shade/Shade.hpp): where it is and whether it is lit. Not
     /// present in a calm round. updateRoundShade moves it.
     Shade shade;
 

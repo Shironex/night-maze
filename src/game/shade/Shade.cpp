@@ -1,7 +1,7 @@
 // Shade: the enemy of a round. A dark figure that wanders the maze, comes when it hears or
 // sees the player, stands while the flashlight is on it and is burned away by a long look
 // of the lamp. It carries the player back to the start when it reaches them.
-#include "game/Shade.hpp"
+#include "game/shade/Shade.hpp"
 
 #include "game/land/Terrain.hpp"
 #include "game/maze/MazeGenerator.hpp"

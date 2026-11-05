@@ -25,8 +25,6 @@ target_sources(game_logic PRIVATE
     RoundMusic.hpp
     Settings.cpp
     Settings.hpp
-    Shade.cpp
-    Shade.hpp
     Shadows.cpp
     Shadows.hpp
     SoundCues.cpp
@@ -62,3 +60,4 @@ add_subdirectory(land)
 add_subdirectory(maze)
 add_subdirectory(player)
 add_subdirectory(round)
+add_subdirectory(shade)

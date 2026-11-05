@@ -51,6 +51,7 @@ src/
     maze/             the maze, its walls, the stile and the stone sheep
     player/           the player and stamina, picking, the levers and notes, the key bindings
     round/            a round and its pickups, the gate, the campaign, the ledger, the day
+    shade/            the enemy
   render/             night_maze: helpers of the passes of a frame, no rules of the game
   hud/                night_maze: the HUD of a round (HudRules also in the tests)
   debug/              night_maze: debug window, categories/
@@ -72,6 +73,7 @@ Directory map:
   - `src/game/maze`: the grid of the maze, its generator and layout, the built world of a seed (`MazeWorld`), the worn wall variants, the stile, the stone sheep and `MazeRenderer`.
   - `src/game/player`: the player and its stamina (`Player`), the levers and notes (`Interactables`) and their renderer, picking (`Interaction`), the key bindings.
   - `src/game/round`: a round (`Round`) and what is placed in it from the seed (exit, crystals, flasks, the heartstone, the gate lamp), the cells seen so far (`Discovery`), the campaign, the difficulty, the ledger, the maze of the day (`Daily`), and `GameplayRenderer`.
+  - `src/game/shade`: the enemy: how it wanders, hears, hunts and burns (`Shade`). It has no renderer of its own: `GameplayRenderer` in `src/game/round` draws it with the other things of a round.
 - `src/render`: the helpers of the passes of a frame that hold no rule of the game: the names of the shader uniforms (`ShaderUniforms.hpp`), the GPU timers of the passes (`GpuPasses`), the uniform buffer of the lights (`LightRig`), the draw of a model with its culling test (`ModelDraw`), the lines of the debug view of the colliders (`ColliderLines`), the HDR target, the bloom and the composite pass (`PostProcess`), the depth targets of the shadows (`ShadowMap`), the sky cube (`Skybox`).
 - `src/hud`: the HUD of a round (gauges, counters, crosshair, prompt, cards), drawn with Dear ImGui, its colours, and the arithmetic of its scale and its sentences (`HudRules`).
 - `src/debug`: the debug window and its seven categories in `src/debug/categories`.
@@ -227,7 +229,7 @@ The rules are in `game_logic`, as header and source pairs with tests:
 - Placement from the seed: `buildMazeWorld` calls the generator and then `Exit.hpp`, `Crystals.hpp`, `Heartstone.hpp` (the one big splinter, in the farthest dead end), `Interactables.hpp` (levers and notes) and `WallVariants.hpp`. Flasks (`Flasks.hpp`) are placed by `startRound`, because their count belongs to the difficulty. The same seed gives the same maze and objects on every system.
 - Round: `src/game/round/Round.hpp` (`startRound`, `updateRound`), with `Interaction.hpp` for picking and `Discovery.hpp` for what the map shows.
 - Player and stamina: `src/game/player/Player.hpp`.
-- Enemy: `src/game/Shade.hpp`.
+- Enemy: `src/game/shade/Shade.hpp`.
 - Campaign, intro and difficulty: `Campaign.hpp`, `Intro.hpp`, `Difficulty.hpp`.
 - The ledger: `Ledger.hpp` (the set of story lines that were read, its codes in the settings file, the set of a file from before the ledger, the groups and the counter of the page).
 - The land around the maze: `Land.hpp` (`placeLand`, drawn from the seed after everything else, the ring of ground, the field lines, the pieces, the landmarks and the windows dealt to the nights), `LandMeshes.hpp` (the triangles built in code). `LandRenderer` draws it in the scene pass and the mill and the church tower with the village.
