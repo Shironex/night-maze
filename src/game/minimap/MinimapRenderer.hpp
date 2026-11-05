@@ -3,7 +3,7 @@
 #pragma once
 
 #include "core/Window.hpp"
-#include "game/Minimap.hpp"
+#include "game/minimap/Minimap.hpp"
 #include "gfx/Buffer.hpp"
 #include "gfx/Framebuffer.hpp"
 #include "gfx/VertexArray.hpp"

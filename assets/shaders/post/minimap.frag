@@ -10,7 +10,7 @@ out vec4 fragColor;
 
 void main() {
     // The colour is written AS IT IS. The colours of the map are sRGB values (the
-    // constants in game/Minimap.hpp): the numbers the screen is meant to get. Nothing
+    // constants in game/minimap/Minimap.hpp): the numbers the screen is meant to get. Nothing
     // on the map is lit, so there is no linear math to do, and the picture of the map
     // never passes through post/composite.frag, the place that encodes the scene. The
     // texture is a plain GL_RGBA8 one, which stores the numbers unchanged, and

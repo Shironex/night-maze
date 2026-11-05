@@ -1,6 +1,6 @@
 // Tests of game::Minimap: where the map stands on the screen, how the maze is mapped
 // into its picture and which shapes it is drawn from.
-#include "game/Minimap.hpp"
+#include "game/minimap/Minimap.hpp"
 
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
