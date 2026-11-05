@@ -2,10 +2,10 @@
 #include "game/ShadowMap.hpp"
 
 #include "core/GlCheck.hpp"
-#include "game/PostProcess.hpp"
 #include "game/Shadows.hpp"
 #include "gfx/RenderStats.hpp"
 #include "gfx/Shader.hpp"
+#include "render/PostProcess.hpp"
 #include "render/ShaderUniforms.hpp"
 #include "scene/LightSpace.hpp"
 

@@ -6,8 +6,8 @@
 #include "debug/DebugContext.hpp"
 #include "debug/Pictures.hpp"
 #include "debug/Widgets.hpp"
-#include "game/PostProcess.hpp"
 #include "gfx/Framebuffer.hpp"
+#include "render/PostProcess.hpp"
 
 #include <imgui.h>
 

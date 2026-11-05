@@ -120,8 +120,6 @@ target_sources(night_maze PRIVATE
     NightMazeAppRound.cpp
     NightMazeAppScreens.cpp
     NightMazeAppShared.hpp
-    PostProcess.cpp
-    PostProcess.hpp
     PuddleRenderer.cpp
     PuddleRenderer.hpp
     ShadowMap.cpp
