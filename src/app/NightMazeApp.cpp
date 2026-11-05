@@ -137,7 +137,7 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
       m_mazeSettings(firstMazeSettings(options, m_settings, shadeInGame())),
       m_heightmap(loadHeightmap()),
       m_mazeWorld(buildMazeWorld(m_mazeSettings.width, m_mazeSettings.height, m_mazeSettings.seed,
-                                 m_heightmap, m_terrainSettings.heightScale,
+                                 m_heightmap, m_renderSettings.terrainSettings.heightScale,
                                  m_mazeSettings.interactables, m_mazeSettings.crystalCount)),
       m_menuCamera(options.menuCamera),
       // The first screen: the main menu, a round for the tools that record the game,

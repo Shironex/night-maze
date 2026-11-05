@@ -130,7 +130,7 @@ void NightMazeApp::onRender(double alpha) {
     sightLandmarks(screen, frame);
 
     // The debug view draws this copy, which stands still while "freeze" is set.
-    if (!m_pickDebug.freezeRay) {
+    if (!m_renderSettings.pickDebug.freezeRay) {
         m_shownPick = m_pick;
     }
 
@@ -187,10 +187,10 @@ void NightMazeApp::onRender(double alpha) {
     // they need the ground first. The sky comes after both: the ground under a puddle
     // has written its depth, so the sky does not show through.
     drawReflections(frame.view, frame.projection);
-    if (m_drawColliders) {
+    if (m_renderSettings.drawColliders) {
         drawColliderLines(frame.view, frame.projection);
     }
-    if (m_pickDebug.drawShapes) {
+    if (m_renderSettings.pickDebug.drawShapes) {
         drawPickLines(frame.view, frame.projection);
     }
 
@@ -207,9 +207,9 @@ void NightMazeApp::onRender(double alpha) {
     // views change it, see Skybox::draw. The picture would be the same with the sky
     // drawn earlier (the depth test sorts opaque things out). Only something that does
     // not write depth, like a transparent effect, would have to come after the sky.
-    if (m_skyboxSettings.enabled) {
+    if (m_renderSettings.skyboxSettings.enabled) {
         m_renderers.skybox.draw(m_shaders.skyboxShader, frame.view, frame.projection,
-                                m_skyboxSettings, m_viewMode);
+                                m_renderSettings.skyboxSettings, m_renderSettings.viewMode);
     }
 
     // The lamp in the hand, on top of the scene and in front of every wall.
@@ -366,17 +366,17 @@ void NightMazeApp::handleRoundRequests(bool roundInput) {
     // debug UI. Both are handled here for the same reason as a new maze. A maze that
     // was regenerated in this frame is already built with the new numbers: doing it
     // again costs a little time once and changes nothing.
-    if (m_terrainSettings.rebuild) {
-        m_terrainSettings.rebuild = false;
+    if (m_renderSettings.terrainSettings.rebuild) {
+        m_renderSettings.terrainSettings.rebuild = false;
         rebuildTerrain();
     }
-    if (m_grassSettings.replant) {
-        m_grassSettings.replant = false;
+    if (m_renderSettings.grassSettings.replant) {
+        m_renderSettings.grassSettings.replant = false;
         plantGrass();
     }
     // A new share of cells with a puddle, asked for by the debug UI in the same way.
-    if (m_environment.replacePuddles) {
-        m_environment.replacePuddles = false;
+    if (m_renderSettings.environment.replacePuddles) {
+        m_renderSettings.environment.replacePuddles = false;
         layPuddles();
     }
 }
@@ -655,7 +655,8 @@ bool NightMazeApp::beginScenePass(core::Size framebuffer) {
     // Both buffers are the two textures of the scene framebuffer now. The clear colour
     // is an sRGB value and the buffer holds linear colours, so it is converted first.
     const glm::vec3 clearColor =
-        gfx::srgbToLinear(glm::vec3{m_clearColor[0], m_clearColor[1], m_clearColor[2]});
+        gfx::srgbToLinear(glm::vec3{m_renderSettings.clearColor[0], m_renderSettings.clearColor[1],
+                                    m_renderSettings.clearColor[2]});
     GL_CHECK(glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0F));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
     return true;
@@ -719,7 +720,7 @@ NightMazeApp::NightLights NightMazeApp::nightLightsFor(const FrameScreen& screen
 }
 
 void NightMazeApp::sightLandmarks(const FrameScreen& screen, const FrameView& frame) {
-    if (!screen.roundInput || !m_villageSettings.landEnabled) {
+    if (!screen.roundInput || !m_renderSettings.villageSettings.landEnabled) {
         return;
     }
     const std::vector<LandmarkView> views = landmarks(m_mazeWorld.land);
@@ -748,8 +749,9 @@ void NightMazeApp::finishPicture(core::Size framebuffer, const FrameView& frame)
     // composite pass.
 
     // The pictures of the attachments, only while the debug UI shows them.
-    if (m_postProcessSettings.previews) {
-        m_renderers.postProcess.drawPreviews(m_shaders.previewShader, m_postProcessSettings,
+    if (m_renderSettings.postProcessSettings.previews) {
+        m_renderers.postProcess.drawPreviews(m_shaders.previewShader,
+                                             m_renderSettings.postProcessSettings,
                                              frame.camera.nearPlane, frame.camera.farPlane);
     }
 
@@ -758,8 +760,8 @@ void NightMazeApp::finishPicture(core::Size framebuffer, const FrameView& frame)
     // a bloom would make the bright ones glow, a fog would mix its colour into them and
     // a vignette would darken them towards the corners, so all five are switched off
     // for them, in a copy: the settings the debug UI shows stay.
-    PostProcessSettings compositeSettings = m_postProcessSettings;
-    if (m_viewMode != ViewMode::Textured) {
+    PostProcessSettings compositeSettings = m_renderSettings.postProcessSettings;
+    if (m_renderSettings.viewMode != ViewMode::Textured) {
         compositeSettings.exposure = NEUTRAL_EXPOSURE;
         compositeSettings.toneMapping = ToneMapping::None;
         compositeSettings.bloom.enabled = false;
@@ -869,7 +871,7 @@ void NightMazeApp::handleInteraction(bool cursorCaptured) {
 
 bool NightMazeApp::mapShown() {
     return showsMap(m_mode, {.keyHeld = actionDown(KeyAction::Map),
-                             .pinned = m_minimapSettings.pinned,
+                             .pinned = m_renderSettings.minimapSettings.pinned,
                              .noteOpen = m_round.noteOpen,
                              .menuCamera = m_menuCamera.enabled});
 }
@@ -878,7 +880,8 @@ void NightMazeApp::drawMinimap(core::Size framebuffer, const glm::vec3& feet) {
     // Where the map stands, in framebuffer pixels: a square in the middle. Its picture
     // is drawn at exactly that size, so the framebuffer of the minimap follows the
     // window and the size setting. A size of 0: the window has no room for a map.
-    const MinimapRect rect = minimapRect(framebuffer.width, framebuffer.height, m_minimapSettings);
+    const MinimapRect rect =
+        minimapRect(framebuffer.width, framebuffer.height, m_renderSettings.minimapSettings);
     if (rect.size < 1) {
         return;
     }
@@ -892,15 +895,16 @@ void NightMazeApp::drawMinimap(core::Size framebuffer, const glm::vec3& feet) {
     // of it is shown.
     const Maze& maze = m_mazeWorld.maze;
     const MinimapPlayer player{.position = feet, .yawDegrees = m_camera.yawDegrees};
-    const std::vector<MinimapVertex> vertices =
-        buildMinimapVertices(m_mazeWorld, m_round, m_minimapSettings.revealAll, player,
-                             minimapMetresPerPixel(maze, rect.size), m_gameplay.shade.showOnMap);
+    const std::vector<MinimapVertex> vertices = buildMinimapVertices(
+        m_mazeWorld, m_round, m_renderSettings.minimapSettings.revealAll, player,
+        minimapMetresPerPixel(maze, rect.size), m_gameplay.shade.showOnMap);
 
     // The offscreen pass, and then the picture into the middle of the window.
     if (m_renderers.minimapRenderer.drawMap(m_shaders.minimapShader, vertices,
                                             minimapProjection(maze), rect.size)) {
         m_renderers.minimapRenderer.drawOverlay(m_shaders.minimapOverlayShader, rect,
-                                                m_minimapSettings.opacity, framebuffer);
+                                                m_renderSettings.minimapSettings.opacity,
+                                                framebuffer);
     }
 }
 

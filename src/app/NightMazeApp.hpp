@@ -2,19 +2,17 @@
 #pragma once
 
 #include "app/AppShaders.hpp"
+#include "app/RenderSettings.hpp"
 #include "app/SceneRenderers.hpp"
 #include "audio/AudioEngine.hpp"
 #include "core/Application.hpp"
-#include "game/land/Grass.hpp"
 #include "game/land/Terrain.hpp"
 #include "game/land/Village.hpp"
-#include "game/lighting/EnvironmentMapping.hpp"
 #include "game/lighting/Lighting.hpp"
 #include "game/lighting/Shadows.hpp"
 #include "game/maze/MazeRenderer.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "game/menu/MenuCamera.hpp"
-#include "game/minimap/Minimap.hpp"
 #include "game/player/Interaction.hpp"
 #include "game/player/Player.hpp"
 #include "game/round/Campaign.hpp"
@@ -30,8 +28,6 @@
 #include "game/sound/RoundMusic.hpp"
 #include "game/sound/SoundCues.hpp"
 #include "gfx/Shader.hpp"
-#include "render/PostProcess.hpp"
-#include "render/Skybox.hpp"
 #include "scene/Camera.hpp"
 #include "scene/Collider.hpp"
 #include "scene/Frustum.hpp"
@@ -171,11 +167,6 @@ protected:
     /// field of a menu has the keyboard.
     ui::UiLayer& menuUi() { return m_ui; }
 
-    /// Clear color (red, green, blue, as sRGB values), exposed so the debug UI can edit
-    /// it live. It is the background only where the sky is not drawn: with the skybox
-    /// switched off.
-    std::array<float, 3>& clearColor() { return m_clearColor; }
-
     /// The shader programs, exposed so the debug UI can reload them live.
     AppShaders& shaders() { return m_shaders; }
 
@@ -184,25 +175,14 @@ protected:
     /// the times of the passes, and counts the puddles and the tufts of grass.
     const SceneRenderers& renderers() const { return m_renderers; }
 
-    /// The settings of the minimap (pin, reveal all, size, opacity), exposed so the debug
-    /// UI can edit them live.
-    MinimapSettings& minimapSettings() { return m_minimapSettings; }
-
-    /// The settings of the environment mapping (the sky on the crystals and on the
-    /// puddles), exposed so the debug UI can edit them live.
-    EnvironmentSettings& environmentSettings() { return m_environment; }
-
-    /// The settings of the shadows of the moon (switch, resolution, bias, PCF,
-    /// strength), exposed so the debug UI can edit them live.
-    ShadowSettings& moonShadowSettings() { return m_moonShadow; }
+    /// The settings of the picture (the clear colour, the terrain and the grass, the
+    /// shadows, the debug views, the culling switch, the sky, the village, the reflections,
+    /// the passes after the scene, the map), exposed so the debug UI can edit them live.
+    RenderSettings& renderSettings() { return m_renderSettings; }
 
     /// The view and the projection the shadow map of the moon was drawn with in the
     /// last frame, read only: the debug UI shows how much ground the map covers.
     const scene::LightSpace& moonLightSpace() const { return m_moonLightSpace; }
-
-    /// The settings of the shadows of the flashlight, exposed like the ones of the
-    /// moon.
-    ShadowSettings& flashlightShadowSettings() { return m_flashlightShadow; }
 
     /// The view and the projection the shadow map of the flashlight was drawn with in
     /// the last frame, read only: the debug UI shows how much the map covers.
@@ -212,27 +192,6 @@ protected:
     /// with its shadows switched off, and not while the flashlight itself is off (key
     /// F or an empty battery). The debug UI then shows no picture of the map.
     bool flashlightShadowDrawn() const { return m_flashlightShadowDrawn; }
-
-    /// The exposure, the tone mapping and the preview switch of the composite pass and
-    /// the settings of the bloom, the fog and the vignette, exposed so the debug UI can
-    /// edit them live.
-    PostProcessSettings& postProcessSettings() { return m_postProcessSettings; }
-
-    /// The height scale and the wireframe switch of the terrain, exposed so the debug UI
-    /// can edit them live.
-    TerrainSettings& terrainSettings() { return m_terrainSettings; }
-
-    /// The switch, the density, the blade height and the wind of the grass, exposed so
-    /// the debug UI can edit them live.
-    GrassSettings& grassSettings() { return m_grassSettings; }
-
-    /// The switch and the brightness of the sky, exposed so the debug UI can edit them
-    /// live.
-    SkyboxSettings& skyboxSettings() { return m_skyboxSettings; }
-
-    /// The switch and the elevation of the village on the ridge, exposed so the debug UI
-    /// can edit them live.
-    VillageSettings& villageSettings() { return m_villageSettings; }
 
     /// The settings of the lighting (mode, moon, flashlight, point lights, highlight,
     /// normal mapping), exposed so the debug UI can edit them live.
@@ -268,26 +227,10 @@ protected:
     /// the texture filtering live.
     assets::AssetCache& assets() { return m_renderers.assets; }
 
-    /// What the textured shader shows, exposed so the debug UI can switch it live.
-    ViewMode& viewMode() { return m_viewMode; }
-
-    /// Whether the collision boxes and spheres are drawn as lines, exposed so the debug
-    /// UI can switch it live.
-    bool& drawColliders() { return m_drawColliders; }
-
-    /// Whether the scene pass and the shadow pass of the flashlight leave out what lies
-    /// outside of their frustum (view frustum culling), exposed so the debug UI can
-    /// switch it live: off, every object is handed to the graphics card as before.
-    bool& frustumCulling() { return m_frustumCulling; }
-
     /// The picking of the last frame (the ray, what it hit and what the interaction key
     /// does), read only: the HUD shows the crosshair and the prompt from it, the debug UI
     /// its numbers.
     const PickState& pick() const { return m_pick; }
-
-    /// The switches of the debug view of the picking (draw the pick boxes and the ray,
-    /// freeze the drawn ray), exposed so the debug UI can switch them live.
-    PickDebugSettings& pickDebug() { return m_pickDebug; }
 
     /// The settings of the menu camera (switch, shot, speed, eye height, time offset),
     /// exposed so the debug UI can edit them live and can hide itself while the camera
@@ -378,7 +321,7 @@ private:
     void regenerateMaze(int night = 0, std::uint32_t daily = NO_DAILY_DATE);
 
     /// Builds the terrain of the maze in play again with the height scale of
-    /// m_terrainSettings and puts everything back on it: the walls, the gate, the
+    /// m_renderSettings.terrainSettings and puts everything back on it: the walls, the gate, the
     /// crystals of the round, the obstacle list and the walking player. The round goes
     /// on: nothing is collected or reset.
     void rebuildTerrain();
@@ -1027,13 +970,10 @@ private:
     /// bloom and the composite pass, which brings the HDR picture to the window.
     void finishPicture(core::Size framebuffer, const FrameView& frame);
 
-    // The colour every frame starts with: a very dark blue, darker than the ambient
-    // light on the stone. The sky is drawn over it wherever no wall is, so it shows
-    // only when the skybox is switched off or its pictures could not be loaded. It is
-    // close to the colour of the sky straight above, so switching the skybox off does
-    // not change the mood of the scene. An sRGB value, as the colour picker of the
-    // debug UI shows it: onRender converts it to linear for the HDR buffer.
-    std::array<float, 3> m_clearColor{0.022F, 0.033F, 0.088F};
+    // The settings of the picture the debug UI edits (RenderSettings). Plain data,
+    // declared before m_mazeWorld, because the first maze is built with the height scale of
+    // its terrain settings in the initializer list.
+    RenderSettings m_renderSettings;
 
     // OpenGL objects. They are members of a class derived from core::Application, so they
     // are created after the window and its OpenGL context, and destroyed before them.
@@ -1056,18 +996,12 @@ private:
     // The request for the next maze (edited by the debug UI, and written by a new game).
     MazeSettings m_mazeSettings;
 
-    // The heightmap of the terrain, read from its picture once at start-up, and the
-    // settings of the terrain (edited by the debug UI). Both are declared before
-    // m_mazeWorld, because the first maze is built from them in the initializer list.
+    // The heightmap of the terrain, read from its picture once at start-up. Declared
+    // before m_mazeWorld, because the first maze is built from it in the initializer list.
     Heightmap m_heightmap;
-    TerrainSettings m_terrainSettings;
 
     // The maze in play, standing on its terrain.
     MazeWorld m_mazeWorld;
-
-    // The settings of the grass (edited by the debug UI). The tufts themselves are not
-    // kept: they are placed, copied to the graphics card and forgotten.
-    GrassSettings m_grassSettings;
 
     // The numbers of the rules (edited by the debug UI) and the round in play. The round
     // is simulation state: onUpdate advances it in fixed steps. It starts empty and is
@@ -1119,10 +1053,8 @@ private:
     // does. Built in onRender, read by the drawing (the highlight), the HUD and the
     // debug UI.
     PickState m_pick;
-    // The switches of the debug view of the picking (edited by the debug UI), and the
-    // picking that view draws: a copy of m_pick that stops following it while the
-    // "freeze" switch is set.
-    PickDebugSettings m_pickDebug;
+    // The picking the debug view draws: a copy of m_pick that stops following it while
+    // the "freeze" switch of RenderSettings::pickDebug is set.
     PickState m_shownPick;
 
     // The player is simulation state: onUpdate moves it in fixed steps.
@@ -1146,10 +1078,9 @@ private:
     // of a frame are built from it in onRender.
     LightingSettings m_lighting;
 
-    // The shadows of the moon: their settings (edited by the debug UI), the view and
-    // the projection of the moon in this frame, and whether the shadow pass has filled
-    // the map in this frame. The last two are set by drawMoonShadowMap in every frame.
-    ShadowSettings m_moonShadow;
+    // The shadows of the moon: the view and the projection of the moon in this frame,
+    // and whether the shadow pass has filled the map in this frame. Both are set by
+    // drawMoonShadowMap in every frame.
     scene::LightSpace m_moonLightSpace;
     bool m_moonShadowDrawn = false;
 
@@ -1165,55 +1096,24 @@ private:
     // Whether the map was drawn in the last frame (mapOnScreen). Set in onRender.
     bool m_mapOnScreen = false;
 
-    // The same three for the shadows of the flashlight, set by drawFlashlightShadowMap
-    // in every frame. The settings start with a smaller map and a bias of their own
-    // (game::flashlightShadowDefaults).
-    ShadowSettings m_flashlightShadow = flashlightShadowDefaults();
+    // The same two for the shadows of the flashlight, set by drawFlashlightShadowMap
+    // in every frame.
     scene::LightSpace m_flashlightLightSpace;
     bool m_flashlightShadowDrawn = false;
 
-    // What the textured shader shows: the picture, or one of the two debug views. A debug
-    // view replaces the lighting: it is drawn with the textured program in every
-    // lighting mode.
-    ViewMode m_viewMode = ViewMode::Textured;
-    // Whether the collision boxes and spheres are drawn as lines on top of the scene.
-    bool m_drawColliders = false;
-
-    // View frustum culling: whether a pass leaves out the objects that lie outside of
-    // what it sees. A switch of the debug UI, on by default. Off, every pass draws
-    // everything, which is the picture to compare with.
-    bool m_frustumCulling = true;
     // The boxes of the walls, the pillars and the stone sheep of m_mazeWorld, which the
     // culling tests (game::MazeBounds). Computed by uploadGround, so for every new maze
     // and every new terrain, and only read while a frame is drawn.
     MazeBounds m_mazeBounds;
 
-    // Whether the sky is drawn and how bright it is.
-    SkyboxSettings m_skyboxSettings;
-
-    // Whether the village on the ridge is drawn and how high it stands.
-    VillageSettings m_villageSettings;
     // The camera of the player at the moment the result of a night came up, and the
     // seconds since then: what the reveal of the village starts from
     // (game::villageRevealPose). The clock follows the real time of the frames.
     VillageRevealPose m_revealStart;
     double m_revealSeconds = 0.0;
 
-    // How the crystals and the puddles show the sky (edited by the debug UI). The
-    // puddles themselves are not kept: they are placed, handed to m_renderers.puddleRenderer and
-    // forgotten, like the tufts of the grass.
-    EnvironmentSettings m_environment;
-
-    // The exposure and the tone mapping of the composite pass and the settings of the
-    // bloom, the fog and the vignette.
-    PostProcessSettings m_postProcessSettings;
-
     // How the camera is turned. It belongs to the controls, not to the camera.
     float m_mouseSensitivity = DEFAULT_MOUSE_SENSITIVITY;
-
-    // The map: whether the debug UI pins it open, whether it shows the whole maze, and
-    // its size and its opacity.
-    MinimapSettings m_minimapSettings;
 
     // The menu camera: its settings (edited by the debug UI and set by the command
     // line) and the line its corridor walk follows through the maze in play. The line
