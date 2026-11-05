@@ -5,9 +5,9 @@
 #include "debug/DebugContext.hpp"
 #include "debug/Theme.hpp"
 #include "game/Player.hpp"
-#include "game/PostProcess.hpp"
 #include "game/Shadows.hpp"
 #include "hud/Hud.hpp"
+#include "render/PostProcess.hpp"
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>

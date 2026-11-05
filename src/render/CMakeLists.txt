@@ -10,5 +10,7 @@ target_sources(night_maze PRIVATE
     LightRig.hpp
     ModelDraw.cpp
     ModelDraw.hpp
+    PostProcess.cpp
+    PostProcess.hpp
     ShaderUniforms.hpp
 )
