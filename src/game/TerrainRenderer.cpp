@@ -4,10 +4,10 @@
 #include "assets/AssetCache.hpp"
 #include "core/GlCheck.hpp"
 #include "core/Paths.hpp"
-#include "game/ModelDraw.hpp"
 #include "game/Terrain.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/Texture2D.hpp"
+#include "render/ModelDraw.hpp"
 #include "render/ShaderUniforms.hpp"
 
 #include <cstdint>

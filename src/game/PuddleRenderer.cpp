@@ -3,11 +3,11 @@
 
 #include "assets/AssetCache.hpp"
 #include "core/GlCheck.hpp"
-#include "game/ModelDraw.hpp"
 #include "game/Puddles.hpp"
 #include "gfx/ColorSpace.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/Texture2D.hpp"
+#include "render/ModelDraw.hpp"
 #include "render/ShaderUniforms.hpp"
 
 namespace game {

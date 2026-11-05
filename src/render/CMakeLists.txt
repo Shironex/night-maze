@@ -6,5 +6,7 @@ target_sources(night_maze PRIVATE
     GpuPasses.hpp
     LightRig.cpp
     LightRig.hpp
+    ModelDraw.cpp
+    ModelDraw.hpp
     ShaderUniforms.hpp
 )

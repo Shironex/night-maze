@@ -6,9 +6,9 @@
 #include "core/Files.hpp"
 #include "core/Log.hpp"
 #include "core/Paths.hpp"
-#include "game/ModelDraw.hpp"
 #include "game/NightMazeAppShared.hpp"
 #include "game/Puddles.hpp"
+#include "render/ModelDraw.hpp"
 
 #include <algorithm>
 #include <array>

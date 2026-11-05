@@ -113,8 +113,6 @@ target_sources(night_maze PRIVATE
     MenuBackgroundRenderer.hpp
     MinimapRenderer.cpp
     MinimapRenderer.hpp
-    ModelDraw.cpp
-    ModelDraw.hpp
     NightMazeApp.cpp
     NightMazeApp.hpp
     NightMazeAppCampaign.cpp

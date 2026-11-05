@@ -4,10 +4,10 @@
 #include "assets/AssetCache.hpp"
 #include "core/Paths.hpp"
 #include "game/GateLamp.hpp"
-#include "game/ModelDraw.hpp"
 #include "game/Village.hpp"
 #include "gfx/ColorSpace.hpp"
 #include "gfx/Shader.hpp"
+#include "render/ModelDraw.hpp"
 #include "render/ShaderUniforms.hpp"
 
 #include <algorithm>

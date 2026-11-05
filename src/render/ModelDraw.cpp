@@ -1,5 +1,5 @@
 // ModelDraw: draws a mesh with its textures, shared by the classes that draw models.
-#include "game/ModelDraw.hpp"
+#include "render/ModelDraw.hpp"
 
 #include "assets/AssetCache.hpp"
 #include "gfx/Mesh.hpp"
