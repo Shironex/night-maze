@@ -20,6 +20,8 @@ The dependencies go one way. `engine` knows nothing above it. `ui`, `video` and 
 
 Inside `engine`, `src/core` includes only itself, `src/gfx` uses `src/core`, `src/assets` uses both and the box type of `src/scene` (the bounds of a model), and `src/scene` is math on GLM alone.
 
+`tests/LayeringTests.cpp` checks these rules on every test run. It reads the `#include` lines of `src/` and the source lists of the CMake files, and fails with the list of includes that break a rule: an engine folder that reaches the game or the debug UI or a folder above its own, `src/game` including `src/debug`, a file of `game_logic` (or a file of `src/` that the test program compiles) including OpenGL, GLFW, ImGui, the window or a `gfx` header other than the plain data ones (`Vertex.hpp`, `ColorSpace.hpp`, `CoverFit.hpp`). The one allowed exception is named in the test: `src/game/KeyBindings.cpp` includes GLFW for the numbers of the keys only.
+
 `src/game` is split between two targets. The files that need no window are in `game_logic`. The files that draw (`NightMazeApp`, the `*Renderer` classes, `PostProcess`, `ShadowMap`, `Skybox`, `LightRig`) are in the executable.
 
 What runs without a window or an OpenGL context: all of `game_logic`, the math in `src/scene`, the file loaders and shader text functions in `engine`, and the audio engine when it is made with `audio::AudioOutput::None`. The 60 test files in `tests` cover that.
