@@ -273,7 +273,7 @@ void NightMazeApp::drawMovingShadowCasters(const scene::LightSpace& lightSpace,
     // the same call as the door and the bell, which do: they stay on this side.
     m_renderers.gameplayRenderer.draw(m_shaders.shadowDepthShader, m_mazeWorld, m_round,
                                       crystalEmissive(), m_frameState.gateLampGlow,
-                                      m_bellSwing.degrees, frustum);
+                                      m_roundClocks.bellSwing.degrees, frustum);
     m_renderers.gameplayRenderer.drawFlasks(m_shaders.shadowDepthShader, m_mazeWorld, m_round,
                                             frustum);
     // The shade casts a shadow like everything that stands in the maze.
@@ -430,7 +430,7 @@ bool NightMazeApp::crystalsReflect() const {
 void NightMazeApp::drawGateAndCrystals(const gfx::Shader& shader,
                                        const scene::Frustum* frustum) const {
     m_renderers.gameplayRenderer.drawGate(shader, m_mazeWorld, m_round, m_frameState.gateLampGlow,
-                                          m_bellSwing.degrees, frustum);
+                                          m_roundClocks.bellSwing.degrees, frustum);
     // The door is drawn with a highlight of its own: the one of the stone goes back.
     shader.setFloat(SPECULAR_STRENGTH_UNIFORM, m_lighting.specularStrength);
     // The flasks, always with the program of the walls: they are brass, not glass, and
@@ -665,7 +665,7 @@ void NightMazeApp::drawHeldLamp(const glm::mat4& view, const glm::mat4& projecti
     // under the pause menu, on the result screen and during a catch it is left as it
     // is, so the lamp stands still. The speed is the one the feet had in the last fixed
     // step, without the height, and a flying player has no steps.
-    if (m_mode == GameMode::Playing && m_catchSeconds < 0.0F) {
+    if (m_mode == GameMode::Playing && m_roundClocks.catchSeconds < 0.0F) {
         const glm::vec3 walked = m_player.position - m_previousPlayerPosition;
         const float metres = m_player.noclip ? 0.0F : glm::length(glm::vec2{walked.x, walked.z});
         advanceHeldLampSway(m_frameState.heldLampSway,

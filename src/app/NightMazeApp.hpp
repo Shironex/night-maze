@@ -5,6 +5,7 @@
 #include "app/FrameState.hpp"
 #include "app/MenuState.hpp"
 #include "app/RenderSettings.hpp"
+#include "app/RoundClocks.hpp"
 #include "app/SceneRenderers.hpp"
 #include "app/SoundState.hpp"
 #include "app/StoryState.hpp"
@@ -628,7 +629,7 @@ private:
     void beginRound();
 
     /// The shade has reached the player: the picture fades to black first
-    /// (m_catchSeconds, game::catchFadeBrightness), then the round starts again in the
+    /// (m_roundClocks.catchSeconds, game::catchFadeBrightness), then the round starts again in the
     /// same maze, the way the restart key does it (beginRound), and the next caught line
     /// is shown. The sound of the catch plays when the fade starts. The story line counter does not
     /// move and nothing is written to the settings file.
@@ -781,8 +782,8 @@ private:
     glm::vec3 crystalEmissive() const;
 
     /// Counts the passages from the exit cell to every cell again, in the maze of the
-    /// round (m_exitDistances): when a round begins, and when a lever has opened a wall,
-    /// which can make a way shorter.
+    /// round (m_roundClocks.exitDistances): when a round begins, and when a lever has opened a
+    /// wall, which can make a way shorter.
     void measureExitDistances();
 
     /// How loud a toll of the bell of the gate is where the player stands now
@@ -938,12 +939,6 @@ private:
     // spaces of the two shadow maps, the lit nights, the glow of the gate lamp.
     FrameState m_frameState;
 
-    // Seconds since the shade reached the player, or -1 when no catch is going on. While
-    // it counts, the round stands still and the player cannot act: the picture fades to
-    // black, and at black the round starts again (carryPlayerBack). It counts in fixed
-    // steps of a played round, so it stands still in the pause.
-    float m_catchSeconds = -1.0F;
-
     // The player is simulation state: onUpdate moves it in fixed steps.
     Player m_player;
     // Position of the player before the last fixed step. onRender draws from a point
@@ -1048,32 +1043,9 @@ private:
     // The sound device and what the game remembers about the loops and the cues it plays
     // (SoundState).
     SoundState m_sound;
-    // The clock of the low battery pulse. It is simulation state like the round:
-    // onUpdate advances it in fixed steps, and beginRound starts it anew.
-    LowBatteryPulse m_lowBatteryPulse;
-    // The clock of the breathing of a winded player: the same kind of state.
-    WindedBreath m_windedBreath;
-    // The clock of the bell of the open gate: the same kind of state.
-    GateBell m_gateBell;
-    // Where the bell of the gatehouse is in its swing (game::advanceBellSwing): pushed by
-    // every toll, advanced in fixed steps wherever the picture moves, drawn by every pass.
-    BellSwing m_bellSwing;
-    // For every cell of the maze, the passages from it to the exit cell
-    // (game::passageDistances, row after row): how loud a toll of the bell is played.
-    // Counted once per round and again when a lever opens a wall (measureExitDistances).
-    std::vector<int> m_exitDistances;
-    // True when the player has pulled a lever since the last fixed step: the next step
-    // tells the shade, which may hear it (game::playerNoise). Keys are read once per
-    // frame and the shade moves in fixed steps, so the pull waits here in between.
-    bool m_leverPulled = false;
-    // The clocks of the steps of the player and of the shade. They count metres and
-    // not seconds, and are the same kind of state too.
-    StepClock m_footsteps;
-    StepClock m_shadeSteps;
-    // The caught line that was shown last (game::caughtLine), so the next catch shows
-    // the next one. It lives as long as the program: a new round does not reset it, and
-    // it is not saved.
-    int m_lastCaughtLine = NO_CAUGHT_LINE;
+    // The clocks and counters of a played round that game::Round does not hold
+    // (RoundClocks): the catch, the sounds of the steps, the bell of the gate.
+    RoundClocks m_roundClocks;
 };
 
 } // namespace game

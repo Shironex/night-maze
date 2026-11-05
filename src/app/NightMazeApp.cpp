@@ -427,7 +427,7 @@ void NightMazeApp::updateAmbience(bool windowFocused) {
     // ambient group is touched, so the other sounds keep their level.
     m_sound.audio.setGroupVolume(audio::SoundGroup::Ambient,
                                  masterVolumeGain(m_settings.ambientVolume) *
-                                     pictureBrightness(m_catchSeconds, m_round));
+                                     pictureBrightness(m_roundClocks.catchSeconds, m_round));
 
     // The theme of the menu, said in every frame like the wind. The loop keeps its
     // place while it is off, so the piece goes on after a night where it was left. The
@@ -451,7 +451,7 @@ void NightMazeApp::updateRoundMusic(bool windowFocused) {
     const RoundMusicRequest request{.mode = m_mode,
                                     .windowFocused = windowFocused,
                                     .menuCamera = m_menuCamera.enabled,
-                                    .catching = m_catchSeconds >= 0.0F};
+                                    .catching = m_roundClocks.catchSeconds >= 0.0F};
     const bool bed = mazeAmbientPlays(request, m_round);
     const bool chase = shadeChasePlays(request, m_round);
     m_sound.audio.setLoop(MAZE_AMBIENT_SOUND, bed,
