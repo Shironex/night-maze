@@ -1,6 +1,6 @@
 // ColliderLines: draws collision boxes, spheres and single lines as thin lines, a debug
 // view of the collisions and of the picking ray.
-#include "game/ColliderLines.hpp"
+#include "render/ColliderLines.hpp"
 
 #include "gfx/ColorSpace.hpp"
 #include "gfx/Shader.hpp"
