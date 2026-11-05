@@ -286,8 +286,14 @@ TEST_CASE("the layering check reads the sources and the lists") {
     CHECK(logic.contains("game/round/Round.cpp"));
     CHECK_FALSE(logic.contains("game/maze/MazeRenderer.cpp"));
     CHECK(filesOfTarget("night_maze").contains("main.cpp"));
+    CHECK(filesOfTarget("night_maze").contains("game/NightMazeApp.cpp"));
+    CHECK(filesOfTarget("night_maze").contains("game/maze/MazeRenderer.cpp"));
     CHECK(filesOfTarget("night_maze_tests").contains("debug/Search.cpp"));
     CHECK(filesOfTarget("night_maze_tests").contains("hud/HudRules.cpp"));
+    // The domain folders of src/game are read too, not only the files straight in it.
+    CHECK(std::ranges::any_of(includes, [](const Include& include) {
+        return include.file.starts_with("game/maze/") && include.path.starts_with("game/");
+    }));
 }
 
 TEST_CASE("the engine's folders never include the game, render, the hud or the debug ui") {
@@ -359,6 +365,25 @@ TEST_CASE("the rules of game_logic include no opengl, window or debug ui header"
     for (const Include& include : readIncludes()) {
         if (logic.contains(include.file) &&
             needsWindow(include, contains(LOGIC_GLFW_ALLOWED, include.file))) {
+            broken.push_back(describe(include));
+        }
+    }
+    CHECK_MESSAGE(broken.empty(), listed(broken));
+}
+
+TEST_CASE("the rules of game_logic never include a drawing file of src/game") {
+    const std::set<std::string> logic = filesOfTarget("game_logic");
+    REQUIRE(!logic.empty());
+    std::set<std::string> drawing;
+    for (const std::string& file : filesOfTarget("night_maze")) {
+        if (topFolder(file) == "game") {
+            drawing.insert(file);
+        }
+    }
+    REQUIRE(!drawing.empty());
+    std::vector<std::string> broken;
+    for (const Include& include : readIncludes()) {
+        if (logic.contains(include.file) && include.quoted && drawing.contains(include.path)) {
             broken.push_back(describe(include));
         }
     }
