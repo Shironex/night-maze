@@ -1,5 +1,5 @@
 # Drawing classes live in src/game and there is no renderer layer
-Status: accepted (2026-10-05)
+Status: superseded by [game-domain-folders](game-domain-folders.md) (2026-11-05), accepted 2026-10-05
 Code: src/render/PostProcess.cpp, src/render/Skybox.cpp, src/game/NightMazeAppRender.cpp, src/game/NightMazeAppPasses.cpp
 
 Context: The PRD planned a src/renderer layer. The frame grew to shadow, HDR scene, bloom and composite passes, so I had to decide whether to create it.
