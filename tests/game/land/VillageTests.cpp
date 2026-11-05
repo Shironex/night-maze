@@ -4,10 +4,10 @@
 
 #include "assets/ObjLoader.hpp"
 #include "game/Fog.hpp"
-#include "game/MenuCamera.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/menu/MenuCamera.hpp"
 #include "game/round/Campaign.hpp"
 #include "game/round/GateLamp.hpp"
 #include "scene/Camera.hpp"

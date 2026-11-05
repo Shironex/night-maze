@@ -9,12 +9,6 @@ target_sources(game_logic PRIVATE
     Fog.hpp
     Lighting.cpp
     Lighting.hpp
-    MenuBackground.cpp
-    MenuBackground.hpp
-    MenuCamera.cpp
-    MenuCamera.hpp
-    MenuCameraPath.cpp
-    MenuCameraShared.hpp
     Minimap.cpp
     Minimap.hpp
     RoundMusic.cpp
@@ -29,8 +23,6 @@ target_sources(game_logic PRIVATE
 
 # The application and the classes that draw: they need a window and an OpenGL context.
 target_sources(night_maze PRIVATE
-    MenuBackgroundRenderer.cpp
-    MenuBackgroundRenderer.hpp
     MinimapRenderer.cpp
     MinimapRenderer.hpp
     NightMazeApp.cpp
@@ -46,6 +38,7 @@ target_sources(night_maze PRIVATE
 
 add_subdirectory(land)
 add_subdirectory(maze)
+add_subdirectory(menu)
 add_subdirectory(player)
 add_subdirectory(round)
 add_subdirectory(screens)

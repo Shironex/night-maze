@@ -1,6 +1,6 @@
 // MenuCameraPath: the route of the menu camera through the maze, the path it is rounded into and
 // the view along it.
-#include "game/MenuCameraShared.hpp"
+#include "game/menu/MenuCameraShared.hpp"
 
 #include "game/maze/MazeLayout.hpp"
 #include "game/round/Exit.hpp"

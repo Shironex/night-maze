@@ -1,9 +1,9 @@
 // MenuCamera: where the camera that travels through the maze by itself is at a time: the corridor
 // walk and the high glide.
-#include "game/MenuCamera.hpp"
+#include "game/menu/MenuCamera.hpp"
 
-#include "game/MenuCameraShared.hpp"
 #include "game/maze/MazeLayout.hpp"
+#include "game/menu/MenuCameraShared.hpp"
 #include "scene/Camera.hpp"
 
 #include <algorithm>

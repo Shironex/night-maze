@@ -1,9 +1,9 @@
 // StartOptions: what the command line asks the game to start with.
 #pragma once
 
-#include "game/MenuBackground.hpp"
-#include "game/MenuCamera.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/menu/MenuBackground.hpp"
+#include "game/menu/MenuCamera.hpp"
 #include "game/round/Daily.hpp"
 
 #include <cstdint>

@@ -1,5 +1,5 @@
-// Tests of game/MenuBackground.hpp: the rule that chooses what is behind the main menu.
-#include "game/MenuBackground.hpp"
+// Tests of game/menu/MenuBackground.hpp: the rule that chooses what is behind the main menu.
+#include "game/menu/MenuBackground.hpp"
 
 #include "game/screens/GameState.hpp"
 

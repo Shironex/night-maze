@@ -3,7 +3,7 @@
 #pragma once
 
 #include "core/Window.hpp"
-#include "game/MenuBackground.hpp"
+#include "game/menu/MenuBackground.hpp"
 #include "gfx/FrameTexture.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/VertexArray.hpp"

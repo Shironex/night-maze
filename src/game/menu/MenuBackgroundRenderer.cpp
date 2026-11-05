@@ -1,6 +1,6 @@
 // MenuBackgroundRenderer: opens the video and the still picture of the main menu and
 // draws the one that was chosen over the whole window.
-#include "game/MenuBackgroundRenderer.hpp"
+#include "game/menu/MenuBackgroundRenderer.hpp"
 
 #include "assets/ImageLoader.hpp"
 #include "core/GlCheck.hpp"

@@ -1,9 +1,9 @@
 // Intro: the five cards a campaign begins with, as a script of plain data.
 #pragma once
 
-#include "game/MenuCamera.hpp"
 #include "game/SoundCues.hpp"
 #include "game/maze/Maze.hpp"
+#include "game/menu/MenuCamera.hpp"
 #include "game/round/Difficulty.hpp"
 
 #include <array>
@@ -21,7 +21,7 @@ namespace game {
 // (NightMazeApp) counts those seconds and asks.
 //
 // The intro is played live: every card but the first lies over a picture of the game
-// itself, taken by the menu camera (game/MenuCamera.hpp) in one fixed maze. So it never
+// itself, taken by the menu camera (game/menu/MenuCamera.hpp) in one fixed maze. So it never
 // goes out of date when the look of the game changes, and it needs no video file.
 
 /// The maze of the intro: this seed on this level, whatever the player has chosen. The
