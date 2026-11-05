@@ -69,10 +69,10 @@ FACES = (
 
 # ---- the moon ---------------------------------------------------------------------------
 # COUPLING WITH THE GAME: these two angles are the defaults of the moon LIGHT,
-# moonYawDegrees and moonPitchDegrees of game::LightingSettings in src/game/Lighting.hpp.
+# moonYawDegrees and moonPitchDegrees of game::LightingSettings in src/game/lighting/Lighting.hpp.
 # They say which way the light travels, so the disc is painted in the opposite direction:
 # where the light comes from. When the defaults change there, change them here and run
-# this script again. The test in tests/game/SkyboxTests.cpp looks for the disc where the default
+# this script again. The test in tests/game/lighting/SkyboxTests.cpp looks for the disc where the default
 # light comes from: it fails only when the two sides are more than about 2 degrees apart
 # (the disc has a radius of MOON_RADIUS_DEGREES), a smaller difference goes unnoticed.
 #

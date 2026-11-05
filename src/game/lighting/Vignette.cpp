@@ -1,6 +1,6 @@
 // Vignette: the settings of the darkening towards the corners of the screen and its
 // formula.
-#include "game/Vignette.hpp"
+#include "game/lighting/Vignette.hpp"
 
 namespace game {
 

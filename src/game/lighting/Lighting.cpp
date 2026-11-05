@@ -1,5 +1,5 @@
 // Lighting of the game: the settings of the moon, the flashlight and the point lights.
-#include "game/Lighting.hpp"
+#include "game/lighting/Lighting.hpp"
 
 #include "game/sound/SoundCues.hpp"
 #include "gfx/ColorSpace.hpp"

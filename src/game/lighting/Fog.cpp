@@ -1,5 +1,5 @@
 // Fog: the settings of the ground fog and the formulas it is computed with.
-#include "game/Fog.hpp"
+#include "game/lighting/Fog.hpp"
 
 #include <algorithm>
 #include <cmath>

@@ -4,9 +4,9 @@
 
 #include "core/Application.hpp"
 #include "core/Time.hpp"
-#include "game/Lighting.hpp"
 #include "game/land/Grass.hpp"
 #include "game/land/Village.hpp"
+#include "game/lighting/Lighting.hpp"
 #include "game/maze/MazeRenderer.hpp"
 #include "game/minimap/Minimap.hpp"
 #include "game/player/Player.hpp"

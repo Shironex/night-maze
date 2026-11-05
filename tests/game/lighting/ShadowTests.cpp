@@ -1,11 +1,11 @@
 // Tests of the parts of the shadows that need no OpenGL context: the light space of the
 // moon (the box its shadow map covers) and of the flashlight (a pyramid), the bias and
 // the small helpers of the settings.
-#include "game/Shadows.hpp"
+#include "game/lighting/Shadows.hpp"
 
-#include "game/Lighting.hpp"
 #include "game/land/Land.hpp"
 #include "game/land/Terrain.hpp"
+#include "game/lighting/Lighting.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "game/player/Player.hpp"

@@ -64,13 +64,13 @@ out vec4 fragColor;
 
 // The middle of the screen as a texture coordinate, and the distance from it to
 // a corner: the length of (0.5, 0.5), the square root of 0.5. The same numbers as
-// SCREEN_CENTER and VIGNETTE_CORNER_DISTANCE in src/game/Vignette.hpp.
+// SCREEN_CENTER and VIGNETTE_CORNER_DISTANCE in src/game/lighting/Vignette.hpp.
 const vec2 SCREEN_CENTER = vec2(0.5, 0.5);
 const float VIGNETTE_CORNER_DISTANCE = 0.70710678;
 
 // The world position of the surface a pixel shows, from its texture coordinate on the
 // screen and the value of the depth texture there. The same steps as
-// game::worldPositionFromDepth in src/game/Fog.cpp.
+// game::worldPositionFromDepth in src/game/lighting/Fog.cpp.
 vec3 worldPositionFromDepth(vec2 uv, float depth) {
     // Step 1: normalised device coordinates. The texture coordinate and the depth run
     // from 0 to 1, and in normalised device coordinates all three axes run from -1 to
@@ -91,7 +91,7 @@ vec3 worldPositionFromDepth(vec2 uv, float depth) {
 
 // How much of the full density the fog has at a world height: 1 at and below the base
 // height, and above it falling towards 0, by the same share for every metre. The same
-// formula as game::fogHeightFactor in src/game/Fog.cpp.
+// formula as game::fogHeightFactor in src/game/lighting/Fog.cpp.
 float fogHeightFactor(float height) {
     float heightAboveBase = max(height - uFogBaseHeight, 0.0);
     return exp(-uFogHeightFalloff * heightAboveBase);
@@ -100,7 +100,7 @@ float fogHeightFactor(float height) {
 // How much of a surface is replaced by the colour of the fog, 0 to 1. Exponential fog:
 // every metre of fog lets the same share of the light through, so after d metres
 // exp(-density * d) of it is left, and the fog takes the rest. The same formula as
-// game::fogAmount in src/game/Fog.cpp. (The parameter is not called distance: that is
+// game::fogAmount in src/game/lighting/Fog.cpp. (The parameter is not called distance: that is
 // the name of a built-in function of GLSL.)
 float fogAmount(float heightFactor, float distanceToEye) {
     return 1.0 - exp(-uFogDensity * heightFactor * distanceToEye);
@@ -111,7 +111,7 @@ float fogAmount(float heightFactor, float distanceToEye) {
 // texture coordinates, which run from 0 to 1 in both directions whatever the shape of
 // the window, so the bright middle is an ellipse of the shape of the window and the four
 // corners are always equally dark. The same formula as game::vignetteFactor in
-// src/game/Vignette.cpp.
+// src/game/lighting/Vignette.cpp.
 float vignetteFactor(vec2 uv) {
     float distanceToCenter = length(uv - SCREEN_CENTER);
     // smoothstep is 0 up to the first edge, 1 from the second edge on and an S shaped

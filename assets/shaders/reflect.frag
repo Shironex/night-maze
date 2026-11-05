@@ -101,7 +101,7 @@ const float STAR_GROW = 0.005;
 const int STAR_GROW_TAPS = 8;
 
 // The exponent of Schlick's formula. The same number as game::SCHLICK_EXPONENT in
-// src/game/EnvironmentMapping.hpp.
+// src/game/lighting/EnvironmentMapping.hpp.
 const float SCHLICK_EXPONENT = 5.0;
 
 // The direction of a ray after it is bent on its way into the surface, or, where it

@@ -4,9 +4,9 @@
 #pragma once
 
 #include "core/Window.hpp"
-#include "game/Bloom.hpp"
-#include "game/Fog.hpp"
-#include "game/Vignette.hpp"
+#include "game/lighting/Bloom.hpp"
+#include "game/lighting/Fog.hpp"
+#include "game/lighting/Vignette.hpp"
 #include "gfx/Framebuffer.hpp"
 #include "gfx/VertexArray.hpp"
 
@@ -55,15 +55,15 @@ struct PostProcessSettings {
     float depthPreviewRange = 15.0F;
 
     /// The glow around bright things: the switch, the threshold, the intensity and the
-    /// number of blur iterations (game/Bloom.hpp).
+    /// number of blur iterations (game/lighting/Bloom.hpp).
     BloomSettings bloom;
 
     /// The fog near the ground: the switch, the density, the height it lies at and its
-    /// colour (game/Fog.hpp).
+    /// colour (game/lighting/Fog.hpp).
     FogSettings fog;
 
     /// The darkening towards the corners of the screen: the switch, the strength and
-    /// the radius (game/Vignette.hpp).
+    /// the radius (game/lighting/Vignette.hpp).
     VignetteSettings vignette;
 };
 

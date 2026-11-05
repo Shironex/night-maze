@@ -1,5 +1,5 @@
 // Tests of the formula of the vignette, which needs no OpenGL context.
-#include "game/Vignette.hpp"
+#include "game/lighting/Vignette.hpp"
 
 #include <doctest/doctest.h>
 

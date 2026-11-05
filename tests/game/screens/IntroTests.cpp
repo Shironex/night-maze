@@ -2,7 +2,7 @@
 // camera is and when its sounds are played.
 #include "game/screens/Intro.hpp"
 
-#include "game/Lighting.hpp"
+#include "game/lighting/Lighting.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"

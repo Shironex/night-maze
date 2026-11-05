@@ -1,5 +1,5 @@
 // Shadows: the settings of a shadow map, and the math around it that needs no OpenGL.
-#include "game/Shadows.hpp"
+#include "game/lighting/Shadows.hpp"
 
 #include "game/land/Land.hpp"
 #include "game/land/Terrain.hpp"

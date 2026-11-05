@@ -1,7 +1,7 @@
 // ShadowMap: the depth texture a light draws the scene into, and how the lit shaders read it.
 #pragma once
 
-#include "game/Shadows.hpp"
+#include "game/lighting/Shadows.hpp"
 #include "gfx/ComparisonSampler.hpp"
 #include "gfx/Framebuffer.hpp"
 #include "gfx/VertexArray.hpp"
@@ -25,7 +25,7 @@ struct ShadowUniformNames;
 /// The OpenGL side of one shadow map: a square framebuffer without a colour texture
 /// (only depth is drawn), the comparison sampler its depth texture is read through, and
 /// a small preview picture for the debug UI. The math (where the light looks, the bias)
-/// is plain data in game/Shadows.hpp and scene/LightSpace.hpp.
+/// is plain data in game/lighting/Shadows.hpp and scene/LightSpace.hpp.
 ///
 /// One object per light that casts shadows: the moon has one and the flashlight has
 /// one.

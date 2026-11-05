@@ -1,8 +1,8 @@
 // Tests of game/round/Difficulty: the table of the three levels.
 #include "game/round/Difficulty.hpp"
 
-#include "game/Lighting.hpp"
-#include "game/Shadows.hpp"
+#include "game/lighting/Lighting.hpp"
+#include "game/lighting/Shadows.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "game/menu/MenuCamera.hpp"

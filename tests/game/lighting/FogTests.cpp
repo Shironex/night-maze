@@ -1,8 +1,8 @@
 // Tests of the parts of the fog that need no OpenGL context: its two formulas and the
 // way from a pixel and its depth back to a place in the world.
-#include "game/Fog.hpp"
+#include "game/lighting/Fog.hpp"
 
-#include "game/Lighting.hpp"
+#include "game/lighting/Lighting.hpp"
 #include "scene/Camera.hpp"
 #include "scene/Light.hpp"
 

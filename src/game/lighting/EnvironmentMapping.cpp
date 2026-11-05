@@ -1,6 +1,6 @@
 // Environment mapping: the settings of the reflections of the sky on the crystals and
 // the puddles, and the formulas of a reflected and of a refracted ray.
-#include "game/EnvironmentMapping.hpp"
+#include "game/lighting/EnvironmentMapping.hpp"
 
 #include <algorithm>
 #include <cmath>

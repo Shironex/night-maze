@@ -3,8 +3,8 @@
 // and how a round carries it (game/round/Round.hpp).
 #include "game/shade/Shade.hpp"
 
-#include "game/Lighting.hpp"
 #include "game/land/Terrain.hpp"
+#include "game/lighting/Lighting.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"

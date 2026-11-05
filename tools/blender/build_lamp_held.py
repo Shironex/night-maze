@@ -47,7 +47,7 @@ SOURCE_FILE = "lamp_held_tripo.glb"
 # upright with its lens looking down +Y, the way a railway lamp is carried by its bail.
 # Its origin is the middle of its butt: the point on the axis of the lens where it leaves
 # the back of the lamp, the plane of the rearmost corner. The game puts the lamp on the
-# axis of its beam (heldLampMatrix in src/game/Lighting.cpp) and turns it about that axis
+# axis of its beam (heldLampMatrix in src/game/lighting/Lighting.cpp) and turns it about that axis
 # only, so the beam leaves through the middle of the lens.
 #
 # The lamp is HEIGHT tall from the foot of its body to the top of its bail. A real lamp of
@@ -75,7 +75,7 @@ LENS_DOME_FRONT = -0.3237
 # The disc of the lens lies LENS_OUT metres from the butt along the axis, a hair in front
 # of the dome of the glass, like a chalk mark in front of a wall: the script stops if it
 # is not between LENS_GAP and 1 mm in front of it. The game hangs the glow of the beam on
-# it (HELD_LAMP_LENS_OUT in src/game/Lighting.hpp is LENS_OUT).
+# it (HELD_LAMP_LENS_OUT in src/game/lighting/Lighting.hpp is LENS_OUT).
 LENS_OUT = 0.113
 LENS_GAP = 0.0003
 LENS_SIDES = 16

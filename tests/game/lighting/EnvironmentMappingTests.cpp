@@ -1,6 +1,6 @@
 // Tests of the formulas of the environment mapping (the reflected ray, the refracted ray
 // and the Fresnel factor), which need no OpenGL context.
-#include "game/EnvironmentMapping.hpp"
+#include "game/lighting/EnvironmentMapping.hpp"
 
 #include <doctest/doctest.h>
 #include <glm/glm.hpp>

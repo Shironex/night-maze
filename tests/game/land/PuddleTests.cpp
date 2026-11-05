@@ -3,8 +3,8 @@
 #include "game/land/Puddles.hpp"
 
 #include "assets/ImageLoader.hpp"
-#include "game/EnvironmentMapping.hpp"
 #include "game/land/Terrain.hpp"
+#include "game/lighting/EnvironmentMapping.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "scene/Collider.hpp"

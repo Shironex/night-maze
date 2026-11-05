@@ -2,7 +2,7 @@
 // its rules.
 #pragma once
 
-#include "game/Lighting.hpp"
+#include "game/lighting/Lighting.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "game/player/Interactables.hpp"
