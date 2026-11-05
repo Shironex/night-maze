@@ -163,8 +163,8 @@ void NightMazeApp::onRender(double alpha) {
     // of the scene pass read those maps, so they have to be complete before they draw.
     // Each pass binds a framebuffer and a viewport of its own (the size of its map),
     // and beginScene below binds the scene framebuffer with its viewport again.
-    drawMoonShadowMap();
-    drawFlashlightShadowMap(frameLighting, flashlight);
+    m_passes.drawMoonShadowMap();
+    m_passes.drawFlashlightShadowMap(frameLighting, flashlight);
     m_frameState.frameNightLights = nightLightsFor(screen, frame);
 
     // The HDR framebuffer of the scene, cleared, and the lights of the frame. The scene
@@ -177,21 +177,21 @@ void NightMazeApp::onRender(double alpha) {
     }
     const scene::LightSet lights = uploadLights(frameLighting, flashlight, lamp, frame.eye);
 
-    drawMaze(frame.view, frame.projection);
+    m_passes.drawMaze(frame.view, frame.projection);
     m_renderers.gpuPasses.begin(GpuPass::Grass);
-    drawGrass(frame.view, frame.projection);
+    m_passes.drawGrass(frame.view, frame.projection);
     m_renderers.gpuPasses.begin(GpuPass::Reflections);
     // The reflection pass: the crystals and the puddles, which show the sky. The
     // crystals are opaque and write depth like the walls. The puddles are blended over
     // the ground that is already drawn and write no depth (game::PuddleRenderer), so
     // they need the ground first. The sky comes after both: the ground under a puddle
     // has written its depth, so the sky does not show through.
-    drawReflections(frame.view, frame.projection);
+    m_passes.drawReflections(frame.view, frame.projection);
     if (m_renderSettings.drawColliders) {
-        drawColliderLines(frame.view, frame.projection);
+        m_passes.drawColliderLines(frame.view, frame.projection);
     }
     if (m_renderSettings.pickDebug.drawShapes) {
-        drawPickLines(frame.view, frame.projection);
+        m_passes.drawPickLines(frame.view, frame.projection);
     }
 
     // The village on the ridge, before the sky and after everything of the maze.
@@ -213,7 +213,8 @@ void NightMazeApp::onRender(double alpha) {
     }
 
     // The lamp in the hand, on top of the scene and in front of every wall.
-    drawHeldLamp(frame.view, frame.projection, frameLighting, lights);
+    m_passes.drawHeldLamp(frame.view, frame.projection, frameLighting, lights,
+                          villageRevealShown());
     m_renderers.gpuPasses.end();
 
     // The scene is complete. The passes that read it bring it to the window.
@@ -743,9 +744,9 @@ void NightMazeApp::drawVillageForFrame(const FrameScreen& /*screen*/,
     // The village on the ridge, before the sky and after everything of the maze: it lies
     // near the far plane, so the maze has already filled most of the pixels it would
     // cover.
-    drawVillage(frame.view, frame.projection, frame.camera.farPlane,
-                m_frameState.frameNightLights.nightsLit,
-                m_frameState.frameNightLights.newestStrength);
+    m_passes.drawVillage(frame.view, frame.projection, frame.camera.farPlane,
+                         m_frameState.frameNightLights.nightsLit,
+                         m_frameState.frameNightLights.newestStrength);
 }
 
 void NightMazeApp::finishPicture(core::Size framebuffer, const FrameView& frame) {
