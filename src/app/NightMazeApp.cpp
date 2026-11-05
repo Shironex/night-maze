@@ -339,7 +339,7 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
                 addSound(beat.voice, audio::SoundGroup::Effects));
         }
     }
-    m_audio.load(soundFiles);
+    m_sound.audio.load(soundFiles);
     // A picture stays at least until its spoken line has ended. Without sound the
     // lines have no length, and the pictures keep their own times.
     if (m_story.storybook) {
@@ -347,7 +347,7 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
             const std::size_t voice = m_story.storybookVoiceSounds.at(i);
             m_story.storybookBeatSeconds.push_back(storybookBeatSeconds(
                 m_story.storybook->beats.at(i),
-                voice == NO_STORYBOOK_SOUND ? 0.0F : m_audio.lengthSeconds(voice)));
+                voice == NO_STORYBOOK_SOUND ? 0.0F : m_sound.audio.lengthSeconds(voice)));
         }
     }
 
@@ -388,22 +388,22 @@ NightMazeApp::~NightMazeApp() {
 // The wind of the maze is not played here. It is a loop, and it does stop for a menu:
 // updateAmbience fades it out and in, and the theme of the menu the other way round.
 void NightMazeApp::playCue(SoundCue cue, float volume) {
-    m_audio.play(soundCueIndex(cue), volume);
-    m_lastCueName = soundCueName(cue);
-    m_lastCueVolume = volume;
-    ++m_cuesPlayed;
+    m_sound.audio.play(soundCueIndex(cue), volume);
+    m_sound.lastCueName = soundCueName(cue);
+    m_sound.lastCueVolume = volume;
+    ++m_sound.cuesPlayed;
 }
 
 void NightMazeApp::updateAmbience(bool windowFocused) {
     // A sample of the wind: asked for by the debug window, or still running after the
     // ambient slider was moved (handleControlChanges). Its time runs down with the real
     // time of the frames.
-    if (m_windSampleRequested) {
-        m_windSampleRequested = false;
-        m_windSampleLeft = WIND_PREVIEW_SECONDS;
+    if (m_sound.windSampleRequested) {
+        m_sound.windSampleRequested = false;
+        m_sound.windSampleLeft = WIND_PREVIEW_SECONDS;
     }
-    const bool sample = m_windSampleLeft > 0.0;
-    m_windSampleLeft = std::max(m_windSampleLeft - time().deltaSeconds(), 0.0);
+    const bool sample = m_sound.windSampleLeft > 0.0;
+    m_sound.windSampleLeft = std::max(m_sound.windSampleLeft - time().deltaSeconds(), 0.0);
 
     // Said in every frame: the engine does something only in the frame the answer
     // changes, and then fades the loop in or out (audio::AudioEngine::setLoop). A sample
@@ -413,32 +413,32 @@ void NightMazeApp::updateAmbience(bool windowFocused) {
                                      .menuCamera = m_menuCamera.enabled,
                                      .sample = sample});
     const float fadeIn = sample ? MAZE_WIND_SAMPLE_FADE_IN_SECONDS : MAZE_WIND_FADE_IN_SECONDS;
-    m_audio.setLoop(soundCueIndex(SoundCue::MazeWind), wind,
-                    wind ? fadeIn : MAZE_WIND_FADE_OUT_SECONDS);
+    m_sound.audio.setLoop(soundCueIndex(SoundCue::MazeWind), wind,
+                          wind ? fadeIn : MAZE_WIND_FADE_OUT_SECONDS);
     // The hum of the shade: a loop while it is near, louder the nearer (game::shadeHumPlays).
     const bool hum = shadeHumPlays(
         {.mode = m_mode, .windowFocused = windowFocused, .menuCamera = m_menuCamera.enabled},
         m_round);
-    m_audio.setLoop(soundCueIndex(SoundCue::ShadeNear), hum,
-                    hum ? SHADE_HUM_FADE_IN_SECONDS : SHADE_HUM_FADE_OUT_SECONDS);
-    m_audio.setLoopVolume(soundCueIndex(SoundCue::ShadeNear),
-                          shadeHumVolume(m_round.shade.wayMetres));
+    m_sound.audio.setLoop(soundCueIndex(SoundCue::ShadeNear), hum,
+                          hum ? SHADE_HUM_FADE_IN_SECONDS : SHADE_HUM_FADE_OUT_SECONDS);
+    m_sound.audio.setLoopVolume(soundCueIndex(SoundCue::ShadeNear),
+                                shadeHumVolume(m_round.shade.wayMetres));
     // The wind follows the fade to black of a catch and the way back up from it. Only the
     // ambient group is touched, so the other sounds keep their level.
-    m_audio.setGroupVolume(audio::SoundGroup::Ambient,
-                           masterVolumeGain(m_settings.ambientVolume) *
-                               pictureBrightness(m_catchSeconds, m_round));
+    m_sound.audio.setGroupVolume(audio::SoundGroup::Ambient,
+                                 masterVolumeGain(m_settings.ambientVolume) *
+                                     pictureBrightness(m_catchSeconds, m_round));
 
     // The theme of the menu, said in every frame like the wind. The loop keeps its
     // place while it is off, so the piece goes on after a night where it was left. The
     // first call of the program comes before the first picture: the theme waits for it.
     const bool theme = menuThemePlays(
-        {.mode = m_mode, .windowFocused = windowFocused, .pictureShown = m_pictureShown});
-    m_pictureShown = true;
-    m_audio.setLoop(MENU_THEME_SOUND, theme,
-                    theme ? MENU_THEME_FADE_IN_SECONDS : MENU_THEME_FADE_OUT_SECONDS);
-    if (theme != m_menuThemeOn) {
-        m_menuThemeOn = theme;
+        {.mode = m_mode, .windowFocused = windowFocused, .pictureShown = m_sound.pictureShown});
+    m_sound.pictureShown = true;
+    m_sound.audio.setLoop(MENU_THEME_SOUND, theme,
+                          theme ? MENU_THEME_FADE_IN_SECONDS : MENU_THEME_FADE_OUT_SECONDS);
+    if (theme != m_sound.menuThemeOn) {
+        m_sound.menuThemeOn = theme;
         core::logInfo(theme ? "Music: the theme of the menu fades in"
                             : "Music: the theme of the menu fades out");
     }
@@ -454,30 +454,31 @@ void NightMazeApp::updateRoundMusic(bool windowFocused) {
                                     .catching = m_catchSeconds >= 0.0F};
     const bool bed = mazeAmbientPlays(request, m_round);
     const bool chase = shadeChasePlays(request, m_round);
-    m_audio.setLoop(MAZE_AMBIENT_SOUND, bed,
-                    bed ? MAZE_AMBIENT_FADE_IN_SECONDS : MAZE_AMBIENT_FADE_OUT_SECONDS);
-    m_audio.setLoop(SHADE_CHASE_SOUND, chase,
-                    chase ? SHADE_CHASE_FADE_IN_SECONDS : SHADE_CHASE_FADE_OUT_SECONDS);
+    m_sound.audio.setLoop(MAZE_AMBIENT_SOUND, bed,
+                          bed ? MAZE_AMBIENT_FADE_IN_SECONDS : MAZE_AMBIENT_FADE_OUT_SECONDS);
+    m_sound.audio.setLoop(SHADE_CHASE_SOUND, chase,
+                          chase ? SHADE_CHASE_FADE_IN_SECONDS : SHADE_CHASE_FADE_OUT_SECONDS);
     // The bed steps aside under the chase, a little per frame.
-    m_ambientDuck =
-        advanceAmbientDuck(m_ambientDuck, chase, static_cast<float>(time().deltaSeconds()));
-    m_audio.setLoopVolume(MAZE_AMBIENT_SOUND, m_ambientDuck);
-    if (bed != m_mazeAmbientOn) {
-        m_mazeAmbientOn = bed;
+    m_sound.ambientDuck =
+        advanceAmbientDuck(m_sound.ambientDuck, chase, static_cast<float>(time().deltaSeconds()));
+    m_sound.audio.setLoopVolume(MAZE_AMBIENT_SOUND, m_sound.ambientDuck);
+    if (bed != m_sound.mazeAmbientOn) {
+        m_sound.mazeAmbientOn = bed;
         core::logInfo(bed ? "Music: the bed of the round fades in"
                           : "Music: the bed of the round fades out");
     }
-    if (chase != m_shadeChaseOn) {
-        m_shadeChaseOn = chase;
+    if (chase != m_sound.shadeChaseOn) {
+        m_sound.shadeChaseOn = chase;
         core::logInfo(chase ? "Music: the shade hunts, the chase layer fades in"
                             : "Music: the hunt is over, the chase layer fades out");
     }
 
     // The sting of a won night: once, a moment after the win, and faded when the screens
     // after the win are left (fadeNightEnd).
-    if (advanceNightEndSting(m_nightEndSting, m_mode, static_cast<float>(time().deltaSeconds()))) {
-        m_audio.play(NIGHT_END_SOUND);
-        m_nightEndOn = true;
+    if (advanceNightEndSting(m_sound.nightEndSting, m_mode,
+                             static_cast<float>(time().deltaSeconds()))) {
+        m_sound.audio.play(NIGHT_END_SOUND);
+        m_sound.nightEndOn = true;
         core::logInfo("Music: the night is won, the sting plays");
     }
     if (!nightEndScreen(m_mode)) {
@@ -486,9 +487,9 @@ void NightMazeApp::updateRoundMusic(bool windowFocused) {
 }
 
 void NightMazeApp::fadeNightEnd() {
-    if (m_nightEndOn) {
-        m_nightEndOn = false;
-        m_audio.fadeOut(NIGHT_END_SOUND, NIGHT_END_FADE_OUT_SECONDS);
+    if (m_sound.nightEndOn) {
+        m_sound.nightEndOn = false;
+        m_sound.audio.fadeOut(NIGHT_END_SOUND, NIGHT_END_FADE_OUT_SECONDS);
         core::logInfo("Music: the sting fades out");
     }
 }
@@ -499,11 +500,14 @@ void NightMazeApp::applyViewSettings() {
 }
 
 void NightMazeApp::applyAudioSettings() {
-    m_audio.setMasterVolume(masterVolumeGain(m_settings.masterVolume));
+    m_sound.audio.setMasterVolume(masterVolumeGain(m_settings.masterVolume));
     // The three groups under it, each with the same curve from its own slider.
-    m_audio.setGroupVolume(audio::SoundGroup::Effects, masterVolumeGain(m_settings.effectsVolume));
-    m_audio.setGroupVolume(audio::SoundGroup::Ambient, masterVolumeGain(m_settings.ambientVolume));
-    m_audio.setGroupVolume(audio::SoundGroup::Music, masterVolumeGain(m_settings.musicVolume));
+    m_sound.audio.setGroupVolume(audio::SoundGroup::Effects,
+                                 masterVolumeGain(m_settings.effectsVolume));
+    m_sound.audio.setGroupVolume(audio::SoundGroup::Ambient,
+                                 masterVolumeGain(m_settings.ambientVolume));
+    m_sound.audio.setGroupVolume(audio::SoundGroup::Music,
+                                 masterVolumeGain(m_settings.musicVolume));
 }
 
 void NightMazeApp::applyWindowSettings() {

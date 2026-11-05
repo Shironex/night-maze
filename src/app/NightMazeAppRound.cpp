@@ -303,7 +303,7 @@ void NightMazeApp::onUpdate(double fixedDt) {
         // One full toll for walking through, whatever the clock of the bell says.
         playCue(SoundCue::GateBell, GATE_BELL_NEAR_VOLUME);
         // And a moment later the sting of a won night (updateRoundMusic).
-        armNightEndSting(m_nightEndSting);
+        armNightEndSting(m_sound.nightEndSting);
         tollBellSwing(m_bellSwing);
         finishRound();
     }
