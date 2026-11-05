@@ -50,6 +50,7 @@ src/
     land/             the ground, the grass, the puddles, the land around the maze, the village
     maze/             the maze, its walls, the stile and the stone sheep
     menu/             what is behind the main menu, the menu camera
+    minimap/          the map held with M
     player/           the player and stamina, picking, the levers and notes, the key bindings
     round/            a round and its pickups, the gate, the campaign, the ledger, the day
     screens/          the screens and their events, the intro, the settings, the command line
@@ -74,6 +75,7 @@ Directory map:
   - `src/game/land`: the ground (`Terrain`), the tufts of grass, the puddles, the land around the maze with the triangles built in code (`LandMeshes`), the village on the ridge, and their renderers.
   - `src/game/maze`: the grid of the maze, its generator and layout, the built world of a seed (`MazeWorld`), the worn wall variants, the stile, the stone sheep and `MazeRenderer`.
   - `src/game/menu`: what is shown behind the main menu (`MenuBackground`) and its renderer, and the camera that glides over the maze (`MenuCamera`, its path and the header they share).
+  - `src/game/minimap`: the map held with its key: its settings, where it stands and the flat shapes it is drawn from (`Minimap`), and `MinimapRenderer`.
   - `src/game/player`: the player and its stamina (`Player`), the levers and notes (`Interactables`) and their renderer, picking (`Interaction`), the key bindings.
   - `src/game/round`: a round (`Round`) and what is placed in it from the seed (exit, crystals, flasks, the heartstone, the gate lamp), the cells seen so far (`Discovery`), the campaign, the difficulty, the ledger, the maze of the day (`Daily`), and `GameplayRenderer`.
   - `src/game/screens`: the state machine of the screens (`GameState`), the classic intro and the storybook intro with its renderer, the settings file (`Settings`) and the command line (`StartOptions`).

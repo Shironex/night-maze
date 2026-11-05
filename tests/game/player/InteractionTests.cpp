@@ -4,10 +4,10 @@
 #include "game/player/Interaction.hpp"
 
 #include "assets/ObjLoader.hpp"
-#include "game/Minimap.hpp"
 #include "game/land/Terrain.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/minimap/Minimap.hpp"
 #include "game/player/Interactables.hpp"
 #include "game/player/Player.hpp"
 #include "game/round/Discovery.hpp"

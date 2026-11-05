@@ -1,7 +1,7 @@
 // Minimap: the settings of the map in the middle of the screen, where it stands, and the
 // flat shapes it is drawn from (floors, walls, gate, lantern, crystals, flasks, levers,
 // notes, the tick towards the open gate, player).
-#include "game/Minimap.hpp"
+#include "game/minimap/Minimap.hpp"
 
 #include "game/land/Land.hpp"
 #include "game/maze/MazeLayout.hpp"

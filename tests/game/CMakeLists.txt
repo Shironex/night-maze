@@ -3,7 +3,6 @@ target_sources(night_maze_tests PRIVATE
     EnvironmentMappingTests.cpp
     FogTests.cpp
     LightingTests.cpp
-    MinimapTests.cpp
     RoundMusicTests.cpp
     ShadowTests.cpp
     SkyboxTests.cpp
@@ -14,6 +13,7 @@ target_sources(night_maze_tests PRIVATE
 add_subdirectory(land)
 add_subdirectory(maze)
 add_subdirectory(menu)
+add_subdirectory(minimap)
 add_subdirectory(player)
 add_subdirectory(round)
 add_subdirectory(screens)
