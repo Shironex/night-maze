@@ -1,7 +1,7 @@
 // Game HUD: drawHud, which puts the parts of the HUD together and gives them the canvas.
 #include "hud/Hud.hpp"
 
-#include "game/Player.hpp"
+#include "game/player/Player.hpp"
 #include "game/round/Round.hpp"
 #include "hud/HudRules.hpp"
 #include "hud/HudShared.hpp"

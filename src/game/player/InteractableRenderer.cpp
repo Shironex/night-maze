@@ -1,11 +1,11 @@
 // InteractableRenderer: draws the levers and the notes of a maze with their models, the
 // chalk crook beside every lever and the iron ring on the wall every lever opens.
-#include "game/InteractableRenderer.hpp"
+#include "game/player/InteractableRenderer.hpp"
 
 #include "assets/AssetCache.hpp"
 #include "core/Paths.hpp"
-#include "game/Interaction.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/player/Interaction.hpp"
 #include "game/round/Round.hpp"
 #include "gfx/Shader.hpp"
 #include "render/ModelDraw.hpp"
@@ -25,7 +25,7 @@ namespace {
 
 // Model files, relative to the assets directory. All of them have their origin in the
 // middle of their back, the point fixed to the wall, and stand out along +Z (see
-// game/Interaction.hpp). The handle is a model of its own, because it is the one part
+// game/player/Interaction.hpp). The handle is a model of its own, because it is the one part
 // that moves: its origin is the pivot it turns around. The rope is two models, of which
 // one is drawn: it hangs slack until the handle is down and is pulled straight then.
 constexpr const char* LEVER_POST_MODEL_FILE = "models/crook_post.obj";

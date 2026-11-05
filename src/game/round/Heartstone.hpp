@@ -15,7 +15,7 @@ namespace game {
 // maze (MazeWorld::crystals): the number that opens the gate is counted from those alone,
 // the map shows no mark for it and no note points at it. What taking it does is in
 // game/round/Round.hpp (it counts as HEARTSTONE_WORTH crystals and fills the battery) and in
-// game/Player.hpp (it is heavy: game::carryHeartstone).
+// game/player/Player.hpp (it is heavy: game::carryHeartstone).
 
 /// How many crystals the heartstone counts as, for the gate and for "of N".
 constexpr int HEARTSTONE_WORTH = 3;

@@ -2,8 +2,8 @@
 // they are kept in.
 #include "game/Settings.hpp"
 
-#include "game/Interactables.hpp"
 #include "game/StartOptions.hpp"
+#include "game/player/Interactables.hpp"
 
 #include <algorithm>
 #include <cmath>

@@ -2,7 +2,7 @@
 // and the round that was won.
 #include "game/NightMazeApp.hpp"
 
-#include "game/Interactables.hpp"
+#include "game/player/Interactables.hpp"
 
 #include <algorithm>
 #include <chrono>

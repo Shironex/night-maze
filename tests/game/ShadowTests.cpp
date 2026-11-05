@@ -4,11 +4,11 @@
 #include "game/Shadows.hpp"
 
 #include "game/Lighting.hpp"
-#include "game/Player.hpp"
 #include "game/land/Land.hpp"
 #include "game/land/Terrain.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/player/Player.hpp"
 #include "scene/Camera.hpp"
 #include "scene/Collider.hpp"
 #include "scene/Light.hpp"

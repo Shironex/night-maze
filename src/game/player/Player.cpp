@@ -1,5 +1,5 @@
 // Player: the body that walks through the maze, and its movement for one fixed step.
-#include "game/Player.hpp"
+#include "game/player/Player.hpp"
 
 #include "game/land/Terrain.hpp"
 #include "scene/Camera.hpp"

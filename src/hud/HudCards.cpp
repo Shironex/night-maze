@@ -2,9 +2,9 @@
 // catch and the "You escaped" card.
 #include "hud/HudShared.hpp"
 
-#include "game/Interaction.hpp"
-#include "game/KeyBindings.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/player/Interaction.hpp"
+#include "game/player/KeyBindings.hpp"
 #include "game/round/Round.hpp"
 #include "hud/HudColors.hpp"
 

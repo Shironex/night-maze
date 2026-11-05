@@ -6,15 +6,12 @@
 #include "core/Application.hpp"
 #include "game/EnvironmentMapping.hpp"
 #include "game/GameState.hpp"
-#include "game/InteractableRenderer.hpp"
-#include "game/Interaction.hpp"
 #include "game/Intro.hpp"
 #include "game/Lighting.hpp"
 #include "game/MenuBackgroundRenderer.hpp"
 #include "game/MenuCamera.hpp"
 #include "game/Minimap.hpp"
 #include "game/MinimapRenderer.hpp"
-#include "game/Player.hpp"
 #include "game/RoundMusic.hpp"
 #include "game/Settings.hpp"
 #include "game/Shadows.hpp"
@@ -32,6 +29,9 @@
 #include "game/land/VillageRenderer.hpp"
 #include "game/maze/MazeRenderer.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/player/InteractableRenderer.hpp"
+#include "game/player/Interaction.hpp"
+#include "game/player/Player.hpp"
 #include "game/round/Campaign.hpp"
 #include "game/round/Daily.hpp"
 #include "game/round/Difficulty.hpp"
@@ -99,7 +99,7 @@ constexpr std::size_t NO_STORYBOOK_SOUND = static_cast<std::size_t>(-1);
 /// the middle of the picture (or through the free cursor), and the lever or the note it
 /// hits is highlighted: object picking by ray casting. The key E or a click pulls the
 /// lever, which lowers a wall somewhere in the maze, or opens the card of the note. The
-/// rules are in game/Interaction.hpp, this class builds the ray and reads the key.
+/// rules are in game/player/Interaction.hpp, this class builds the ray and reads the key.
 ///
 /// The game can also show itself: with the menu camera switched on (key F2, the Camera
 /// panel or the switch --menu-camera) the picture is taken by a camera that travels

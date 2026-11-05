@@ -1,11 +1,9 @@
 // Tests of the heartstone: which dead end it floats in (game/round/Heartstone.hpp), what it
 // moved in the world of a seed (game/maze/MazeWorld.hpp), what taking it does to a round
-// (game/round/Round.hpp), to the stamina (game/Player.hpp), to the sounds (game/SoundCues.hpp)
-// and to the HUD (hud/HudRules.hpp).
+// (game/round/Round.hpp), to the stamina (game/player/Player.hpp), to the sounds
+// (game/SoundCues.hpp) and to the HUD (hud/HudRules.hpp).
 #include "game/round/Heartstone.hpp"
 
-#include "game/Interactables.hpp"
-#include "game/Player.hpp"
 #include "game/Settings.hpp"
 #include "game/SoundCues.hpp"
 #include "game/land/Puddles.hpp"
@@ -14,6 +12,8 @@
 #include "game/maze/MazeGenerator.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/player/Interactables.hpp"
+#include "game/player/Player.hpp"
 #include "game/round/Crystals.hpp"
 #include "game/round/Difficulty.hpp"
 #include "game/round/Exit.hpp"

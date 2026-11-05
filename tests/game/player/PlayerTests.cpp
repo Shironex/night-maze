@@ -1,6 +1,6 @@
 // Tests of game::Player: walking, sprinting and its stamina, sliding along walls and
 // noclip flight.
-#include "game/Player.hpp"
+#include "game/player/Player.hpp"
 
 #include "game/land/Terrain.hpp"
 #include "game/maze/MazeGenerator.hpp"

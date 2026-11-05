@@ -2,10 +2,10 @@
 // helpers that measure and draw text, and the parts of the HUD that drawHud puts together.
 #pragma once
 
-#include "game/Interaction.hpp"
-#include "game/KeyBindings.hpp"
-#include "game/Player.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/player/Interaction.hpp"
+#include "game/player/KeyBindings.hpp"
+#include "game/player/Player.hpp"
 #include "game/round/Round.hpp"
 
 #include <imgui.h>

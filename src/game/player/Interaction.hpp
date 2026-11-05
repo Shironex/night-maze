@@ -2,9 +2,9 @@
 // do with it, and where the models of the levers and the notes hang.
 #pragma once
 
-#include "game/Interactables.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/player/Interactables.hpp"
 #include "game/round/Round.hpp"
 #include "scene/Collider.hpp"
 #include "scene/Raycast.hpp"

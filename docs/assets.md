@@ -44,7 +44,7 @@ Everything after `--` goes to the script. `--shots` also writes review renders, 
 
 ### Chalk marks
 
-A note is chalk drawn on the stone, not an object: `chalk_lamp` for a line of the story, `chalk_arrow` for a hint, and `chalk_crook` beside every lever. `build_chalk.py` holds each mark as a list of lines on the wall. Every piece of a line becomes one flat strip 18 mm wide with square ends, 3 mm in front of the wall face, facing out of the wall only, because the renderer does not draw the back of a face. The origin is the point of the wall face behind the mark, like for the lever. The lamp and the arrow, in each of the four directions the game turns it to, must fit the pick box of a note (0.4 by 0.5 m), and the script stops if they do not. `chalk.png` is a plain pale picture: the loader reads no transparency, so the shape is all geometry. The glow is not in the files. It is `CHALK_GLOW` in `src/game/Interaction.hpp`.
+A note is chalk drawn on the stone, not an object: `chalk_lamp` for a line of the story, `chalk_arrow` for a hint, and `chalk_crook` beside every lever. `build_chalk.py` holds each mark as a list of lines on the wall. Every piece of a line becomes one flat strip 18 mm wide with square ends, 3 mm in front of the wall face, facing out of the wall only, because the renderer does not draw the back of a face. The origin is the point of the wall face behind the mark, like for the lever. The lamp and the arrow, in each of the four directions the game turns it to, must fit the pick box of a note (0.4 by 0.5 m), and the script stops if they do not. `chalk.png` is a plain pale picture: the loader reads no transparency, so the shape is all geometry. The glow is not in the files. It is `CHALK_GLOW` in `src/game/player/Interaction.hpp`.
 
 ### The stile
 
@@ -60,7 +60,7 @@ A lever is a shepherd's crook on a wall, and `build_crook.py` writes its five mo
 
 None of them has a picture of its own. A model has one material, so the oak and the iron of the post both come from `gate_wood.png`: the wood faces lie on one plank between its iron bands, the iron faces on a piece of a band between two rivets. The ropes lie on the wound cord of `flask.png`, and the slab ring wears `lever_iron.png`. `UV_RULES` in the script holds those places in pixels, and the script stops if a face leaves its part or would show its picture mirrored.
 
-The script also stops if the board or the crook, turned up, straight out or down, leaves the pick box of a lever (0.3 by 0.64 by 0.26 m, `LEVER_BOX_*` in `src/game/Interactables.hpp`). The ring under the board hangs 2 cm below the box and the rope runs to the ground: both are left out on purpose. The rope ends 4 cm under the ground 1.2 m below the board, so `MOUNT_HEIGHT` in the script must follow `LEVER_MOUNT_HEIGHT`.
+The script also stops if the board or the crook, turned up, straight out or down, leaves the pick box of a lever (0.3 by 0.64 by 0.26 m, `LEVER_BOX_*` in `src/game/player/Interactables.hpp`). The ring under the board hangs 2 cm below the box and the rope runs to the ground: both are left out on purpose. The rope ends 4 cm under the ground 1.2 m below the board, so `MOUNT_HEIGHT` in the script must follow `LEVER_MOUNT_HEIGHT`.
 
 ### The shade
 

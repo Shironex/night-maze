@@ -5,11 +5,11 @@
 #include "game/SoundCues.hpp"
 
 #include "game/GameState.hpp"
-#include "game/Player.hpp"
 #include "game/land/Terrain.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/player/Player.hpp"
 #include "game/round/Exit.hpp"
 #include "game/round/Round.hpp"
 

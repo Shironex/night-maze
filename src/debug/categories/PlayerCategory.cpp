@@ -5,7 +5,7 @@
 #include "debug/DebugContext.hpp"
 #include "debug/Widgets.hpp"
 #include "game/MenuCamera.hpp"
-#include "game/Player.hpp"
+#include "game/player/Player.hpp"
 #include "scene/Camera.hpp"
 
 #include <glm/gtc/type_ptr.hpp>

@@ -42,13 +42,13 @@ METRES_PER_UV_UNIT = 0.25
 
 # The box the game tests the mouse ray against for a note: its width and its height,
 # centred on the origin of the mark (NOTE_BOX_WIDTH and NOTE_BOX_HEIGHT in
-# src/game/Interactables.hpp). They are only used by check_pick_box below and must stay in
+# src/game/player/Interactables.hpp). They are only used by check_pick_box below and must stay in
 # step with the game.
 PICK_BOX_WIDTH = 0.4
 PICK_BOX_HEIGHT = 0.5
 
 # The game turns the arrow in the plane of the wall by one of these angles
-# (game::chalkArrowDegrees in src/game/Interaction.hpp): to the right, up, to the left
+# (game::chalkArrowDegrees in src/game/player/Interaction.hpp): to the right, up, to the left
 # and down.
 ARROW_TURNS = (0.0, 90.0, 180.0, 270.0)
 
@@ -148,7 +148,7 @@ def check_pick_box():
                 if abs(x) > PICK_BOX_WIDTH / 2 or abs(z) > PICK_BOX_HEIGHT / 2:
                     raise ValueError(
                         "A chalk mark does not fit into the pick box of a note "
-                        "(src/game/Interactables.hpp)"
+                        "(src/game/player/Interactables.hpp)"
                     )
 
 

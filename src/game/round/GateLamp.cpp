@@ -3,8 +3,8 @@
 // milestone stand.
 #include "game/round/GateLamp.hpp"
 
-#include "game/Interactables.hpp"
 #include "game/maze/MazeLayout.hpp"
+#include "game/player/Interactables.hpp"
 #include "scene/Transform.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>

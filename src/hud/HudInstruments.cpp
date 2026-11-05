@@ -2,7 +2,7 @@
 // the loudness ticks, the sentences that come and go and the name of the night.
 #include "hud/HudShared.hpp"
 
-#include "game/Player.hpp"
+#include "game/player/Player.hpp"
 #include "game/round/Campaign.hpp"
 #include "game/round/Daily.hpp"
 #include "game/round/Round.hpp"

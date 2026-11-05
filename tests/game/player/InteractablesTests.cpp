@@ -1,12 +1,12 @@
 // Tests of game::Interactables: which walls the levers open, where levers and notes hang,
 // the state of the levers, picking them with a ray and the text of the notes.
-#include "game/Interactables.hpp"
+#include "game/player/Interactables.hpp"
 
-#include "game/Player.hpp"
 #include "game/land/Terrain.hpp"
 #include "game/maze/MazeGenerator.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/player/Player.hpp"
 #include "game/round/Crystals.hpp"
 #include "game/round/Difficulty.hpp"
 #include "game/round/Exit.hpp"

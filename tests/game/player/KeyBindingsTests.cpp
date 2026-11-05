@@ -1,6 +1,6 @@
-// Tests of game/KeyBindings: the actions of the player, their keys, the names of the
+// Tests of game/player/KeyBindings: the actions of the player, their keys, the names of the
 // keys, and the lines of the settings file that hold them.
-#include "game/KeyBindings.hpp"
+#include "game/player/KeyBindings.hpp"
 
 #include "game/Settings.hpp"
 

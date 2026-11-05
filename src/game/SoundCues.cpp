@@ -1,7 +1,7 @@
 // SoundCues: which short sounds the game plays and the rules that decide when.
 #include "game/SoundCues.hpp"
 
-#include "game/Player.hpp"
+#include "game/player/Player.hpp"
 
 #include <algorithm>
 #include <array>

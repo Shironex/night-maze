@@ -1,6 +1,6 @@
 # Key bindings are a table of actions with key names of the game's own
 Status: accepted (2026-10-08)
-Code: src/game/KeyBindings.hpp, src/game/KeyBindings.cpp, src/game/Settings.hpp, assets/ui/settings.rml
+Code: src/game/player/KeyBindings.hpp, src/game/player/KeyBindings.cpp, src/game/Settings.hpp, assets/ui/settings.rml
 
 Context: players use other keyboard layouts, and GLFW key codes name places on a keyboard, not letters.
 Decision: nine actions are rows of a table. The settings file stores each key by a name from a table of my own. Binding a key that another action holds swaps the two actions. Escape, the menu keys and the tool keys stay fixed.

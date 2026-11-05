@@ -16,7 +16,7 @@ namespace game {
 //
 // A flask is a pickup like a crystal: the player walks into it. It is a shepherd's
 // flask of tea, and drinking it stops the stamina from draining for a while
-// (game::drinkFlask in game/Player.hpp). What a flask does to the round is in
+// (game::drinkFlask in game/player/Player.hpp). What a flask does to the round is in
 // game/round/Round.hpp. This file only knows where the flasks are.
 
 /// The most flasks a maze can have, whoever asks. The three difficulty levels ask for

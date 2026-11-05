@@ -2,9 +2,9 @@
 #include "game/NightMazeApp.hpp"
 
 #include "core/Log.hpp"
-#include "game/Interactables.hpp"
 #include "game/Shade.hpp"
 #include "game/land/Puddles.hpp"
+#include "game/player/Interactables.hpp"
 #include "game/round/Exit.hpp"
 #include "game/round/GateLamp.hpp"
 
@@ -21,7 +21,7 @@ namespace game {
 namespace {
 
 // The keys of the player (walk, sprint, use, flashlight, map, restart) are not named
-// here: the player chooses them on the settings screen (game/KeyBindings.hpp), and they
+// here: the player chooses them on the settings screen (game/player/KeyBindings.hpp), and they
 // are read through actionDown and actionPressed. What follows are the keys of the
 // tools. They are fixed, and game::isFixedKey lists them so that no action can be put
 // on one of them.
