@@ -37,7 +37,7 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
     // leaves it again. The main menu and the result screen have no key that leaves
     // them, so a round is started in their place.
     bool roundInsteadOfMenu = false;
-    if (!m_menusLoaded && (m_mode == GameMode::MainMenu || m_mode == GameMode::RoundEnd)) {
+    if (!m_menus.menusLoaded && (m_mode == GameMode::MainMenu || m_mode == GameMode::RoundEnd)) {
         m_mode = GameMode::Playing;
         roundInsteadOfMenu = true;
     }
@@ -58,7 +58,7 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
         m_audio.stopAll();
     }
     // After a film that ends in black the main menu comes in out of black.
-    m_menuAfterIntro = before == GameMode::Intro || before == GameMode::EndingCard;
+    m_menus.menuAfterIntro = before == GameMode::Intro || before == GameMode::EndingCard;
     // A round was just won: the reveal of the village starts from the camera of the
     // player as it is now (villageRevealShown decides whether it is shown).
     if (before == GameMode::Playing &&
@@ -105,8 +105,9 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
     // Back from the ledger: the keyboard stands on the entry it was opened with, not on
     // the first entry of the menu.
     if (isLedger(before)) {
-        m_ui.focus(m_mode == GameMode::Paused ? m_pauseDocument : m_mainMenuDocument,
-                   LEDGER_ENTRY_ID);
+        m_menus.ui.focus(m_mode == GameMode::Paused ? m_menus.pauseDocument
+                                                    : m_menus.mainMenuDocument,
+                         LEDGER_ENTRY_ID);
     }
     // The title card of a night or the ending card has just come up: its clock starts.
     // Last, because a card that cannot be shown is over at once, which is an event again.
@@ -122,50 +123,52 @@ void NightMazeApp::showScreen() {
     // A row of the controls that waited for a key waits no longer, and the line under
     // the rows starts empty when the settings screen comes up again.
     stopKeyCapture();
-    m_controlsNote.clear();
+    m_menus.controlsNote.clear();
     // The document of the screen, filled with what it shows at this moment.
     ui::DocumentId document = ui::NO_DOCUMENT;
     if (m_mode == GameMode::MainMenu) {
-        document = m_mainMenuDocument;
+        document = m_menus.mainMenuDocument;
         fillMainMenuDocument();
     } else if (m_mode == GameMode::Paused) {
-        document = m_pauseDocument;
+        document = m_menus.pauseDocument;
         fillPauseDocument();
     } else if (m_mode == GameMode::RoundEnd) {
-        document = m_roundEndDocument;
+        document = m_menus.roundEndDocument;
         fillRoundEndDocument();
     } else if (m_mode == GameMode::SettingsFromMenu || m_mode == GameMode::SettingsFromPause) {
-        document = m_settingsDocument;
+        document = m_menus.settingsDocument;
         fillSettingsDocument();
     } else if (m_mode == GameMode::FreePlay) {
-        document = m_freePlayDocument;
+        document = m_menus.freePlayDocument;
         fillFreePlayDocument();
     } else if (m_mode == GameMode::Nights) {
-        document = m_nightsDocument;
+        document = m_menus.nightsDocument;
         fillNightsDocument();
     } else if (isLedger(m_mode)) {
-        document = m_ledgerDocument;
+        document = m_menus.ledgerDocument;
         fillLedgerDocument();
     } else if (m_mode == GameMode::NewCampaign) {
         // Nothing to fill: the question is always the same.
-        document = m_newCampaignDocument;
+        document = m_menus.newCampaignDocument;
     } else if (isFilm(m_mode)) {
         // The card is not filled here: updateIntro and updateStoryCard write it in
         // every frame.
-        document = m_cardDocument;
+        document = m_menus.cardDocument;
     }
-    m_ui.show(document);
+    m_menus.ui.show(document);
     // The list of nights opens with the keyboard on the night the menu offers: the next
     // one. Which row that is changes, so the document cannot name it (autofocus).
     if (m_mode == GameMode::Nights) {
-        m_ui.focus(m_nightsDocument, std::string(NIGHT_ID_PREFIX) +
-                                         std::to_string(nightToOffer(m_settings.campaignNight)));
+        m_menus.ui.focus(m_menus.nightsDocument,
+                         std::string(NIGHT_ID_PREFIX) +
+                             std::to_string(nightToOffer(m_settings.campaignNight)));
     }
     // The result screen of a night opens with the keyboard on its first button, so Enter
     // carries on. The document names "Play again" (autofocus), which is gone there.
     if (m_mode == GameMode::RoundEnd && m_playedNight != 0) {
-        m_ui.focus(m_roundEndDocument,
-                   nightEndOffer() == NightEndOffer::NextNight ? NEXT_NIGHT_ID : BACK_TO_NIGHTS_ID);
+        m_menus.ui.focus(m_menus.roundEndDocument, nightEndOffer() == NightEndOffer::NextNight
+                                                       ? NEXT_NIGHT_ID
+                                                       : BACK_TO_NIGHTS_ID);
     }
 
     // The cursor follows the screen: captured for mouse look while a round is played,
@@ -177,7 +180,8 @@ void NightMazeApp::showScreen() {
 
 void NightMazeApp::startIntro() {
     // Not without the card, not twice and not while the program is closing.
-    if (m_cardDocument == ui::NO_DOCUMENT || isIntro(m_mode) || m_mode == GameMode::Quitting) {
+    if (m_menus.cardDocument == ui::NO_DOCUMENT || isIntro(m_mode) ||
+        m_mode == GameMode::Quitting) {
         return;
     }
     // The maze of the intro, built like a new game of its level: the shots were picked
@@ -218,27 +222,27 @@ bool NightMazeApp::anyKeyPressed() {
 void NightMazeApp::writeCardLines(const std::array<const char*, STORY_CARD_LINE_COUNT>& lines,
                                   bool middle) {
     for (std::size_t line = 0; line < STORY_CARD_LINE_COUNT; ++line) {
-        m_ui.setText(m_cardDocument, CARD_LINE_IDS.at(line), lines.at(line));
+        m_menus.ui.setText(m_menus.cardDocument, CARD_LINE_IDS.at(line), lines.at(line));
     }
-    m_ui.setClass(m_cardDocument, CARD_ID, MIDDLE_CLASS, middle);
+    m_menus.ui.setClass(m_menus.cardDocument, CARD_ID, MIDDLE_CLASS, middle);
 }
 
 void NightMazeApp::showCardFrame(float black, float card,
                                  const std::array<float, STORY_CARD_LINE_COUNT>& lines,
                                  float hint) {
-    m_ui.setOpacity(m_cardDocument, CARD_BLACK_ID, black);
-    m_ui.setOpacity(m_cardDocument, CARD_ID, card);
+    m_menus.ui.setOpacity(m_menus.cardDocument, CARD_BLACK_ID, black);
+    m_menus.ui.setOpacity(m_menus.cardDocument, CARD_ID, card);
     for (std::size_t line = 0; line < STORY_CARD_LINE_COUNT; ++line) {
-        m_ui.setOpacity(m_cardDocument, CARD_LINE_IDS.at(line), lines.at(line));
+        m_menus.ui.setOpacity(m_menus.cardDocument, CARD_LINE_IDS.at(line), lines.at(line));
     }
-    m_ui.setOpacity(m_cardDocument, CARD_HINT_ID, hint);
+    m_menus.ui.setOpacity(m_menus.cardDocument, CARD_HINT_ID, hint);
 }
 
 void NightMazeApp::startStoryCard() {
     m_cardSeconds = 0.0;
     // A card that cannot be shown would be seconds of the scene with nothing on it: it
     // is left at once, like at its end.
-    if (m_cardDocument == ui::NO_DOCUMENT) {
+    if (m_menus.cardDocument == ui::NO_DOCUMENT) {
         handleGameEvent(GameEvent::CardFinished);
         return;
     }
@@ -292,7 +296,7 @@ void NightMazeApp::updateStoryCard() {
 
 void NightMazeApp::startVillageBeat() {
     m_cardSeconds = 0.0;
-    if (m_cardDocument == ui::NO_DOCUMENT) {
+    if (m_menus.cardDocument == ui::NO_DOCUMENT) {
         return;
     }
     // The document of the cards is on the screen (showScreen), with nothing of its
@@ -313,7 +317,7 @@ void NightMazeApp::updateVillageBeat() {
         handleGameEvent(GameEvent::CardFinished);
         return;
     }
-    if (m_cardDocument != ui::NO_DOCUMENT) {
+    if (m_menus.cardDocument != ui::NO_DOCUMENT) {
         showCardFrame(villageBeatBlack(static_cast<float>(m_cardSeconds)), 0.0F, {}, 0.0F);
     }
 }
@@ -426,7 +430,7 @@ void NightMazeApp::leaveIntro(bool intoNight) {
     // Seen, to its end or to the key that skipped it. The settings file keeps the line,
     // so files of older versions stay valid, but nothing asks it any more: the intro
     // plays when a campaign begins. An intro that could not be shown at all was not seen.
-    if (m_cardDocument != ui::NO_DOCUMENT) {
+    if (m_menus.cardDocument != ui::NO_DOCUMENT) {
         m_settings.introSeen = true;
     }
     if (intoNight) {

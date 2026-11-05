@@ -59,7 +59,7 @@ constexpr const char* SEED_HINT_TEXT = "Digits only, up to 4294967295";
 } // namespace
 
 void NightMazeApp::handleMenuActions() {
-    for (const std::string& action : m_ui.takeActions()) {
+    for (const std::string& action : m_menus.ui.takeActions()) {
         // A button was clicked while a row of the controls waited for a key: the wait
         // is over, and the button does what it always does.
         stopKeyCapture();
@@ -174,15 +174,15 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
     // (handleKeyCapture). From now on the UI layer keeps every key from the menu, and
     // main.cpp blocks the keyboard for the game, because the layer says it wants it.
     if (KeyAction keyAction = KeyAction::Forward; keyActionFromSetting(action, keyAction)) {
-        m_keyCaptureAction = keyAction;
-        m_controlsNote.clear();
-        m_ui.setKeyCapture(true);
+        m_menus.keyCaptureAction = keyAction;
+        m_menus.controlsNote.clear();
+        m_menus.ui.setKeyCapture(true);
         fillControls();
         return true;
     }
     if (action == RESET_CONTROLS_ACTION) {
         m_settings.keys = defaultKeyBindings();
-        m_controlsNote = CONTROLS_RESET_TEXT;
+        m_menus.controlsNote = CONTROLS_RESET_TEXT;
         fillControls();
         return true;
     }
@@ -193,7 +193,7 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
         applyViewSettings();
         applyWindowSettings();
         applyAudioSettings();
-        m_controlsNote.clear();
+        m_menus.controlsNote.clear();
         fillSettingsDocument();
         return true;
     }
@@ -201,59 +201,60 @@ bool NightMazeApp::handleMenuCommand(const std::string& action) {
 }
 
 void NightMazeApp::handleKeyCapture() {
-    if (!m_keyCaptureAction.has_value()) {
+    if (!m_menus.keyCaptureAction.has_value()) {
         return;
     }
-    const int key = m_ui.takeCapturedKey();
+    const int key = m_menus.ui.takeCapturedKey();
     if (key == ui::NO_CAPTURED_KEY) {
         return;
     }
     // Escape: the action keeps its key. The game does not see this Escape (its keyboard
     // is blocked while the layer captures), so the screen stays.
     if (key == GLFW_KEY_ESCAPE) {
-        m_controlsNote.clear();
+        m_menus.controlsNote.clear();
         stopKeyCapture();
         return;
     }
-    const KeyAction action = *m_keyCaptureAction;
+    const KeyAction action = *m_menus.keyCaptureAction;
     const BindResult result = bindKey(m_settings.keys, action, key);
     if (!result.accepted) {
         // A fixed key or a key without a name: the row goes on waiting.
-        m_controlsNote = keyRefusedLine(key);
+        m_menus.controlsNote = keyRefusedLine(key);
         fillControls();
         return;
     }
     // The file is written when the screen is left, like every other setting.
-    m_controlsNote = result.swappedWith.has_value()
-                         ? keySwappedLine(m_settings.keys, *result.swappedWith)
-                         : std::string();
+    m_menus.controlsNote = result.swappedWith.has_value()
+                               ? keySwappedLine(m_settings.keys, *result.swappedWith)
+                               : std::string();
     stopKeyCapture();
 }
 
 void NightMazeApp::stopKeyCapture() {
-    if (!m_keyCaptureAction.has_value()) {
+    if (!m_menus.keyCaptureAction.has_value()) {
         return;
     }
-    m_keyCaptureAction.reset();
-    m_ui.setKeyCapture(false);
+    m_menus.keyCaptureAction.reset();
+    m_menus.ui.setKeyCapture(false);
     fillControls();
 }
 
 void NightMazeApp::fillControls() {
     for (const KeyActionInfo& info : keyActions()) {
         const std::string id(info.settingName);
-        const bool waiting = m_keyCaptureAction == info.action;
-        m_ui.setText(m_settingsDocument, id + KEY_NAME_ID_SUFFIX, std::string(info.label));
-        m_ui.setText(m_settingsDocument, id,
-                     waiting ? PRESS_A_KEY_TEXT : boundKeyName(m_settings.keys, info.action));
-        m_ui.setClass(m_settingsDocument, id, WAITING_CLASS, waiting);
+        const bool waiting = m_menus.keyCaptureAction == info.action;
+        m_menus.ui.setText(m_menus.settingsDocument, id + KEY_NAME_ID_SUFFIX,
+                           std::string(info.label));
+        m_menus.ui.setText(m_menus.settingsDocument, id,
+                           waiting ? PRESS_A_KEY_TEXT : boundKeyName(m_settings.keys, info.action));
+        m_menus.ui.setClass(m_menus.settingsDocument, id, WAITING_CLASS, waiting);
     }
-    m_ui.setText(m_settingsDocument, CONTROLS_NOTE_ID,
-                 m_controlsNote.empty() ? CONTROLS_RULE_TEXT : m_controlsNote);
+    m_menus.ui.setText(m_menus.settingsDocument, CONTROLS_NOTE_ID,
+                       m_menus.controlsNote.empty() ? CONTROLS_RULE_TEXT : m_menus.controlsNote);
 }
 
 void NightMazeApp::handleControlChanges() {
-    const std::vector<ui::ControlChange> changes = m_ui.takeChanges();
+    const std::vector<ui::ControlChange> changes = m_menus.ui.takeChanges();
     // The wait of the sample click runs down with the real time of the frames. This
     // function is called once per frame.
     m_volumeSampleWait = std::max(m_volumeSampleWait - time().deltaSeconds(), 0.0);
@@ -291,42 +292,48 @@ void NightMazeApp::handleControlChanges() {
         }
         // Only the numbers next to the sliders: the sliders themselves already stand
         // where the player put them.
-        m_ui.setText(m_settingsDocument, std::string(MOUSE_SENSITIVITY_SETTING) + TEXT_ID_SUFFIX,
-                     mouseSensitivityLabel(m_settings.mouseSensitivity));
-        m_ui.setText(m_settingsDocument, std::string(FIELD_OF_VIEW_SETTING) + TEXT_ID_SUFFIX,
-                     fieldOfViewLabel(m_settings.fieldOfViewDegrees));
-        m_ui.setText(m_settingsDocument, std::string(MASTER_VOLUME_SETTING) + TEXT_ID_SUFFIX,
-                     masterVolumeLabel(m_settings.masterVolume));
-        m_ui.setText(m_settingsDocument, std::string(EFFECTS_VOLUME_SETTING) + TEXT_ID_SUFFIX,
-                     masterVolumeLabel(m_settings.effectsVolume));
-        m_ui.setText(m_settingsDocument, std::string(AMBIENT_VOLUME_SETTING) + TEXT_ID_SUFFIX,
-                     masterVolumeLabel(m_settings.ambientVolume));
+        m_menus.ui.setText(m_menus.settingsDocument,
+                           std::string(MOUSE_SENSITIVITY_SETTING) + TEXT_ID_SUFFIX,
+                           mouseSensitivityLabel(m_settings.mouseSensitivity));
+        m_menus.ui.setText(m_menus.settingsDocument,
+                           std::string(FIELD_OF_VIEW_SETTING) + TEXT_ID_SUFFIX,
+                           fieldOfViewLabel(m_settings.fieldOfViewDegrees));
+        m_menus.ui.setText(m_menus.settingsDocument,
+                           std::string(MASTER_VOLUME_SETTING) + TEXT_ID_SUFFIX,
+                           masterVolumeLabel(m_settings.masterVolume));
+        m_menus.ui.setText(m_menus.settingsDocument,
+                           std::string(EFFECTS_VOLUME_SETTING) + TEXT_ID_SUFFIX,
+                           masterVolumeLabel(m_settings.effectsVolume));
+        m_menus.ui.setText(m_menus.settingsDocument,
+                           std::string(AMBIENT_VOLUME_SETTING) + TEXT_ID_SUFFIX,
+                           masterVolumeLabel(m_settings.ambientVolume));
         // The music volume needs no sample: on the settings screen of the main menu the
         // theme itself is playing, and its loudness follows the slider at once.
-        m_ui.setText(m_settingsDocument, std::string(MUSIC_VOLUME_SETTING) + TEXT_ID_SUFFIX,
-                     masterVolumeLabel(m_settings.musicVolume));
+        m_menus.ui.setText(m_menus.settingsDocument,
+                           std::string(MUSIC_VOLUME_SETTING) + TEXT_ID_SUFFIX,
+                           masterVolumeLabel(m_settings.musicVolume));
     }
 }
 
 bool NightMazeApp::readSeedField() {
-    const std::string text = m_ui.value(m_freePlayDocument, SEED_ID);
+    const std::string text = m_menus.ui.value(m_menus.freePlayDocument, SEED_ID);
     if (text.empty()) {
         // Nothing typed: any maze will do.
         rollSeed();
         return true;
     }
     if (!parseSeed(text, m_newGame.seed)) {
-        m_ui.setText(m_freePlayDocument, SEED_HINT_ID, SEED_HINT_TEXT);
+        m_menus.ui.setText(m_menus.freePlayDocument, SEED_HINT_ID, SEED_HINT_TEXT);
         return false;
     }
-    m_ui.setText(m_freePlayDocument, SEED_HINT_ID, "");
+    m_menus.ui.setText(m_menus.freePlayDocument, SEED_HINT_ID, "");
     return true;
 }
 
 void NightMazeApp::rollSeed() {
     m_newGame.seed = randomSeed();
-    m_ui.setValue(m_freePlayDocument, SEED_ID, std::to_string(m_newGame.seed));
-    m_ui.setText(m_freePlayDocument, SEED_HINT_ID, "");
+    m_menus.ui.setValue(m_menus.freePlayDocument, SEED_ID, std::to_string(m_newGame.seed));
+    m_menus.ui.setText(m_menus.freePlayDocument, SEED_HINT_ID, "");
 }
 
 void NightMazeApp::fillMainMenuDocument() {
@@ -339,54 +346,60 @@ void NightMazeApp::fillMainMenuDocument() {
     } else if (stage == CampaignStage::Finished) {
         label = NEW_CAMPAIGN_LABEL;
     }
-    m_ui.setText(m_mainMenuDocument, CAMPAIGN_LABEL_ID, label);
-    m_ui.setText(m_mainMenuDocument, CAMPAIGN_NIGHT_ID,
-                 stage == CampaignStage::Running ? campaignNightName(m_settings.campaignNight)
-                                                 : std::string());
+    m_menus.ui.setText(m_menus.mainMenuDocument, CAMPAIGN_LABEL_ID, label);
+    m_menus.ui.setText(m_menus.mainMenuDocument, CAMPAIGN_NIGHT_ID,
+                       stage == CampaignStage::Running ? campaignNightName(m_settings.campaignNight)
+                                                       : std::string());
 
     // "Tonight's hedge": the day beside it, and the best time once the day has one.
-    m_ui.setText(m_mainMenuDocument, DAILY_DATE_ID, dailyMenuLine(m_settings.daily, dailyToday()));
+    m_menus.ui.setText(m_menus.mainMenuDocument, DAILY_DATE_ID,
+                       dailyMenuLine(m_settings.daily, dailyToday()));
 
     // The info block: the numbers of the night the first entry starts.
     const CampaignNight& level = campaignNight(nightToOffer(m_settings.campaignNight));
-    m_ui.setText(m_mainMenuDocument, INFO_MAZE_ID,
-                 std::to_string(level.mazeWidth) + " x " + std::to_string(level.mazeHeight));
-    m_ui.setText(m_mainMenuDocument, INFO_CRYSTALS_ID,
-                 std::to_string(requiredCrystalCount(level.crystalCount, level.requiredFraction)) +
-                     " of " + std::to_string(level.crystalCount));
-    m_ui.setText(m_mainMenuDocument, INFO_BATTERY_ID, timeText(level.batteryLifetimeSeconds));
+    m_menus.ui.setText(m_menus.mainMenuDocument, INFO_MAZE_ID,
+                       std::to_string(level.mazeWidth) + " x " + std::to_string(level.mazeHeight));
+    m_menus.ui.setText(
+        m_menus.mainMenuDocument, INFO_CRYSTALS_ID,
+        std::to_string(requiredCrystalCount(level.crystalCount, level.requiredFraction)) + " of " +
+            std::to_string(level.crystalCount));
+    m_menus.ui.setText(m_menus.mainMenuDocument, INFO_BATTERY_ID,
+                       timeText(level.batteryLifetimeSeconds));
 
     // The menu that follows the intro or the ending card comes in out of black. Every
     // other time the two classes are taken away, and the menu fades in like every screen.
-    m_ui.setClass(m_mainMenuDocument, DOCUMENT_ID, CUT_CLASS, m_menuAfterIntro);
-    m_ui.setClass(m_mainMenuDocument, CURTAIN_ID, DRAWN_CLASS, m_menuAfterIntro);
+    m_menus.ui.setClass(m_menus.mainMenuDocument, DOCUMENT_ID, CUT_CLASS, m_menus.menuAfterIntro);
+    m_menus.ui.setClass(m_menus.mainMenuDocument, CURTAIN_ID, DRAWN_CLASS, m_menus.menuAfterIntro);
 }
 
 void NightMazeApp::fillFreePlayDocument() {
     // The chosen one of the three difficulty buttons carries a class.
     for (const Difficulty difficulty : ALL_DIFFICULTIES) {
-        m_ui.setClass(m_freePlayDocument,
-                      std::string(DIFFICULTY_ID_PREFIX) + difficultyLevel(difficulty).key,
-                      CHOSEN_CLASS, difficulty == m_newGame.difficulty);
+        m_menus.ui.setClass(m_menus.freePlayDocument,
+                            std::string(DIFFICULTY_ID_PREFIX) + difficultyLevel(difficulty).key,
+                            CHOSEN_CLASS, difficulty == m_newGame.difficulty);
     }
 
     // The switch "Calm night": a class moves its knob.
-    m_ui.setClass(m_freePlayDocument, CALM_NIGHT_ID, ON_CLASS, m_settings.calmNight);
+    m_menus.ui.setClass(m_menus.freePlayDocument, CALM_NIGHT_ID, ON_CLASS, m_settings.calmNight);
 
     // The info block: what the chosen level means in numbers.
     const DifficultyLevel& level = difficultyLevel(m_newGame.difficulty);
-    m_ui.setText(m_freePlayDocument, INFO_MAZE_ID,
-                 std::to_string(level.mazeWidth) + " x " + std::to_string(level.mazeHeight));
-    m_ui.setText(m_freePlayDocument, INFO_CRYSTALS_ID,
-                 std::to_string(requiredCrystalCount(level.crystalCount, level.requiredFraction)) +
-                     " of " + std::to_string(level.crystalCount));
-    m_ui.setText(m_freePlayDocument, INFO_BATTERY_ID, timeText(level.batteryLifetimeSeconds));
+    m_menus.ui.setText(m_menus.freePlayDocument, INFO_MAZE_ID,
+                       std::to_string(level.mazeWidth) + " x " + std::to_string(level.mazeHeight));
+    m_menus.ui.setText(
+        m_menus.freePlayDocument, INFO_CRYSTALS_ID,
+        std::to_string(requiredCrystalCount(level.crystalCount, level.requiredFraction)) + " of " +
+            std::to_string(level.crystalCount));
+    m_menus.ui.setText(m_menus.freePlayDocument, INFO_BATTERY_ID,
+                       timeText(level.batteryLifetimeSeconds));
 }
 
 void NightMazeApp::fillNightsDocument() {
     for (int night = 1; night <= CAMPAIGN_NIGHT_COUNT; ++night) {
         const std::string id = std::string(NIGHT_ID_PREFIX) + std::to_string(night);
-        m_ui.setText(m_nightsDocument, id + NIGHT_TITLE_ID_SUFFIX, campaignNight(night).title);
+        m_menus.ui.setText(m_menus.nightsDocument, id + NIGHT_TITLE_ID_SUFFIX,
+                           campaignNight(night).title);
 
         // What the row says and looks like: a finished night shows its best time, the
         // next one is marked, a later one is locked.
@@ -399,15 +412,18 @@ void NightMazeApp::fillNightsDocument() {
             state = best == NO_BEST_TIME ? std::string(NIGHT_FINISHED_TEXT)
                                          : BEST_TIME_PREFIX + timeText(static_cast<float>(best));
         }
-        m_ui.setText(m_nightsDocument, id + NIGHT_STATE_ID_SUFFIX, state);
-        m_ui.setClass(m_nightsDocument, id, FINISHED_CLASS, status == NightStatus::Finished);
-        m_ui.setClass(m_nightsDocument, id, NEXT_CLASS, status == NightStatus::Open);
-        m_ui.setClass(m_nightsDocument, id, LOCKED_CLASS, status == NightStatus::Locked);
+        m_menus.ui.setText(m_menus.nightsDocument, id + NIGHT_STATE_ID_SUFFIX, state);
+        m_menus.ui.setClass(m_menus.nightsDocument, id, FINISHED_CLASS,
+                            status == NightStatus::Finished);
+        m_menus.ui.setClass(m_menus.nightsDocument, id, NEXT_CLASS, status == NightStatus::Open);
+        m_menus.ui.setClass(m_menus.nightsDocument, id, LOCKED_CLASS,
+                            status == NightStatus::Locked);
     }
 }
 
 void NightMazeApp::fillLedgerDocument() {
-    m_ui.setText(m_ledgerDocument, LEDGER_COUNT_ID, ledgerCounterText(m_settings.storyRead));
+    m_menus.ui.setText(m_menus.ledgerDocument, LEDGER_COUNT_ID,
+                       ledgerCounterText(m_settings.storyRead));
     // The two pages, written as RML: a heading per night, then its lines. A line that
     // was read is its text, any other a ruled blank in one of three widths. The texts
     // hold no character that RML would read as a tag (tests/game/round/LedgerTests.cpp).
@@ -426,10 +442,10 @@ void NightMazeApp::fillLedgerDocument() {
         }
     }
     for (std::size_t i = 0; i < pages.size(); ++i) {
-        m_ui.setText(m_ledgerDocument, LEDGER_PAGE_IDS.at(i), pages.at(i));
+        m_menus.ui.setText(m_menus.ledgerDocument, LEDGER_PAGE_IDS.at(i), pages.at(i));
     }
     // The page opens at its top.
-    m_ui.scrollBy(m_ledgerDocument, LEDGER_SCROLL_ID, -LEDGER_END_PAGES);
+    m_menus.ui.scrollBy(m_menus.ledgerDocument, LEDGER_SCROLL_ID, -LEDGER_END_PAGES);
 }
 
 void NightMazeApp::scrollLedger() {
@@ -444,7 +460,7 @@ void NightMazeApp::scrollLedger() {
     pages += input().wasKeyPressed(GLFW_KEY_END) ? LEDGER_END_PAGES : 0.0F;
     pages -= input().wasKeyPressed(GLFW_KEY_HOME) ? LEDGER_END_PAGES : 0.0F;
     if (pages != 0.0F) {
-        m_ui.scrollBy(m_ledgerDocument, LEDGER_SCROLL_ID, pages);
+        m_menus.ui.scrollBy(m_menus.ledgerDocument, LEDGER_SCROLL_ID, pages);
     }
 }
 
@@ -465,15 +481,15 @@ void NightMazeApp::markOpenNoteRead() {
 }
 
 void NightMazeApp::fillPauseDocument() {
-    m_ui.setText(m_pauseDocument, DIFFICULTY_ID, m_playedDifficultyName);
-    m_ui.setText(m_pauseDocument, SEED_ID, std::to_string(m_mazeWorld.seed));
+    m_menus.ui.setText(m_menus.pauseDocument, DIFFICULTY_ID, m_playedDifficultyName);
+    m_menus.ui.setText(m_menus.pauseDocument, SEED_ID, std::to_string(m_mazeWorld.seed));
 }
 
 void NightMazeApp::fillRoundEndDocument() {
-    m_ui.setText(m_roundEndDocument, TIME_ID, timeText(m_round.elapsedSeconds));
-    m_ui.setText(m_roundEndDocument, CRYSTALS_ID,
-                 std::to_string(m_round.collectedCount) + " of " +
-                     std::to_string(crystalTotal(m_round)));
+    m_menus.ui.setText(m_menus.roundEndDocument, TIME_ID, timeText(m_round.elapsedSeconds));
+    m_menus.ui.setText(m_menus.roundEndDocument, CRYSTALS_ID,
+                       std::to_string(m_round.collectedCount) + " of " +
+                           std::to_string(crystalTotal(m_round)));
     // The difficulty and the seed together name the maze: with both, a friend plays
     // the same one. After a night of the campaign the row names the night ("Night 2",
     // "The Shepherds' Gates"), and the line of the story of that night stands under the
@@ -494,32 +510,34 @@ void NightMazeApp::fillRoundEndDocument() {
         levelName = DATE_ROW_NAME;
         level = dailyDateText(m_playedDaily);
     }
-    m_ui.setText(m_roundEndDocument, NIGHT_LINE_ID, line);
+    m_menus.ui.setText(m_menus.roundEndDocument, NIGHT_LINE_ID, line);
     // After a night the camera shows the village beside the card (villageRevealShown):
     // the card stands on the right and the left of the picture is left clear.
-    m_ui.setClass(m_roundEndDocument, ROUND_END_BODY_ID, REVEAL_CLASS, villageRevealShown());
-    m_ui.setText(m_roundEndDocument, LEVEL_NAME_ID, levelName);
-    m_ui.setText(m_roundEndDocument, DIFFICULTY_ID, level);
-    m_ui.setText(m_roundEndDocument, SEED_ID, std::to_string(m_mazeWorld.seed));
+    m_menus.ui.setClass(m_menus.roundEndDocument, ROUND_END_BODY_ID, REVEAL_CLASS,
+                        villageRevealShown());
+    m_menus.ui.setText(m_menus.roundEndDocument, LEVEL_NAME_ID, levelName);
+    m_menus.ui.setText(m_menus.roundEndDocument, DIFFICULTY_ID, level);
+    m_menus.ui.setText(m_menus.roundEndDocument, SEED_ID, std::to_string(m_mazeWorld.seed));
     // "Play again" and "New maze" belong to free play. A night is not played again from
     // here (a finished night is replayed from the list of nights), and its maze is
     // fixed. In their place a night has one button: "Next night", or "Back to nights"
     // after a replay of an earlier night.
     const bool nextNight = night && nightEndOffer() == NightEndOffer::NextNight;
-    m_ui.setClass(m_roundEndDocument, PLAY_AGAIN_ID, GONE_CLASS, night);
+    m_menus.ui.setClass(m_menus.roundEndDocument, PLAY_AGAIN_ID, GONE_CLASS, night);
     // The maze of the day is played again from here, and there is no other one today.
-    m_ui.setClass(m_roundEndDocument, NEW_MAZE_ID, GONE_CLASS, night || daily);
-    m_ui.setClass(m_roundEndDocument, NEXT_NIGHT_ID, GONE_CLASS, !nextNight);
-    m_ui.setClass(m_roundEndDocument, BACK_TO_NIGHTS_ID, GONE_CLASS, !night || nextNight);
+    m_menus.ui.setClass(m_menus.roundEndDocument, NEW_MAZE_ID, GONE_CLASS, night || daily);
+    m_menus.ui.setClass(m_menus.roundEndDocument, NEXT_NIGHT_ID, GONE_CLASS, !nextNight);
+    m_menus.ui.setClass(m_menus.roundEndDocument, BACK_TO_NIGHTS_ID, GONE_CLASS,
+                        !night || nextNight);
     // The seed names a maze of free play for a friend. The maze of a night cannot be
     // entered anywhere, so its row is left out.
     // The seed of the maze of the day is its day, which the row above shows.
-    m_ui.setClass(m_roundEndDocument, SEED_ROW_ID, GONE_CLASS, night || daily);
+    m_menus.ui.setClass(m_menus.roundEndDocument, SEED_ROW_ID, GONE_CLASS, night || daily);
     const char* keys = daily ? DAILY_KEYS_TEXT : ROUND_END_KEYS_TEXT;
     if (night) {
         keys = nextNight ? NEXT_NIGHT_KEYS_TEXT : BACK_TO_NIGHTS_KEYS_TEXT;
     }
-    m_ui.setText(m_roundEndDocument, KEYS_ID, keys);
+    m_menus.ui.setText(m_menus.roundEndDocument, KEYS_ID, keys);
 }
 
 void NightMazeApp::fillSettingsDocument() {
@@ -527,50 +545,52 @@ void NightMazeApp::fillSettingsDocument() {
     // its setting, and the value it gets is the text the settings file would hold.
     const std::string sensitivityId(MOUSE_SENSITIVITY_SETTING);
     const std::string sensitivity = mouseSensitivityLabel(m_settings.mouseSensitivity);
-    m_ui.setValue(m_settingsDocument, sensitivityId, sensitivity);
-    m_ui.setText(m_settingsDocument, sensitivityId + TEXT_ID_SUFFIX, sensitivity);
+    m_menus.ui.setValue(m_menus.settingsDocument, sensitivityId, sensitivity);
+    m_menus.ui.setText(m_menus.settingsDocument, sensitivityId + TEXT_ID_SUFFIX, sensitivity);
 
     const std::string fieldOfViewId(FIELD_OF_VIEW_SETTING);
-    m_ui.setValue(m_settingsDocument, fieldOfViewId,
-                  std::to_string(std::lround(m_settings.fieldOfViewDegrees)));
-    m_ui.setText(m_settingsDocument, fieldOfViewId + TEXT_ID_SUFFIX,
-                 fieldOfViewLabel(m_settings.fieldOfViewDegrees));
+    m_menus.ui.setValue(m_menus.settingsDocument, fieldOfViewId,
+                        std::to_string(std::lround(m_settings.fieldOfViewDegrees)));
+    m_menus.ui.setText(m_menus.settingsDocument, fieldOfViewId + TEXT_ID_SUFFIX,
+                       fieldOfViewLabel(m_settings.fieldOfViewDegrees));
 
     const std::string volumeId(MASTER_VOLUME_SETTING);
     const std::string volume = masterVolumeLabel(m_settings.masterVolume);
-    m_ui.setValue(m_settingsDocument, volumeId, volume);
-    m_ui.setText(m_settingsDocument, volumeId + TEXT_ID_SUFFIX, volume);
+    m_menus.ui.setValue(m_menus.settingsDocument, volumeId, volume);
+    m_menus.ui.setText(m_menus.settingsDocument, volumeId + TEXT_ID_SUFFIX, volume);
 
     // The three volumes under it, in the same way.
     const std::string effectsId(EFFECTS_VOLUME_SETTING);
     const std::string effects = masterVolumeLabel(m_settings.effectsVolume);
-    m_ui.setValue(m_settingsDocument, effectsId, effects);
-    m_ui.setText(m_settingsDocument, effectsId + TEXT_ID_SUFFIX, effects);
+    m_menus.ui.setValue(m_menus.settingsDocument, effectsId, effects);
+    m_menus.ui.setText(m_menus.settingsDocument, effectsId + TEXT_ID_SUFFIX, effects);
 
     const std::string ambientId(AMBIENT_VOLUME_SETTING);
     const std::string ambient = masterVolumeLabel(m_settings.ambientVolume);
-    m_ui.setValue(m_settingsDocument, ambientId, ambient);
-    m_ui.setText(m_settingsDocument, ambientId + TEXT_ID_SUFFIX, ambient);
+    m_menus.ui.setValue(m_menus.settingsDocument, ambientId, ambient);
+    m_menus.ui.setText(m_menus.settingsDocument, ambientId + TEXT_ID_SUFFIX, ambient);
 
     const std::string musicId(MUSIC_VOLUME_SETTING);
     const std::string music = masterVolumeLabel(m_settings.musicVolume);
-    m_ui.setValue(m_settingsDocument, musicId, music);
-    m_ui.setText(m_settingsDocument, musicId + TEXT_ID_SUFFIX, music);
+    m_menus.ui.setValue(m_menus.settingsDocument, musicId, music);
+    m_menus.ui.setText(m_menus.settingsDocument, musicId + TEXT_ID_SUFFIX, music);
 
     // The switch of the fullscreen: a class moves its knob.
-    m_ui.setClass(m_settingsDocument, FULLSCREEN_ID, ON_CLASS, m_settings.fullscreen);
-    m_ui.setText(m_settingsDocument, std::string(FULLSCREEN_ID) + TEXT_ID_SUFFIX,
-                 m_settings.fullscreen ? "On" : "Off");
+    m_menus.ui.setClass(m_menus.settingsDocument, FULLSCREEN_ID, ON_CLASS, m_settings.fullscreen);
+    m_menus.ui.setText(m_menus.settingsDocument, std::string(FULLSCREEN_ID) + TEXT_ID_SUFFIX,
+                       m_settings.fullscreen ? "On" : "Off");
 
     // The size of the window. While the game is fullscreen it covers the screen, so
     // the row shows the resolution of the desktop and is dimmed.
-    m_ui.setClass(m_settingsDocument, WINDOW_SIZE_ROW_ID, OFF_CLASS, m_settings.fullscreen);
+    m_menus.ui.setClass(m_menus.settingsDocument, WINDOW_SIZE_ROW_ID, OFF_CLASS,
+                        m_settings.fullscreen);
     if (m_settings.fullscreen) {
         const core::Size desktop = window().desktopSize();
-        m_ui.setText(m_settingsDocument, WINDOW_SIZE_ID,
-                     windowSizeLabel({.width = desktop.width, .height = desktop.height}));
+        m_menus.ui.setText(m_menus.settingsDocument, WINDOW_SIZE_ID,
+                           windowSizeLabel({.width = desktop.width, .height = desktop.height}));
     } else {
-        m_ui.setText(m_settingsDocument, WINDOW_SIZE_ID, windowSizeLabel(m_settings.windowSize));
+        m_menus.ui.setText(m_menus.settingsDocument, WINDOW_SIZE_ID,
+                           windowSizeLabel(m_settings.windowSize));
     }
 
     fillControls();

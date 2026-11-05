@@ -152,7 +152,7 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
       m_fixedDailyDate(fixedDailyDate(options)),
       m_ledgerCounts(!options.toolSwitch),
       m_playedDifficultyName(difficultyLevel(m_settings.difficulty).name),
-      m_ui(window()) {
+      m_menus(window()) {
     // The two lit programs and the two grass programs read the lights from the uniform
     // buffer of m_renderers.lightRig. Each program is told once: the shader repeats it by itself
     // after a reload.
@@ -260,22 +260,23 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
 
     // The documents of the screens with a menu. They are loaded once and stay hidden
     // until their screen comes up. An error is in the log (ui::UiLayer).
-    m_mainMenuDocument = m_ui.loadDocument(MAIN_MENU_DOCUMENT_FILE);
-    m_freePlayDocument = m_ui.loadDocument(FREE_PLAY_DOCUMENT_FILE);
-    m_nightsDocument = m_ui.loadDocument(NIGHTS_DOCUMENT_FILE);
-    m_newCampaignDocument = m_ui.loadDocument(NEW_CAMPAIGN_DOCUMENT_FILE);
-    m_ledgerDocument = m_ui.loadDocument(LEDGER_DOCUMENT_FILE);
-    m_pauseDocument = m_ui.loadDocument(PAUSE_DOCUMENT_FILE);
-    m_roundEndDocument = m_ui.loadDocument(ROUND_END_DOCUMENT_FILE);
-    m_settingsDocument = m_ui.loadDocument(SETTINGS_DOCUMENT_FILE);
-    m_menusLoaded = m_mainMenuDocument != ui::NO_DOCUMENT &&
-                    m_freePlayDocument != ui::NO_DOCUMENT && m_nightsDocument != ui::NO_DOCUMENT &&
-                    m_newCampaignDocument != ui::NO_DOCUMENT &&
-                    m_ledgerDocument != ui::NO_DOCUMENT && m_pauseDocument != ui::NO_DOCUMENT &&
-                    m_roundEndDocument != ui::NO_DOCUMENT && m_settingsDocument != ui::NO_DOCUMENT;
+    m_menus.mainMenuDocument = m_menus.ui.loadDocument(MAIN_MENU_DOCUMENT_FILE);
+    m_menus.freePlayDocument = m_menus.ui.loadDocument(FREE_PLAY_DOCUMENT_FILE);
+    m_menus.nightsDocument = m_menus.ui.loadDocument(NIGHTS_DOCUMENT_FILE);
+    m_menus.newCampaignDocument = m_menus.ui.loadDocument(NEW_CAMPAIGN_DOCUMENT_FILE);
+    m_menus.ledgerDocument = m_menus.ui.loadDocument(LEDGER_DOCUMENT_FILE);
+    m_menus.pauseDocument = m_menus.ui.loadDocument(PAUSE_DOCUMENT_FILE);
+    m_menus.roundEndDocument = m_menus.ui.loadDocument(ROUND_END_DOCUMENT_FILE);
+    m_menus.settingsDocument = m_menus.ui.loadDocument(SETTINGS_DOCUMENT_FILE);
+    m_menus.menusLoaded =
+        m_menus.mainMenuDocument != ui::NO_DOCUMENT &&
+        m_menus.freePlayDocument != ui::NO_DOCUMENT && m_menus.nightsDocument != ui::NO_DOCUMENT &&
+        m_menus.newCampaignDocument != ui::NO_DOCUMENT &&
+        m_menus.ledgerDocument != ui::NO_DOCUMENT && m_menus.pauseDocument != ui::NO_DOCUMENT &&
+        m_menus.roundEndDocument != ui::NO_DOCUMENT && m_menus.settingsDocument != ui::NO_DOCUMENT;
     // The card of the intro and of the nights: one more document, not one of the menus.
-    m_cardDocument = m_ui.loadDocument(CARD_DOCUMENT_FILE);
-    if (!m_menusLoaded) {
+    m_menus.cardDocument = m_menus.ui.loadDocument(CARD_DOCUMENT_FILE);
+    if (!m_menus.menusLoaded) {
         core::logError("The menus cannot be shown: the game starts straight in a round");
         m_mode = GameMode::Playing;
     }
@@ -352,13 +353,13 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     // The seed free play offers for the first game: the one of the command line, or
     // a random one.
     if (options.seedGiven) {
-        m_ui.setValue(m_freePlayDocument, SEED_ID, std::to_string(m_newGame.seed));
+        m_menus.ui.setValue(m_menus.freePlayDocument, SEED_ID, std::to_string(m_newGame.seed));
     } else {
         rollSeed();
     }
     // An intro without its card would be half a minute of pictures without a word: it
     // is left at once, like at its end, and the main menu comes up with its own maze.
-    if (m_mode == GameMode::Intro && m_cardDocument == ui::NO_DOCUMENT) {
+    if (m_mode == GameMode::Intro && m_menus.cardDocument == ui::NO_DOCUMENT) {
         core::logError("The card of the intro cannot be shown: the intro is left out");
         handleGameEvent(GameEvent::IntroFinished);
     }

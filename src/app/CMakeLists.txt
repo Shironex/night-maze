@@ -6,6 +6,7 @@ target_sources(night_maze PRIVATE
     AppShaders.cpp
     AppShaders.hpp
     FrameState.hpp
+    MenuState.hpp
     NightMazeApp.cpp
     NightMazeApp.hpp
     NightMazeAppCampaign.cpp

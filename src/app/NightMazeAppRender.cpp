@@ -234,7 +234,7 @@ void NightMazeApp::onRender(double alpha) {
     // is drawn after this function returns (main.cpp), so its panels stay usable on top
     // of a menu. While a round is played no document is shown and this call does
     // nothing.
-    m_ui.draw(framebuffer);
+    m_menus.ui.draw(framebuffer);
 }
 
 void NightMazeApp::updateScreens() {
@@ -421,7 +421,7 @@ bool NightMazeApp::drawMenuBackgroundFrame(core::Size framebuffer) {
     // The picture goes straight into the window, like the composite pass does.
     gfx::Framebuffer::bindDefault(framebuffer.width, framebuffer.height);
     m_renderers.menuBackground.draw(framebuffer);
-    m_ui.draw(framebuffer);
+    m_menus.ui.draw(framebuffer);
     return true;
 }
 
@@ -437,7 +437,7 @@ bool NightMazeApp::drawStorybookFrame(core::Size framebuffer) {
     m_renderers.storybookRenderer.draw(framebuffer, book,
                                        storybookFrame(m_storybookBeatSeconds, book.crossfadeSeconds,
                                                       static_cast<float>(m_introSeconds)));
-    m_ui.draw(framebuffer);
+    m_menus.ui.draw(framebuffer);
     return true;
 }
 
