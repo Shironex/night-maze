@@ -2,10 +2,7 @@
 # sorted, one file per line, into the targets the root list makes. tools/move_module.py
 # moves a module between folders and keeps the lists.
 
-target_sources(night_maze PRIVATE
-    main.cpp
-)
-
+add_subdirectory(app)
 add_subdirectory(assets)
 add_subdirectory(audio)
 add_subdirectory(core)

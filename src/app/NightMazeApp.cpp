@@ -1,12 +1,12 @@
 // The Night Maze application: how it is put together at the start, its settings and its
 // sounds.
-#include "game/NightMazeApp.hpp"
+#include "app/NightMazeApp.hpp"
 
+#include "app/NightMazeAppShared.hpp"
 #include "assets/ImageLoader.hpp"
 #include "core/Files.hpp"
 #include "core/Log.hpp"
 #include "core/Paths.hpp"
-#include "game/NightMazeAppShared.hpp"
 #include "game/land/Puddles.hpp"
 #include "render/ModelDraw.hpp"
 

@@ -4,7 +4,7 @@ Own work. Most sounds, the music of a round and the second theme of the menu wer
 by me in ElevenLabs under my commercial plan, which gives me the rights to them. Three sounds
 (`gate_bell.wav`, `intro_bell.wav`, `intro_wind.wav`) and the first theme of the menu are
 computed by scripts. The program reads the files at start
-(`src/game/NightMazeApp.cpp`, through `audio::AudioEngine::load`) and plays them when the rules
+(`src/app/NightMazeApp.cpp`, through `audio::AudioEngine::load`) and plays them when the rules
 in `src/game/sound/SoundCues.cpp` say so. That file also holds the table that gives every sound cue
 its file name.
 

@@ -1,6 +1,6 @@
 # Crystal lights follow the 16 crystals nearest the eye, fading at the edge of the set
 Status: accepted (2026-10-06)
-Code: src/game/lighting/Lighting.hpp, src/game/lighting/Lighting.cpp, src/game/round/Crystals.hpp, src/game/NightMazeAppPasses.cpp, src/game/NightMazeAppRender.cpp, src/scene/Light.hpp
+Code: src/game/lighting/Lighting.hpp, src/game/lighting/Lighting.cpp, src/game/round/Crystals.hpp, src/app/NightMazeAppPasses.cpp, src/app/NightMazeAppRender.cpp, src/scene/Light.hpp
 
 Context: The shaders take 16 point lights, but levels ask for up to 40 crystals and the limit is 64. Earlier: in M4 lights sat in dead ends until crystals replaced them.
 Decision: Each frame the 16 crystals nearest the eye carry the lights. A light at the edge of the set has strength 0 and full strength 4 m inside it.

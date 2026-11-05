@@ -276,7 +276,7 @@ TEST_CASE("the layering check reads the sources and the lists") {
     const std::vector<Include> includes = readIncludes();
     CHECK(includes.size() > 1000);
     const std::set<std::string> folders = ourFolders();
-    for (const std::string_view folder : {"game", "render", "hud", "debug"}) {
+    for (const std::string_view folder : {"app", "game", "render", "hud", "debug"}) {
         CHECK(folders.contains(std::string(folder)));
     }
     for (const std::string_view folder : ENGINE_FOLDERS) {
@@ -285,8 +285,8 @@ TEST_CASE("the layering check reads the sources and the lists") {
     const std::set<std::string> logic = filesOfTarget("game_logic");
     CHECK(logic.contains("game/round/Round.cpp"));
     CHECK_FALSE(logic.contains("game/maze/MazeRenderer.cpp"));
-    CHECK(filesOfTarget("night_maze").contains("main.cpp"));
-    CHECK(filesOfTarget("night_maze").contains("game/NightMazeApp.cpp"));
+    CHECK(filesOfTarget("night_maze").contains("app/main.cpp"));
+    CHECK(filesOfTarget("night_maze").contains("app/NightMazeApp.cpp"));
     CHECK(filesOfTarget("night_maze").contains("game/maze/MazeRenderer.cpp"));
     CHECK(filesOfTarget("night_maze_tests").contains("debug/Search.cpp"));
     CHECK(filesOfTarget("night_maze_tests").contains("hud/HudRules.cpp"));
@@ -294,6 +294,19 @@ TEST_CASE("the layering check reads the sources and the lists") {
     CHECK(std::ranges::any_of(includes, [](const Include& include) {
         return include.file.starts_with("game/maze/") && include.path.starts_with("game/");
     }));
+}
+
+TEST_CASE("nothing but the application includes src/app") {
+    // src/app holds the program together and may include every folder; no folder below it
+    // may include it back.
+    std::vector<std::string> broken;
+    for (const Include& include : readIncludes()) {
+        if (include.quoted && topFolder(include.path) == "app" &&
+            topFolder(include.file) != "app") {
+            broken.push_back(describe(include));
+        }
+    }
+    CHECK_MESSAGE(broken.empty(), listed(broken));
 }
 
 TEST_CASE("the engine's folders never include the game, render, the hud or the debug ui") {

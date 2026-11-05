@@ -1,5 +1,5 @@
 // The Night Maze application: the maze being built, the start of a round and its fixed step.
-#include "game/NightMazeApp.hpp"
+#include "app/NightMazeApp.hpp"
 
 #include "core/Log.hpp"
 #include "game/land/Puddles.hpp"

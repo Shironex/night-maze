@@ -1,10 +1,10 @@
 // The Night Maze application: the change from one screen to the next, the intro and the
 // cards of text.
-#include "game/NightMazeApp.hpp"
+#include "app/NightMazeApp.hpp"
 
+#include "app/NightMazeAppShared.hpp"
 #include "core/Log.hpp"
 #include "core/Paths.hpp"
-#include "game/NightMazeAppShared.hpp"
 
 #include <GLFW/glfw3.h>
 

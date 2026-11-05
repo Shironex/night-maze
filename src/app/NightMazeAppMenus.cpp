@@ -1,8 +1,8 @@
 // The Night Maze application: the documents of the menus, their buttons and their controls.
-#include "game/NightMazeApp.hpp"
+#include "app/NightMazeApp.hpp"
 
+#include "app/NightMazeAppShared.hpp"
 #include "core/Log.hpp"
-#include "game/NightMazeAppShared.hpp"
 #include "game/player/Interactables.hpp"
 #include "game/round/Ledger.hpp"
 

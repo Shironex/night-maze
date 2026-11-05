@@ -353,7 +353,7 @@ def build(shots):
     write_pictures(colour, normal)
 
     # The middle of the night in the hood, which the game spreads the stars around
-    # (SHADE_HOOD_CENTRE in src/game/NightMazeAppPasses.cpp), in game coordinates.
+    # (SHADE_HOOD_CENTRE in src/app/NightMazeAppPasses.cpp), in game coordinates.
     print(f"The night in the hood: middle at ({centre.x:.3f}, {centre.z:.3f}, {-centre.y:.3f})")
 
     export(NAME, mesh, set(mesh.faces) - hollow, True, shots)
