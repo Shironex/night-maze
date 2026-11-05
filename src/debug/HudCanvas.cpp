@@ -1,7 +1,7 @@
 // The canvas of the HUD: the measures of its text and the helpers that draw it.
 #include "debug/HudShared.hpp"
 
-#include "debug/Theme.hpp"
+#include "debug/HudColors.hpp"
 
 #include <imgui.h>
 
