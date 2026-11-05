@@ -1,5 +1,5 @@
 // GpuPasses: how long the graphics card works on every pass of a frame.
-#include "game/GpuPasses.hpp"
+#include "render/GpuPasses.hpp"
 
 namespace game {
 

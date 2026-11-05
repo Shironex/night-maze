@@ -5,13 +5,13 @@
 #include "core/Application.hpp"
 #include "core/Time.hpp"
 #include "game/GameState.hpp"
-#include "game/GpuPasses.hpp"
 #include "game/Grass.hpp"
 #include "game/Lighting.hpp"
 #include "game/MazeRenderer.hpp"
 #include "game/Minimap.hpp"
 #include "game/Player.hpp"
 #include "game/Village.hpp"
+#include "render/GpuPasses.hpp"
 #include "scene/Camera.hpp"
 
 #include <glad/gl.h>
