@@ -2,6 +2,7 @@
 #pragma once
 
 #include "app/AppShaders.hpp"
+#include "app/FrameState.hpp"
 #include "app/RenderSettings.hpp"
 #include "app/SceneRenderers.hpp"
 #include "audio/AudioEngine.hpp"
@@ -156,12 +157,6 @@ protected:
     /// (main.cpp), which asks here.
     bool hudVisible() const { return showsHud(m_mode) && !m_menuCamera.enabled; }
 
-    /// True when the map was on the screen in the last frame drawn. The HUD asks it
-    /// (main.cpp passes it on): while the map covers the middle of the window, the timed
-    /// sentence of the HUD waits, because its place is where the bottom edge of the map
-    /// is. Everything else of the HUD stands in the corners and stays.
-    bool mapOnScreen() const { return m_mapOnScreen; }
-
     /// The layer that draws the menu documents, exposed so main.cpp can keep the mouse
     /// away from it while a debug panel is under the cursor and can ask whether a text
     /// field of a menu has the keyboard.
@@ -180,18 +175,10 @@ protected:
     /// the passes after the scene, the map), exposed so the debug UI can edit them live.
     RenderSettings& renderSettings() { return m_renderSettings; }
 
-    /// The view and the projection the shadow map of the moon was drawn with in the
-    /// last frame, read only: the debug UI shows how much ground the map covers.
-    const scene::LightSpace& moonLightSpace() const { return m_moonLightSpace; }
-
-    /// The view and the projection the shadow map of the flashlight was drawn with in
-    /// the last frame, read only: the debug UI shows how much the map covers.
-    const scene::LightSpace& flashlightLightSpace() const { return m_flashlightLightSpace; }
-
-    /// Whether the shadow map of the flashlight was drawn in the last frame. It is not
-    /// with its shadows switched off, and not while the flashlight itself is off (key
-    /// F or an empty battery). The debug UI then shows no picture of the map.
-    bool flashlightShadowDrawn() const { return m_flashlightShadowDrawn; }
+    /// What the drawing of the last frame kept, read only: the HUD shows the crosshair and
+    /// the prompt from the picking and waits while the map is on the screen, the debug UI
+    /// shows the numbers of the picking and how much the two shadow maps cover.
+    const FrameState& frameState() const { return m_frameState; }
 
     /// The settings of the lighting (mode, moon, flashlight, point lights, highlight,
     /// normal mapping), exposed so the debug UI can edit them live.
@@ -226,11 +213,6 @@ protected:
     /// The loaded models and textures, exposed so the debug UI can list them and change
     /// the texture filtering live.
     assets::AssetCache& assets() { return m_renderers.assets; }
-
-    /// The picking of the last frame (the ray, what it hit and what the interaction key
-    /// does), read only: the HUD shows the crosshair and the prompt from it, the debug UI
-    /// its numbers.
-    const PickState& pick() const { return m_pick; }
 
     /// The settings of the menu camera (switch, shot, speed, eye height, time offset),
     /// exposed so the debug UI can edit them live and can hide itself while the camera
@@ -694,13 +676,13 @@ private:
                            bool cursorCaptured);
 
     /// Reads the interaction key and the left mouse button of this frame and does what
-    /// m_pick says (game::interact). A click with the free cursor that hits nothing to
+    /// m_frameState.pick says (game::interact). A click with the free cursor that hits nothing to
     /// interact with captures the cursor, as before. cursorCaptured is the state at the
     /// start of the frame.
     void handleInteraction(bool cursorCaptured);
 
     /// The shadow pass of the moon, the first pass of a frame. It fits the box of the
-    /// moon to the land (m_moonLightSpace) and fills the shadow map in two steps. The
+    /// moon to the land (m_frameState.moonLightSpace) and fills the shadow map in two steps. The
     /// casters that never move (drawFixedShadowCasters) are in the still layer of the
     /// map, which is drawn only when its key is not the one of this frame
     /// (game::StaticShadowKey). The layer is copied into the map, and the casters that
@@ -712,7 +694,7 @@ private:
     void drawMoonShadowMap();
 
     /// The shadow pass of the flashlight, right after the one of the moon. It builds
-    /// the pyramid the flashlight looks along (m_flashlightLightSpace) from flashlight,
+    /// the pyramid the flashlight looks along (m_frameState.flashlightLightSpace) from flashlight,
     /// the place and the direction of the light in this frame, and from the cone and
     /// the range of frameLighting, the lighting of this frame (game::lightingForFrame).
     /// Then it draws the shadow casters into the shadow map of the flashlight, binds
@@ -782,7 +764,7 @@ private:
 
     /// The debug view of the picking, drawn with the program of the collider lines: the
     /// pick box of every lever and note, the box the ray hit in a colour of its own, and
-    /// the ray of m_shownPick as a line with a small sphere at its end.
+    /// the ray of m_frameState.shownPick as a line with a small sphere at its end.
     void drawPickLines(const glm::mat4& view, const glm::mat4& projection) const;
 
     /// Draws the levers and the notes with the given program of the maze, the picked
@@ -836,54 +818,6 @@ private:
     /// mouse look and the picking and to draw the map.
     bool mapShown();
 
-    /// What onRender knows about the screen before it draws: asked once, after the menus
-    /// and the menu camera switch of the frame, and used by the rest of the frame.
-    struct FrameScreen {
-        /// The keys and the mouse of the round work: a round is played, the menu camera
-        /// is off and no catch is going on.
-        bool roundInput = false;
-        /// The game is on the screen of the intro.
-        bool intro = false;
-        /// The picture is taken by the menu camera: it is switched on, the live scene is
-        /// behind the main menu, or the intro plays.
-        bool menuCamera = false;
-        /// The settings the menu camera uses in this frame: the ones of the intro, the
-        /// high glide of the main menu, or what the recording tool is set to.
-        MenuCameraSettings menuCameraSettings;
-        /// Where the script of the intro is (game::introFrame) and its shot
-        /// (game::introCamera). Used only while intro is true.
-        IntroFrame introMoment;
-        IntroCamera introShot;
-    };
-
-    /// Where a frame is seen from: built once per frame (frameView) and given to the
-    /// parts that draw.
-    struct FrameView {
-        /// The feet of the player, blended between two fixed steps.
-        glm::vec3 feet{0.0F};
-        /// The place the picture is taken from: the eyes of the player, the menu camera
-        /// or the camera of the village reveal.
-        glm::vec3 eye{0.0F};
-        /// The eyes of the player (or of the menu camera) before the reveal moved the
-        /// camera away: the flashlight stays there.
-        glm::vec3 playerEye{0.0F};
-        /// The camera of the frame: a copy of m_camera with the angles and the lens of
-        /// whoever takes the picture.
-        scene::Camera camera;
-        /// The camera of the village reveal takes the picture.
-        bool reveal = false;
-        /// The two matrices everything of the frame is drawn with.
-        glm::mat4 view{1.0F};
-        glm::mat4 projection{1.0F};
-    };
-
-    /// The lamp of the gate in a frame: how far its colour has turned from the cold
-    /// ember to amber, and how bright it is (game::gateLampStrength).
-    struct GateLampFrame {
-        float progress = 0.0F;
-        float strength = 0.0F;
-    };
-
     /// The parts of onRender, in the order it calls them.
     ///
     /// updateScreens: the buttons and controls of the menus, the request for the intro,
@@ -921,8 +855,8 @@ private:
     /// the reveal by the time of the frame.
     FrameView frameView(double alpha, const FrameScreen& screen, core::Size framebuffer);
 
-    /// Sets where the shade is drawn in this frame and how its hood looks (m_shadeDrawn,
-    /// m_shadeMatrix and the two numbers of the hood): the shade of the round, or the
+    /// Sets where the shade is drawn in this frame and how its hood looks (m_frameState.shadeDrawn,
+    /// m_frameState.shadeMatrix and the two numbers of the hood): the shade of the round, or the
     /// one that stands in a card of the intro.
     void placeShade(double alpha, const FrameScreen& screen, const FrameView& frame);
 
@@ -931,7 +865,7 @@ private:
     /// when one of them takes the picture.
     LightingSettings frameLightingFor(const FrameScreen& screen) const;
 
-    /// The lamp of the gate in this frame, and its glow in m_gateLampGlow.
+    /// The lamp of the gate in this frame, and its glow in m_frameState.gateLampGlow.
     GateLampFrame gateLampForFrame(const FrameScreen& screen);
 
     /// Binds the HDR framebuffer of the scene, switches the depth test on and clears
@@ -952,13 +886,7 @@ private:
     /// them up.
     void drawVillageForFrame(const FrameScreen& screen, const FrameView& frame) const;
 
-    /// How many nights of the village and of the land are lit in this frame, and how far
-    /// the newest of them has come on: the rule of the campaign (game::villageNightsLit)
-    /// and the reveal (game::villageNewLightStrength).
-    struct NightLights {
-        int nightsLit = 0;
-        float newestStrength = 1.0F;
-    };
+    /// How many nights of the village and of the land are lit in this frame (NightLights).
     NightLights nightLightsFor(const FrameScreen& screen, const FrameView& frame) const;
 
     /// Marks the landmarks of the land the player sees in this frame as seen
@@ -1017,45 +945,16 @@ private:
     // (the boxes move up or down).
     std::vector<scene::Aabb> m_obstacles;
 
-    // The model matrices of the walls for the frame that is being drawn
-    // (game::roundWallMatrices): a wall that a lever has opened is lower in every frame
-    // while it sinks. Built once per frame in onRender and used by the shadow passes and
-    // by the scene pass, so the shadow of a wall always fits the wall.
-    std::vector<glm::mat4> m_wallMatrices;
+    // What the drawing of a frame keeps for the passes, the HUD and the debug UI
+    // (FrameState): the walls and the shade as this frame shows them, the picking, the
+    // spaces of the two shadow maps, the lit nights, the glow of the gate lamp.
+    FrameState m_frameState;
 
-    // Whether the shade is drawn in the frame that is being drawn, and its model matrix:
-    // where it stands between two fixed steps, turned towards the player. Set once per
-    // frame in onRender, like m_wallMatrices, and used by the shadow passes and by the
-    // scene pass. The shade is drawn only while a round is played: never under a menu,
-    // behind the main menu or in the picture of the menu camera. The one exception is
-    // the card of the intro that shows it standing in a corridor (game::introShadeCell).
-    bool m_shadeDrawn = false;
-    glm::mat4 m_shadeMatrix{1.0F};
-    // How bright the night in the hood of that shade is: the brightness of the sky is
-    // multiplied by it (game::shadeHoodBrightness), and how much its stars are lifted
-    // above that (game::shadeHoodStarBoost). Both follow the burn clock of the round,
-    // and are the values of a shade at rest for the one of the intro.
-    float m_shadeHoodBrightness = SHADE_HOOD_REST_BRIGHTNESS;
-    float m_shadeHoodStarBoost = 0.0F;
-    // How much the drawn shade walks, from 0 (stands) to 1 (walks). It follows the state
-    // of the shade over a third of a second, so the pose never jumps (game::shadeSwayPose).
-    float m_shadeWalkAmount = 0.0F;
-    // The sway of the lamp in the hand: drawing only, advanced with the frame time while
-    // the round runs (drawHeldLamp).
-    HeldLampSway m_heldLampSway;
     // Seconds since the shade reached the player, or -1 when no catch is going on. While
     // it counts, the round stands still and the player cannot act: the picture fades to
     // black, and at black the round starts again (carryPlayerBack). It counts in fixed
     // steps of a played round, so it stands still in the pause.
     float m_catchSeconds = -1.0F;
-
-    // The picking of this frame: the ray, what it hits and what the interaction key
-    // does. Built in onRender, read by the drawing (the highlight), the HUD and the
-    // debug UI.
-    PickState m_pick;
-    // The picking the debug view draws: a copy of m_pick that stops following it while
-    // the "freeze" switch of RenderSettings::pickDebug is set.
-    PickState m_shownPick;
 
     // The player is simulation state: onUpdate moves it in fixed steps.
     Player m_player;
@@ -1078,29 +977,11 @@ private:
     // of a frame are built from it in onRender.
     LightingSettings m_lighting;
 
-    // The shadows of the moon: the view and the projection of the moon in this frame,
-    // and whether the shadow pass has filled the map in this frame. Both are set by
-    // drawMoonShadowMap in every frame.
-    scene::LightSpace m_moonLightSpace;
-    bool m_moonShadowDrawn = false;
-
     // Which ground the graphics card holds: counted up by uploadGround, so by every new
     // maze and every new terrain. The still layer of the shadow map of the moon is
     // drawn again when this number is not the one it was drawn with
     // (StaticShadowKey::groundVersion).
     std::uint32_t m_groundVersion = 0;
-    // The lit nights of this frame (nightLightsFor), set before the scene is drawn: the
-    // windows of the land in the scene pass and the village after it show the same.
-    NightLights m_frameNightLights;
-
-    // Whether the map was drawn in the last frame (mapOnScreen). Set in onRender.
-    bool m_mapOnScreen = false;
-
-    // The same two for the shadows of the flashlight, set by drawFlashlightShadowMap
-    // in every frame.
-    scene::LightSpace m_flashlightLightSpace;
-    bool m_flashlightShadowDrawn = false;
-
     // The boxes of the walls, the pillars and the stone sheep of m_mazeWorld, which the
     // culling tests (game::MazeBounds). Computed by uploadGround, so for every new maze
     // and every new terrain, and only read while a frame is drawn.
@@ -1233,11 +1114,6 @@ private:
     // (game::passageDistances, row after row): how loud a toll of the bell is played.
     // Counted once per round and again when a lever opens a wall (measureExitDistances).
     std::vector<int> m_exitDistances;
-    // The glow of the lanterns of the gate in the frame that is being drawn, as a linear
-    // colour for the uniform uEmissive: the colour of the lamp times its strength
-    // (game::gateLampColor, game::gateLampStrength). onRender sets it before the shadow
-    // passes, and every pass of the frame draws the lanterns with it.
-    glm::vec3 m_gateLampGlow{0.0F};
     // True when the player has pulled a lever since the last fixed step: the next step
     // tells the shade, which may hear it (game::playerNoise). Keys are read once per
     // frame and the shade moves in fixed steps, so the pull waits here in between.

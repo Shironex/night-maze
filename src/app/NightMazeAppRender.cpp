@@ -73,7 +73,7 @@ void NightMazeApp::onRender(double alpha) {
     // whole frame. While it is shown the mouse does not turn the camera and nothing can
     // be used: looking at the map is a stop, and the round goes on behind it.
     const bool map = mapShown() && m_catchSeconds < 0.0F;
-    m_mapOnScreen = map;
+    m_frameState.mapOnScreen = map;
 
     // Mouse look. It runs here, once per frame, and not in onUpdate: a mouse delta
     // describes one frame, and onUpdate runs zero or more times per frame. It comes
@@ -122,21 +122,21 @@ void NightMazeApp::onRender(double alpha) {
     // The same while the map is shown: it covers the middle of the picture, so there is
     // no crosshair, no prompt, and the interaction key does nothing.
     if (!screen.roundInput || map) {
-        m_pick = pickNothing(m_round);
+        m_frameState.pick = pickNothing(m_round);
     } else {
-        m_pick = pickForFrame(frame.view, frame.projection, frame.eye, cursorCaptured);
+        m_frameState.pick = pickForFrame(frame.view, frame.projection, frame.eye, cursorCaptured);
         handleInteraction(cursorCaptured);
     }
     sightLandmarks(screen, frame);
 
     // The debug view draws this copy, which stands still while "freeze" is set.
     if (!m_renderSettings.pickDebug.freezeRay) {
-        m_shownPick = m_pick;
+        m_frameState.shownPick = m_frameState.pick;
     }
 
     // Where the walls stand in this frame: a wall that a lever has opened is on its way
     // into the ground. One list for the shadow passes and for the scene pass.
-    m_wallMatrices = roundWallMatrices(m_mazeWorld, m_round);
+    m_frameState.wallMatrices = roundWallMatrices(m_mazeWorld, m_round);
 
     // The shade, the lighting and the lamp of the gate as this frame shows them.
     placeShade(alpha, screen, frame);
@@ -165,7 +165,7 @@ void NightMazeApp::onRender(double alpha) {
     // and beginScene below binds the scene framebuffer with its viewport again.
     drawMoonShadowMap();
     drawFlashlightShadowMap(frameLighting, flashlight);
-    m_frameNightLights = nightLightsFor(screen, frame);
+    m_frameState.frameNightLights = nightLightsFor(screen, frame);
 
     // The HDR framebuffer of the scene, cleared, and the lights of the frame. The scene
     // pass is measured in three parts that follow each other (game::GpuPass): what
@@ -300,7 +300,7 @@ void NightMazeApp::buildRequestedMaze() {
     }
 }
 
-NightMazeApp::FrameScreen NightMazeApp::frameScreen() const {
+FrameScreen NightMazeApp::frameScreen() const {
     // Two questions the rest of the frame asks. roundInput: do the keys and the mouse
     // of the round work? Only while a round is played and the menu camera is off, so
     // under a menu no key of the round does anything. menuCamera: is the picture taken
@@ -417,7 +417,7 @@ bool NightMazeApp::drawMenuBackgroundFrame(core::Size framebuffer) {
         return false;
     }
     // Nothing is picked under a menu, as in the frames that draw the scene.
-    m_pick = pickNothing(m_round);
+    m_frameState.pick = pickNothing(m_round);
     // The picture goes straight into the window, like the composite pass does.
     gfx::Framebuffer::bindDefault(framebuffer.width, framebuffer.height);
     m_renderers.menuBackground.draw(framebuffer);
@@ -432,7 +432,7 @@ bool NightMazeApp::drawStorybookFrame(core::Size framebuffer) {
         return false;
     }
     const Storybook& book = *m_storybook;
-    m_pick = pickNothing(m_round);
+    m_frameState.pick = pickNothing(m_round);
     gfx::Framebuffer::bindDefault(framebuffer.width, framebuffer.height);
     m_renderers.storybookRenderer.draw(framebuffer, book,
                                        storybookFrame(m_storybookBeatSeconds, book.crossfadeSeconds,
@@ -441,8 +441,7 @@ bool NightMazeApp::drawStorybookFrame(core::Size framebuffer) {
     return true;
 }
 
-NightMazeApp::FrameView NightMazeApp::frameView(double alpha, const FrameScreen& screen,
-                                                core::Size framebuffer) {
+FrameView NightMazeApp::frameView(double alpha, const FrameScreen& screen, core::Size framebuffer) {
     // The simulation moves the player in fixed steps, and this frame is drawn at some
     // moment between two of them: alpha (0 to 1) tells how far. Drawing from a point
     // between the position before the last step and the position after it keeps the
@@ -532,8 +531,9 @@ void NightMazeApp::placeShade(double alpha, const FrameScreen& screen, const Fra
     // it, like the player, and turned towards the place the frame is drawn from. It is
     // part of the picture only while a round is played and the player is the one who
     // looks: not under a menu, not behind the main menu and not for the menu camera.
-    m_shadeDrawn = m_mode == GameMode::Playing && !m_menuCamera.enabled && m_round.shade.present;
-    if (m_shadeDrawn) {
+    m_frameState.shadeDrawn =
+        m_mode == GameMode::Playing && !m_menuCamera.enabled && m_round.shade.present;
+    if (m_frameState.shadeDrawn) {
         scene::Transform shade;
         shade.position = glm::mix(m_round.shade.previousPosition, m_round.shade.position,
                                   static_cast<float>(alpha));
@@ -553,16 +553,17 @@ void NightMazeApp::placeShade(double alpha, const FrameScreen& screen, const Fra
         const float blendStep =
             static_cast<float>(time().deltaSeconds()) / SHADE_SWAY_BLEND_SECONDS;
         const float target = shadeWalking(m_round.shade) && m_catchSeconds < 0.0F ? 1.0F : 0.0F;
-        m_shadeWalkAmount += std::clamp(target - m_shadeWalkAmount, -blendStep, blendStep);
-        applyShadeSway(shade, shadeSwayPose(m_shadeWalkAmount,
+        m_frameState.shadeWalkAmount +=
+            std::clamp(target - m_frameState.shadeWalkAmount, -blendStep, blendStep);
+        applyShadeSway(shade, shadeSwayPose(m_frameState.shadeWalkAmount,
                                             shadeSpeed(m_round.shade.hunt, m_gameplay.shade),
                                             m_round.animationSeconds, m_gameplay.shade.sway));
-        m_shadeMatrix = shade.matrix();
+        m_frameState.shadeMatrix = shade.matrix();
         // The stars in its hood get brighter as the beam burns it: the burn clock of the
         // rules, shown. No clock of the drawing is involved.
         const float burn = shadeBurnProgress(m_round.shade, m_gameplay.shade);
-        m_shadeHoodBrightness = shadeHoodBrightness(burn);
-        m_shadeHoodStarBoost = shadeHoodStarBoost(burn);
+        m_frameState.shadeHoodBrightness = shadeHoodBrightness(burn);
+        m_frameState.shadeHoodStarBoost = shadeHoodStarBoost(burn);
     }
     // The one picture outside a round that has a shade in it: the card of the intro that
     // warns of it. It stands still in the cell the script names, on the ground, turned
@@ -578,10 +579,10 @@ void NightMazeApp::placeShade(double alpha, const FrameScreen& screen, const Fra
             shade.rotationDegrees = {0.0F, shadeYawDegrees(shade.position, frame.eye), 0.0F};
             applyShadeSway(shade, shadeSwayPose(0.0F, 0.0F, static_cast<float>(m_introSeconds),
                                                 m_gameplay.shade.sway));
-            m_shadeMatrix = shade.matrix();
-            m_shadeHoodBrightness = SHADE_HOOD_REST_BRIGHTNESS;
-            m_shadeHoodStarBoost = 0.0F;
-            m_shadeDrawn = true;
+            m_frameState.shadeMatrix = shade.matrix();
+            m_frameState.shadeHoodBrightness = SHADE_HOOD_REST_BRIGHTNESS;
+            m_frameState.shadeHoodStarBoost = 0.0F;
+            m_frameState.shadeDrawn = true;
         }
     }
 }
@@ -609,7 +610,7 @@ LightingSettings NightMazeApp::frameLightingFor(const FrameScreen& screen) const
     return frameLighting;
 }
 
-NightMazeApp::GateLampFrame NightMazeApp::gateLampForFrame(const FrameScreen& screen) {
+GateLampFrame NightMazeApp::gateLampForFrame(const FrameScreen& screen) {
     // The lamp of the gate in this frame: how bright and in which colour, by the rule of
     // the round (game::gateLampStrength: a cold ember while the gate is closed, amber once
     // it is open). The menu camera and the live scene behind the main menu show it fully
@@ -624,8 +625,8 @@ NightMazeApp::GateLampFrame NightMazeApp::gateLampForFrame(const FrameScreen& sc
                                                       m_round.gateProgress, m_gameplay.gate);
     // The colour is an sRGB value and the glow a linear colour, like the one of the
     // crystals (crystalEmissive).
-    m_gateLampGlow = gfx::srgbToLinear(gateLampColor(lampProgress)) *
-                     (m_gameplay.gate.glowStrength * lampStrength);
+    m_frameState.gateLampGlow = gfx::srgbToLinear(gateLampColor(lampProgress)) *
+                                (m_gameplay.gate.glowStrength * lampStrength);
     return {.progress = lampProgress, .strength = lampStrength};
 }
 
@@ -702,8 +703,7 @@ scene::LightSet NightMazeApp::uploadLights(const LightingSettings& frameLighting
     return lights;
 }
 
-NightMazeApp::NightLights NightMazeApp::nightLightsFor(const FrameScreen& screen,
-                                                       const FrameView& frame) const {
+NightLights NightMazeApp::nightLightsFor(const FrameScreen& screen, const FrameView& frame) const {
     // How many nights are lit is a rule of the campaign. The live scene behind a menu and
     // a maze of free play show the progress of the campaign, a night shows itself, and the
     // intro, which tells that the lamps have gone out, shows none.
@@ -738,8 +738,9 @@ void NightMazeApp::drawVillageForFrame(const FrameScreen& /*screen*/,
     // The village on the ridge, before the sky and after everything of the maze: it lies
     // near the far plane, so the maze has already filled most of the pixels it would
     // cover.
-    drawVillage(frame.view, frame.projection, frame.camera.farPlane, m_frameNightLights.nightsLit,
-                m_frameNightLights.newestStrength);
+    drawVillage(frame.view, frame.projection, frame.camera.farPlane,
+                m_frameState.frameNightLights.nightsLit,
+                m_frameState.frameNightLights.newestStrength);
 }
 
 void NightMazeApp::finishPicture(core::Size framebuffer, const FrameView& frame) {
@@ -844,11 +845,11 @@ void NightMazeApp::handleInteraction(bool cursorCaptured) {
     const bool keyPressed = actionPressed(KeyAction::Use);
     const bool clicked = input().wasMouseButtonPressed(GLFW_MOUSE_BUTTON_LEFT);
 
-    if ((keyPressed || clicked) && m_pick.action != Interaction::None) {
+    if ((keyPressed || clicked) && m_frameState.pick.action != Interaction::None) {
         // There is something to do: pull the lever, read the note or close the card.
         // A wall that opened is no obstacle any more. interact is true only then: for
         // the first pull of a lever, so that is the moment of its sound.
-        if (interact(m_round, m_mazeWorld, m_pick)) {
+        if (interact(m_round, m_mazeWorld, m_frameState.pick)) {
             m_obstacles = roundObstacles(m_mazeWorld, m_round);
             // An open wall can be a shorter way to the exit: the bell follows it.
             measureExitDistances();
@@ -858,7 +859,7 @@ void NightMazeApp::handleInteraction(bool cursorCaptured) {
         }
         // The round has changed, so the action is asked again: the lever that was just
         // pulled is not highlighted in this frame, and an opened card can be closed.
-        m_pick.action = interactionFor(m_round, m_pick.picked);
+        m_frameState.pick.action = interactionFor(m_round, m_frameState.pick.picked);
         // The card of a story note has come up: its line is in the ledger from now on.
         markOpenNoteRead();
     } else if (clicked && !cursorCaptured) {
