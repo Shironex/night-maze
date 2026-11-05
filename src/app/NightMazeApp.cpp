@@ -2,7 +2,7 @@
 // sounds.
 #include "app/NightMazeApp.hpp"
 
-#include "app/NightMazeAppShared.hpp"
+#include "app/MenuNames.hpp"
 #include "assets/ImageLoader.hpp"
 #include "core/Files.hpp"
 #include "core/Log.hpp"
