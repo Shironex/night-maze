@@ -19,7 +19,7 @@ const int MAX_PCF_RADIUS = 3;
 // (game::setShadowUniforms). A sampler cannot be a member of a uniform block, so the
 // numbers that belong to the map stay next to it instead of joining the light block.
 // The moon has the texture unit 3 and the flashlight the unit 4
-// (game/ShaderUniforms.hpp).
+// (render/ShaderUniforms.hpp).
 //
 // sampler2DShadow: a depth texture that is read WITH A COMPARISON. texture() takes
 // three numbers, the texture coordinate and a depth, and returns 1 where that depth is
