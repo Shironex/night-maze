@@ -52,84 +52,13 @@ if(NOT MSVC)
     add_compile_options(-ffp-contract=off)
 endif()
 
-# ---- engine: reusable layers (assets, core, gfx and scene now; renderer later) --------
-add_library(engine STATIC
-    src/assets/AssetCache.cpp
-    src/assets/AssetCache.hpp
-    src/assets/ImageLoader.cpp
-    src/assets/ImageLoader.hpp
-    src/assets/ObjLoader.cpp
-    src/assets/ObjLoader.hpp
-    src/assets/Tangents.cpp
-    src/assets/Tangents.hpp
-    src/core/Application.cpp
-    src/core/Application.hpp
-    src/core/Files.cpp
-    src/core/Files.hpp
-    src/core/GlCheck.cpp
-    src/core/GlCheck.hpp
-    src/core/Input.cpp
-    src/core/Input.hpp
-    src/core/Log.cpp
-    src/core/Log.hpp
-    src/core/Paths.cpp
-    src/core/Paths.hpp
-    src/core/PeriodicAverage.cpp
-    src/core/PeriodicAverage.hpp
-    src/core/Time.cpp
-    src/core/Time.hpp
-    src/core/Window.cpp
-    src/core/Window.hpp
-    src/gfx/Buffer.cpp
-    src/gfx/Buffer.hpp
-    src/gfx/ColorSpace.cpp
-    src/gfx/ColorSpace.hpp
-    src/gfx/ComparisonSampler.cpp
-    src/gfx/ComparisonSampler.hpp
-    src/gfx/CoverFit.cpp
-    src/gfx/CoverFit.hpp
-    src/gfx/Cubemap.cpp
-    src/gfx/Cubemap.hpp
-    src/gfx/Extensions.cpp
-    src/gfx/Extensions.hpp
-    src/gfx/FrameTexture.cpp
-    src/gfx/FrameTexture.hpp
-    src/gfx/Framebuffer.cpp
-    src/gfx/Framebuffer.hpp
-    src/gfx/Mesh.cpp
-    src/gfx/Mesh.hpp
-    src/gfx/RenderStats.cpp
-    src/gfx/RenderStats.hpp
-    src/gfx/Shader.cpp
-    src/gfx/Shader.hpp
-    src/gfx/ShaderSource.cpp
-    src/gfx/ShaderSource.hpp
-    src/gfx/Texture2D.cpp
-    src/gfx/Texture2D.hpp
-    src/gfx/TimerQuery.cpp
-    src/gfx/TimerQuery.hpp
-    src/gfx/UniformBuffer.cpp
-    src/gfx/UniformBuffer.hpp
-    src/gfx/Vertex.hpp
-    src/gfx/VertexArray.cpp
-    src/gfx/VertexArray.hpp
-    src/scene/Camera.cpp
-    src/scene/Camera.hpp
-    src/scene/Collider.cpp
-    src/scene/Collider.hpp
-    src/scene/Frustum.cpp
-    src/scene/Frustum.hpp
-    src/scene/Light.cpp
-    src/scene/Light.hpp
-    src/scene/LightBlock.cpp
-    src/scene/LightBlock.hpp
-    src/scene/LightSpace.cpp
-    src/scene/LightSpace.hpp
-    src/scene/Raycast.cpp
-    src/scene/Raycast.hpp
-    src/scene/Transform.cpp
-    src/scene/Transform.hpp
-)
+# ---- the targets ------------------------------------------------------------------------
+# Made here without sources: each folder under src/ and tests/ adds its own files in its own
+# CMakeLists.txt (target_sources, sorted, one file per line), see add_subdirectory below.
+# tools/move_module.py moves a module between folders and keeps the lists.
+
+# ---- engine: reusable layers (src/assets, src/core, src/gfx, src/scene) ------------------
+add_library(engine STATIC)
 # Includes are written relative to src/, for example #include "core/Window.hpp".
 target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 # GLM is PUBLIC because headers of engine (gfx/Shader.hpp, gfx/Vertex.hpp,
@@ -147,118 +76,15 @@ target_compile_definitions(engine PUBLIC
 night_maze_enable_warnings(engine)
 
 # ---- game_logic: the rules of Night Maze that need no window and no OpenGL -------------
-# The maze, its generator, its layout in the world, the terrain it stands on, the places
-# of the grass, the player, the settings of the lighting, of the bloom, of the fog, of
-# the vignette and of the shadows, the rules of a round (exit, crystals, battery), the
-# levers and the notes with the picking of a frame, the sound cues (which short sound
-# belongs to what happened, and the clock of the low battery pulse), what the minimap
-# shows (the discovered cells and its shapes), the path of the menu camera, the screens
-# of the game (menu, intro, free play, campaign nights, playing, paused, round end,
-# settings, cards), the rule that chooses what is
-# behind the main menu, the three difficulty levels, the settings of the player with
-# the text of their file and the switches of the command line are plain data and math.
-# They live in a library of their own, and not in the night_maze executable, so that
-# the test program can link them too: a test cannot link code that is inside another
-# executable.
-add_library(game_logic STATIC
-    src/game/Bloom.cpp
-    src/game/Bloom.hpp
-    src/game/Campaign.cpp
-    src/game/Campaign.hpp
-    src/game/Daily.cpp
-    src/game/Daily.hpp
-    src/game/Crystals.cpp
-    src/game/Crystals.hpp
-    src/game/Difficulty.cpp
-    src/game/Difficulty.hpp
-    src/game/Discovery.cpp
-    src/game/Discovery.hpp
-    src/game/EnvironmentMapping.cpp
-    src/game/EnvironmentMapping.hpp
-    src/game/Exit.cpp
-    src/game/Exit.hpp
-    src/game/Flasks.cpp
-    src/game/Flasks.hpp
-    src/game/Fog.cpp
-    src/game/Fog.hpp
-    src/game/GameState.cpp
-    src/game/GameState.hpp
-    src/game/GateLamp.cpp
-    src/game/GateLamp.hpp
-    src/game/Grass.cpp
-    src/game/Grass.hpp
-    src/game/Heartstone.cpp
-    src/game/Heartstone.hpp
-    src/game/Interactables.cpp
-    src/game/Interactables.hpp
-    src/game/Interaction.cpp
-    src/game/Interaction.hpp
-    src/game/Intro.cpp
-    src/game/Intro.hpp
-    src/game/KeyBindings.cpp
-    src/game/KeyBindings.hpp
-    src/game/Land.cpp
-    src/game/Land.hpp
-    src/game/LandMeshes.cpp
-    src/game/LandMeshes.hpp
-    src/game/Ledger.cpp
-    src/game/Ledger.hpp
-    src/game/Lighting.cpp
-    src/game/Lighting.hpp
-    src/game/Maze.cpp
-    src/game/Maze.hpp
-    src/game/MazeGenerator.cpp
-    src/game/MazeGenerator.hpp
-    src/game/MazeLayout.cpp
-    src/game/MazeLayout.hpp
-    src/game/MazeWorld.cpp
-    src/game/MazeWorld.hpp
-    src/game/MenuBackground.cpp
-    src/game/MenuBackground.hpp
-    src/game/MenuCamera.cpp
-    src/game/MenuCamera.hpp
-    src/game/MenuCameraPath.cpp
-    src/game/MenuCameraShared.hpp
-    src/game/Minimap.cpp
-    src/game/Minimap.hpp
-    src/game/Player.cpp
-    src/game/Player.hpp
-    src/game/Puddles.cpp
-    src/game/Puddles.hpp
-    src/game/Round.cpp
-    src/game/Round.hpp
-    src/game/RoundMusic.cpp
-    src/game/RoundMusic.hpp
-    src/game/Settings.cpp
-    src/game/Settings.hpp
-    src/game/Shade.cpp
-    src/game/Shade.hpp
-    src/game/Shadows.cpp
-    src/game/Shadows.hpp
-    src/game/SoundCues.cpp
-    src/game/SoundCues.hpp
-    src/game/StartOptions.cpp
-    src/game/StartOptions.hpp
-    src/game/Stile.cpp
-    src/game/Stile.hpp
-    src/game/StoneSheep.cpp
-    src/game/StoneSheep.hpp
-    src/game/Storybook.cpp
-    src/game/Storybook.hpp
-    src/game/Terrain.cpp
-    src/game/Terrain.hpp
-    src/game/Vignette.cpp
-    src/game/Vignette.hpp
-    src/game/Village.cpp
-    src/game/Village.hpp
-    src/game/WallVariants.cpp
-    src/game/WallVariants.hpp
-)
-# PUBLIC: the headers of this library (Crystals.hpp, Exit.hpp, Lighting.hpp,
-# MazeLayout.hpp, MazeWorld.hpp, Player.hpp, Round.hpp, Shadows.hpp, Terrain.hpp) include
-# headers of engine (scene/Collider.hpp, scene/Light.hpp, gfx/Vertex.hpp, assets/ImageLoader.hpp)
-# and GLM, so whoever includes them needs the include paths of engine.
-# The src/ include root comes from engine as well.
+# The rule files of src/game: the maze and its world, the round, the player, the settings
+# of the look, the screens of the game, the sound cues and the settings file are plain
+# data and math. They live in a library of their own, and not in the night_maze
+# executable, so that the test program can link them too: a test cannot link code that is
+# inside another executable.
+add_library(game_logic STATIC)
+# PUBLIC: the headers of this library include headers of engine (scene/Collider.hpp,
+# scene/Light.hpp, gfx/Vertex.hpp, assets/ImageLoader.hpp) and GLM, so whoever includes
+# them needs the include paths of engine. The src/ include root comes from engine as well.
 target_link_libraries(game_logic PUBLIC engine)
 night_maze_enable_warnings(game_logic)
 
@@ -268,12 +94,7 @@ night_maze_enable_warnings(game_logic)
 # (the game tells it which document to show and takes the names of the clicked
 # buttons). It is a library of its own and not a part of engine, so that game_logic and
 # the test program, which link engine, do not have to link RmlUi and FreeType.
-add_library(ui STATIC
-    src/ui/AssetFileInterface.cpp
-    src/ui/AssetFileInterface.hpp
-    src/ui/UiLayer.cpp
-    src/ui/UiLayer.hpp
-)
+add_library(ui STATIC)
 # engine is PUBLIC: ui/UiLayer.hpp includes core/Window.hpp. RmlUi is PRIVATE: UiLayer.hpp
 # only names its classes (forward declarations), so the code that uses the layer needs
 # neither the headers of RmlUi nor its include paths.
@@ -289,18 +110,9 @@ night_maze_enable_warnings(ui)
 # the media libraries of an operating system nor a file in another language.
 #
 # The decoder is the only code of the project that is written twice, once per system,
-# behind one interface (video/VideoDecoder.hpp). VideoDecoderWindows.cpp is in the list
-# on every system and empty outside of Windows, so the checks that run over all .cpp
-# files find it in the list of compiled files everywhere. The macOS file is
-# Objective-C++, a language CMake has to be told about, and is added below.
-add_library(video STATIC
-    src/video/VideoClock.cpp
-    src/video/VideoClock.hpp
-    src/video/VideoDecoder.hpp
-    src/video/VideoDecoderWindows.cpp
-    src/video/VideoPlayer.cpp
-    src/video/VideoPlayer.hpp
-)
+# behind one interface (video/VideoDecoder.hpp). src/video/CMakeLists.txt lists the
+# Windows file on every system and the macOS file (Objective-C++) only on macOS.
+add_library(video STATIC)
 # engine is PUBLIC: video/VideoPlayer.hpp includes gfx/FrameTexture.hpp.
 target_link_libraries(video PUBLIC engine)
 # The player decodes on a thread of its own. Threads::Threads is whatever the system
@@ -325,18 +137,13 @@ if(WIN32)
 elseif(APPLE)
     # AVFoundation, the part of macOS that decodes video files, is used from
     # Objective-C++: C++ that can also call the Objective-C classes of Apple. The
-    # language itself is switched on at the top of this file.
-    target_sources(video PRIVATE src/video/VideoDecoderApple.mm)
+    # language itself is switched on at the top of this file, the source file and its
+    # compile option are in src/video/CMakeLists.txt.
     # The same C++ standard as the rest of the project, said again for this language.
     set_target_properties(video PROPERTIES
         OBJCXX_STANDARD 20
         OBJCXX_STANDARD_REQUIRED ON
         OBJCXX_EXTENSIONS OFF
-    )
-    # Automatic reference counting: the compiler releases the Objective-C objects the
-    # file holds, there is no retain and no release in it.
-    set_source_files_properties(src/video/VideoDecoderApple.mm PROPERTIES
-        COMPILE_OPTIONS "-fobjc-arc"
     )
     # Frameworks are the libraries of macOS. They are part of the system.
     target_link_libraries(video PRIVATE
@@ -357,10 +164,7 @@ night_maze_enable_warnings(video)
 # should not link miniaudio, which opens the sound device of the computer. The game
 # links it, and so does the test program, which makes the audio engine without a device
 # (audio::AudioOutput::None): no test needs a sound card, and none is heard.
-add_library(audio STATIC
-    src/audio/AudioEngine.cpp
-    src/audio/AudioEngine.hpp
-)
+add_library(audio STATIC)
 # engine is PUBLIC only for the src/ include root, which comes from it: the header of
 # audio includes nothing but the standard library. miniaudio is PRIVATE:
 # audio/AudioEngine.hpp hides it behind a pointer to a struct that only the .cpp file
@@ -372,104 +176,10 @@ target_link_libraries(audio PRIVATE miniaudio)
 night_maze_enable_warnings(audio)
 
 # ---- night_maze: the application and its debug UI -------------------------------------
-# NightMazeApp and the classes that draw (MazeRenderer, GameplayRenderer,
-# InteractableRenderer, TerrainRenderer, GrassRenderer, ColliderLines, LightRig, Skybox,
-# PostProcess, ShadowMap, MinimapRenderer, MenuBackgroundRenderer, GpuPassTimers,
-# with the shared ModelDraw) stay in the executable: they need a window and an OpenGL
+# src/main.cpp, the files of src/game that draw (NightMazeApp, the renderers,
+# PostProcess, ShadowMap and the others) and src/debug: they need a window and an OpenGL
 # context, so they are not something a test can run.
-add_executable(night_maze
-    src/main.cpp
-    src/game/ColliderLines.cpp
-    src/game/ColliderLines.hpp
-    src/game/GameplayRenderer.cpp
-    src/game/GameplayRenderer.hpp
-    src/game/GpuPasses.cpp
-    src/game/GpuPasses.hpp
-    src/game/LandRenderer.cpp
-    src/game/LandRenderer.hpp
-    src/game/VillageRenderer.cpp
-    src/game/VillageRenderer.hpp
-    src/game/GrassRenderer.cpp
-    src/game/GrassRenderer.hpp
-    src/game/InteractableRenderer.cpp
-    src/game/InteractableRenderer.hpp
-    src/game/LightRig.cpp
-    src/game/LightRig.hpp
-    src/game/MazeRenderer.cpp
-    src/game/MazeRenderer.hpp
-    src/game/MenuBackgroundRenderer.cpp
-    src/game/MenuBackgroundRenderer.hpp
-    src/game/MinimapRenderer.cpp
-    src/game/MinimapRenderer.hpp
-    src/game/ModelDraw.cpp
-    src/game/ModelDraw.hpp
-    src/game/NightMazeApp.cpp
-    src/game/NightMazeApp.hpp
-    src/game/NightMazeAppCampaign.cpp
-    src/game/NightMazeAppMenus.cpp
-    src/game/NightMazeAppPasses.cpp
-    src/game/NightMazeAppRender.cpp
-    src/game/NightMazeAppRound.cpp
-    src/game/NightMazeAppScreens.cpp
-    src/game/NightMazeAppShared.hpp
-    src/game/PostProcess.cpp
-    src/game/PostProcess.hpp
-    src/game/PuddleRenderer.cpp
-    src/game/PuddleRenderer.hpp
-    src/game/ShaderUniforms.hpp
-    src/game/ShadowMap.cpp
-    src/game/ShadowMap.hpp
-    src/game/Skybox.cpp
-    src/game/Skybox.hpp
-    src/game/StorybookRenderer.cpp
-    src/game/StorybookRenderer.hpp
-    src/game/TerrainRenderer.cpp
-    src/game/TerrainRenderer.hpp
-    src/debug/Categories.hpp
-    src/debug/DebugContext.hpp
-    src/debug/DebugUI.cpp
-    src/debug/DebugUI.hpp
-    src/debug/DebugWindow.cpp
-    src/debug/DebugWindow.hpp
-    src/debug/Hud.cpp
-    src/debug/Hud.hpp
-    src/debug/HudCanvas.cpp
-    src/debug/HudCards.cpp
-    src/debug/HudInstruments.cpp
-    src/debug/HudRules.cpp
-    src/debug/HudRules.hpp
-    src/debug/HudShared.hpp
-    src/debug/Icons.cpp
-    src/debug/Icons.hpp
-    src/debug/MazePlan.cpp
-    src/debug/MazePlan.hpp
-    src/debug/Pictures.cpp
-    src/debug/PerfProbe.cpp
-    src/debug/PerfProbe.hpp
-    src/debug/Pictures.hpp
-    src/debug/RawTextureSampler.cpp
-    src/debug/RawTextureSampler.hpp
-    src/debug/Search.cpp
-    src/debug/Search.hpp
-    src/debug/Theme.cpp
-    src/debug/Theme.hpp
-    src/debug/Widgets.cpp
-    src/debug/Widgets.hpp
-    src/debug/categories/DiagnosticsCategory.cpp
-    src/debug/categories/DiagnosticsCategory.hpp
-    src/debug/categories/GameplayCategory.cpp
-    src/debug/categories/GameplayCategory.hpp
-    src/debug/categories/LightCategory.cpp
-    src/debug/categories/LightCategory.hpp
-    src/debug/categories/PlayerCategory.cpp
-    src/debug/categories/PlayerCategory.hpp
-    src/debug/categories/PostProcessCategory.cpp
-    src/debug/categories/PostProcessCategory.hpp
-    src/debug/categories/RenderCategory.cpp
-    src/debug/categories/RenderCategory.hpp
-    src/debug/categories/WorldCategory.cpp
-    src/debug/categories/WorldCategory.hpp
-)
+add_executable(night_maze)
 target_link_libraries(night_maze PRIVATE engine game_logic ui video audio imgui)
 night_maze_enable_warnings(night_maze)
 
@@ -478,93 +188,18 @@ night_maze_enable_warnings(night_maze)
 # the ctest program finds it. It has to be called in this top-level file.
 enable_testing()
 
-add_executable(night_maze_tests
-    tests/main.cpp
-    tests/AudioEngineTests.cpp
-    tests/BloomTests.cpp
-    tests/CampaignTests.cpp
-    tests/DailyTests.cpp
-    tests/ColliderTests.cpp
-    tests/ColorSpaceTests.cpp
-    tests/CoverFitTests.cpp
-    tests/CrystalTests.cpp
-    tests/DifficultyTests.cpp
-    tests/DiscoveryTests.cpp
-    tests/EnvironmentMappingTests.cpp
-    tests/ExitTests.cpp
-    tests/FlaskTests.cpp
-    tests/FogTests.cpp
-    tests/FramebufferTests.cpp
-    tests/FrustumTests.cpp
-    tests/GameStateTests.cpp
-    tests/GateLampTests.cpp
-    tests/GrassTests.cpp
-    tests/HeartstoneTests.cpp
-    tests/HudRulesTests.cpp
-    tests/ImageLoaderTests.cpp
-    tests/InteractablesTests.cpp
-    tests/InteractionTests.cpp
-    tests/IntroTests.cpp
-    tests/KeyBindingsTests.cpp
-    tests/LandTests.cpp
-    tests/LayeringTests.cpp
-    tests/LedgerTests.cpp
-    tests/LightTests.cpp
-    tests/LightingTests.cpp
-    tests/MazeGeneratorTests.cpp
-    tests/MazeLayoutTests.cpp
-    tests/MazeTests.cpp
-    tests/MazeWorldTests.cpp
-    tests/MenuBackgroundTests.cpp
-    tests/MenuCameraTests.cpp
-    tests/MinimapTests.cpp
-    tests/ObjLoaderTests.cpp
-    tests/PeriodicAverageTests.cpp
-    tests/PlayerTests.cpp
-    tests/PuddleTests.cpp
-    tests/RaycastTests.cpp
-    tests/RenderStatsTests.cpp
-    tests/RoundMusicTests.cpp
-    tests/RoundTests.cpp
-    tests/SearchTests.cpp
-    tests/SettingsTests.cpp
-    tests/ShadeTests.cpp
-    tests/ShaderSourceTests.cpp
-    tests/ShadowTests.cpp
-    tests/SkyboxTests.cpp
-    tests/SoundCueTests.cpp
-    tests/StartOptionsTests.cpp
-    tests/StileTests.cpp
-    tests/StoneSheepTests.cpp
-    tests/StorybookTests.cpp
-    tests/TangentTests.cpp
-    tests/TerrainTests.cpp
-    tests/TransformTests.cpp
-    tests/VideoClockTests.cpp
-    tests/VignetteTests.cpp
-    tests/VillageTests.cpp
-    tests/WallVariantTests.cpp
-    # The files of the debug UI that need neither ImGui nor a window: the text search
-    # of the debug window and the arithmetic of the HUD. They are compiled into the
-    # test program directly.
-    src/debug/HudRules.cpp
-    src/debug/HudRules.hpp
-    src/debug/Search.cpp
-    src/debug/Search.hpp
-    # The same for the video library: the arithmetic of its clock needs neither
-    # a decoder nor OpenGL. Linking the library itself would bring Media Foundation
-    # into the test program.
-    src/video/VideoClock.cpp
-    src/video/VideoClock.hpp
-)
+# The tests in tests/, plus the few files of src/debug and src/video that need neither
+# ImGui nor a decoder, which their folders add to this target.
+add_executable(night_maze_tests)
 # game_logic brings engine with it (scene/Collider is part of engine). audio is linked
 # for the tests of the audio engine, which make it without a sound device
 # (audio::AudioOutput::None): nothing is opened and nothing is heard.
 target_link_libraries(night_maze_tests PRIVATE game_logic audio doctest::doctest)
 night_maze_enable_warnings(night_maze_tests)
-# The loader tests (of images and of OBJ models) read the real files of the game. A test
-# must not depend on the directory it is started from, so the absolute path of assets/ in
-# the repository is compiled in as a string: the macro NIGHT_MAZE_ASSETS_DIR.
+# The loader tests (of images and of OBJ models) read the real files of the game, and the
+# layering test reads the sources. A test must not depend on the directory it is started
+# from, so the absolute path of assets/ in the repository is compiled in as a string: the
+# macro NIGHT_MAZE_ASSETS_DIR.
 target_compile_definitions(night_maze_tests PRIVATE
     NIGHT_MAZE_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets"
 )
@@ -572,6 +207,9 @@ target_compile_definitions(night_maze_tests PRIVATE
 # One CTest test: it runs the whole test program and passes when the program exits with
 # code 0. The program is part of the default build, so the tests always compile.
 add_test(NAME night_maze_tests COMMAND night_maze_tests)
+
+add_subdirectory(src)
+add_subdirectory(tests)
 
 # ---- assets: shaders, models and textures next to the executable -----------------------
 # The program looks for assets/ in the directory of its own executable (core::assetPath).

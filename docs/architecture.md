@@ -4,7 +4,7 @@ This page is a map of the code of Night Maze, a first person game in C++20 on Op
 
 ## 1. Targets and directories
 
-`CMakeLists.txt` defines five static libraries and two programs. Third party code is declared in `cmake/Dependencies.cmake`.
+The root `CMakeLists.txt` defines five static libraries and two programs, with their links and options but without sources. Each folder under `src/` and `tests/` has its own `CMakeLists.txt` that adds its files to those targets (`target_sources`, sorted, one file per line), and a folder with subfolders adds them with `add_subdirectory`. Third party code is declared in `cmake/Dependencies.cmake`.
 
 | Target | Sources | Purpose | Links |
 |---|---|---|---|
@@ -47,6 +47,12 @@ Directory map:
 - `src/debug`: the debug window, its seven categories in `src/debug/categories`, and the HUD.
 - `assets/shaders` (shared parts in `assets/shaders/common`, full screen passes in `assets/shaders/post`), `assets/ui` (RML documents and one style sheet), `assets/models`, `assets/textures`, `assets/skybox`, `assets/audio`, `assets/video`, `assets/fonts`.
 - `tools`: scripts that produce assets and releases: `tools/blender` (models and textures), `tools/make_sounds.py`, `tools/make_music.py`, `tools/record_menu_loop.py`, `tools/capture_showcase.py` (README pictures), `tools/build-notices.mjs` and `tools/release-notes.mjs`.
+
+Rules for new code:
+
+- A new system gets a folder of its own (or joins the folder of its layer) and a `CMakeLists.txt` there that lists its files, sorted, one per line, in the block of the right target. Rules that need no window go to `game_logic`, code that draws to `night_maze`.
+- Its test goes to the folder of `tests/` that mirrors the folder in `src/`, listed the same way.
+- `tests/LayeringTests.cpp` must stay green. An exception to a rule is added to its allowlist by name, with the reason.
 
 ## 2. Layers
 

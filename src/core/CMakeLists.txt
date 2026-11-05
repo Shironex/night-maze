@@ -1,0 +1,20 @@
+target_sources(engine PRIVATE
+    Application.cpp
+    Application.hpp
+    Files.cpp
+    Files.hpp
+    GlCheck.cpp
+    GlCheck.hpp
+    Input.cpp
+    Input.hpp
+    Log.cpp
+    Log.hpp
+    Paths.cpp
+    Paths.hpp
+    PeriodicAverage.cpp
+    PeriodicAverage.hpp
+    Time.cpp
+    Time.hpp
+    Window.cpp
+    Window.hpp
+)
