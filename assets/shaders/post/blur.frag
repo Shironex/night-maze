@@ -6,7 +6,7 @@
 in vec2 vUv;
 
 // How many pixels are read on each side of this one. The same number as
-// game::BLOOM_BLUR_RADIUS in C++ (src/game/Bloom.hpp): the two must agree.
+// game::BLOOM_BLUR_RADIUS in C++ (src/game/lighting/Bloom.hpp): the two must agree.
 const int BLUR_RADIUS = 6;
 
 // The picture to blur: linear HDR colours (GL_RGBA16F), read with a linear filter and

@@ -22,7 +22,7 @@ Inside `engine`, `src/core` includes only itself, `src/gfx` uses `src/core`, `sr
 
 `tests/LayeringTests.cpp` checks these rules on every test run. It reads the `#include` lines of `src/` and the source lists of the CMake files, and fails with the list of includes that break a rule: an engine folder that reaches the game, `src/render`, the HUD or the debug UI or a folder above its own, `src/render` including anything but the engine folders and the headers of `game_logic` (the plain data of the game, never a drawing file of `src/game`), `src/game` including `src/hud` or `src/debug`, `src/hud` including anything but `src/game`, the engine folders and `src/ui` (so never `src/debug`, which may include the HUD), a file of `game_logic` (or a file of `src/` that the test program compiles) including OpenGL, GLFW, ImGui, the window, `src/render` or a `gfx` header other than the plain data ones (`Vertex.hpp`, `ColorSpace.hpp`, `CoverFit.hpp`). Two allowed exceptions are named in the test: `src/game/player/KeyBindings.cpp` includes GLFW for the numbers of the keys only, and `src/render/Skybox.cpp` includes `src/game/maze/MazeRenderer.hpp` for the enum `game::ViewMode` only.
 
-`src/game` is split between two targets. The files that need no window are in `game_logic`. The files that draw (`NightMazeApp`, the `*Renderer` classes) are in the executable. The helpers of the passes that hold no rule of the game (`PostProcess`, `ShadowMap`, `Skybox`, `LightRig` and the others) are in `src/render`, in the executable too.
+`src/game` is split into one folder per domain, and each folder is split between two targets in its own `CMakeLists.txt`. The files that need no window are in `game_logic`. The files that draw (the `*Renderer` classes) are in the executable, with `NightMazeApp`, which stays in `src/game` itself. The helpers of the passes that hold no rule of the game (`PostProcess`, `ShadowMap`, `Skybox`, `LightRig` and the others) are in `src/render`, in the executable too.
 
 What runs without a window or an OpenGL context: all of `game_logic`, the math in `src/scene`, the file loaders and shader text functions in `engine`, and the audio engine when it is made with `audio::AudioOutput::None`. The 63 test files in `tests` cover that, in folders that mirror `src/` (`tests/game/round/RoundTests.cpp` tests `src/game/round/Round.cpp`), plus `tests/LayeringTests.cpp`, which checks the layering rules below.
 
@@ -48,9 +48,10 @@ src/
   game/               night_maze: NightMazeApp; one folder per domain below, each with
                       its rules (game_logic) and its renderers (night_maze)
     land/             the ground, the grass, the puddles, the land around the maze, the village
+    lighting/         settings and math of the light, the shadows, the reflections, bloom, fog, vignette
     maze/             the maze, its walls, the stile and the stone sheep
     menu/             what is behind the main menu, the menu camera
-    minimap/          the map held with M
+    minimap/          the map held with its key
     player/           the player and stamina, picking, the levers and notes, the key bindings
     round/            a round and its pickups, the gate, the campaign, the ledger, the day
     screens/          the screens and their events, the intro, the settings, the command line
@@ -74,6 +75,7 @@ Directory map:
 - `src/assets`: OBJ and image loaders, `AssetCache`.
 - `src/game`: the application class (`NightMazeApp`), and one folder per domain, each with its rules and its renderers:
   - `src/game/land`: the ground (`Terrain`), the tufts of grass, the puddles, the land around the maze with the triangles built in code (`LandMeshes`), the village on the ridge, and their renderers.
+  - `src/game/lighting`: the settings and the math the renderers and the passes read: the lights (`Lighting`), the shadow maps (`Shadows`), the reflections of the sky (`EnvironmentMapping`), `Bloom`, `Fog` and `Vignette`. No renderer: the passes are in `src/render`.
   - `src/game/maze`: the grid of the maze, its generator and layout, the built world of a seed (`MazeWorld`), the worn wall variants, the stile, the stone sheep and `MazeRenderer`.
   - `src/game/menu`: what is shown behind the main menu (`MenuBackground`) and its renderer, and the camera that glides over the maze (`MenuCamera`, its path and the header they share).
   - `src/game/minimap`: the map held with its key: its settings, where it stands and the flat shapes it is drawn from (`Minimap`), and `MinimapRenderer`.

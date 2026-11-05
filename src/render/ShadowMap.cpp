@@ -2,7 +2,7 @@
 #include "render/ShadowMap.hpp"
 
 #include "core/GlCheck.hpp"
-#include "game/Shadows.hpp"
+#include "game/lighting/Shadows.hpp"
 #include "gfx/RenderStats.hpp"
 #include "gfx/Shader.hpp"
 #include "render/PostProcess.hpp"

@@ -1,7 +1,7 @@
 // Tests of the sky pictures in assets/skybox: they load as the faces of a cube map, the
 // moon is painted where the moon light comes from, and the faces meet without seams.
 #include "assets/ImageLoader.hpp"
-#include "game/Lighting.hpp"
+#include "game/lighting/Lighting.hpp"
 #include "scene/Light.hpp"
 
 #include <doctest/doctest.h>

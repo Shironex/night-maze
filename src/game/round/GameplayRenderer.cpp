@@ -4,7 +4,7 @@
 
 #include "assets/AssetCache.hpp"
 #include "core/Paths.hpp"
-#include "game/Lighting.hpp"
+#include "game/lighting/Lighting.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "game/round/GateLamp.hpp"
 #include "game/round/Round.hpp"

@@ -1,6 +1,6 @@
 // Bloom: the settings of the glow around bright things, the size of its render targets
 // and the weights of its blur.
-#include "game/Bloom.hpp"
+#include "game/lighting/Bloom.hpp"
 
 #include <algorithm>
 #include <cmath>

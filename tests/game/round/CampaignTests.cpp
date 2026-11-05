@@ -2,8 +2,8 @@
 // rules of the progress and the timing of the two cards.
 #include "game/round/Campaign.hpp"
 
-#include "game/Lighting.hpp"
-#include "game/Shadows.hpp"
+#include "game/lighting/Lighting.hpp"
+#include "game/lighting/Shadows.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "game/menu/MenuCamera.hpp"

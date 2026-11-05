@@ -1,14 +1,5 @@
-target_sources(night_maze_tests PRIVATE
-    BloomTests.cpp
-    EnvironmentMappingTests.cpp
-    FogTests.cpp
-    LightingTests.cpp
-    ShadowTests.cpp
-    SkyboxTests.cpp
-    VignetteTests.cpp
-)
-
 add_subdirectory(land)
+add_subdirectory(lighting)
 add_subdirectory(maze)
 add_subdirectory(menu)
 add_subdirectory(minimap)

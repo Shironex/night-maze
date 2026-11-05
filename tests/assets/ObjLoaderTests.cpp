@@ -2,7 +2,7 @@
 #include "assets/ObjLoader.hpp"
 
 #include "assets/Tangents.hpp"
-#include "game/Lighting.hpp"
+#include "game/lighting/Lighting.hpp"
 #include "game/round/Crystals.hpp"
 
 #include <doctest/doctest.h>

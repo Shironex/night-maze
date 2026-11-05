@@ -3,7 +3,7 @@
 #include "game/land/Village.hpp"
 
 #include "assets/ObjLoader.hpp"
-#include "game/Fog.hpp"
+#include "game/lighting/Fog.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"

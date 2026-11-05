@@ -12,7 +12,7 @@
 // light and the fragment: it is in shadow.
 
 // The largest radius of the PCF kernel. The same number as game::MAX_PCF_RADIUS in
-// src/game/Shadows.hpp.
+// src/game/lighting/Shadows.hpp.
 const int MAX_PCF_RADIUS = 3;
 
 // The shadow map of the moon, plain uniforms set from C++ for each program
