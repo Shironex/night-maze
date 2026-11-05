@@ -257,7 +257,7 @@ void NightMazeApp::handleControlChanges() {
     const std::vector<ui::ControlChange> changes = m_menus.ui.takeChanges();
     // The wait of the sample click runs down with the real time of the frames. This
     // function is called once per frame.
-    m_volumeSampleWait = std::max(m_volumeSampleWait - time().deltaSeconds(), 0.0);
+    m_sound.volumeSampleWait = std::max(m_sound.volumeSampleWait - time().deltaSeconds(), 0.0);
     // Only the settings screen has controls that report: a change that arrives on
     // another screen is a late echo of fillSettingsDocument and is dropped.
     if (m_mode != GameMode::SettingsFromMenu && m_mode != GameMode::SettingsFromPause) {
@@ -281,14 +281,14 @@ void NightMazeApp::handleControlChanges() {
         // The new loudness is heard at once, as the click of the flashlight. The UI
         // layer reports every value of a dragged slider and not its release, so the
         // click is held back to a few per second.
-        if (volumeChanged && m_volumeSampleWait <= 0.0) {
+        if (volumeChanged && m_sound.volumeSampleWait <= 0.0) {
             playCue(SoundCue::FlashlightOn);
-            m_volumeSampleWait = VOLUME_SAMPLE_SECONDS;
+            m_sound.volumeSampleWait = VOLUME_SAMPLE_SECONDS;
         }
         // The ambient volume is heard as what it changes: the wind of the maze comes up
         // on this screen and stays for a moment after the last change (updateAmbience).
         if (ambientChanged) {
-            m_windSampleLeft = MAZE_WIND_SAMPLE_SECONDS;
+            m_sound.windSampleLeft = MAZE_WIND_SAMPLE_SECONDS;
         }
         // Only the numbers next to the sliders: the sliders themselves already stand
         // where the player put them.

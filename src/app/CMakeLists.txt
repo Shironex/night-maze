@@ -19,6 +19,7 @@ target_sources(night_maze PRIVATE
     RenderSettings.hpp
     SceneRenderers.cpp
     SceneRenderers.hpp
+    SoundState.hpp
     StoryState.hpp
     main.cpp
 )

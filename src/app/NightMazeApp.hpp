@@ -6,8 +6,8 @@
 #include "app/MenuState.hpp"
 #include "app/RenderSettings.hpp"
 #include "app/SceneRenderers.hpp"
+#include "app/SoundState.hpp"
 #include "app/StoryState.hpp"
-#include "audio/AudioEngine.hpp"
 #include "core/Application.hpp"
 #include "game/land/Terrain.hpp"
 #include "game/land/Village.hpp"
@@ -176,6 +176,11 @@ protected:
     /// shows the numbers of the picking and how much the two shadow maps cover.
     const FrameState& frameState() const { return m_frameState; }
 
+    /// The sound device and the loaded sounds with what was played last, read only: the
+    /// debug UI shows their status, the loudness in use, the name and the loudness of the
+    /// last cue and how many cues were played since the start.
+    const SoundState& sound() const { return m_sound; }
+
     /// The settings of the lighting (mode, moon, flashlight, point lights, highlight,
     /// normal mapping), exposed so the debug UI can edit them live.
     LightingSettings& lighting() { return m_lighting; }
@@ -221,10 +226,6 @@ protected:
         return game::menuCameraLoopSeconds(m_menuCameraPath, m_mazeWorld, m_menuCamera);
     }
 
-    /// The sound device and the loaded sounds, read only: the debug UI shows their
-    /// status and the loudness in use.
-    const audio::AudioEngine& audio() const { return m_audio; }
-
     /// The master volume of the settings, 0 to 100, for the debug UI.
     float masterVolumeSetting() const { return m_settings.masterVolume; }
 
@@ -234,18 +235,9 @@ protected:
     float ambientVolumeSetting() const { return m_settings.ambientVolume; }
     float musicVolumeSetting() const { return m_settings.musicVolume; }
 
-    /// The name of the cue that was played last (game::soundCueName), "none" before the
-    /// first one, and how many cues were played since the start, for the debug UI.
-    const char* lastCueName() const { return m_lastCueName; }
-    int cuesPlayed() const { return m_cuesPlayed; }
-
-    /// How loud the last cue was played, from 0 to 1 (game::CuePlay::volume), for the
-    /// debug UI: the steps of the shade are quieter the farther away it is.
-    float lastCueVolume() const { return m_lastCueVolume; }
-
     /// The request to hear the wind of the maze for a few seconds, exposed so the debug
     /// UI can ask for it on any screen but the intro: set it to true.
-    bool& windSampleRequest() { return m_windSampleRequested; }
+    bool& windSampleRequest() { return m_sound.windSampleRequested; }
 
     /// True when the mazes of free play have a shade in this run: its switch "Calm night"
     /// is off and the command line did not ask for a calm run (--calm). Texts that differ
@@ -1053,9 +1045,9 @@ private:
     // storybook (StoryState).
     StoryState m_story;
 
-    // The sound device with the sounds of the cues, loaded once in the constructor in
-    // the order of game::SoundCue. Without a device it does nothing (audio::AudioEngine).
-    audio::AudioEngine m_audio;
+    // The sound device and what the game remembers about the loops and the cues it plays
+    // (SoundState).
+    SoundState m_sound;
     // The clock of the low battery pulse. It is simulation state like the round:
     // onUpdate advances it in fixed steps, and beginRound starts it anew.
     LowBatteryPulse m_lowBatteryPulse;
@@ -1082,38 +1074,6 @@ private:
     // the next one. It lives as long as the program: a new round does not reset it, and
     // it is not saved.
     int m_lastCaughtLine = NO_CAUGHT_LINE;
-    // What playCue remembers for the debug UI: the name of the last cue (a text of the
-    // cue table, which lives as long as the program) and the number of cues so far.
-    const char* m_lastCueName = "none";
-    int m_cuesPlayed = 0;
-    // How loud that last cue was played (playCue).
-    float m_lastCueVolume = 1.0F;
-    // Seconds for which a sample of the wind of the maze is still heard on a screen
-    // that has no wind (updateAmbience): set when the ambient slider of the settings
-    // screen moves. 0: no sample runs.
-    double m_windSampleLeft = 0.0;
-    // Set by the debug UI: play a sample of the wind (windSampleRequest).
-    bool m_windSampleRequested = false;
-    // False until updateAmbience has run once: the first picture of the program is
-    // drawn after that call, and the theme of the menu waits for it
-    // (game::MenuThemeRequest::pictureShown).
-    bool m_pictureShown = false;
-    // What updateAmbience last told the audio engine about the theme of the menu, to
-    // write one line into the log when it changes.
-    bool m_menuThemeOn = false;
-    // The same for the music of a round (game/sound/RoundMusic.hpp): the bed, the chase layer
-    // and the sting of a won night, which plays once and is faded when its screen is left.
-    bool m_mazeAmbientOn = false;
-    bool m_shadeChaseOn = false;
-    bool m_nightEndOn = false;
-    // The volume of the bed under the chase layer (game::advanceAmbientDuck): 1, or on
-    // its way to the ducked volume and back.
-    float m_ambientDuck = 1.0F;
-    // The wait between the win and the sting (game::advanceNightEndSting).
-    NightEndSting m_nightEndSting;
-    // Seconds until the volume slider of the settings screen may play its next sample
-    // click (handleControlChanges). 0: the next change is heard at once.
-    double m_volumeSampleWait = 0.0;
 };
 
 } // namespace game

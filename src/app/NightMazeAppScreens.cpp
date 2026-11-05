@@ -55,7 +55,7 @@ void NightMazeApp::handleGameEvent(GameEvent event) {
     if (before == GameMode::EndingCard) {
         // The sting of the last night is faded, not cut: stopAll leaves a fading sound.
         fadeNightEnd();
-        m_audio.stopAll();
+        m_sound.audio.stopAll();
     }
     // After a film that ends in black the main menu comes in out of black.
     m_menus.menuAfterIntro = before == GameMode::Intro || before == GameMode::EndingCard;
@@ -391,13 +391,13 @@ void NightMazeApp::updateStorybookIntro() {
     const double before = m_story.introSeconds;
     m_story.introSeconds += time().deltaSeconds();
     if (before <= 0.0 && m_story.storybookMusicSound != NO_STORYBOOK_SOUND) {
-        m_audio.play(m_story.storybookMusicSound);
+        m_sound.audio.play(m_story.storybookMusicSound);
     }
     for (const std::size_t beat :
          storybookVoicesBetween(m_story.storybookBeatSeconds, static_cast<float>(before),
                                 static_cast<float>(m_story.introSeconds))) {
         if (m_story.storybookVoiceSounds.at(beat) != NO_STORYBOOK_SOUND) {
-            m_audio.play(m_story.storybookVoiceSounds.at(beat));
+            m_sound.audio.play(m_story.storybookVoiceSounds.at(beat));
         }
     }
 
@@ -425,7 +425,7 @@ void NightMazeApp::leaveIntro(bool intoNight) {
     // The wind is one sound of half a minute: without this it would go on over the
     // main menu or the title card of the night after a skip. The same for the music
     // and the spoken lines of the storybook.
-    m_audio.stopAll();
+    m_sound.audio.stopAll();
     // The pictures of the storybook are not needed until the next intro.
     m_renderers.storybookRenderer.unload();
     m_story.storybookPlaying = false;
