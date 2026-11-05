@@ -13,4 +13,6 @@ target_sources(night_maze PRIVATE
     PostProcess.cpp
     PostProcess.hpp
     ShaderUniforms.hpp
+    ShadowMap.cpp
+    ShadowMap.hpp
 )

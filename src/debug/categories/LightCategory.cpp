@@ -8,9 +8,9 @@
 #include "debug/Widgets.hpp"
 #include "game/Lighting.hpp"
 #include "game/Round.hpp"
-#include "game/ShadowMap.hpp"
 #include "game/Shadows.hpp"
 #include "gfx/Framebuffer.hpp"
+#include "render/ShadowMap.hpp"
 #include "scene/Light.hpp"
 #include "scene/LightSpace.hpp"
 
