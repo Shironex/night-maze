@@ -3,9 +3,9 @@
 
 #include "core/GlCheck.hpp"
 #include "core/Log.hpp"
-#include "game/GateLamp.hpp"
 #include "game/NightMazeAppShared.hpp"
 #include "game/Shade.hpp"
+#include "game/round/GateLamp.hpp"
 #include "gfx/ColorSpace.hpp"
 #include "gfx/RenderStats.hpp"
 #include "scene/Raycast.hpp"

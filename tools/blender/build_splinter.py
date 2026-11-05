@@ -37,7 +37,7 @@ import make_textures
 
 # All sizes are in metres. The geometry is written in Blender space, where Z is the height.
 # After export Z becomes the game Y axis. The two splinters are 0.4 m tall and the
-# heartstone 0.9 m (HEARTSTONE_HEIGHT in src/game/Heartstone.hpp). Their origin is their
+# heartstone 0.9 m (HEARTSTONE_HEIGHT in src/game/round/Heartstone.hpp). Their origin is their
 # lower point: the game lets them float and turns them about the upright line through it.
 MOON_HEIGHT = 0.4
 HEARTSTONE_HEIGHT = 0.9

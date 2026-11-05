@@ -6,12 +6,12 @@
 #include "debug/DebugContext.hpp"
 #include "debug/Pictures.hpp"
 #include "debug/Widgets.hpp"
-#include "game/Campaign.hpp"
-#include "game/GateLamp.hpp"
 #include "game/Minimap.hpp"
 #include "game/MinimapRenderer.hpp"
 #include "game/Player.hpp"
-#include "game/Round.hpp"
+#include "game/round/Campaign.hpp"
+#include "game/round/GateLamp.hpp"
+#include "game/round/Round.hpp"
 #include "gfx/Framebuffer.hpp"
 
 #include <imgui.h>

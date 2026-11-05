@@ -3,10 +3,10 @@
 #include "game/land/Grass.hpp"
 
 #include "core/Files.hpp"
-#include "game/GateLamp.hpp"
 #include "game/land/Terrain.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/round/GateLamp.hpp"
 #include "scene/Collider.hpp"
 
 #include <doctest/doctest.h>

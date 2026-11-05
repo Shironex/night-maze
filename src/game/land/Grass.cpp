@@ -1,7 +1,6 @@
 // Grass: where the tufts of grass stand, one point per tuft, chosen from the seed of the maze.
 #include "game/land/Grass.hpp"
 
-#include "game/GateLamp.hpp"
 #include "game/land/Land.hpp"
 #include "game/land/Terrain.hpp"
 #include "game/maze/MazeGenerator.hpp"
@@ -9,6 +8,7 @@
 #include "game/maze/MazeWorld.hpp"
 #include "game/maze/Stile.hpp"
 #include "game/maze/StoneSheep.hpp"
+#include "game/round/GateLamp.hpp"
 
 #include <algorithm>
 #include <array>

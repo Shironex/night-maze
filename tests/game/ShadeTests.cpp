@@ -1,18 +1,18 @@
 // Tests of the shade (game/Shade.hpp): where it starts, how it wanders, what it hears and
 // sees, when the flashlight is on it and burns it away, how it walks and when it catches,
-// and how a round carries it (game/Round.hpp).
+// and how a round carries it (game/round/Round.hpp).
 #include "game/Shade.hpp"
 
-#include "game/Campaign.hpp"
-#include "game/Difficulty.hpp"
-#include "game/Exit.hpp"
 #include "game/Lighting.hpp"
 #include "game/Player.hpp"
-#include "game/Round.hpp"
 #include "game/land/Terrain.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/round/Campaign.hpp"
+#include "game/round/Difficulty.hpp"
+#include "game/round/Exit.hpp"
+#include "game/round/Round.hpp"
 
 #include <doctest/doctest.h>
 

@@ -2,8 +2,8 @@
 // water on the ground.
 #pragma once
 
-#include "game/Crystals.hpp"
 #include "game/maze/Maze.hpp"
+#include "game/round/Crystals.hpp"
 #include "gfx/Vertex.hpp"
 
 #include <glm/glm.hpp>

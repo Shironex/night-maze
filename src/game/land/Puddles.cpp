@@ -2,11 +2,11 @@
 // water on the ground.
 #include "game/land/Puddles.hpp"
 
-#include "game/Crystals.hpp"
 #include "game/land/Terrain.hpp"
 #include "game/maze/MazeGenerator.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/round/Crystals.hpp"
 
 #include <glm/gtc/constants.hpp>
 

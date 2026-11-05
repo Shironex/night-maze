@@ -2,9 +2,9 @@
 #include "game/NightMazeApp.hpp"
 
 #include "core/GlCheck.hpp"
-#include "game/Crystals.hpp"
-#include "game/Exit.hpp"
 #include "game/Interactables.hpp"
+#include "game/round/Crystals.hpp"
+#include "game/round/Exit.hpp"
 #include "gfx/ColorSpace.hpp"
 #include "render/ModelDraw.hpp"
 #include "render/ShaderUniforms.hpp"

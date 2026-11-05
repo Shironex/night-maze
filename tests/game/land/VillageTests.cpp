@@ -3,13 +3,13 @@
 #include "game/land/Village.hpp"
 
 #include "assets/ObjLoader.hpp"
-#include "game/Campaign.hpp"
 #include "game/Fog.hpp"
-#include "game/GateLamp.hpp"
 #include "game/MenuCamera.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/round/Campaign.hpp"
+#include "game/round/GateLamp.hpp"
 #include "scene/Camera.hpp"
 
 #include <doctest/doctest.h>

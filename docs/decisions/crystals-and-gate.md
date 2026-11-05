@@ -1,6 +1,6 @@
 # Crystals scale with the maze, the gate opens at a share of them, and an empty battery only darkens
 Status: accepted (2026-10-05)
-Code: src/game/Crystals.hpp, src/game/Crystals.cpp, src/game/Round.cpp, src/game/Difficulty.cpp, src/game/Campaign.cpp
+Code: src/game/round/Crystals.hpp, src/game/round/Crystals.cpp, src/game/round/Round.cpp, src/game/round/Difficulty.cpp, src/game/round/Campaign.cpp
 
 Context: The PRD gave no counts, and an empty battery needed a meaning.
 Decision: A maze gets one crystal per 8 cells, from 1 to 64, unless a level or night names its count. The gate opens at 70 percent, rounded up (80 on Hard and the last two nights). An empty battery only switches the flashlight off until a crystal charges it.

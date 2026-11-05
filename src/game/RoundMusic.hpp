@@ -3,9 +3,9 @@
 #pragma once
 
 #include "game/GameState.hpp"
-#include "game/Round.hpp"
 #include "game/Shade.hpp"
 #include "game/SoundCues.hpp"
+#include "game/round/Round.hpp"
 
 #include <cstddef>
 

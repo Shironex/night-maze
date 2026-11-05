@@ -2,8 +2,8 @@
 // the view along it.
 #include "game/MenuCameraShared.hpp"
 
-#include "game/Exit.hpp"
 #include "game/maze/MazeLayout.hpp"
+#include "game/round/Exit.hpp"
 
 #include <glm/gtc/constants.hpp>
 

@@ -4,12 +4,12 @@
 
 #include "assets/ImageLoader.hpp"
 #include "assets/Tangents.hpp"
-#include "game/Crystals.hpp"
 #include "game/Player.hpp"
-#include "game/Round.hpp"
 #include "game/maze/MazeGenerator.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/round/Crystals.hpp"
+#include "game/round/Round.hpp"
 
 #include <doctest/doctest.h>
 

@@ -24,7 +24,7 @@ Inside `engine`, `src/core` includes only itself, `src/gfx` uses `src/core`, `sr
 
 `src/game` is split between two targets. The files that need no window are in `game_logic`. The files that draw (`NightMazeApp`, the `*Renderer` classes) are in the executable. The helpers of the passes that hold no rule of the game (`PostProcess`, `ShadowMap`, `Skybox`, `LightRig` and the others) are in `src/render`, in the executable too.
 
-What runs without a window or an OpenGL context: all of `game_logic`, the math in `src/scene`, the file loaders and shader text functions in `engine`, and the audio engine when it is made with `audio::AudioOutput::None`. The 63 test files in `tests` cover that, in folders that mirror `src/` (`tests/game/RoundTests.cpp` tests `src/game/Round.cpp`), plus `tests/LayeringTests.cpp`, which checks the layering rules below.
+What runs without a window or an OpenGL context: all of `game_logic`, the math in `src/scene`, the file loaders and shader text functions in `engine`, and the audio engine when it is made with `audio::AudioOutput::None`. The 63 test files in `tests` cover that, in folders that mirror `src/` (`tests/game/round/RoundTests.cpp` tests `src/game/round/Round.cpp`), plus `tests/LayeringTests.cpp`, which checks the layering rules below.
 
 | Library | Version | Used by |
 |---|---|---|
@@ -49,6 +49,7 @@ src/
                       its rules (game_logic) and its renderers (night_maze)
     land/             the ground, the grass, the puddles, the land around the maze, the village
     maze/             the maze, its walls, the stile and the stone sheep
+    round/            a round and its pickups, the gate, the campaign, the ledger, the day
   render/             night_maze: helpers of the passes of a frame, no rules of the game
   hud/                night_maze: the HUD of a round (HudRules also in the tests)
   debug/              night_maze: debug window, categories/
@@ -68,6 +69,7 @@ Directory map:
 - `src/game`: the application class (`NightMazeApp`), and one folder per domain, each with its rules and its renderers:
   - `src/game/land`: the ground (`Terrain`), the tufts of grass, the puddles, the land around the maze with the triangles built in code (`LandMeshes`), the village on the ridge, and their renderers.
   - `src/game/maze`: the grid of the maze, its generator and layout, the built world of a seed (`MazeWorld`), the worn wall variants, the stile, the stone sheep and `MazeRenderer`.
+  - `src/game/round`: a round (`Round`) and what is placed in it from the seed (exit, crystals, flasks, the heartstone, the gate lamp), the cells seen so far (`Discovery`), the campaign, the difficulty, the ledger, the maze of the day (`Daily`), and `GameplayRenderer`.
 - `src/render`: the helpers of the passes of a frame that hold no rule of the game: the names of the shader uniforms (`ShaderUniforms.hpp`), the GPU timers of the passes (`GpuPasses`), the uniform buffer of the lights (`LightRig`), the draw of a model with its culling test (`ModelDraw`), the lines of the debug view of the colliders (`ColliderLines`), the HDR target, the bloom and the composite pass (`PostProcess`), the depth targets of the shadows (`ShadowMap`), the sky cube (`Skybox`).
 - `src/hud`: the HUD of a round (gauges, counters, crosshair, prompt, cards), drawn with Dear ImGui, its colours, and the arithmetic of its scale and its sentences (`HudRules`).
 - `src/debug`: the debug window and its seven categories in `src/debug/categories`.
@@ -221,7 +223,7 @@ The rules are in `game_logic`, as header and source pairs with tests:
 
 - Maze: `src/game/maze/Maze.hpp`, `MazeGenerator.hpp`, `MazeLayout.hpp`, and the ground `src/game/land/Terrain.hpp`. `MazeWorld.hpp` puts them together.
 - Placement from the seed: `buildMazeWorld` calls the generator and then `Exit.hpp`, `Crystals.hpp`, `Heartstone.hpp` (the one big splinter, in the farthest dead end), `Interactables.hpp` (levers and notes) and `WallVariants.hpp`. Flasks (`Flasks.hpp`) are placed by `startRound`, because their count belongs to the difficulty. The same seed gives the same maze and objects on every system.
-- Round: `src/game/Round.hpp` (`startRound`, `updateRound`), with `Interaction.hpp` for picking and `Discovery.hpp` for what the map shows.
+- Round: `src/game/round/Round.hpp` (`startRound`, `updateRound`), with `Interaction.hpp` for picking and `Discovery.hpp` for what the map shows.
 - Player and stamina: `src/game/Player.hpp`.
 - Enemy: `src/game/Shade.hpp`.
 - Campaign, intro and difficulty: `Campaign.hpp`, `Intro.hpp`, `Difficulty.hpp`.
@@ -266,8 +268,8 @@ What the launcher expects from a game build is what `.github/workflows/release.y
 
 - Add a setting: the field and its name in `src/game/Settings.hpp` and `src/game/Settings.cpp`, the control in `assets/ui/settings.rml`, then `fillSettingsDocument` and `handleControlChanges` in `src/game/NightMazeAppMenus.cpp`.
 - Add a sound cue: the enum entry, the count and the table row in `src/game/SoundCues.hpp` and `src/game/SoundCues.cpp`, the sound in `tools/make_sounds.py`, and one `playCue` call in the `src/game/NightMazeApp*.cpp` file where the thing happens.
-- Add a pickup: follow the flask. Placement rules in `src/game/Flasks.cpp`, state and collection in `src/game/Round.cpp` (`startRound`, `updateRound`), drawing in `src/game/GameplayRenderer.cpp`.
+- Add a pickup: follow the flask. Placement rules in `src/game/round/Flasks.cpp`, state and collection in `src/game/round/Round.cpp` (`startRound`, `updateRound`), drawing in `src/game/round/GameplayRenderer.cpp`.
 - Add a debug control: a reference in `src/debug/DebugContext.hpp`, filled in `src/main.cpp`, and the widget in one file of `src/debug/categories`. Keep `controlCount` in `src/debug/Categories.hpp` right.
 - Add a menu screen: a mode, its events and predicates in `src/game/GameState.cpp`, a document in `assets/ui` next to `assets/ui/pause.rml`, then `showScreen` in `src/game/NightMazeAppScreens.cpp` and a fill function in `src/game/NightMazeAppMenus.cpp`. Say whether it has the menu theme: a line in `menuThemeScreen` in `src/game/SoundCues.cpp` and in the table of its test. The build stops until the line is there.
 
-The matching test files are `tests/game/SettingsTests.cpp`, `tests/game/SoundCueTests.cpp`, `tests/game/FlaskTests.cpp`, `tests/game/RoundTests.cpp` and `tests/game/GameStateTests.cpp`.
+The matching test files are `tests/game/SettingsTests.cpp`, `tests/game/SoundCueTests.cpp`, `tests/game/round/FlaskTests.cpp`, `tests/game/round/RoundTests.cpp` and `tests/game/GameStateTests.cpp`.

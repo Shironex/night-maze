@@ -2,12 +2,12 @@
 // camera is and when its sounds are played.
 #include "game/Intro.hpp"
 
-#include "game/Difficulty.hpp"
 #include "game/Lighting.hpp"
 #include "game/MenuCamera.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/round/Difficulty.hpp"
 
 #include <doctest/doctest.h>
 #include <glm/glm.hpp>

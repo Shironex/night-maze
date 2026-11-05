@@ -85,14 +85,14 @@ constexpr std::array<std::string_view, 1> LOGIC_GLFW_ALLOWED = {"game/KeyBinding
 
 // One #include line of a source file.
 struct Include {
-    // The including file, relative to src/ ("game/Round.cpp").
+    // The including file, relative to src/ ("game/round/Round.cpp").
     std::string file;
     // What it includes, as written between the quotes or the angle brackets.
     std::string path;
     bool quoted = false;
 };
 
-// The first folder of a path relative to src/ ("game" for "game/Round.hpp"), empty for a file
+// The first folder of a path relative to src/ ("game" for "game/round/Round.hpp"), empty for a file
 // straight in src/ or a header of a library without a folder.
 std::string topFolder(std::string_view path) {
     const std::size_t slash = path.find('/');
@@ -283,7 +283,7 @@ TEST_CASE("the layering check reads the sources and the lists") {
         CHECK(folders.contains(std::string(folder)));
     }
     const std::set<std::string> logic = filesOfTarget("game_logic");
-    CHECK(logic.contains("game/Round.cpp"));
+    CHECK(logic.contains("game/round/Round.cpp"));
     CHECK_FALSE(logic.contains("game/maze/MazeRenderer.cpp"));
     CHECK(filesOfTarget("night_maze").contains("main.cpp"));
     CHECK(filesOfTarget("night_maze_tests").contains("debug/Search.cpp"));

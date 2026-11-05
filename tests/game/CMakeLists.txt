@@ -1,29 +1,18 @@
 target_sources(night_maze_tests PRIVATE
     BloomTests.cpp
-    CampaignTests.cpp
-    CrystalTests.cpp
-    DailyTests.cpp
-    DifficultyTests.cpp
-    DiscoveryTests.cpp
     EnvironmentMappingTests.cpp
-    ExitTests.cpp
-    FlaskTests.cpp
     FogTests.cpp
     GameStateTests.cpp
-    GateLampTests.cpp
-    HeartstoneTests.cpp
     InteractablesTests.cpp
     InteractionTests.cpp
     IntroTests.cpp
     KeyBindingsTests.cpp
-    LedgerTests.cpp
     LightingTests.cpp
     MenuBackgroundTests.cpp
     MenuCameraTests.cpp
     MinimapTests.cpp
     PlayerTests.cpp
     RoundMusicTests.cpp
-    RoundTests.cpp
     SettingsTests.cpp
     ShadeTests.cpp
     ShadowTests.cpp
@@ -36,3 +25,4 @@ target_sources(night_maze_tests PRIVATE
 
 add_subdirectory(land)
 add_subdirectory(maze)
+add_subdirectory(round)

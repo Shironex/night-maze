@@ -3,10 +3,10 @@
 // next.
 #pragma once
 
-#include "game/Campaign.hpp"
-#include "game/Difficulty.hpp"
 #include "game/StartOptions.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/round/Campaign.hpp"
+#include "game/round/Difficulty.hpp"
 
 #include <cstdint>
 #include <string_view>
@@ -37,7 +37,7 @@ enum class GameMode {
     /// The screen of free play, opened from the main menu: the difficulty, the calm
     /// night, the seed and the button that starts a game.
     FreePlay,
-    /// The list of the five nights of the campaign (game/Campaign.hpp), opened from the
+    /// The list of the five nights of the campaign (game/round/Campaign.hpp), opened from the
     /// main menu.
     Nights,
     /// The question before a new campaign replaces a finished one.
@@ -53,7 +53,7 @@ enum class GameMode {
     /// of the first night follows. It is a screen of its own for the same reason as the
     /// two settings screens: the screen itself remembers where its end leads.
     CampaignIntro,
-    /// The lamplighter's ledger (game/Ledger.hpp): the page with every line of the story
+    /// The lamplighter's ledger (game/round/Ledger.hpp): the page with every line of the story
     /// the player has read. Like the settings it is a screen of its own for each place
     /// it can be opened from: the main menu and the pause menu.
     LedgerFromMenu,
@@ -88,7 +88,7 @@ enum class GameEvent {
     /// ("Continue"), a night of the list, or the button "Next night" of the result
     /// screen. The application says which night. The entry "Tonight's hedge" of the main
     /// menu sends it too: the maze of the day begins with a title card like a night
-    /// (game/Daily.hpp).
+    /// (game/round/Daily.hpp).
     StartNight,
     CardFinished, ///< a title card or the ending card reached its end, or was skipped
     CampaignWon,  ///< the player walked through the gate of the last night

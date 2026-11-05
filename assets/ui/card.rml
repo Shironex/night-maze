@@ -9,7 +9,7 @@
      how much of each thing is there (ui::UiLayer::setOpacity): the black over the
      picture, the card itself, each of its lines and the hint. A line without text has
      no height. The intro shows its five cards of two lines with it (game/Intro.hpp).
-     The title card of a night and the ending card (game/Campaign.hpp) are text on
+     The title card of a night and the ending card (game/round/Campaign.hpp) are text on
      black: the game then sets the class "middle" on the card, which lifts the lines to
      the middle of the window. -->
 <div class="black" id="black"></div>

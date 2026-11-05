@@ -1,10 +1,10 @@
 // Interactables: the levers and the notes of a maze, where they hang and what they do.
 #pragma once
 
-#include "game/Crystals.hpp"
 #include "game/land/Terrain.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeLayout.hpp"
+#include "game/round/Crystals.hpp"
 #include "scene/Collider.hpp"
 #include "scene/Raycast.hpp"
 
@@ -102,7 +102,7 @@ struct InteractableSettings {
 
     /// How many of those notes tell the story. The rest are hints, half of them towards
     /// the exit and half towards a crystal. NOTE_MIX_BY_TURNS: every third note, the mix
-    /// of free play. A night of the campaign names its own number (game/Campaign.hpp).
+    /// of free play. A night of the campaign names its own number (game/round/Campaign.hpp).
     /// A number larger than noteCount means all of them.
     int storyNoteCount = NOTE_MIX_BY_TURNS;
 

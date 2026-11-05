@@ -1,6 +1,6 @@
 # The map shows only the corridors the player has already seen
 Status: accepted (2026-10-05)
-Code: src/game/Discovery.hpp, src/game/Discovery.cpp, src/game/Minimap.cpp, src/game/Round.cpp, tests/game/DiscoveryTests.cpp
+Code: src/game/round/Discovery.hpp, src/game/round/Discovery.cpp, src/game/Minimap.cpp, src/game/round/Round.cpp, tests/game/round/DiscoveryTests.cpp
 
 Context: Finding the way is the game. A map of the whole maze with the exit answers it for the player.
 Decision: A cell is discovered when the player stands in it or sees it along a straight corridor up to the next wall. The state lives in the round.

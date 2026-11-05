@@ -1,8 +1,8 @@
 // Interactables: the levers and the notes of a maze, where they hang and what they do.
 #include "game/Interactables.hpp"
 
-#include "game/Exit.hpp"
 #include "game/maze/MazeGenerator.hpp"
+#include "game/round/Exit.hpp"
 
 #include <algorithm>
 #include <array>

@@ -42,7 +42,7 @@ constexpr float PILLAR_HEIGHT = 3.15F;
 
 /// Height of the arch that stands over the exit gate (the model gate_arch) with the big
 /// lantern on its crown, from the base of the gate to the ring of that lantern (4.85 m
-/// for its base and 0.72 m for the lantern drawn twice as large, game/GateLamp.hpp): the
+/// for its base and 0.72 m for the lantern drawn twice as large, game/round/GateLamp.hpp): the
 /// tallest thing of the maze, so its lantern shows above the walls. The shadow map of the
 /// moon is fitted up to this height (game::shadowCasterBounds).
 constexpr float GATE_HOUSE_HEIGHT = 5.6F;

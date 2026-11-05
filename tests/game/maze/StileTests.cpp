@@ -3,10 +3,6 @@
 #include "game/maze/Stile.hpp"
 
 #include "assets/ObjLoader.hpp"
-#include "game/Daily.hpp"
-#include "game/Difficulty.hpp"
-#include "game/Flasks.hpp"
-#include "game/GateLamp.hpp"
 #include "game/Interactables.hpp"
 #include "game/Player.hpp"
 #include "game/land/Grass.hpp"
@@ -14,6 +10,10 @@
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "game/maze/WallVariants.hpp"
+#include "game/round/Daily.hpp"
+#include "game/round/Difficulty.hpp"
+#include "game/round/Flasks.hpp"
+#include "game/round/GateLamp.hpp"
 #include "scene/Collider.hpp"
 
 #include <doctest/doctest.h>
