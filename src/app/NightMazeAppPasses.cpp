@@ -100,7 +100,7 @@ void NightMazeApp::drawMoonShadowMap() {
 
     // Until the pass below has run, this frame has no shadows.
     m_moonShadowDrawn = false;
-    if (!m_moonShadow.enabled || !m_shadowDepthShader.isValid()) {
+    if (!m_moonShadow.enabled || !m_shaders.shadowDepthShader.isValid()) {
         return;
     }
 
@@ -121,7 +121,7 @@ void NightMazeApp::drawMoonShadowMap() {
                               .groundVersion = m_groundVersion,
                               .wallVariants = m_mazeSettings.wallVariants,
                               .land = m_villageSettings.landEnabled,
-                              .depthProgramLoads = m_shadowDepthShader.loadCount()};
+                              .depthProgramLoads = m_shaders.shadowDepthShader.loadCount()};
 
     // What the graphics card does from here to end() is the measured pass: the copy
     // into the map and the draw calls into it, without the preview below. In a frame
@@ -148,7 +148,7 @@ void NightMazeApp::drawMoonShadowMap() {
 
     // The picture of the map, only while the debug UI shows it.
     if (m_moonShadow.preview) {
-        m_moonShadowMap.drawPreview(m_previewShader, m_moonLightSpace);
+        m_moonShadowMap.drawPreview(m_shaders.previewShader, m_moonLightSpace);
     }
 }
 
@@ -170,7 +170,7 @@ void NightMazeApp::drawFlashlightShadowMap(const LightingSettings& frameLighting
     // take away: the pass is skipped. frameLighting is asked and not m_lighting,
     // because an empty battery switches the light off for the frame.
     if (!m_flashlightShadow.enabled || !frameLighting.flashlightOn ||
-        !m_shadowDepthShader.isValid()) {
+        !m_shaders.shadowDepthShader.isValid()) {
         return;
     }
     // Measured like the pass of the moon.
@@ -189,7 +189,7 @@ void NightMazeApp::drawFlashlightShadowMap(const LightingSettings& frameLighting
 
     // The picture of the map, only while the debug UI shows it.
     if (m_flashlightShadow.preview) {
-        m_flashlightShadowMap.drawPreview(m_previewShader, m_flashlightLightSpace);
+        m_flashlightShadowMap.drawPreview(m_shaders.previewShader, m_flashlightLightSpace);
     }
 }
 
@@ -226,23 +226,23 @@ void NightMazeApp::drawFixedShadowCasters(const scene::LightSpace& lightSpace,
     // stands in the shadow map exactly where it stands in the picture. The depth program
     // has no samplers, no tint and no glow: those uniforms are set all the same and
     // ignored, as every uniform a program does not have.
-    m_shadowDepthShader.use();
-    m_shadowDepthShader.setMat4(VIEW_UNIFORM, lightSpace.view);
-    m_shadowDepthShader.setMat4(PROJECTION_UNIFORM, lightSpace.projection);
+    m_shaders.shadowDepthShader.use();
+    m_shaders.shadowDepthShader.setMat4(VIEW_UNIFORM, lightSpace.view);
+    m_shaders.shadowDepthShader.setMat4(PROJECTION_UNIFORM, lightSpace.projection);
 
     // The terrain is always drawn filled here: the wireframe switch is a way to look
     // at the ground, and a ground of lines would cast a shadow of lines.
     constexpr bool NO_WIREFRAME = false;
-    m_terrainRenderer.draw(m_shadowDepthShader, NO_WIREFRAME);
+    m_terrainRenderer.draw(m_shaders.shadowDepthShader, NO_WIREFRAME);
     // The walls no lever lowers, from the matrices of the world and not from the ones
     // of the round: the two lists are the same for these walls (game::leverWallFlags),
     // and read from the world this function depends on no round.
-    m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_mazeWorld.wallMatrices,
+    m_mazeRenderer.draw(m_shaders.shadowDepthShader, m_mazeWorld, m_mazeWorld.wallMatrices,
                         m_mazeSettings.wallVariants, MazeParts::Fixed, m_mazeBounds, frustum);
     // The near band of the land: its trees, houses, field walls and hedgerows stand on the
     // terrain, inside the box of the moon. The flashlight culls them with its frustum.
     if (m_villageSettings.landEnabled) {
-        m_landRenderer.drawShadowCasters(m_shadowDepthShader, frustum);
+        m_landRenderer.drawShadowCasters(m_shaders.shadowDepthShader, frustum);
     }
 }
 
@@ -252,29 +252,29 @@ void NightMazeApp::drawMovingShadowCasters(const scene::LightSpace& lightSpace,
     // one in most frames. Here the casters stand as the round has them at this moment:
     // the gate and the walls of pulled levers as far as they have sunk, every crystal
     // where it floats.
-    m_shadowDepthShader.use();
-    m_shadowDepthShader.setMat4(VIEW_UNIFORM, lightSpace.view);
-    m_shadowDepthShader.setMat4(PROJECTION_UNIFORM, lightSpace.projection);
+    m_shaders.shadowDepthShader.use();
+    m_shaders.shadowDepthShader.setMat4(VIEW_UNIFORM, lightSpace.view);
+    m_shaders.shadowDepthShader.setMat4(PROJECTION_UNIFORM, lightSpace.projection);
 
     // The walls of the levers, in every frame of the round and not only while one
     // sinks: there are at most MAX_LEVER_COUNT of them, and a wall that is always drawn
     // needs no moment at which the still layer has to learn that it started to move or
     // came to rest.
-    m_mazeRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_wallMatrices,
+    m_mazeRenderer.draw(m_shaders.shadowDepthShader, m_mazeWorld, m_wallMatrices,
                         m_mazeSettings.wallVariants, MazeParts::LeverWalls, m_mazeBounds, frustum);
     // The gatehouse, the milestone and the lanterns never move, but they are drawn by
     // the same call as the door and the bell, which do: they stay on this side.
-    m_gameplayRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, crystalEmissive(),
+    m_gameplayRenderer.draw(m_shaders.shadowDepthShader, m_mazeWorld, m_round, crystalEmissive(),
                             m_gateLampGlow, m_bellSwing.degrees, frustum);
-    m_gameplayRenderer.drawFlasks(m_shadowDepthShader, m_mazeWorld, m_round, frustum);
+    m_gameplayRenderer.drawFlasks(m_shaders.shadowDepthShader, m_mazeWorld, m_round, frustum);
     // The shade casts a shadow like everything that stands in the maze.
     if (m_shadeDrawn) {
-        m_gameplayRenderer.drawShade(m_shadowDepthShader, m_shadeMatrix, frustum);
-        m_gameplayRenderer.drawShadeHollow(m_shadowDepthShader, m_shadeMatrix, frustum);
+        m_gameplayRenderer.drawShade(m_shaders.shadowDepthShader, m_shadeMatrix, frustum);
+        m_gameplayRenderer.drawShadeHollow(m_shaders.shadowDepthShader, m_shadeMatrix, frustum);
     }
     // The levers and the notes cast shadows too. An empty PickState: nothing is
     // highlighted, the depth program has no colours.
-    m_interactableRenderer.draw(m_shadowDepthShader, m_mazeWorld, m_round, PickState{},
+    m_interactableRenderer.draw(m_shaders.shadowDepthShader, m_mazeWorld, m_round, PickState{},
                                 glm::vec3{0.0F}, frustum);
     // The grass is left out. A blade is 4 cm wide at its root and thinner above, and
     // a texel of the map of the moon is about 3 cm, so its shadow would be a flicker of
@@ -317,39 +317,39 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
                                  const scene::Frustum* frustum) const {
     // Without a shader program there is nothing to draw with. The load error was logged
     // once, when the shader was created, and the rest of the frame is still drawn.
-    if (!m_texturedShader.isValid()) {
+    if (!m_shaders.texturedShader.isValid()) {
         return;
     }
 
     // The uniforms belong to the program in use, so use() comes before the setters.
-    m_texturedShader.use();
-    m_texturedShader.setMat4(VIEW_UNIFORM, view);
-    m_texturedShader.setMat4(PROJECTION_UNIFORM, projection);
+    m_shaders.texturedShader.use();
+    m_shaders.texturedShader.setMat4(VIEW_UNIFORM, view);
+    m_shaders.texturedShader.setMat4(PROJECTION_UNIFORM, projection);
     // The enum values are the numbers textured.frag compares uViewMode with.
-    m_texturedShader.setInt(VIEW_MODE_UNIFORM, static_cast<int>(m_viewMode));
+    m_shaders.texturedShader.setInt(VIEW_MODE_UNIFORM, static_cast<int>(m_viewMode));
     // Only the view of the normals reads it: that view shows the normals the lighting
     // would use, so with normal mapping the ones from the normal maps.
-    m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
+    m_shaders.texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
 
     // The ground first, then what stands on it. The order does not change the picture
     // (the depth test sorts it out), it only follows the way the scene is built. The
     // terrain is one mesh and one draw call: it is never left out.
-    m_terrainRenderer.draw(m_texturedShader, m_terrainSettings.wireframe);
+    m_terrainRenderer.draw(m_shaders.texturedShader, m_terrainSettings.wireframe);
     // The land around the maze. Not in the reflection pass: nothing that reflects is
     // big or near enough to show it.
     if (m_villageSettings.landEnabled) {
-        m_landRenderer.draw(m_texturedShader, frustum, m_frameNightLights.nightsLit,
+        m_landRenderer.draw(m_shaders.texturedShader, frustum, m_frameNightLights.nightsLit,
                             m_frameNightLights.newestStrength, 0.0F);
     }
-    m_mazeRenderer.draw(m_texturedShader, m_mazeWorld, m_wallMatrices, m_mazeSettings.wallVariants,
-                        MazeParts::All, m_mazeBounds, frustum);
+    m_mazeRenderer.draw(m_shaders.texturedShader, m_mazeWorld, m_wallMatrices,
+                        m_mazeSettings.wallVariants, MazeParts::All, m_mazeBounds, frustum);
     // The crystals and the gate, with the same program: they show up in the debug
     // views like the walls do. (In the picture without lighting the crystals may be
     // left to the reflection pass, see drawGateAndCrystals.)
-    drawGateAndCrystals(m_texturedShader, frustum);
+    drawGateAndCrystals(m_shaders.texturedShader, frustum);
     // The levers and the notes. The highlight of the picked one shows in the picture
     // without lighting. The two debug views show data and ignore it.
-    drawInteractables(m_texturedShader, frustum);
+    drawInteractables(m_shaders.texturedShader, frustum);
 }
 
 void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projection,
@@ -357,7 +357,7 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
     // Gouraud has a program of its own (the light is computed in its vertex shader).
     // Phong and Blinn-Phong share the other one and differ in one uniform.
     const gfx::Shader& shader =
-        m_lighting.mode == LightingMode::Gouraud ? m_gouraudShader : m_litShader;
+        m_lighting.mode == LightingMode::Gouraud ? m_shaders.gouraudShader : m_shaders.litShader;
     if (!shader.isValid()) {
         return;
     }
@@ -407,7 +407,8 @@ void NightMazeApp::drawInteractables(const gfx::Shader& shader,
 }
 
 bool NightMazeApp::crystalsReflect() const {
-    return m_environment.enabled && m_viewMode == ViewMode::Textured && m_reflectShader.isValid();
+    return m_environment.enabled && m_viewMode == ViewMode::Textured &&
+           m_shaders.reflectShader.isValid();
 }
 
 void NightMazeApp::drawGateAndCrystals(const gfx::Shader& shader,
@@ -452,21 +453,21 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
     // program, whose uniforms of this frame (the matrices and the view mode) that
     // function has already set: a uniform keeps its value while other programs draw.
     if (m_viewMode != ViewMode::Textured) {
-        if (puddlesDrawn && m_texturedShader.isValid()) {
-            m_texturedShader.use();
-            m_puddleRenderer.draw(m_texturedShader);
+        if (puddlesDrawn && m_shaders.texturedShader.isValid()) {
+            m_shaders.texturedShader.use();
+            m_puddleRenderer.draw(m_shaders.texturedShader);
         }
         return;
     }
 
-    if (!m_reflectShader.isValid()) {
+    if (!m_shaders.reflectShader.isValid()) {
         return;
     }
 
     // The uniforms belong to the program in use, so use() comes before the setters.
-    m_reflectShader.use();
-    m_reflectShader.setMat4(VIEW_UNIFORM, view);
-    m_reflectShader.setMat4(PROJECTION_UNIFORM, projection);
+    m_shaders.reflectShader.use();
+    m_shaders.reflectShader.setMat4(VIEW_UNIFORM, view);
+    m_shaders.reflectShader.setMat4(PROJECTION_UNIFORM, projection);
     // View frustum culling for the crystals and the hood of the shade, with the planes
     // of the two matrices just set (see drawMaze). The puddles are one mesh and one
     // draw call and are never left out.
@@ -478,13 +479,13 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
     // sky has to be looked up per fragment anyway), and shows the surface at full
     // brightness in the mode Unlit, like the grass program.
     const bool lit = m_lighting.mode != LightingMode::Unlit;
-    m_reflectShader.setInt(REFLECT_LIT_UNIFORM, lit ? 1 : 0);
-    m_reflectShader.setInt(SPECULAR_MODEL_UNIFORM,
-                           static_cast<int>(specularModelOf(m_lighting.mode)));
-    m_reflectShader.setFloat(SPECULAR_STRENGTH_UNIFORM, m_lighting.specularStrength);
-    m_reflectShader.setFloat(SHININESS_UNIFORM, m_lighting.shininess);
-    m_reflectShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
-    setShadowUniformsOf(m_reflectShader);
+    m_shaders.reflectShader.setInt(REFLECT_LIT_UNIFORM, lit ? 1 : 0);
+    m_shaders.reflectShader.setInt(SPECULAR_MODEL_UNIFORM,
+                                   static_cast<int>(specularModelOf(m_lighting.mode)));
+    m_shaders.reflectShader.setFloat(SPECULAR_STRENGTH_UNIFORM, m_lighting.specularStrength);
+    m_shaders.reflectShader.setFloat(SHININESS_UNIFORM, m_lighting.shininess);
+    m_shaders.reflectShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
+    setShadowUniformsOf(m_shaders.reflectShader);
 
     // The sky the surfaces show: the cube map of the skybox on a texture unit of its
     // own, as bright as the skybox draws it. With the skybox switched off (or without
@@ -492,10 +493,12 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
     // what a mirror shows. The sampler gets its unit in every case: left at 0 it would
     // share a unit with the colour texture, which OpenGL does not allow.
     const bool skyVisible = m_skyboxSettings.enabled && m_skybox.isValid();
-    m_reflectShader.setInt(ENVIRONMENT_MAP_UNIFORM, static_cast<int>(ENVIRONMENT_TEXTURE_UNIT));
-    m_reflectShader.setInt(ENVIRONMENT_SKY_VISIBLE_UNIFORM, skyVisible ? 1 : 0);
-    m_reflectShader.setFloat(ENVIRONMENT_SKY_BRIGHTNESS_UNIFORM, m_skyboxSettings.brightness);
-    m_reflectShader.setVec3(
+    m_shaders.reflectShader.setInt(ENVIRONMENT_MAP_UNIFORM,
+                                   static_cast<int>(ENVIRONMENT_TEXTURE_UNIT));
+    m_shaders.reflectShader.setInt(ENVIRONMENT_SKY_VISIBLE_UNIFORM, skyVisible ? 1 : 0);
+    m_shaders.reflectShader.setFloat(ENVIRONMENT_SKY_BRIGHTNESS_UNIFORM,
+                                     m_skyboxSettings.brightness);
+    m_shaders.reflectShader.setVec3(
         ENVIRONMENT_BACKGROUND_UNIFORM,
         gfx::srgbToLinear(glm::vec3{m_clearColor[0], m_clearColor[1], m_clearColor[2]}));
     if (m_skybox.isValid()) {
@@ -507,12 +510,13 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
 
     // The crystals: a blend of the mirrored and of the refracted sky, the same share at
     // every angle. Their glow can be turned down for this pass, to see the sky on them.
-    m_reflectShader.setFloat(ENVIRONMENT_STRENGTH_UNIFORM, m_environment.crystalStrength);
-    m_reflectShader.setInt(ENVIRONMENT_FRESNEL_ENABLED_UNIFORM, 0);
-    m_reflectShader.setFloat(ENVIRONMENT_REFLECT_SHARE_UNIFORM, m_environment.crystalReflectShare);
-    m_reflectShader.setFloat(ENVIRONMENT_REFRACTION_RATIO_UNIFORM,
-                             m_environment.crystalRefractionRatio);
-    m_gameplayRenderer.drawCrystals(m_reflectShader, m_mazeWorld, m_round,
+    m_shaders.reflectShader.setFloat(ENVIRONMENT_STRENGTH_UNIFORM, m_environment.crystalStrength);
+    m_shaders.reflectShader.setInt(ENVIRONMENT_FRESNEL_ENABLED_UNIFORM, 0);
+    m_shaders.reflectShader.setFloat(ENVIRONMENT_REFLECT_SHARE_UNIFORM,
+                                     m_environment.crystalReflectShare);
+    m_shaders.reflectShader.setFloat(ENVIRONMENT_REFRACTION_RATIO_UNIFORM,
+                                     m_environment.crystalRefractionRatio);
+    m_gameplayRenderer.drawCrystals(m_shaders.reflectShader, m_mazeWorld, m_round,
                                     crystalEmissive() * m_environment.crystalGlowShare, culling);
 
     // The face in the hood of the shade and its cuffs: a piece of the night. All of
@@ -524,22 +528,24 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
     // map. The turn, the star boost and the brightness are put back for the puddles. The strength,
     // the shares and the normal map they set themselves.
     if (m_shadeDrawn) {
-        m_reflectShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, 0);
-        m_reflectShader.setFloat(ENVIRONMENT_STRENGTH_UNIFORM, SKY_ONLY);
-        m_reflectShader.setFloat(ENVIRONMENT_REFLECT_SHARE_UNIFORM, SEEN_THROUGH_ONLY);
-        m_reflectShader.setFloat(ENVIRONMENT_REFRACTION_RATIO_UNIFORM, NO_REFRACTION);
-        m_reflectShader.setFloat(ENVIRONMENT_SKY_TURN_UNIFORM, SHADE_HOOD_SKY_TURN);
-        m_reflectShader.setFloat(ENVIRONMENT_SKY_BRIGHTNESS_UNIFORM,
-                                 m_skyboxSettings.brightness * m_shadeHoodBrightness);
-        m_reflectShader.setFloat(ENVIRONMENT_STAR_BOOST_UNIFORM, m_shadeHoodStarBoost);
-        m_reflectShader.setFloat(ENVIRONMENT_SKY_SPREAD_UNIFORM, SHADE_HOOD_SKY_SPREAD);
-        m_reflectShader.setVec3(ENVIRONMENT_SKY_SPREAD_CENTRE_UNIFORM,
-                                glm::vec3{m_shadeMatrix * glm::vec4{SHADE_HOOD_CENTRE, 1.0F}});
-        m_gameplayRenderer.drawShadeHollow(m_reflectShader, m_shadeMatrix, culling);
-        m_reflectShader.setFloat(ENVIRONMENT_SKY_TURN_UNIFORM, 0.0F);
-        m_reflectShader.setFloat(ENVIRONMENT_STAR_BOOST_UNIFORM, 0.0F);
-        m_reflectShader.setFloat(ENVIRONMENT_SKY_SPREAD_UNIFORM, 0.0F);
-        m_reflectShader.setFloat(ENVIRONMENT_SKY_BRIGHTNESS_UNIFORM, m_skyboxSettings.brightness);
+        m_shaders.reflectShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, 0);
+        m_shaders.reflectShader.setFloat(ENVIRONMENT_STRENGTH_UNIFORM, SKY_ONLY);
+        m_shaders.reflectShader.setFloat(ENVIRONMENT_REFLECT_SHARE_UNIFORM, SEEN_THROUGH_ONLY);
+        m_shaders.reflectShader.setFloat(ENVIRONMENT_REFRACTION_RATIO_UNIFORM, NO_REFRACTION);
+        m_shaders.reflectShader.setFloat(ENVIRONMENT_SKY_TURN_UNIFORM, SHADE_HOOD_SKY_TURN);
+        m_shaders.reflectShader.setFloat(ENVIRONMENT_SKY_BRIGHTNESS_UNIFORM,
+                                         m_skyboxSettings.brightness * m_shadeHoodBrightness);
+        m_shaders.reflectShader.setFloat(ENVIRONMENT_STAR_BOOST_UNIFORM, m_shadeHoodStarBoost);
+        m_shaders.reflectShader.setFloat(ENVIRONMENT_SKY_SPREAD_UNIFORM, SHADE_HOOD_SKY_SPREAD);
+        m_shaders.reflectShader.setVec3(
+            ENVIRONMENT_SKY_SPREAD_CENTRE_UNIFORM,
+            glm::vec3{m_shadeMatrix * glm::vec4{SHADE_HOOD_CENTRE, 1.0F}});
+        m_gameplayRenderer.drawShadeHollow(m_shaders.reflectShader, m_shadeMatrix, culling);
+        m_shaders.reflectShader.setFloat(ENVIRONMENT_SKY_TURN_UNIFORM, 0.0F);
+        m_shaders.reflectShader.setFloat(ENVIRONMENT_STAR_BOOST_UNIFORM, 0.0F);
+        m_shaders.reflectShader.setFloat(ENVIRONMENT_SKY_SPREAD_UNIFORM, 0.0F);
+        m_shaders.reflectShader.setFloat(ENVIRONMENT_SKY_BRIGHTNESS_UNIFORM,
+                                         m_skyboxSettings.brightness);
     }
 
     // The puddles: level mirrors. Their normal points straight up (no normal map),
@@ -547,14 +553,15 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
     // it the flatter they are looked at. The refraction ratio stays as the crystals
     // left it: with a reflect share of 1 the refracted picture is not shown.
     if (puddlesDrawn) {
-        m_reflectShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, 0);
-        m_reflectShader.setFloat(SPECULAR_STRENGTH_UNIFORM, PUDDLE_SPECULAR_STRENGTH);
-        m_reflectShader.setFloat(SHININESS_UNIFORM, PUDDLE_SHININESS);
-        m_reflectShader.setFloat(ENVIRONMENT_STRENGTH_UNIFORM, m_environment.puddleReflectivity);
-        m_reflectShader.setInt(ENVIRONMENT_FRESNEL_ENABLED_UNIFORM,
-                               m_environment.puddleFresnel ? 1 : 0);
-        m_reflectShader.setFloat(ENVIRONMENT_REFLECT_SHARE_UNIFORM, MIRROR_ONLY);
-        m_puddleRenderer.draw(m_reflectShader);
+        m_shaders.reflectShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, 0);
+        m_shaders.reflectShader.setFloat(SPECULAR_STRENGTH_UNIFORM, PUDDLE_SPECULAR_STRENGTH);
+        m_shaders.reflectShader.setFloat(SHININESS_UNIFORM, PUDDLE_SHININESS);
+        m_shaders.reflectShader.setFloat(ENVIRONMENT_STRENGTH_UNIFORM,
+                                         m_environment.puddleReflectivity);
+        m_shaders.reflectShader.setInt(ENVIRONMENT_FRESNEL_ENABLED_UNIFORM,
+                                       m_environment.puddleFresnel ? 1 : 0);
+        m_shaders.reflectShader.setFloat(ENVIRONMENT_REFLECT_SHARE_UNIFORM, MIRROR_ONLY);
+        m_puddleRenderer.draw(m_shaders.reflectShader);
     }
 
     // Binding the cube map made its texture unit the active one. The draws above put
@@ -565,7 +572,7 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
 
 void NightMazeApp::drawVillage(const glm::mat4& view, const glm::mat4& projection, float farPlane,
                                int nightsLit, float newestStrength) const {
-    if (!m_villageSettings.enabled || !m_mazeWorld.hasGate || !m_texturedShader.isValid()) {
+    if (!m_villageSettings.enabled || !m_mazeWorld.hasGate || !m_shaders.texturedShader.isValid()) {
         return;
     }
     // The state this draw relies on, said here and not taken from the pass before it: the
@@ -575,23 +582,23 @@ void NightMazeApp::drawVillage(const glm::mat4& view, const glm::mat4& projectio
     GL_CHECK(glDepthMask(GL_TRUE));
     GL_CHECK(glDisable(GL_BLEND));
 
-    m_texturedShader.use();
+    m_shaders.texturedShader.use();
     // The view matrix without its translation, as in skybox.vert: the village is centred
     // on the eye and never comes closer. It keeps its real depth, unlike the sky.
-    m_texturedShader.setMat4(VIEW_UNIFORM, glm::mat4{glm::mat3{view}});
-    m_texturedShader.setMat4(PROJECTION_UNIFORM, projection);
-    m_texturedShader.setInt(VIEW_MODE_UNIFORM, static_cast<int>(m_viewMode));
-    m_texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
-    setModelSamplers(m_texturedShader);
+    m_shaders.texturedShader.setMat4(VIEW_UNIFORM, glm::mat4{glm::mat3{view}});
+    m_shaders.texturedShader.setMat4(PROJECTION_UNIFORM, projection);
+    m_shaders.texturedShader.setInt(VIEW_MODE_UNIFORM, static_cast<int>(m_viewMode));
+    m_shaders.texturedShader.setInt(NORMAL_MAP_ENABLED_UNIFORM, usesNormalMap(m_lighting) ? 1 : 0);
+    setModelSamplers(m_shaders.texturedShader);
     // The way to the moon: the opposite of the way its light travels.
     const glm::vec3 towardMoon = -moonDirection(m_lighting);
     m_villageRenderer.draw(
-        m_texturedShader,
+        m_shaders.texturedShader,
         villageMatrix(villageSide(m_mazeWorld), farPlane, m_villageSettings.elevationDegrees),
         nightsLit, newestStrength, towardMoon);
     // The mill and the church tower on other bearings of the ridge.
     if (m_villageSettings.landEnabled) {
-        m_landRenderer.drawFarBand(m_texturedShader, villageSide(m_mazeWorld), farPlane,
+        m_landRenderer.drawFarBand(m_shaders.texturedShader, villageSide(m_mazeWorld), farPlane,
                                    m_villageSettings.elevationDegrees, nightsLit, newestStrength,
                                    towardMoon);
     }
@@ -607,8 +614,8 @@ void NightMazeApp::drawHeldLamp(const glm::mat4& view, const glm::mat4& projecti
     // The program of the lighting mode, chosen as drawMaze chooses it.
     const bool unlit = m_lighting.mode == LightingMode::Unlit || m_viewMode != ViewMode::Textured;
     const gfx::Shader& lit =
-        m_lighting.mode == LightingMode::Gouraud ? m_gouraudShader : m_litShader;
-    const gfx::Shader& shader = unlit ? m_texturedShader : lit;
+        m_lighting.mode == LightingMode::Gouraud ? m_shaders.gouraudShader : m_shaders.litShader;
+    const gfx::Shader& shader = unlit ? m_shaders.texturedShader : lit;
     if (!shader.isValid()) {
         return;
     }
@@ -687,8 +694,9 @@ void NightMazeApp::drawGrass(const glm::mat4& view, const glm::mat4& projection)
 
     // The two programs draw the same blades (game::GrassPath): the instanced one, or
     // the one with the geometry shader.
-    const gfx::Shader& shader =
-        m_grassSettings.path == GrassPath::Instanced ? m_grassInstancedShader : m_grassShader;
+    const gfx::Shader& shader = m_grassSettings.path == GrassPath::Instanced
+                                    ? m_shaders.grassInstancedShader
+                                    : m_shaders.grassShader;
 
     // The chunks of the grass are culled with the frustum of the pass, like the walls
     // (drawMaze), while both switches are on: the one of the whole game in Diagnostics and
@@ -722,13 +730,13 @@ void NightMazeApp::drawGrass(const glm::mat4& view, const glm::mat4& projection)
 }
 
 void NightMazeApp::drawColliderLines(const glm::mat4& view, const glm::mat4& projection) const {
-    if (!m_colorShader.isValid()) {
+    if (!m_shaders.colorShader.isValid()) {
         return;
     }
 
-    m_colorShader.use();
-    m_colorShader.setMat4(VIEW_UNIFORM, view);
-    m_colorShader.setMat4(PROJECTION_UNIFORM, projection);
+    m_shaders.colorShader.use();
+    m_shaders.colorShader.setMat4(VIEW_UNIFORM, view);
+    m_shaders.colorShader.setMat4(PROJECTION_UNIFORM, projection);
 
     // The depth test stays on: a line behind a wall is hidden by it, which shows where
     // each box really is. The box of the player is drawn at the simulation position (the
@@ -742,26 +750,27 @@ void NightMazeApp::drawColliderLines(const glm::mat4& view, const glm::mat4& pro
     const std::size_t gateBoxes = gateBlocks(m_mazeWorld, m_round) ? 1 : 0;
     const std::span<const scene::Aabb> mazeBoxes =
         std::span<const scene::Aabb>(m_obstacles).first(m_obstacles.size() - gateBoxes);
-    m_colliderLines.draw(m_colorShader, mazeBoxes, MAZE_COLLIDER_COLOR);
+    m_colliderLines.draw(m_shaders.colorShader, mazeBoxes, MAZE_COLLIDER_COLOR);
     // draw takes a list of boxes. A span made of a pointer and a count of 1 is a list
     // with this one box in it.
     const scene::Aabb playerBox = m_player.box();
-    m_colliderLines.draw(m_colorShader, std::span<const scene::Aabb>(&playerBox, 1),
+    m_colliderLines.draw(m_shaders.colorShader, std::span<const scene::Aabb>(&playerBox, 1),
                          PLAYER_COLLIDER_COLOR);
 
     // The gate, while it is an obstacle, and the zone behind it that wins the round.
     if (gateBlocks(m_mazeWorld, m_round)) {
-        m_colliderLines.draw(m_colorShader, std::span<const scene::Aabb>(&m_mazeWorld.gateBox, 1),
+        m_colliderLines.draw(m_shaders.colorShader,
+                             std::span<const scene::Aabb>(&m_mazeWorld.gateBox, 1),
                              GATE_COLLIDER_COLOR);
     }
-    m_colliderLines.draw(m_colorShader, std::span<const scene::Aabb>(&m_mazeWorld.exitZone, 1),
-                         EXIT_ZONE_COLOR);
+    m_colliderLines.draw(m_shaders.colorShader,
+                         std::span<const scene::Aabb>(&m_mazeWorld.exitZone, 1), EXIT_ZONE_COLOR);
 
     // The spheres of the pickup test: the reach of the player and, around every crystal
     // that is still there, the sphere the reach has to overlap. They stay on the
     // resting place of the crystal while the crystal itself bobs.
     const scene::Sphere reach = playerReach(m_player.position);
-    m_colliderLines.drawSpheres(m_colorShader, std::span<const scene::Sphere>(&reach, 1),
+    m_colliderLines.drawSpheres(m_shaders.colorShader, std::span<const scene::Sphere>(&reach, 1),
                                 PLAYER_COLLIDER_COLOR);
     std::vector<scene::Sphere> pickupSpheres;
     for (const RoundCrystal& crystal : m_round.crystals) {
@@ -770,17 +779,17 @@ void NightMazeApp::drawColliderLines(const glm::mat4& view, const glm::mat4& pro
                 {.center = crystalCenter(crystal.restPosition), .radius = m_gameplay.pickupRadius});
         }
     }
-    m_colliderLines.drawSpheres(m_colorShader, pickupSpheres, PICKUP_COLLIDER_COLOR);
+    m_colliderLines.drawSpheres(m_shaders.colorShader, pickupSpheres, PICKUP_COLLIDER_COLOR);
 }
 
 void NightMazeApp::drawPickLines(const glm::mat4& view, const glm::mat4& projection) const {
-    if (!m_colorShader.isValid()) {
+    if (!m_shaders.colorShader.isValid()) {
         return;
     }
 
-    m_colorShader.use();
-    m_colorShader.setMat4(VIEW_UNIFORM, view);
-    m_colorShader.setMat4(PROJECTION_UNIFORM, projection);
+    m_shaders.colorShader.use();
+    m_shaders.colorShader.setMat4(VIEW_UNIFORM, view);
+    m_shaders.colorShader.setMat4(PROJECTION_UNIFORM, projection);
 
     // The pick boxes: what the ray has to hit. They are larger than the models on
     // purpose, and they reach out of the collision box of the wall they hang on.
@@ -808,17 +817,17 @@ void NightMazeApp::drawPickLines(const glm::mat4& view, const glm::mat4& project
     const bool hitNote =
         shown.hasRay && picked.kind == InteractableKind::Note && picked.index < noteBoxes.size();
     if (hitLever) {
-        m_colliderLines.draw(m_colorShader,
+        m_colliderLines.draw(m_shaders.colorShader,
                              std::span<const scene::Aabb>(&leverBoxes[picked.index], 1),
                              PICK_HIT_COLOR);
     }
     if (hitNote) {
-        m_colliderLines.draw(m_colorShader,
+        m_colliderLines.draw(m_shaders.colorShader,
                              std::span<const scene::Aabb>(&noteBoxes[picked.index], 1),
                              PICK_HIT_COLOR);
     }
-    m_colliderLines.draw(m_colorShader, leverBoxes, LEVER_PICK_COLOR);
-    m_colliderLines.draw(m_colorShader, noteBoxes, NOTE_PICK_COLOR);
+    m_colliderLines.draw(m_shaders.colorShader, leverBoxes, LEVER_PICK_COLOR);
+    m_colliderLines.draw(m_shaders.colorShader, noteBoxes, NOTE_PICK_COLOR);
     if (!shown.hasRay) {
         return;
     }
@@ -831,9 +840,10 @@ void NightMazeApp::drawPickLines(const glm::mat4& view, const glm::mat4& project
     const float length = hit ? picked.distance : INTERACTION_REACH;
     const glm::vec3 end = shown.ray.origin + shown.ray.direction * length;
     const glm::vec3 color = hit ? PICK_HIT_COLOR : PICK_MISS_COLOR;
-    m_colliderLines.drawLine(m_colorShader, shown.ray.origin, end, color);
+    m_colliderLines.drawLine(m_shaders.colorShader, shown.ray.origin, end, color);
     const scene::Sphere marker{.center = end, .radius = PICK_MARKER_RADIUS};
-    m_colliderLines.drawSpheres(m_colorShader, std::span<const scene::Sphere>(&marker, 1), color);
+    m_colliderLines.drawSpheres(m_shaders.colorShader, std::span<const scene::Sphere>(&marker, 1),
+                                color);
 }
 
 } // namespace game

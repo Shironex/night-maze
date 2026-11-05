@@ -3,6 +3,8 @@
 # and an OpenGL context. It may include every folder of src/, and no other folder includes
 # it.
 target_sources(night_maze PRIVATE
+    AppShaders.cpp
+    AppShaders.hpp
     NightMazeApp.cpp
     NightMazeApp.hpp
     NightMazeAppCampaign.cpp
