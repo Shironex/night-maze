@@ -1,5 +1,5 @@
 // LightRig: sends the lights of a frame to the graphics card.
-#include "game/LightRig.hpp"
+#include "render/LightRig.hpp"
 
 #include "gfx/Shader.hpp"
 #include "render/ShaderUniforms.hpp"
