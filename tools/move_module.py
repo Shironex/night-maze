@@ -4,23 +4,24 @@ Run from anywhere, with Python 3.9 or newer, on macOS or Windows:
 
     python3 tools/move_module.py [--dry-run] SOURCE [SOURCE ...] FOLDER
 
-SOURCE is a module's stem (src/game/Bloom moves Bloom.hpp and Bloom.cpp, whichever exist) or
-one file (src/main.cpp, tests/game/BloomTests.cpp). FOLDER is where they go (src/render).
+SOURCE is a module's stem (src/game/lighting/Bloom moves Bloom.hpp and Bloom.cpp, whichever
+exist) or one file (src/main.cpp, tests/game/lighting/BloomTests.cpp). FOLDER is where they
+go (src/render).
 Paths are relative to the repository root, with / or \\. A module and its test go to two
 folders, so they are two calls:
 
-    python3 tools/move_module.py --dry-run src/game/Bloom src/render
-    python3 tools/move_module.py src/game/Bloom src/render
-    python3 tools/move_module.py tests/game/BloomTests.cpp tests/render
+    python3 tools/move_module.py --dry-run src/game/lighting/Bloom src/render
+    python3 tools/move_module.py src/game/lighting/Bloom src/render
+    python3 tools/move_module.py tests/game/lighting/BloomTests.cpp tests/render
 
 For every file it:
   1. moves it with git mv, so git log --follow keeps its history;
   2. rewrites every mention of its old path in src/, tests/ and tools/ to the new one: the
      #include lines (each include block it changed sorted again, as clang-format sorts it)
-     and the comments that name it ("game/Bloom.hpp", "src/game/Bloom.cpp", "game/Bloom",
-     "tests/game/BloomTests.cpp"), then runs clang-format on the C++ files it edited when it
-     finds it, so a comment that grew past the line limit is wrapped again (else run
-     make format);
+     and the comments that name it ("game/lighting/Bloom.hpp", "src/game/lighting/Bloom.cpp",
+     "game/lighting/Bloom", "tests/game/lighting/BloomTests.cpp"), then runs clang-format on
+     the C++ files it edited when it finds it, so a comment that grew past the line limit is
+     wrapped again (else run make format);
   3. moves its line from the CMakeLists.txt of its old folder into the block of the same
      target in the CMakeLists.txt of the new folder, in sorted order. A file listed for two
      targets (src/debug/Search.cpp is in night_maze and night_maze_tests) moves in both. A
