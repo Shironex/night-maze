@@ -107,8 +107,6 @@ target_sources(night_maze PRIVATE
     InteractableRenderer.hpp
     LandRenderer.cpp
     LandRenderer.hpp
-    LightRig.cpp
-    LightRig.hpp
     MazeRenderer.cpp
     MazeRenderer.hpp
     MenuBackgroundRenderer.cpp
