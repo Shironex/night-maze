@@ -66,7 +66,7 @@ struct LightingSettings {
     /// describe. The pictures are generated with the same two numbers
     /// (MOON_LIGHT_YAW_DEGREES and MOON_LIGHT_PITCH_DEGREES in
     /// tools/blender/make_skybox.py). When a default changes here, change it there and
-    /// generate the sky again. A test in tests/SkyboxTests.cpp looks for the disc where
+    /// generate the sky again. A test in tests/game/SkyboxTests.cpp looks for the disc where
     /// the default light comes from, and the disc has a radius of 2.2 degrees: the test
     /// fails only when the defaults moved by more than about 2 degrees, a smaller change
     /// goes unnoticed. Known limit: the picture is fixed, so moving the moon in the

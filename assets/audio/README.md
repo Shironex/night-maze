@@ -144,7 +144,7 @@ tenth of a second, weighed the way the ear weighs frequencies):
 
 `python tools/make_music.py --report` computes the piece again, prints these numbers and the
 numbers of the seam for both channels, and checks that the file here is that very piece.
-`tests/AudioEngineTests.cpp` loads the file through the audio engine and looks at the samples
+`tests/audio/AudioEngineTests.cpp` loads the file through the audio engine and looks at the samples
 around the place where it starts again.
 
 ### The recordings
@@ -180,7 +180,7 @@ next to the steps inside the file, in 16 bit units):
 | `shade_chase.flac` | -27.0 LUFS | -13.6 dBTP | 16 / 38 | 21 / 125 |
 | `night_end.flac` | -24.0 LUFS | -11.8 dBTP | (no loop, ends at 0) | 32 / 189 |
 
-For comparison `menu_theme.flac` is -24.7 LUFS. `tests/AudioEngineTests.cpp` plays the three
+For comparison `menu_theme.flac` is -24.7 LUFS. `tests/audio/AudioEngineTests.cpp` plays the three
 loops through the engine and checks their seams the way it checks the first theme.
 
 ## Updating
@@ -211,7 +211,7 @@ Nobody can hear a table of numbers, but the numbers can show that a sound is bui
   the loop it prints the numbers of its seam: the step and the bend from its last samples to its
   first ones, next to what is ordinary inside the file. It ends with the number of checks that
   missed.
-- `tests/AudioEngineTests.cpp` plays the loop through the audio engine without a sound device
+- `tests/audio/AudioEngineTests.cpp` plays the loop through the audio engine without a sound device
   and looks at the samples that would go to the loudspeaker: no step where the file starts
   again, and none while the loop fades in and out.
 - `python tools/make_sounds.py --pictures some/folder` writes one PNG per file: the waveform

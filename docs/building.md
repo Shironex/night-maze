@@ -146,6 +146,8 @@ ctest --test-dir build/debug -C Debug --output-on-failure
 build/debug/Debug/night_maze_tests.exe -tc="*Bloom*"
 ```
 
+The test files mirror `src/` (`tests/game/`, `tests/scene/` and so on), so a source file filter runs the tests of one folder: `-sf="*tests?scene?*"` (the `?` stands for the `/` or the `\` of the path).
+
 The tests need no sound card and no OpenGL context. Some read real files from `assets/` through a path compiled in at configure time.
 
 ## The gate: make check
