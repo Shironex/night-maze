@@ -122,8 +122,6 @@ target_sources(night_maze PRIVATE
     NightMazeAppShared.hpp
     PuddleRenderer.cpp
     PuddleRenderer.hpp
-    Skybox.cpp
-    Skybox.hpp
     StorybookRenderer.cpp
     StorybookRenderer.hpp
     TerrainRenderer.cpp

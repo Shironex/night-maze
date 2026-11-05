@@ -71,8 +71,12 @@ struct AllowedInclude {
     std::string_view path;
 };
 
-// Known exceptions to the rule of src/render above.
-constexpr std::array<AllowedInclude, 0> RENDER_INCLUDES_ALLOWED = {};
+// Known exceptions to the rule of src/render above. The sky reads the enum game::ViewMode
+// (which picture the debug views show), and that enum is declared in the header of the maze
+// renderer, a drawing file of src/game. Nothing else of that header is used.
+constexpr std::array<AllowedInclude, 1> RENDER_INCLUDES_ALLOWED = {{
+    {.file = "render/Skybox.cpp", .path = "game/MazeRenderer.hpp"},
+}};
 
 // Known exception: the key bindings include GLFW only for the numbers of the keys
 // (GLFW_KEY_W and the others) as default bindings. Nothing in the file opens a window or

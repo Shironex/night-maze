@@ -7,9 +7,9 @@
 #include "debug/Widgets.hpp"
 #include "game/Lighting.hpp"
 #include "game/MazeRenderer.hpp"
-#include "game/Skybox.hpp"
 #include "game/Village.hpp"
 #include "gfx/Texture2D.hpp"
+#include "render/Skybox.hpp"
 
 namespace debug {
 

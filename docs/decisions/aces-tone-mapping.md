@@ -1,6 +1,6 @@
 # ACES is the default tone mapping curve, with Reinhard and None as switches
 Status: accepted (2026-10-05)
-Code: assets/shaders/post/composite.frag, src/render/PostProcess.hpp, src/game/Skybox.hpp
+Code: assets/shaders/post/composite.frag, src/render/PostProcess.hpp, src/render/Skybox.hpp
 
 Context: The HDR buffer holds values above 1, such as crystal glow and the moon, and the screen shows 0 to 1.
 Decision: The composite shader has None, Reinhard and Aces (the Narkowicz fit). Aces is the default at exposure 1.0, and it still is. Sky brightness is 2.2 to offset the curve.

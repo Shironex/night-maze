@@ -1,5 +1,5 @@
 // Skybox: the night sky, a cube map drawn behind everything else.
-#include "game/Skybox.hpp"
+#include "render/Skybox.hpp"
 
 #include "assets/ImageLoader.hpp"
 #include "core/GlCheck.hpp"

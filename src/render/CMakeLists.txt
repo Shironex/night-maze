@@ -15,4 +15,6 @@ target_sources(night_maze PRIVATE
     ShaderUniforms.hpp
     ShadowMap.cpp
     ShadowMap.hpp
+    Skybox.cpp
+    Skybox.hpp
 )
