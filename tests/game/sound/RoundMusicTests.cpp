@@ -1,6 +1,6 @@
-// Tests of game/RoundMusic.hpp: when the music bed of a round, the layer of the chase and
+// Tests of game/sound/RoundMusic.hpp: when the music bed of a round, the layer of the chase and
 // the sting of a won night are heard, and how the bed is ducked under the chase.
-#include "game/RoundMusic.hpp"
+#include "game/sound/RoundMusic.hpp"
 
 #include <doctest/doctest.h>
 

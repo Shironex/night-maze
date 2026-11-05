@@ -2,10 +2,10 @@
 // won night, and the rules that decide when each is heard.
 #pragma once
 
-#include "game/SoundCues.hpp"
 #include "game/round/Round.hpp"
 #include "game/screens/GameState.hpp"
 #include "game/shade/Shade.hpp"
+#include "game/sound/SoundCues.hpp"
 
 #include <cstddef>
 

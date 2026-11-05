@@ -444,7 +444,7 @@ bool shadeHumPlays(const MazeWindRequest& request, const Round& round);
 /// something happened, it has a volume of its own (GameSettings::musicVolume) and its
 /// file is not a WAV file. It is a loop like the wind of the maze, switched on and off
 /// (menuThemePlays), and its file ends where it begins (tools/make_music.py). The path
-/// is relative to the assets directory. The music under a round is in game/RoundMusic.hpp.
+/// is relative to the assets directory. The music under a round is in game/sound/RoundMusic.hpp.
 constexpr const char* MENU_THEME_FILE = "audio/menu_theme.flac";
 
 /// The second theme, a recording cut into a loop (assets/audio/README.md), played in

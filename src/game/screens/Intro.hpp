@@ -1,10 +1,10 @@
 // Intro: the five cards a campaign begins with, as a script of plain data.
 #pragma once
 
-#include "game/SoundCues.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/menu/MenuCamera.hpp"
 #include "game/round/Difficulty.hpp"
+#include "game/sound/SoundCues.hpp"
 
 #include <array>
 #include <cstddef>

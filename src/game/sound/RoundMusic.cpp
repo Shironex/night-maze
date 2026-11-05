@@ -1,6 +1,6 @@
 // RoundMusic: the quiet music under a round, the layer of the chase and the sting of a
 // won night, and the rules that decide when each is heard.
-#include "game/RoundMusic.hpp"
+#include "game/sound/RoundMusic.hpp"
 
 #include <algorithm>
 

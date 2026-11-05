@@ -6,7 +6,6 @@
 
 #include "assets/ImageLoader.hpp"
 #include "assets/ObjLoader.hpp"
-#include "game/SoundCues.hpp"
 #include "game/land/Terrain.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
@@ -15,6 +14,7 @@
 #include "game/round/Campaign.hpp"
 #include "game/round/Difficulty.hpp"
 #include "game/round/Round.hpp"
+#include "game/sound/SoundCues.hpp"
 #include "scene/Camera.hpp"
 #include "scene/Collider.hpp"
 

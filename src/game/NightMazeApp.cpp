@@ -375,7 +375,7 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     // the engine and everything else into the effects group: each group has a volume
     // of its own (applyAudioSettings). After the cues comes the music, in the music
     // group: the theme of the menu (game::MENU_THEME_SOUND, the one --menu-theme names)
-    // and the three pieces of a round (game/RoundMusic.hpp).
+    // and the three pieces of a round (game/sound/RoundMusic.hpp).
     std::vector<audio::SoundFile> soundFiles(FIXED_SOUND_COUNT);
     for (std::size_t i = 0; i < SOUND_CUE_COUNT; ++i) {
         const auto cue = static_cast<SoundCue>(i);

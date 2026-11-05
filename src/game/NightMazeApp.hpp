@@ -6,9 +6,7 @@
 #include "core/Application.hpp"
 #include "game/EnvironmentMapping.hpp"
 #include "game/Lighting.hpp"
-#include "game/RoundMusic.hpp"
 #include "game/Shadows.hpp"
-#include "game/SoundCues.hpp"
 #include "game/land/Grass.hpp"
 #include "game/land/GrassRenderer.hpp"
 #include "game/land/LandRenderer.hpp"
@@ -38,6 +36,8 @@
 #include "game/screens/StartOptions.hpp"
 #include "game/screens/Storybook.hpp"
 #include "game/screens/StorybookRenderer.hpp"
+#include "game/sound/RoundMusic.hpp"
+#include "game/sound/SoundCues.hpp"
 #include "gfx/Shader.hpp"
 #include "render/ColliderLines.hpp"
 #include "render/GpuPasses.hpp"
@@ -137,7 +137,7 @@ constexpr std::size_t NO_STORYBOOK_SOUND = static_cast<std::size_t>(-1);
 ///
 /// The game has short sounds (the click of the flashlight, a crystal, a lever, the
 /// gate, the warning of a low battery). WHICH sound belongs to what happened is decided
-/// by the rules in game/SoundCues.hpp. This class asks them at the few places where
+/// by the rules in game/sound/SoundCues.hpp. This class asks them at the few places where
 /// something happens and hands the answer to audio::AudioEngine (playCue). The steps
 /// of the player and of the shade are such sounds too, and under all of them lies the
 /// wind of the maze, a loop that is heard while a round is played (updateAmbience).
@@ -628,7 +628,7 @@ private:
     /// a moment when a sample was asked for. The audio engine fades it. Called once
     /// per frame.
     void updateAmbience(bool windowFocused);
-    /// The music of a round (game/RoundMusic.hpp), said in every frame by updateAmbience:
+    /// The music of a round (game/sound/RoundMusic.hpp), said in every frame by updateAmbience:
     /// the bed, the chase layer with the duck of the bed under it, and the sting.
     void updateRoundMusic(bool windowFocused);
     /// Fades out the sting of a won night when it still plays.
@@ -1501,7 +1501,7 @@ private:
     // What updateAmbience last told the audio engine about the theme of the menu, to
     // write one line into the log when it changes.
     bool m_menuThemeOn = false;
-    // The same for the music of a round (game/RoundMusic.hpp): the bed, the chase layer
+    // The same for the music of a round (game/sound/RoundMusic.hpp): the bed, the chase layer
     // and the sting of a won night, which plays once and is faded when its screen is left.
     bool m_mazeAmbientOn = false;
     bool m_shadeChaseOn = false;

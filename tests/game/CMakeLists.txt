@@ -3,10 +3,8 @@ target_sources(night_maze_tests PRIVATE
     EnvironmentMappingTests.cpp
     FogTests.cpp
     LightingTests.cpp
-    RoundMusicTests.cpp
     ShadowTests.cpp
     SkyboxTests.cpp
-    SoundCueTests.cpp
     VignetteTests.cpp
 )
 
@@ -18,3 +16,4 @@ add_subdirectory(player)
 add_subdirectory(round)
 add_subdirectory(screens)
 add_subdirectory(shade)
+add_subdirectory(sound)
