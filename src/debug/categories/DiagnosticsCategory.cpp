@@ -15,7 +15,6 @@
 #include "debug/RawTextureSampler.hpp"
 #include "debug/Theme.hpp"
 #include "debug/Widgets.hpp"
-#include "game/GpuPasses.hpp"
 #include "game/Interactables.hpp"
 #include "game/Interaction.hpp"
 #include "game/MazeLayout.hpp"
@@ -24,6 +23,7 @@
 #include "game/Round.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/Texture2D.hpp"
+#include "render/GpuPasses.hpp"
 #include "scene/Collider.hpp"
 
 #include <imgui.h>

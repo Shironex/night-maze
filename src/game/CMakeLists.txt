@@ -101,8 +101,6 @@ target_sources(night_maze PRIVATE
     ColliderLines.hpp
     GameplayRenderer.cpp
     GameplayRenderer.hpp
-    GpuPasses.cpp
-    GpuPasses.hpp
     GrassRenderer.cpp
     GrassRenderer.hpp
     InteractableRenderer.cpp

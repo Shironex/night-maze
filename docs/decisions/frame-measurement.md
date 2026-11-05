@@ -1,6 +1,6 @@
 # A frame is measured as three CPU times, four counters and one timer query a pass
 Status: accepted (2026-10-12)
-Code: src/core/Application.cpp, src/core/PeriodicAverage.hpp, src/gfx/RenderStats.hpp, src/gfx/TimerQuery.hpp, src/game/GpuPasses.hpp, src/game/NightMazeAppRender.cpp, src/game/NightMazeAppPasses.cpp, src/debug/categories/DiagnosticsCategory.cpp
+Code: src/core/Application.cpp, src/core/PeriodicAverage.hpp, src/gfx/RenderStats.hpp, src/gfx/TimerQuery.hpp, src/render/GpuPasses.hpp, src/game/NightMazeAppRender.cpp, src/game/NightMazeAppPasses.cpp, src/debug/categories/DiagnosticsCategory.cpp
 
 Context: The only numbers were FPS and frame time, and with vsync both say "60" whatever a frame costs. A performance pass needs numbers that tell the CPU from the GPU and one pass from another.
 Decision: The main loop times update, render and swap. The counters of draw calls, triangles, uniform lookups and texture binds are one object for the whole program in `gfx`, reset at the start of `onRender`. Eight passes each own a `GL_TIME_ELAPSED` query. Its answer is read in a later frame and only when `GL_QUERY_RESULT_AVAILABLE` says it is there, and a query that still waits is not started again. Times are averaged over the half second of the FPS display. A pass without a draw call is shown as not run.
