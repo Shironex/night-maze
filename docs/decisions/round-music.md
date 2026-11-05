@@ -1,6 +1,6 @@
 # A round has a quiet music bed, a chase layer and a sting, all recordings in the music group
 Status: accepted (2026-10-16). Earlier: music only on the main menu (menu-music), and every sound and piece computed by a script (audio).
-Code: src/game/sound/RoundMusic.hpp, src/game/sound/RoundMusic.cpp, src/game/NightMazeApp.cpp, src/audio/AudioEngine.hpp, src/game/screens/StartOptions.hpp, assets/audio/README.md
+Code: src/game/sound/RoundMusic.hpp, src/game/sound/RoundMusic.cpp, src/app/NightMazeApp.cpp, src/audio/AudioEngine.hpp, src/game/screens/StartOptions.hpp, assets/audio/README.md
 
 Context: a night had only the wind and the cues. I generated four pieces in ElevenLabs under my commercial plan (solo piano, low strings, soft wordless choir): a second menu theme, a bed for the maze, a layer for the chase and a short sting for a won night.
 Decision: the bed plays from 4 s into a round, fades in over 6 s and out over 1.5 s for the pause, a catch and the win. The chase layer follows the hunt of the shade (Shade::hunt, not shadeState, so the lamp does not flap it): in over 2 s, out over 4 s, and the bed is ducked to 0.4 under it. The sting plays once 1.5 s after a win and fades when its screen is left. All three are in the music group. `--menu-theme classic` loads the first theme into the place of the second, so the two can be compared; v2 is the default since 2026-10-16 (the user preferred it after listening).

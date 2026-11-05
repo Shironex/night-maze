@@ -1,5 +1,5 @@
 // The Night Maze application: the shadow passes and the parts of the scene pass.
-#include "game/NightMazeApp.hpp"
+#include "app/NightMazeApp.hpp"
 
 #include "core/GlCheck.hpp"
 #include "game/player/Interactables.hpp"

@@ -13,16 +13,16 @@ The root `CMakeLists.txt` defines five static libraries and two programs, with t
 | `ui` | `src/ui` | owns RmlUi and draws the menu documents | `engine`, `rmlui_backend` |
 | `video` | `src/video` | plays a video file into a texture with the decoder of the operating system | `engine`, Media Foundation or AVFoundation |
 | `audio` | `src/audio` | plays sounds through miniaudio | `engine`, `miniaudio` |
-| `night_maze` | `src/main.cpp`, `NightMazeApp` and the drawing files of the domain folders of `src/game`, `src/render`, `src/hud`, `src/debug` | the game | all five, `imgui` |
+| `night_maze` | `src/app` (`main.cpp` and `NightMazeApp`), the drawing files of the domain folders of `src/game`, `src/render`, `src/hud`, `src/debug` | the game | all five, `imgui` |
 | `night_maze_tests` | `tests`, plus `src/hud/HudRules.cpp`, `src/debug/Search.cpp` and `src/video/VideoClock.cpp` | unit tests | `game_logic`, `audio`, `doctest` |
 
-The dependencies go one way. `engine` knows nothing above it. `ui`, `video` and `audio` sit beside each other on top of `engine` and know nothing about the game: the game tells them which document to show, which file to play, which sound to start. They are separate libraries so that `game_logic` does not link RmlUi, the media libraries of a system or miniaudio. Nothing in `src/game` or in the five libraries includes `src/hud` or `src/debug`.
+The dependencies go one way. `engine` knows nothing above it. `ui`, `video` and `audio` sit beside each other on top of `engine` and know nothing about the game: the game tells them which document to show, which file to play, which sound to start. They are separate libraries so that `game_logic` does not link RmlUi, the media libraries of a system or miniaudio. Nothing in `src/game` or in the five libraries includes `src/hud` or `src/debug`. `src/app` sits on top of everything: it may include every folder, and no folder includes it.
 
 Inside `engine`, `src/core` includes only itself, `src/gfx` uses `src/core`, `src/assets` uses both and the box type of `src/scene` (the bounds of a model), and `src/scene` is math on GLM alone.
 
-`tests/LayeringTests.cpp` checks these rules on every test run. It reads the `#include` lines of `src/` and the source lists of the CMake files, and fails with the list of includes that break a rule: an engine folder that reaches the game, `src/render`, the HUD or the debug UI or a folder above its own, `src/render` including anything but the engine folders and the headers of `game_logic` (the plain data of the game, never a drawing file of `src/game`), `src/game` including `src/hud` or `src/debug`, `src/hud` including anything but `src/game`, the engine folders and `src/ui` (so never `src/debug`, which may include the HUD), a file of `game_logic` (or a file of `src/` that the test program compiles) including OpenGL, GLFW, ImGui, the window, `src/render` or a `gfx` header other than the plain data ones (`Vertex.hpp`, `ColorSpace.hpp`, `CoverFit.hpp`), a file of `game_logic` including a drawing file of `src/game` (a `*Renderer` or `NightMazeApp`). The rules of `src/game` hold for every domain folder under it. Two allowed exceptions are named in the test: `src/game/player/KeyBindings.cpp` includes GLFW for the numbers of the keys only, and `src/render/Skybox.cpp` includes `src/game/maze/MazeRenderer.hpp` for the enum `game::ViewMode` only.
+`tests/LayeringTests.cpp` checks these rules on every test run. It reads the `#include` lines of `src/` and the source lists of the CMake files, and fails with the list of includes that break a rule: an engine folder that reaches the game, `src/render`, the HUD or the debug UI or a folder above its own, `src/render` including anything but the engine folders and the headers of `game_logic` (the plain data of the game, never a drawing file of `src/game`), `src/game` including `src/hud` or `src/debug`, `src/hud` including anything but `src/game`, the engine folders and `src/ui` (so never `src/debug`, which may include the HUD), a file of `game_logic` (or a file of `src/` that the test program compiles) including OpenGL, GLFW, ImGui, the window, `src/render` or a `gfx` header other than the plain data ones (`Vertex.hpp`, `ColorSpace.hpp`, `CoverFit.hpp`), a file of `game_logic` including a drawing file of `src/game` (a `*Renderer`), any folder but `src/app` including `src/app`. The rules of `src/game` hold for every domain folder under it. Two allowed exceptions are named in the test: `src/game/player/KeyBindings.cpp` includes GLFW for the numbers of the keys only, and `src/render/Skybox.cpp` includes `src/game/maze/MazeRenderer.hpp` for the enum `game::ViewMode` only.
 
-`src/game` is split into one folder per domain, and each folder is split between two targets in its own `CMakeLists.txt`. The files that need no window are in `game_logic`. The files that draw (the `*Renderer` classes) are in the executable, with `NightMazeApp`, which stays in `src/game` itself. The helpers of the passes that hold no rule of the game (`PostProcess`, `ShadowMap`, `Skybox`, `LightRig` and the others) are in `src/render`, in the executable too.
+`src/game` is split into one folder per domain, and each folder is split between two targets in its own `CMakeLists.txt`. The files that need no window are in `game_logic`. The files that draw (the `*Renderer` classes) are in the executable. `src/game` holds only its domain folders: the application class that joins them, `NightMazeApp`, is in `src/app`. The helpers of the passes that hold no rule of the game (`PostProcess`, `ShadowMap`, `Skybox`, `LightRig` and the others) are in `src/render`, in the executable too.
 
 What runs without a window or an OpenGL context: all of `game_logic`, the math in `src/scene`, the file loaders and shader text functions in `engine`, and the audio engine when it is made with `audio::AudioOutput::None`. The 63 test files in `tests` cover that, in folders that mirror `src/` (`tests/game/round/RoundTests.cpp` tests `src/game/round/Round.cpp`), plus `tests/LayeringTests.cpp`, which checks the layering rules below.
 
@@ -42,11 +42,11 @@ Layout (every folder under `src/` and `tests/` also holds its `CMakeLists.txt`):
 ```
 CMakeLists.txt        targets, links, options; add_subdirectory(src) and (tests)
 src/
-  main.cpp            night_maze: the game with its debug UI
+  app/                night_maze: main.cpp (the game with its debug UI) and NightMazeApp
   core/ gfx/ scene/ assets/    engine
   ui/ video/ audio/   one library each, beside each other on top of engine
-  game/               night_maze: NightMazeApp; one folder per domain below, each with
-                      its rules (game_logic) and its renderers (night_maze)
+  game/               one folder per domain below, each with its rules (game_logic) and its
+                      renderers (night_maze)
     land/             the ground, the grass, the puddles, the land around the maze, the village
     lighting/         settings and math of the light, the shadows, the reflections, bloom, fog, vignette
     maze/             the maze, its walls, the stile and the stone sheep
@@ -63,7 +63,7 @@ src/
 tests/
   main.cpp            doctest main
   LayeringTests.cpp   the layering rules
-  core/ gfx/ scene/ assets/ audio/ video/ game/ hud/ debug/    one folder per folder of src/
+  core/ gfx/ scene/ assets/ audio/ video/ game/ hud/ debug/    one folder per folder of src/ that has tests
   game/maze/ ...      one folder per domain folder of src/game
 ```
 
@@ -73,7 +73,8 @@ Directory map:
 - `src/gfx`: wrappers of OpenGL objects, the shader loader with its `#include` step, and the counters of a frame (`RenderStats`).
 - `src/scene`: `Camera`, `Transform`, colliders, ray casts, the frustum of a camera or a light (`Frustum`), lights as plain data.
 - `src/assets`: OBJ and image loaders, `AssetCache`.
-- `src/game`: the application class (`NightMazeApp`), and one folder per domain, each with its rules and its renderers:
+- `src/app`: the entry point and the class that joins the game with the debug UI (`main.cpp`), and the application class that holds the game together (`NightMazeApp`, see section 3).
+- `src/game`: one folder per domain, each with its rules and its renderers:
   - `src/game/land`: the ground (`Terrain`), the tufts of grass, the puddles, the land around the maze with the triangles built in code (`LandMeshes`), the village on the ridge, and their renderers.
   - `src/game/lighting`: the settings and the math the renderers and the passes read: the lights (`Lighting`), the shadow maps (`Shadows`), the reflections of the sky (`EnvironmentMapping`), `Bloom`, `Fog` and `Vignette`. No renderer: the passes are in `src/render`.
   - `src/game/maze`: the grid of the maze, its generator and layout, the built world of a seed (`MazeWorld`), the worn wall variants, the stile, the stone sheep and `MazeRenderer`.
@@ -104,8 +105,8 @@ An arrow means "includes and links".
 
 ```mermaid
 flowchart TD
-    main["src/main.cpp, src/debug and src/hud"]
-    app["src/game drawing files: NightMazeApp, renderers"]
+    main["src/app main.cpp, src/debug and src/hud"]
+    app["src/app NightMazeApp, src/game drawing files: renderers"]
     logic["game_logic: rule files of src/game"]
     ui["ui: src/ui"]
     video["video: src/video"]
@@ -144,11 +145,11 @@ flowchart TD
 
 The loop uses a fixed timestep. `core::Time` collects the real time of each frame (clamped to 0.25 s) and `run()` calls `onUpdate` once for every `Time::FIXED_DT` (1/120 s) that fits, so zero or more times per frame. `onRender` runs once and gets `alpha`, how far the frame lies between two steps. The game draws the player and the shade at a position blended between the last two steps. One rule follows: anything that is true for one frame (`wasKeyPressed`, a mouse delta) is read in `onRender`, never in `onUpdate`.
 
-`game::NightMazeApp` (`src/game/NightMazeApp.hpp`) is the game. It owns, as plain members, the shader programs, the `AssetCache`, the renderers, two shadow maps, `PostProcess`, the settings, the current `MazeWorld`, `Round`, `Player`, camera and `GameMode`, the `ui::UiLayer` and the `audio::AudioEngine`. Member order is construction order, and some of it matters: the settings file is read before the first maze is built, and the UI layer exists before the debug UI so that Dear ImGui can chain its GLFW callbacks onto the ones of RmlUi.
+`game::NightMazeApp` (`src/app/NightMazeApp.hpp`) is the game. It owns, as plain members, the shader programs, the `AssetCache`, the renderers, two shadow maps, `PostProcess`, the settings, the current `MazeWorld`, `Round`, `Player`, camera and `GameMode`, the `ui::UiLayer` and the `audio::AudioEngine`. Member order is construction order, and some of it matters: the settings file is read before the first maze is built, and the UI layer exists before the debug UI so that Dear ImGui can chain its GLFW callbacks onto the ones of RmlUi.
 
 The class is one header and seven source files, split by what the functions do: `NightMazeApp.cpp` (the constructor, the settings and the sounds), `NightMazeAppScreens.cpp` (the change of screens, the intro and the cards), `NightMazeAppMenus.cpp` (the menu documents and their controls), `NightMazeAppCampaign.cpp` (the start of a game or a night and the won round), `NightMazeAppRound.cpp` (the maze being built and `onUpdate`), `NightMazeAppRender.cpp` (`onRender`, the picking and the minimap) and `NightMazeAppPasses.cpp` (the shadow passes and the `draw*` functions). The names the code shares with the `.rml` documents are in `NightMazeAppShared.hpp`.
 
-`src/main.cpp` holds the only class that knows both the game and the debug code: `DebugNightMazeApp` derives from `NightMazeApp`, owns `debug::DebugUI`, and draws it after the frame of the game. It hands the debug window a `debug::DebugContext`, a struct of references.
+`src/app/main.cpp` holds the only class that knows both the game and the debug code: `DebugNightMazeApp` derives from `NightMazeApp`, owns `debug::DebugUI`, and draws it after the frame of the game. It hands the debug window a `debug::DebugContext`, a struct of references.
 
 The classes in `src/gfx` (`Shader`, `Buffer`, `VertexArray`, `Mesh`, `Texture2D`, `Cubemap`, `Framebuffer`, `UniformBuffer`, `TimerQuery`) follow one rule: the constructor creates the OpenGL object, the destructor deletes it, copying is deleted and moving is allowed. `FrameTexture` and `ComparisonSampler` can be neither copied nor moved. All of them need a live context, so they are members of the application and die before the window does.
 
@@ -183,7 +184,7 @@ A frame is measured in three ways, and the Diagnostics category of the debug win
 - Counters: `gfx/RenderStats.hpp` counts draw calls, triangles, uniform lookups, texture binds, and the objects a pass tested against its frustum and then drew. `Mesh::draw` and the bind functions of the textures count themselves, and the five `glDrawArrays` calls in `src/game` call `gfx::countDraw`. A `Shader` asks OpenGL for the location of a uniform once and remembers it by name until the program is replaced (`Shader::uniformLocation`), and only that question counts as a lookup: the number is 0 once every uniform of the picture was set and rises for one frame after a shader reload. `onRender` resets the counters at its start. RmlUi and Dear ImGui draw with their own OpenGL code and are not counted.
 - GPU: `game::GpuPassTimers` (`src/render/GpuPasses.hpp`) holds one `gfx::TimerQuery` (`GL_TIME_ELAPSED`) for each of eight passes: moon shadow, flashlight shadow, scene, grass, reflections and sky, bloom, composite, minimap. OpenGL 4.1 runs one timer query at a time, so the passes are ranges that follow each other, and the scene pass of step 6 and 7 is three of them. An answer is read in a later frame and only when the card has it, so measuring never waits. A pass without a draw call counts as not run. On an Apple GPU the scene and the grass report one shared time (see the decision record `frame-measurement`).
 
-`onRender` reads as this list: the steps are functions of their own, declared together in `src/game/NightMazeApp.hpp` under "The parts of onRender" (`updateScreens`, `updateFocus`, `handleRoundRequests`, `readRoundKeys`, `drawMenuBackgroundFrame`, `frameView`, `placeShade`, `frameLightingFor`, `beginScenePass`, `uploadLights`, `finishPicture`). `FrameScreen` and `FrameView` carry what the steps share: which screen the frame is for, and where it is seen from.
+`onRender` reads as this list: the steps are functions of their own, declared together in `src/app/NightMazeApp.hpp` under "The parts of onRender" (`updateScreens`, `updateFocus`, `handleRoundRequests`, `readRoundKeys`, `drawMenuBackgroundFrame`, `frameView`, `placeShade`, `frameLightingFor`, `beginScenePass`, `uploadLights`, `finishPicture`). `FrameScreen` and `FrameView` carry what the steps share: which screen the frame is for, and where it is seen from.
 
 ```mermaid
 flowchart TD
@@ -259,7 +260,7 @@ Dear ImGui draws the debug window (key left of 1) and the HUD of a round: counte
 
 Input routing:
 
-- `core::Input` is a snapshot polled once per frame. It has two neutral flags, `setKeyboardBlocked` and `setMouseBlocked`. `src/main.cpp` sets them at the end of a frame from `DebugUI::wantsKeyboard`, `DebugUI::wantsMouse` and `UiLayer::wantsKeyboard`, so typing in a text field does not move the player.
+- `core::Input` is a snapshot polled once per frame. It has two neutral flags, `setKeyboardBlocked` and `setMouseBlocked`. `src/app/main.cpp` sets them at the end of a frame from `DebugUI::wantsKeyboard`, `DebugUI::wantsMouse` and `UiLayer::wantsKeyboard`, so typing in a text field does not move the player.
 - The debug panels lie on top of the menu and get the mouse first (`UiLayer::setMouseEnabled`).
 - The game reads the keys of a round only while `updatesRound` is true, and moves the player only while the cursor is captured. `showScreen` captures it for a round and releases it for a menu.
 - Rebinding a key goes through `UiLayer::setKeyCapture` and `takeCapturedKey`. The capture also takes the two side buttons of the mouse; a binding code is a key code or `core::MOUSE_BINDING_BASE` plus the button number, and `Input::isBindingDown` and `wasBindingPressed` read either.
@@ -280,10 +281,10 @@ What the launcher expects from a game build is what `.github/workflows/release.y
 
 ## 10. Where to start reading
 
-- Add a setting: the field and its name in `src/game/screens/Settings.hpp` and `src/game/screens/Settings.cpp`, the control in `assets/ui/settings.rml`, then `fillSettingsDocument` and `handleControlChanges` in `src/game/NightMazeAppMenus.cpp`.
-- Add a sound cue: the enum entry, the count and the table row in `src/game/sound/SoundCues.hpp` and `src/game/sound/SoundCues.cpp`, the sound in `tools/make_sounds.py`, and one `playCue` call in the `src/game/NightMazeApp*.cpp` file where the thing happens.
+- Add a setting: the field and its name in `src/game/screens/Settings.hpp` and `src/game/screens/Settings.cpp`, the control in `assets/ui/settings.rml`, then `fillSettingsDocument` and `handleControlChanges` in `src/app/NightMazeAppMenus.cpp`.
+- Add a sound cue: the enum entry, the count and the table row in `src/game/sound/SoundCues.hpp` and `src/game/sound/SoundCues.cpp`, the sound in `tools/make_sounds.py`, and one `playCue` call in the `src/app/NightMazeApp*.cpp` file where the thing happens.
 - Add a pickup: follow the flask. Placement rules in `src/game/round/Flasks.cpp`, state and collection in `src/game/round/Round.cpp` (`startRound`, `updateRound`), drawing in `src/game/round/GameplayRenderer.cpp`.
-- Add a debug control: a reference in `src/debug/DebugContext.hpp`, filled in `src/main.cpp`, and the widget in one file of `src/debug/categories`. Keep `controlCount` in `src/debug/Categories.hpp` right.
-- Add a menu screen: a mode, its events and predicates in `src/game/screens/GameState.cpp`, a document in `assets/ui` next to `assets/ui/pause.rml`, then `showScreen` in `src/game/NightMazeAppScreens.cpp` and a fill function in `src/game/NightMazeAppMenus.cpp`. Say whether it has the menu theme: a line in `menuThemeScreen` in `src/game/sound/SoundCues.cpp` and in the table of its test. The build stops until the line is there.
+- Add a debug control: a reference in `src/debug/DebugContext.hpp`, filled in `src/app/main.cpp`, and the widget in one file of `src/debug/categories`. Keep `controlCount` in `src/debug/Categories.hpp` right.
+- Add a menu screen: a mode, its events and predicates in `src/game/screens/GameState.cpp`, a document in `assets/ui` next to `assets/ui/pause.rml`, then `showScreen` in `src/app/NightMazeAppScreens.cpp` and a fill function in `src/app/NightMazeAppMenus.cpp`. Say whether it has the menu theme: a line in `menuThemeScreen` in `src/game/sound/SoundCues.cpp` and in the table of its test. The build stops until the line is there.
 
 The matching test files are `tests/game/screens/SettingsTests.cpp`, `tests/game/sound/SoundCueTests.cpp`, `tests/game/round/FlaskTests.cpp`, `tests/game/round/RoundTests.cpp` and `tests/game/screens/GameStateTests.cpp`.

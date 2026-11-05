@@ -176,8 +176,8 @@ target_link_libraries(audio PRIVATE miniaudio)
 night_maze_enable_warnings(audio)
 
 # ---- night_maze: the application, its HUD and its debug UI -----------------------------
-# src/main.cpp, the files of src/game that draw (NightMazeApp, the renderers and the
-# others), the pass helpers of src/render (PostProcess and the others), src/hud and
+# src/app (main.cpp and NightMazeApp), the files of src/game that draw (the renderers and
+# the others), the pass helpers of src/render (PostProcess and the others), src/hud and
 # src/debug: they need a window and an OpenGL context, so they are not something a test can
 # run.
 add_executable(night_maze)

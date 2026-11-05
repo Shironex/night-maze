@@ -1,17 +1,6 @@
-# The application class: it needs a window and an OpenGL context. Each domain folder below
-# lists its rules (plain data and math, in game_logic, so the test program can link them)
-# and its classes that draw (in night_maze).
-target_sources(night_maze PRIVATE
-    NightMazeApp.cpp
-    NightMazeApp.hpp
-    NightMazeAppCampaign.cpp
-    NightMazeAppMenus.cpp
-    NightMazeAppPasses.cpp
-    NightMazeAppRender.cpp
-    NightMazeAppRound.cpp
-    NightMazeAppScreens.cpp
-    NightMazeAppShared.hpp
-)
+# The game, one folder per domain. Each folder lists its rules (plain data and math, in
+# game_logic, so the test program can link them) and its classes that draw (in night_maze).
+# The application class that holds them together is in src/app.
 
 add_subdirectory(land)
 add_subdirectory(lighting)

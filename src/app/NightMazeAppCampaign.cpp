@@ -1,6 +1,6 @@
 // The Night Maze application: the start of a game, of a night and of the maze of the day,
 // and the round that was won.
-#include "game/NightMazeApp.hpp"
+#include "app/NightMazeApp.hpp"
 
 #include "game/player/Interactables.hpp"
 

@@ -1,9 +1,9 @@
 // Program entry point: joins the game with the debug UI and runs it.
+#include "app/NightMazeApp.hpp"
 #include "core/Log.hpp"
 #include "debug/DebugContext.hpp"
 #include "debug/DebugUI.hpp"
 #include "debug/PerfProbe.hpp"
-#include "game/NightMazeApp.hpp"
 #include "gfx/RenderStats.hpp"
 
 #include <GLFW/glfw3.h>

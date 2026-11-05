@@ -1,6 +1,6 @@
 # The map is held with M, large in the centre, and the player stands still while it is up
 Status: accepted (2026-10-08)
-Code: src/game/minimap/Minimap.hpp, src/game/minimap/Minimap.cpp, src/game/screens/GameState.hpp, src/game/player/Player.hpp, src/game/NightMazeAppRender.cpp
+Code: src/game/minimap/Minimap.hpp, src/game/minimap/Minimap.cpp, src/game/screens/GameState.hpp, src/game/player/Player.hpp, src/app/NightMazeAppRender.cpp
 
 Context: Friends who played said the map in the screen corner made the game too easy.
 Decision: The map shows only while the key is held, as a square of 0.7 of the window height in the middle. While it is up, movement and looking are off and nothing can be used. The round goes on, so the battery and the shade keep running.

@@ -5,8 +5,8 @@ Run from anywhere, with Python 3.9 or newer, on macOS or Windows:
     python3 tools/move_module.py [--dry-run] SOURCE [SOURCE ...] FOLDER
 
 SOURCE is a module's stem (src/game/lighting/Bloom moves Bloom.hpp and Bloom.cpp, whichever
-exist) or one file (src/main.cpp, tests/game/lighting/BloomTests.cpp). FOLDER is where they
-go (src/render).
+exist) or one file (src/app/main.cpp, tests/game/lighting/BloomTests.cpp). FOLDER is where
+they go (src/render).
 Paths are relative to the repository root, with / or \\. A module and its test go to two
 folders, so they are two calls:
 
