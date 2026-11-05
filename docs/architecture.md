@@ -145,9 +145,13 @@ flowchart TD
 
 The loop uses a fixed timestep. `core::Time` collects the real time of each frame (clamped to 0.25 s) and `run()` calls `onUpdate` once for every `Time::FIXED_DT` (1/120 s) that fits, so zero or more times per frame. `onRender` runs once and gets `alpha`, how far the frame lies between two steps. The game draws the player and the shade at a position blended between the last two steps. One rule follows: anything that is true for one frame (`wasKeyPressed`, a mouse delta) is read in `onRender`, never in `onUpdate`.
 
-`game::NightMazeApp` (`src/app/NightMazeApp.hpp`) is the game. It owns, as plain members, the shader programs, the `AssetCache`, the renderers, two shadow maps, `PostProcess`, the settings, the current `MazeWorld`, `Round`, `Player`, camera and `GameMode`, the `ui::UiLayer` and the `audio::AudioEngine`. Member order is construction order, and some of it matters: the settings file is read before the first maze is built, and the UI layer exists before the debug UI so that Dear ImGui can chain its GLFW callbacks onto the ones of RmlUi.
+`game::NightMazeApp` (`src/app/NightMazeApp.hpp`) is the game. It owns the shader programs, the `AssetCache`, the renderers, two shadow maps, `PostProcess`, the settings, the current `MazeWorld`, `Round`, `Player`, camera and `GameMode`, the `ui::UiLayer` and the `audio::AudioEngine`. Member order is construction order, and some of it matters: the settings file is read before the first maze is built, and the UI layer exists before the debug UI so that Dear ImGui can chain its GLFW callbacks onto the ones of RmlUi.
 
 The class is one header and seven source files, split by what the functions do: `NightMazeApp.cpp` (the constructor, the settings and the sounds), `NightMazeAppScreens.cpp` (the change of screens, the intro and the cards), `NightMazeAppMenus.cpp` (the menu documents and their controls), `NightMazeAppCampaign.cpp` (the start of a game or a night and the won round), `NightMazeAppRound.cpp` (the maze being built and `onUpdate`), `NightMazeAppRender.cpp` (`onRender`, the picking and the minimap) and `NightMazeAppPasses.cpp` (the shadow passes and the `draw*` functions). The names the code shares with the `.rml` documents are in `NightMazeAppShared.hpp`.
+
+The state of the class is held in one member per system, each a struct or a small class in its own header in `src/app`, so the header of `NightMazeApp` reads as the coordinator:
+
+- `AppShaders`: the shader programs, loaded from their files in its constructor.
 
 `src/app/main.cpp` holds the only class that knows both the game and the debug code: `DebugNightMazeApp` derives from `NightMazeApp`, owns `debug::DebugUI`, and draws it after the frame of the game. It hands the debug window a `debug::DebugContext`, a struct of references.
 

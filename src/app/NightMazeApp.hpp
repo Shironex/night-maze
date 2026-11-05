@@ -1,6 +1,7 @@
 // The Night Maze application: game state and rendering of a frame.
 #pragma once
 
+#include "app/AppShaders.hpp"
 #include "assets/AssetCache.hpp"
 #include "audio/AudioEngine.hpp"
 #include "core/Application.hpp"
@@ -189,55 +190,8 @@ protected:
     /// switched off.
     std::array<float, 3>& clearColor() { return m_clearColor; }
 
-    /// Shader program of the scene without lighting and of its debug views (textured
-    /// models), exposed so the debug UI can reload it live.
-    gfx::Shader& texturedShader() { return m_texturedShader; }
-
-    /// Shader program of the lines of the collision boxes and spheres, exposed for the
-    /// same reason.
-    gfx::Shader& colorShader() { return m_colorShader; }
-
-    /// Shader program of the lit scene with lighting per fragment (Phong and
-    /// Blinn-Phong), exposed for the same reason.
-    gfx::Shader& litShader() { return m_litShader; }
-
-    /// Shader program of the lit scene with lighting per vertex (Gouraud), exposed for
-    /// the same reason.
-    gfx::Shader& gouraudShader() { return m_gouraudShader; }
-
-    /// Shader program of the sky, exposed for the same reason.
-    gfx::Shader& skyboxShader() { return m_skyboxShader; }
-
-    /// Shader program of the grass (with a geometry stage), exposed for the same reason.
-    gfx::Shader& grassShader() { return m_grassShader; }
-
-    /// Shader program of the instanced grass, exposed for the same reason.
-    gfx::Shader& grassInstancedShader() { return m_grassInstancedShader; }
-
-    /// Shader program of the composite pass (the HDR picture to the window), exposed
-    /// for the same reason.
-    gfx::Shader& compositeShader() { return m_compositeShader; }
-
-    /// Shader program of the attachment previews of the debug UI, exposed for the same
-    /// reason.
-    gfx::Shader& previewShader() { return m_previewShader; }
-
-    /// Shader program of the bright pass of the bloom, exposed for the same reason.
-    gfx::Shader& brightPassShader() { return m_brightPassShader; }
-
-    /// Shader program of the blur passes of the bloom, exposed for the same reason.
-    gfx::Shader& blurShader() { return m_blurShader; }
-
-    /// Shader program of the depth pass of the shadow maps, exposed for the same reason.
-    gfx::Shader& shadowDepthShader() { return m_shadowDepthShader; }
-
-    /// Shader program that draws the minimap into its framebuffer, exposed for the same
-    /// reason.
-    gfx::Shader& minimapShader() { return m_minimapShader; }
-
-    /// Shader program that puts the picture of the minimap into the window, exposed for
-    /// the same reason.
-    gfx::Shader& minimapOverlayShader() { return m_minimapOverlayShader; }
+    /// The shader programs, exposed so the debug UI can reload them live.
+    AppShaders& shaders() { return m_shaders; }
 
     /// The settings of the minimap (pin, reveal all, size, opacity), exposed so the debug
     /// UI can edit them live.
@@ -246,9 +200,6 @@ protected:
     /// The minimap, read only: the debug UI shows the size, the format and the picture
     /// of its framebuffer.
     const MinimapRenderer& minimapRenderer() const { return m_minimapRenderer; }
-    /// Shader program of the surfaces that show the sky (crystals and puddles), exposed
-    /// for the same reason.
-    gfx::Shader& reflectShader() { return m_reflectShader; }
 
     /// The settings of the environment mapping (the sky on the crystals and on the
     /// puddles), exposed so the debug UI can edit them live.
@@ -1127,25 +1078,8 @@ private:
     // Order: members are constructed top to bottom. The renderers of the maze, the
     // round and the terrain ask m_assets for their models and textures in their
     // constructors, so they come after it.
-    gfx::Shader m_texturedShader;
-    gfx::Shader m_colorShader;
-    gfx::Shader m_litShader;
-    gfx::Shader m_gouraudShader;
-    gfx::Shader m_skyboxShader;
-    gfx::Shader m_grassShader;
-    gfx::Shader m_grassInstancedShader;
-    gfx::Shader m_compositeShader;
-    gfx::Shader m_previewShader;
-    gfx::Shader m_brightPassShader;
-    gfx::Shader m_blurShader;
-    // Draws depth only, from the view of a light: the program of the shadow pass.
-    gfx::Shader m_shadowDepthShader;
-    // Draws the flat shapes of the minimap into its framebuffer, and puts the finished
-    // picture of the minimap into the window.
-    gfx::Shader m_minimapShader;
-    gfx::Shader m_minimapOverlayShader;
-    // Draws the crystals and the puddles with the sky on them: the reflection pass.
-    gfx::Shader m_reflectShader;
+    // The shader programs (AppShaders), loaded from their files first.
+    AppShaders m_shaders;
     assets::AssetCache m_assets;
     MazeRenderer m_mazeRenderer;
     GameplayRenderer m_gameplayRenderer;

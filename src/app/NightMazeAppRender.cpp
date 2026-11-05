@@ -208,7 +208,8 @@ void NightMazeApp::onRender(double alpha) {
     // drawn earlier (the depth test sorts opaque things out). Only something that does
     // not write depth, like a transparent effect, would have to come after the sky.
     if (m_skyboxSettings.enabled) {
-        m_skybox.draw(m_skyboxShader, frame.view, frame.projection, m_skyboxSettings, m_viewMode);
+        m_skybox.draw(m_shaders.skyboxShader, frame.view, frame.projection, m_skyboxSettings,
+                      m_viewMode);
     }
 
     // The lamp in the hand, on top of the scene and in front of every wall.
@@ -748,8 +749,8 @@ void NightMazeApp::finishPicture(core::Size framebuffer, const FrameView& frame)
 
     // The pictures of the attachments, only while the debug UI shows them.
     if (m_postProcessSettings.previews) {
-        m_postProcess.drawPreviews(m_previewShader, m_postProcessSettings, frame.camera.nearPlane,
-                                   frame.camera.farPlane);
+        m_postProcess.drawPreviews(m_shaders.previewShader, m_postProcessSettings,
+                                   frame.camera.nearPlane, frame.camera.farPlane);
     }
 
     // The two debug views show data as colours (a normal, a texture coordinate), not
@@ -773,7 +774,8 @@ void NightMazeApp::finishPicture(core::Size framebuffer, const FrameView& frame)
     // size. It is called in every frame, also with the bloom switched off: it then
     // draws nothing and tells the composite pass so.
     m_gpuPasses.begin(GpuPass::Bloom);
-    m_postProcess.drawBloom(m_brightPassShader, m_blurShader, m_previewShader, compositeSettings);
+    m_postProcess.drawBloom(m_shaders.brightPassShader, m_shaders.blurShader,
+                            m_shaders.previewShader, compositeSettings);
 
     // The fog of the last pass finds the place in the world every pixel shows. For that
     // it needs the way back from the screen to the world: the inverse of the two
@@ -786,7 +788,7 @@ void NightMazeApp::finishPicture(core::Size framebuffer, const FrameView& frame)
     // the bloom, exposure, tone mapping, the vignette and the sRGB encoding. The debug
     // UI is drawn after this function returns (main.cpp), straight into the window.
     m_gpuPasses.begin(GpuPass::Composite);
-    m_postProcess.composite(m_compositeShader, compositeSettings, framebuffer, sceneView);
+    m_postProcess.composite(m_shaders.compositeShader, compositeSettings, framebuffer, sceneView);
     m_gpuPasses.end();
 }
 
@@ -894,9 +896,10 @@ void NightMazeApp::drawMinimap(core::Size framebuffer, const glm::vec3& feet) {
                              minimapMetresPerPixel(maze, rect.size), m_gameplay.shade.showOnMap);
 
     // The offscreen pass, and then the picture into the middle of the window.
-    if (m_minimapRenderer.drawMap(m_minimapShader, vertices, minimapProjection(maze), rect.size)) {
-        m_minimapRenderer.drawOverlay(m_minimapOverlayShader, rect, m_minimapSettings.opacity,
-                                      framebuffer);
+    if (m_minimapRenderer.drawMap(m_shaders.minimapShader, vertices, minimapProjection(maze),
+                                  rect.size)) {
+        m_minimapRenderer.drawOverlay(m_shaders.minimapOverlayShader, rect,
+                                      m_minimapSettings.opacity, framebuffer);
     }
 }
 
