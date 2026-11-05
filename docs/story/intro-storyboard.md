@@ -1,8 +1,8 @@
 # The intro as a storybook: storyboard
 
 Status: draft of 2026-10-15, for comparing two richer intros with the classic one.
-Option A is an illustrated storybook played by the engine (`src/game/Storybook.hpp`, `assets/intro/`). Option B is a 3D cinematic rendered in Blender.
-Both tell the same six beats below. They keep the facts and the names of the five cards of the classic intro (`src/game/Intro.cpp`) and of [the-last-lamp.md](the-last-lamp.md).
+Option A is an illustrated storybook played by the engine (`src/game/screens/Storybook.hpp`, `assets/intro/`). Option B is a 3D cinematic rendered in Blender.
+Both tell the same six beats below. They keep the facts and the names of the five cards of the classic intro (`src/game/screens/Intro.cpp`) and of [the-last-lamp.md](the-last-lamp.md).
 
 ## Voice direction
 
@@ -121,6 +121,6 @@ Everything goes into `assets/intro/`, next to `storybook.txt`. The manifest name
 | Voice line | WAV or FLAC, mono, 44.1 or 48 kHz, peaks near -3 dBFS | one file per beat, `voice beatN_voice.wav` under the beat. It plays in the effects group, so the effects slider sets its volume |
 | Music | FLAC (or WAV), stereo, 44.1 or 48 kHz | one line `music intro_theme.flac` at the top of the manifest. It plays in the music group and is cut when the intro is skipped |
 
-A layer line is `layer <file> <drift x> <drift y> <scale from> <scale to>`. Drift is how far the layer travels over the beat, as a share of the window (0.03 is three percent, positive is right and down). Scale is the zoom at the start and at the end, from 1 (all of the picture) up. Near layers should drift and zoom more than far ones. A drift larger than the zoom leaves room for stops at the picture's edge. `seconds` is the shortest time of a beat, `crossfade` the fade between beats (1.5 s). The words are listed in `src/game/Storybook.hpp`.
+A layer line is `layer <file> <drift x> <drift y> <scale from> <scale to>`. Drift is how far the layer travels over the beat, as a share of the window (0.03 is three percent, positive is right and down). Scale is the zoom at the start and at the end, from 1 (all of the picture) up. Near layers should drift and zoom more than far ones. A drift larger than the zoom leaves room for stops at the picture's edge. `seconds` is the shortest time of a beat, `crossfade` the fade between beats (1.5 s). The words are listed in `src/game/screens/Storybook.hpp`.
 
 To compare the two intros, start the game with `--intro` (the storybook) or with `--intro --intro-style classic`. A new campaign plays the storybook too, unless `--intro-style classic` is given. A manifest that cannot be read, or a layer that cannot be loaded, falls back to the classic intro and says why in the log.

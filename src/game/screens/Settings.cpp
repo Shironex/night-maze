@@ -1,9 +1,9 @@
 // Settings: what the player changes on the settings screen, and the text of the file
 // they are kept in.
-#include "game/Settings.hpp"
+#include "game/screens/Settings.hpp"
 
-#include "game/StartOptions.hpp"
 #include "game/player/Interactables.hpp"
+#include "game/screens/StartOptions.hpp"
 
 #include <algorithm>
 #include <cmath>

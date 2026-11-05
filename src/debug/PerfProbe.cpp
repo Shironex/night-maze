@@ -4,13 +4,13 @@
 
 #include "core/Application.hpp"
 #include "core/Time.hpp"
-#include "game/GameState.hpp"
 #include "game/Lighting.hpp"
 #include "game/Minimap.hpp"
 #include "game/land/Grass.hpp"
 #include "game/land/Village.hpp"
 #include "game/maze/MazeRenderer.hpp"
 #include "game/player/Player.hpp"
+#include "game/screens/GameState.hpp"
 #include "render/GpuPasses.hpp"
 #include "scene/Camera.hpp"
 

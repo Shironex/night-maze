@@ -1042,7 +1042,7 @@ def shade_banish():
 
 # ---- the intro: the wind and the bell --------------------------------------------------------
 
-# How long the intro is, in seconds: the five cards of src/game/Intro.cpp (INTRO_CARDS)
+# How long the intro is, in seconds: the five cards of src/game/screens/Intro.cpp (INTRO_CARDS)
 # add up to this. The wind is exactly as long, because the game cannot fade a sound: it
 # starts the file with the first card and the file ends with the last one.
 INTRO_SECONDS = 30.0

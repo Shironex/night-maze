@@ -1,6 +1,6 @@
-// Tests of game/Storybook.hpp: reading the manifest of the storybook intro, how long its
+// Tests of game/screens/Storybook.hpp: reading the manifest of the storybook intro, how long its
 // pictures stay, what it shows at a moment and where its layers are.
-#include "game/Storybook.hpp"
+#include "game/screens/Storybook.hpp"
 
 #include "core/Files.hpp"
 #include "gfx/CoverFit.hpp"

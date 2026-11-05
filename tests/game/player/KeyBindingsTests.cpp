@@ -2,7 +2,7 @@
 // keys, and the lines of the settings file that hold them.
 #include "game/player/KeyBindings.hpp"
 
-#include "game/Settings.hpp"
+#include "game/screens/Settings.hpp"
 
 #include <GLFW/glfw3.h>
 #include <doctest/doctest.h>

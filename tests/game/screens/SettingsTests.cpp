@@ -1,5 +1,5 @@
-// Tests of game/Settings: the settings of the player and the text of their file.
-#include "game/Settings.hpp"
+// Tests of game/screens/Settings: the settings of the player and the text of their file.
+#include "game/screens/Settings.hpp"
 
 #include "game/player/Interactables.hpp"
 

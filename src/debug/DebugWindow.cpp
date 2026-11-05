@@ -13,8 +13,8 @@
 #include "debug/categories/PostProcessCategory.hpp"
 #include "debug/categories/RenderCategory.hpp"
 #include "debug/categories/WorldCategory.hpp"
-#include "game/GameState.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/screens/GameState.hpp"
 
 #include <imgui.h>
 

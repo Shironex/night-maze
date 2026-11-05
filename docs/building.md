@@ -105,7 +105,7 @@ This does not build the program, so it also works while the game is running.
 
 ### Command line switches
 
-The switches are read before the window opens. A wrong one prints an `[error]` line with the list of switches and exits with a non-zero code. The code is `src/game/StartOptions.cpp`.
+The switches are read before the window opens. A wrong one prints an `[error]` line with the list of switches and exits with a non-zero code. The code is `src/game/screens/StartOptions.cpp`.
 
 | Switch | Meaning |
 |---|---|

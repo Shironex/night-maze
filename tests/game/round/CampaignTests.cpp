@@ -2,7 +2,6 @@
 // rules of the progress and the timing of the two cards.
 #include "game/round/Campaign.hpp"
 
-#include "game/Intro.hpp"
 #include "game/Lighting.hpp"
 #include "game/MenuCamera.hpp"
 #include "game/Shadows.hpp"
@@ -14,6 +13,7 @@
 #include "game/round/Exit.hpp"
 #include "game/round/Flasks.hpp"
 #include "game/round/Round.hpp"
+#include "game/screens/Intro.hpp"
 #include "game/shade/Shade.hpp"
 #include "scene/Camera.hpp"
 #include "scene/LightSpace.hpp"
@@ -679,7 +679,7 @@ TEST_CASE("the ending card shows the skip hint at its start, and its bell rings 
     CHECK(game::endingCardFrame(game::INTRO_HINT_FADE_SECONDS).hintOpacity == 1.0F);
     CHECK(game::endingCardFrame(game::INTRO_HINT_SECONDS + game::INTRO_HINT_FADE_SECONDS)
               .hintOpacity == 0.0F);
-    // The bell is 5.5 seconds long (game/Intro.cpp): it has rung out when the card ends
+    // The bell is 5.5 seconds long (game/screens/Intro.cpp): it has rung out when the card ends
     // and every sound is stopped.
     constexpr float BELL_SECONDS = 5.5F;
     CHECK(game::ENDING_BELL_SECONDS + BELL_SECONDS < game::ENDING_CARD_SECONDS);

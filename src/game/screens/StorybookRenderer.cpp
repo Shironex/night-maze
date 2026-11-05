@@ -1,5 +1,5 @@
 // StorybookRenderer: loads the layers of the storybook intro and draws its pictures.
-#include "game/StorybookRenderer.hpp"
+#include "game/screens/StorybookRenderer.hpp"
 
 #include "assets/ImageLoader.hpp"
 #include "core/GlCheck.hpp"

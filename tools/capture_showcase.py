@@ -14,7 +14,7 @@
 # that send input are left out and named at the end.
 #
 # Every picture is one entry of RUNS below: the switches the game is started with
-# (game/StartOptions.hpp), its settings file, and a few steps. A picture that only needs
+# (game/screens/StartOptions.hpp), its settings file, and a few steps. A picture that only needs
 # a place is reached with the switches alone (the menu camera). A picture that needs
 # a moment of a round (a note being read, the tea working) is reached with a few key
 # presses and mouse turns, which this script sends. The mazes are chosen so that those
@@ -66,7 +66,7 @@ LOCK_WAIT_SECONDS = 120.0
 POINTER_WAIT_SECONDS = 10.0
 
 # The settings file writes mouse_sensitivity = 4, which is 0.1 degrees per unit of mouse
-# movement (game/Settings.hpp), so a turn of 90 degrees is 900 units: desk.UNITS_PER_DEGREE.
+# movement (game/screens/Settings.hpp), so a turn of 90 degrees is 900 units: desk.UNITS_PER_DEGREE.
 MOUSE_SENSITIVITY = 4
 
 # ---- the pictures -------------------------------------------------------------------------

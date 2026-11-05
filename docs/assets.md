@@ -137,7 +137,7 @@ To add a sound and a cue:
 3. Add a value to the `SoundCue` enum in `src/game/SoundCues.hpp`, raise `SOUND_CUE_COUNT`, and add the matching line to the table in `src/game/SoundCues.cpp`, in the order of the enum. A test (`tests/game/SoundCueTests.cpp`) fails if a cue has no table line.
 4. Add the code that plays the cue and a row to `assets/audio/README.md`. Set `.ambient = true` in the table for a wind.
 
-A sound that another piece of code times itself by has its length written there: the clocks of the hum, the breath and the bell in `src/game/SoundCues.hpp`, and the last card of the intro in `src/game/Intro.cpp`. Check them when a sound gets longer.
+A sound that another piece of code times itself by has its length written there: the clocks of the hum, the breath and the bell in `src/game/SoundCues.hpp`, and the last card of the intro in `src/game/screens/Intro.cpp`. Check them when a sound gets longer.
 
 ## Music
 

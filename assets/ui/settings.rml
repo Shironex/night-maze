@@ -6,7 +6,7 @@
 <body class="dim settings">
 <!-- A control names its setting with data-setting: when it changes, the game gets the
      name and the new value (game::applySetting), uses the value at once and writes the
-     settings file. The limits of the six sliders are the ones in game/Settings.hpp. The
+     settings file. The limits of the six sliders are the ones in game/screens/Settings.hpp. The
      elements with an id are written by the game. -->
 <!-- The two panels stand side by side in one row, and the body puts that row in the
      middle of the height of the window: the panels share their top edge and their

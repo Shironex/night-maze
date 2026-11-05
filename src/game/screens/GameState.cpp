@@ -1,6 +1,6 @@
 // GameState: which screen the game is on (menu, playing, paused, round end, settings)
 // and the rules for going from one to the next.
-#include "game/GameState.hpp"
+#include "game/screens/GameState.hpp"
 
 namespace game {
 

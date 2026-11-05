@@ -1,7 +1,7 @@
 // Tests of game/MenuBackground.hpp: the rule that chooses what is behind the main menu.
 #include "game/MenuBackground.hpp"
 
-#include "game/GameState.hpp"
+#include "game/screens/GameState.hpp"
 
 #include <doctest/doctest.h>
 

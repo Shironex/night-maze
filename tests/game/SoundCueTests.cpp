@@ -4,7 +4,6 @@
 // steps of the player, the rule of the wind of the maze and the bell of the open gate.
 #include "game/SoundCues.hpp"
 
-#include "game/GameState.hpp"
 #include "game/land/Terrain.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeLayout.hpp"
@@ -12,6 +11,7 @@
 #include "game/player/Player.hpp"
 #include "game/round/Exit.hpp"
 #include "game/round/Round.hpp"
+#include "game/screens/GameState.hpp"
 
 #include <doctest/doctest.h>
 

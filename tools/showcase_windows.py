@@ -18,7 +18,7 @@ from record_menu_loop import (WINDOW_LEFT, WINDOW_TOP, client_size,  # noqa: E40
 from record_menu_loop import find_window as find_window_of  # noqa: E402
 
 # The settings file writes mouse_sensitivity = 4, which is 0.1 degrees per unit of mouse
-# movement (game/Settings.hpp), so a turn of 90 degrees is 900 units.
+# movement (game/screens/Settings.hpp), so a turn of 90 degrees is 900 units.
 UNITS_PER_DEGREE = 10
 
 

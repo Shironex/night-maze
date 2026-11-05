@@ -3,10 +3,10 @@
 // next.
 #pragma once
 
-#include "game/StartOptions.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "game/round/Campaign.hpp"
 #include "game/round/Difficulty.hpp"
+#include "game/screens/StartOptions.hpp"
 
 #include <cstdint>
 #include <string_view>
@@ -31,7 +31,7 @@ enum class GameMode {
     SettingsFromMenu,
     SettingsFromPause, ///< the settings screen, opened from the pause menu
     /// The intro played by itself: five cards of text over pictures of the maze
-    /// (game/Intro.hpp), asked for by the switch --intro or by the debug window. It ends
+    /// (game/screens/Intro.hpp), asked for by the switch --intro or by the debug window. It ends
     /// by itself, and any key ends it earlier. The main menu follows.
     Intro,
     /// The screen of free play, opened from the main menu: the difficulty, the calm
@@ -298,8 +298,8 @@ bool showsMap(GameMode mode, const MapRequest& request);
 /// True while the picture is taken by the menu camera and not from the eyes of the
 /// player: in the main menu, which has no round to show, and on the screens opened from
 /// it (the settings, the ledger, free play, the list of nights, the question about a new campaign).
-/// The intro is not among them: it places the camera itself, shot by shot (game/Intro.hpp), and its
-/// scene is always drawn.
+/// The intro is not among them: it places the camera itself, shot by shot (game/screens/Intro.hpp),
+/// and its scene is always drawn.
 bool usesMenuCamera(GameMode mode);
 
 /// True while the lamp in the hand of the player is part of the picture: on the screens

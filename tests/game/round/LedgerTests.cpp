@@ -2,9 +2,9 @@
 // file, the set of a file from before the ledger, and the page with its groups.
 #include "game/round/Ledger.hpp"
 
-#include "game/Settings.hpp"
 #include "game/player/Interactables.hpp"
 #include "game/round/Campaign.hpp"
+#include "game/screens/Settings.hpp"
 
 #include <doctest/doctest.h>
 

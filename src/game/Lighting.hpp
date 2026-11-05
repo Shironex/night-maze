@@ -215,7 +215,7 @@ constexpr float HELD_LAMP_LENS_OUT = 0.113F;
 constexpr float HELD_LAMP_REACH = 0.35F;
 
 /// The vertical field of view the lamp is drawn with, in degrees: the default one of
-/// the game (DEFAULT_FIELD_OF_VIEW_DEGREES in game/Settings.hpp), whatever the player
+/// the game (DEFAULT_FIELD_OF_VIEW_DEGREES in game/screens/Settings.hpp), whatever the player
 /// has set. A wider view would push the lamp towards the middle of the picture and
 /// a narrower one out of it.
 constexpr float HELD_LAMP_FOV_DEGREES = 60.0F;

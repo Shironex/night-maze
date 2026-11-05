@@ -4,7 +4,6 @@
 // (game/SoundCues.hpp) and to the HUD (hud/HudRules.hpp).
 #include "game/round/Heartstone.hpp"
 
-#include "game/Settings.hpp"
 #include "game/SoundCues.hpp"
 #include "game/land/Puddles.hpp"
 #include "game/land/Terrain.hpp"
@@ -19,6 +18,7 @@
 #include "game/round/Exit.hpp"
 #include "game/round/Flasks.hpp"
 #include "game/round/Round.hpp"
+#include "game/screens/Settings.hpp"
 #include "hud/HudRules.hpp"
 
 #include <doctest/doctest.h>

@@ -67,7 +67,7 @@ constexpr float MENU_CAMERA_TURN_SHORT = 0.6F;
 constexpr float MENU_CAMERA_CORNER_RADIUS = 0.5F;
 
 /// What can be changed about the menu camera. The debug UI edits the fields, and the
-/// command line sets them at the start (game/StartOptions.hpp).
+/// command line sets them at the start (game/screens/StartOptions.hpp).
 struct MenuCameraSettings {
     /// Whether the game shows itself: the camera travels alone, the round stands still
     /// and the HUD is hidden.

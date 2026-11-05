@@ -175,7 +175,7 @@ void drawAudio(Page& page, const DebugContext& context) {
     // theme of the menu, and never both at once. A loop that was just switched off
     // still fades out and is not counted any more.
     page.stat("Loops on", "%d", static_cast<int>(context.audio.loopCount()));
-    // The volumes are settings of the player (game/Settings.hpp): they are changed on
+    // The volumes are settings of the player (game/screens/Settings.hpp): they are changed on
     // the settings screen, which also saves them, and only shown here. The second
     // number is what the engine was given for each (game::masterVolumeGain).
     page.stat("Master volume", "%.0f of 100 (gain %.2f), set on the settings screen",

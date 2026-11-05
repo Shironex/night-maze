@@ -2,7 +2,7 @@
 #pragma once
 
 #include "core/Window.hpp"
-#include "game/Storybook.hpp"
+#include "game/screens/Storybook.hpp"
 #include "gfx/FrameTexture.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/VertexArray.hpp"
@@ -13,7 +13,7 @@
 
 namespace game {
 
-/// The OpenGL side of the storybook intro (game/Storybook.hpp): the layers of every
+/// The OpenGL side of the storybook intro (game/screens/Storybook.hpp): the layers of every
 /// picture as textures, and the draw of one moment. What a moment shows is decided by
 /// game::storybookFrame.
 ///

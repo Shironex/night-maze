@@ -1,8 +1,8 @@
 // Daily: "Tonight's hedge", the maze of the day, and the rules of its best time.
 #include "game/round/Daily.hpp"
 
-#include "game/StartOptions.hpp"
 #include "game/round/Campaign.hpp"
+#include "game/screens/StartOptions.hpp"
 
 #include <algorithm>
 #include <array>
