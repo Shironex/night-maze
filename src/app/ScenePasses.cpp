@@ -1,5 +1,6 @@
-// The Night Maze application: the shadow passes and the parts of the scene pass.
-#include "app/NightMazeApp.hpp"
+// The passes of a frame that draw the world: the two shadow passes and the parts of the
+// scene pass.
+#include "app/ScenePasses.hpp"
 
 #include "core/GlCheck.hpp"
 #include "game/player/Interactables.hpp"
@@ -87,7 +88,28 @@ constexpr double HELD_LAMP_DEPTH_RANGE = 0.01;
 
 } // namespace
 
-void NightMazeApp::drawMoonShadowMap() {
+ScenePasses::ScenePasses(const Sources& sources)
+    : m_renderSettings(sources.renderSettings),
+      m_shaders(sources.shaders),
+      m_renderers(sources.renderers),
+      m_mazeSettings(sources.mazeSettings),
+      m_mazeWorld(sources.mazeWorld),
+      m_gameplay(sources.gameplay),
+      m_round(sources.round),
+      m_obstacles(sources.obstacles),
+      m_frameState(sources.frameState),
+      m_player(sources.player),
+      m_previousPlayerPosition(sources.previousPlayerPosition),
+      m_camera(sources.camera),
+      m_lighting(sources.lighting),
+      m_groundVersion(sources.groundVersion),
+      m_mazeBounds(sources.mazeBounds),
+      m_menuCamera(sources.menuCamera),
+      m_mode(sources.mode),
+      m_roundClocks(sources.roundClocks),
+      m_time(sources.time) {}
+
+void ScenePasses::drawMoonShadowMap() {
     // Where the moon looks: an orthographic box around the whole land, seen from the
     // direction of its light. It is computed again in every frame, from the terrain
     // and the two angles of the moon alone: a few dozen multiplications, and nothing
@@ -153,8 +175,8 @@ void NightMazeApp::drawMoonShadowMap() {
     }
 }
 
-void NightMazeApp::drawFlashlightShadowMap(const LightingSettings& frameLighting,
-                                           const FlashlightPose& flashlight) {
+void ScenePasses::drawFlashlightShadowMap(const LightingSettings& frameLighting,
+                                          const FlashlightPose& flashlight) {
     // Where the flashlight looks: a pyramid with its tip in the hand, along the beam,
     // a little wider than the cone of light and as deep as the light reaches. It is
     // computed again in every frame, also with the shadows switched off: the debug UI
@@ -196,7 +218,7 @@ void NightMazeApp::drawFlashlightShadowMap(const LightingSettings& frameLighting
     }
 }
 
-void NightMazeApp::setShadowUniformsOf(const gfx::Shader& shader) const {
+void ScenePasses::setShadowUniformsOf(const gfx::Shader& shader) const {
     // The shadow map of the moon: where it is bound, the matrix it was drawn with and
     // the numbers of the comparison.
     setShadowUniforms(shader, MOON_SHADOW_UNIFORMS, MOON_SHADOW_TEXTURE_UNIT,
@@ -208,7 +230,7 @@ void NightMazeApp::setShadowUniformsOf(const gfx::Shader& shader) const {
                       m_frameState.flashlightLightSpace);
 }
 
-void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const {
+void ScenePasses::drawShadowCasters(const scene::LightSpace& lightSpace) const {
     // The flashlight draws both halves in every frame: its pyramid moves with the hand,
     // so nothing stands still in its map. The moon calls the halves apart
     // (drawMoonShadowMap).
@@ -224,8 +246,8 @@ void NightMazeApp::drawShadowCasters(const scene::LightSpace& lightSpace) const 
     drawMovingShadowCasters(lightSpace, culling);
 }
 
-void NightMazeApp::drawFixedShadowCasters(const scene::LightSpace& lightSpace,
-                                          const scene::Frustum* frustum) const {
+void ScenePasses::drawFixedShadowCasters(const scene::LightSpace& lightSpace,
+                                         const scene::Frustum* frustum) const {
     // The classes that draw the scene are used as they are, with another program and
     // the matrices of the light in place of the ones of the camera. So everything
     // stands in the shadow map exactly where it stands in the picture. The depth program
@@ -252,8 +274,8 @@ void NightMazeApp::drawFixedShadowCasters(const scene::LightSpace& lightSpace,
     }
 }
 
-void NightMazeApp::drawMovingShadowCasters(const scene::LightSpace& lightSpace,
-                                           const scene::Frustum* frustum) const {
+void ScenePasses::drawMovingShadowCasters(const scene::LightSpace& lightSpace,
+                                          const scene::Frustum* frustum) const {
     // The program and the matrices again: the moon draws this half without the other
     // one in most frames. Here the casters stand as the round has them at this moment:
     // the gate and the walls of pulled levers as far as they have sunk, every crystal
@@ -295,14 +317,14 @@ void NightMazeApp::drawMovingShadowCasters(const scene::LightSpace& lightSpace,
     // grass still RECEIVES shadows.
 }
 
-glm::vec3 NightMazeApp::crystalEmissive() const {
+glm::vec3 ScenePasses::crystalEmissive() const {
     // The colour of the crystal lights is an sRGB value, like every colour of the
     // lighting settings. It is converted here the way buildLightSet converts it for
     // the lights, so the mesh glows in the colour of the light around it.
     return crystalGlow(gfx::srgbToLinear(m_lighting.pointColor), m_round.animationSeconds);
 }
 
-void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) const {
+void ScenePasses::drawMaze(const glm::mat4& view, const glm::mat4& projection) const {
     // View frustum culling: the six planes around what this pass sees, read from the
     // two matrices it draws with (in the order a vertex shader applies them, the view
     // first). They are made here, in every frame, from the arguments and not from any
@@ -324,8 +346,8 @@ void NightMazeApp::drawMaze(const glm::mat4& view, const glm::mat4& projection) 
     }
 }
 
-void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& projection,
-                                 const scene::Frustum* frustum) const {
+void ScenePasses::drawUnlitMaze(const glm::mat4& view, const glm::mat4& projection,
+                                const scene::Frustum* frustum) const {
     // Without a shader program there is nothing to draw with. The load error was logged
     // once, when the shader was created, and the rest of the frame is still drawn.
     if (!m_shaders.texturedShader.isValid()) {
@@ -366,8 +388,8 @@ void NightMazeApp::drawUnlitMaze(const glm::mat4& view, const glm::mat4& project
     drawInteractables(m_shaders.texturedShader, frustum);
 }
 
-void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projection,
-                               const scene::Frustum* frustum) const {
+void ScenePasses::drawLitMaze(const glm::mat4& view, const glm::mat4& projection,
+                              const scene::Frustum* frustum) const {
     // Gouraud has a program of its own (the light is computed in its vertex shader).
     // Phong and Blinn-Phong share the other one and differ in one uniform.
     const gfx::Shader& shader =
@@ -415,20 +437,20 @@ void NightMazeApp::drawLitMaze(const glm::mat4& view, const glm::mat4& projectio
     drawInteractables(shader, frustum);
 }
 
-void NightMazeApp::drawInteractables(const gfx::Shader& shader,
-                                     const scene::Frustum* frustum) const {
+void ScenePasses::drawInteractables(const gfx::Shader& shader,
+                                    const scene::Frustum* frustum) const {
     // The highlight pulses on the animation clock of the round, which never stops.
     m_renderers.interactableRenderer.draw(shader, m_mazeWorld, m_round, m_frameState.pick,
                                           highlightGlow(m_round.animationSeconds), frustum);
 }
 
-bool NightMazeApp::crystalsReflect() const {
+bool ScenePasses::crystalsReflect() const {
     return m_renderSettings.environment.enabled &&
            m_renderSettings.viewMode == ViewMode::Textured && m_shaders.reflectShader.isValid();
 }
 
-void NightMazeApp::drawGateAndCrystals(const gfx::Shader& shader,
-                                       const scene::Frustum* frustum) const {
+void ScenePasses::drawGateAndCrystals(const gfx::Shader& shader,
+                                      const scene::Frustum* frustum) const {
     m_renderers.gameplayRenderer.drawGate(shader, m_mazeWorld, m_round, m_frameState.gateLampGlow,
                                           m_roundClocks.bellSwing.degrees, frustum);
     // The door is drawn with a highlight of its own: the one of the stone goes back.
@@ -459,7 +481,7 @@ void NightMazeApp::drawGateAndCrystals(const gfx::Shader& shader,
     }
 }
 
-void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& projection) const {
+void ScenePasses::drawReflections(const glm::mat4& view, const glm::mat4& projection) const {
     if (!m_renderSettings.environment.enabled) {
         return;
     }
@@ -594,8 +616,8 @@ void NightMazeApp::drawReflections(const glm::mat4& view, const glm::mat4& proje
     GL_CHECK(glActiveTexture(GL_TEXTURE0));
 }
 
-void NightMazeApp::drawVillage(const glm::mat4& view, const glm::mat4& projection, float farPlane,
-                               int nightsLit, float newestStrength) const {
+void ScenePasses::drawVillage(const glm::mat4& view, const glm::mat4& projection, float farPlane,
+                              int nightsLit, float newestStrength) const {
     if (!m_renderSettings.villageSettings.enabled || !m_mazeWorld.hasGate ||
         !m_shaders.texturedShader.isValid()) {
         return;
@@ -631,11 +653,10 @@ void NightMazeApp::drawVillage(const glm::mat4& view, const glm::mat4& projectio
     }
 }
 
-void NightMazeApp::drawHeldLamp(const glm::mat4& view, const glm::mat4& projection,
-                                const LightingSettings& frameLighting,
-                                const scene::LightSet& lights) {
-    if (!m_lighting.heldLampShown ||
-        !showsHeldLamp(m_mode, m_menuCamera.enabled, villageRevealShown())) {
+void ScenePasses::drawHeldLamp(const glm::mat4& view, const glm::mat4& projection,
+                               const LightingSettings& frameLighting, const scene::LightSet& lights,
+                               bool revealShown) {
+    if (!m_lighting.heldLampShown || !showsHeldLamp(m_mode, m_menuCamera.enabled, revealShown)) {
         return;
     }
     // The program of the lighting mode, chosen as drawMaze chooses it.
@@ -715,7 +736,7 @@ void NightMazeApp::drawHeldLamp(const glm::mat4& view, const glm::mat4& projecti
     }
 }
 
-void NightMazeApp::drawGrass(const glm::mat4& view, const glm::mat4& projection) const {
+void ScenePasses::drawGrass(const glm::mat4& view, const glm::mat4& projection) const {
     if (!m_renderSettings.grassSettings.enabled) {
         return;
     }
@@ -758,7 +779,7 @@ void NightMazeApp::drawGrass(const glm::mat4& view, const glm::mat4& projection)
     m_renderers.grassRenderer.draw(shader, m_renderSettings.grassSettings, frame);
 }
 
-void NightMazeApp::drawColliderLines(const glm::mat4& view, const glm::mat4& projection) const {
+void ScenePasses::drawColliderLines(const glm::mat4& view, const glm::mat4& projection) const {
     if (!m_shaders.colorShader.isValid()) {
         return;
     }
@@ -813,7 +834,7 @@ void NightMazeApp::drawColliderLines(const glm::mat4& view, const glm::mat4& pro
                                           PICKUP_COLLIDER_COLOR);
 }
 
-void NightMazeApp::drawPickLines(const glm::mat4& view, const glm::mat4& projection) const {
+void ScenePasses::drawPickLines(const glm::mat4& view, const glm::mat4& projection) const {
     if (!m_shaders.colorShader.isValid()) {
         return;
     }

@@ -11,13 +11,14 @@ target_sources(night_maze PRIVATE
     NightMazeApp.hpp
     NightMazeAppCampaign.cpp
     NightMazeAppMenus.cpp
-    NightMazeAppPasses.cpp
     NightMazeAppRender.cpp
     NightMazeAppRound.cpp
     NightMazeAppScreens.cpp
     NightMazeAppShared.hpp
     RenderSettings.hpp
     RoundClocks.hpp
+    ScenePasses.cpp
+    ScenePasses.hpp
     SceneRenderers.cpp
     SceneRenderers.hpp
     SessionState.hpp
