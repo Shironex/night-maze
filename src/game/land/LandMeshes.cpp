@@ -1,6 +1,6 @@
 // LandMeshes: the triangles of what the land builds in code: the ground of the ring, the
 // field walls and the sheepfold, the hedgerows, the stream and the lit windows.
-#include "game/LandMeshes.hpp"
+#include "game/land/LandMeshes.hpp"
 
 #include "assets/Tangents.hpp"
 #include "game/maze/MazeLayout.hpp"

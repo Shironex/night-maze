@@ -1,10 +1,10 @@
 // Tests of game::placeGrass (how many tufts a world gets and where they stand) and of the
 // grouping of the tufts into chunks, the box of a chunk and the distance LOD.
-#include "game/Grass.hpp"
+#include "game/land/Grass.hpp"
 
 #include "core/Files.hpp"
 #include "game/GateLamp.hpp"
-#include "game/Terrain.hpp"
+#include "game/land/Terrain.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "scene/Collider.hpp"

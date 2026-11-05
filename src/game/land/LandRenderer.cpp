@@ -1,12 +1,12 @@
 // LandRenderer: draws the land around the maze, its lit windows and the far silhouettes.
-#include "game/LandRenderer.hpp"
+#include "game/land/LandRenderer.hpp"
 
 #include "assets/AssetCache.hpp"
 #include "core/Files.hpp"
 #include "core/Paths.hpp"
 #include "game/GateLamp.hpp"
-#include "game/LandMeshes.hpp"
-#include "game/Village.hpp"
+#include "game/land/LandMeshes.hpp"
+#include "game/land/Village.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "gfx/ColorSpace.hpp"
 #include "gfx/Shader.hpp"

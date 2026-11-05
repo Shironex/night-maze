@@ -3,8 +3,8 @@
 
 #include "game/Crystals.hpp"
 #include "game/Interactables.hpp"
-#include "game/Land.hpp"
-#include "game/Terrain.hpp"
+#include "game/land/Land.hpp"
+#include "game/land/Terrain.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/StoneSheep.hpp"

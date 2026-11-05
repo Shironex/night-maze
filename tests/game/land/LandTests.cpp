@@ -1,18 +1,18 @@
 // Tests of game::Land: the ground of the ring, where the pieces of the land stand, what they
 // keep clear of, the windows and the nights that light them.
-#include "game/Land.hpp"
+#include "game/land/Land.hpp"
 
 #include "assets/ImageLoader.hpp"
 #include "assets/ObjLoader.hpp"
 #include "core/Files.hpp"
-#include "game/Grass.hpp"
-#include "game/LandMeshes.hpp"
 #include "game/Minimap.hpp"
 #include "game/Player.hpp"
 #include "game/Round.hpp"
 #include "game/Settings.hpp"
-#include "game/Terrain.hpp"
-#include "game/Village.hpp"
+#include "game/land/Grass.hpp"
+#include "game/land/LandMeshes.hpp"
+#include "game/land/Terrain.hpp"
+#include "game/land/Village.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "scene/Frustum.hpp"
 

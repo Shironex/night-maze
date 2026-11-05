@@ -1,9 +1,9 @@
 // Puddles: which cells of a maze get a puddle, how big it is and the mesh that lays its
 // water on the ground.
-#include "game/Puddles.hpp"
+#include "game/land/Puddles.hpp"
 
 #include "game/Crystals.hpp"
-#include "game/Terrain.hpp"
+#include "game/land/Terrain.hpp"
 #include "game/maze/MazeGenerator.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"

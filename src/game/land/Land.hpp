@@ -3,7 +3,7 @@
 // windows light up.
 #pragma once
 
-#include "game/Terrain.hpp"
+#include "game/land/Terrain.hpp"
 #include "game/maze/Maze.hpp"
 #include "scene/Collider.hpp"
 
@@ -27,7 +27,7 @@ namespace game {
 struct MazeWorld;
 
 // Plain data and math without OpenGL, like the rest of the game_logic library. The drawing
-// is game::LandRenderer, the triangles of what is built in code are in game/LandMeshes.hpp.
+// is game::LandRenderer, the triangles of what is built in code are in game/land/LandMeshes.hpp.
 //
 // The land lies in bands, measured from the outer face of the border wall
 // (game::distanceOutsideMaze):
@@ -36,7 +36,7 @@ struct MazeWorld;
 //   - the middle band, out to LAND_REACH: the ring, ground of its own that rises to a crest
 //     on the three sides away from the village and falls into a valley with a stream on the
 //     village side, with bare trees, copses, cottages and the landmarks,
-//   - the far band: the ridge and the village (game/Village.hpp), with a mill and a church
+//   - the far band: the ridge and the village (game/land/Village.hpp), with a mill and a church
 //     tower on other bearings, drawn around the eye like the village.
 //
 // Everything is placed from the seed of the maze by a generator of its own, after

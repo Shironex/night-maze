@@ -1,6 +1,6 @@
 # The maze stands on gentle terrain, with walls sunk to the lowest ground under them
 Status: accepted (2026-10-05)
-Code: src/game/Terrain.hpp, src/game/Terrain.cpp, src/game/maze/MazeWorld.cpp, src/game/TerrainRenderer.cpp, assets/textures/ground.png
+Code: src/game/land/Terrain.hpp, src/game/land/Terrain.cpp, src/game/maze/MazeWorld.cpp, src/game/land/TerrainRenderer.cpp, assets/textures/ground.png
 
 Context: The ground had to be a heightmap the player walks on, but walls are rigid, equally tall and use box colliders.
 Decision: One terrain mesh replaced the floor tiles. Relief is 0.6 m under the maze and rises to 4.5 m hills outside. Each wall, pillar and the gate is lowered to the lowest grid corner under its footprint plus 0.05 m, collider included.

@@ -67,7 +67,7 @@ struct VillageSettings {
     /// Whether the village is drawn.
     bool enabled = true;
 
-    /// Whether the land around the maze (game/Land.hpp) is drawn: its ground, its pieces,
+    /// Whether the land around the maze (game/land/Land.hpp) is drawn: its ground, its pieces,
     /// its windows and the mill and the church tower of the far band.
     bool landEnabled = true;
 

@@ -35,7 +35,7 @@ const int TIP = 4;
 
 // Half of the width of a blade at its root, in metres. The width shrinks to 0 at the tip.
 // The four numbers below with a twin in C++ (game::GRASS_ROOT_HALF_WIDTH and the others
-// in game/Grass.hpp, which make the box of a chunk) are checked against these by a test.
+// in game/land/Grass.hpp, which make the box of a chunk) are checked against these by a test.
 const float ROOT_HALF_WIDTH = 0.02;
 // The blades of a tuft do not grow from one point: each root is moved this far away from
 // the middle of the tuft, in the direction the blade leans.

@@ -47,6 +47,7 @@ src/
   ui/ video/ audio/   one library each, beside each other on top of engine
   game/               night_maze: NightMazeApp; one folder per domain below, each with
                       its rules (game_logic) and its renderers (night_maze)
+    land/             the ground, the grass, the puddles, the land around the maze, the village
     maze/             the maze, its walls, the stile and the stone sheep
   render/             night_maze: helpers of the passes of a frame, no rules of the game
   hud/                night_maze: the HUD of a round (HudRules also in the tests)
@@ -65,6 +66,7 @@ Directory map:
 - `src/scene`: `Camera`, `Transform`, colliders, ray casts, the frustum of a camera or a light (`Frustum`), lights as plain data.
 - `src/assets`: OBJ and image loaders, `AssetCache`.
 - `src/game`: the application class (`NightMazeApp`), and one folder per domain, each with its rules and its renderers:
+  - `src/game/land`: the ground (`Terrain`), the tufts of grass, the puddles, the land around the maze with the triangles built in code (`LandMeshes`), the village on the ridge, and their renderers.
   - `src/game/maze`: the grid of the maze, its generator and layout, the built world of a seed (`MazeWorld`), the worn wall variants, the stile, the stone sheep and `MazeRenderer`.
 - `src/render`: the helpers of the passes of a frame that hold no rule of the game: the names of the shader uniforms (`ShaderUniforms.hpp`), the GPU timers of the passes (`GpuPasses`), the uniform buffer of the lights (`LightRig`), the draw of a model with its culling test (`ModelDraw`), the lines of the debug view of the colliders (`ColliderLines`), the HDR target, the bloom and the composite pass (`PostProcess`), the depth targets of the shadows (`ShadowMap`), the sky cube (`Skybox`).
 - `src/hud`: the HUD of a round (gauges, counters, crosshair, prompt, cards), drawn with Dear ImGui, its colours, and the arithmetic of its scale and its sentences (`HudRules`).
@@ -217,7 +219,7 @@ flowchart TD
 
 The rules are in `game_logic`, as header and source pairs with tests:
 
-- Maze: `src/game/maze/Maze.hpp`, `MazeGenerator.hpp`, `MazeLayout.hpp`, and the ground `src/game/Terrain.hpp`. `MazeWorld.hpp` puts them together.
+- Maze: `src/game/maze/Maze.hpp`, `MazeGenerator.hpp`, `MazeLayout.hpp`, and the ground `src/game/land/Terrain.hpp`. `MazeWorld.hpp` puts them together.
 - Placement from the seed: `buildMazeWorld` calls the generator and then `Exit.hpp`, `Crystals.hpp`, `Heartstone.hpp` (the one big splinter, in the farthest dead end), `Interactables.hpp` (levers and notes) and `WallVariants.hpp`. Flasks (`Flasks.hpp`) are placed by `startRound`, because their count belongs to the difficulty. The same seed gives the same maze and objects on every system.
 - Round: `src/game/Round.hpp` (`startRound`, `updateRound`), with `Interaction.hpp` for picking and `Discovery.hpp` for what the map shows.
 - Player and stamina: `src/game/Player.hpp`.

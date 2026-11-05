@@ -25,8 +25,6 @@ target_sources(game_logic PRIVATE
     GameState.hpp
     GateLamp.cpp
     GateLamp.hpp
-    Grass.cpp
-    Grass.hpp
     Heartstone.cpp
     Heartstone.hpp
     Interactables.cpp
@@ -37,10 +35,6 @@ target_sources(game_logic PRIVATE
     Intro.hpp
     KeyBindings.cpp
     KeyBindings.hpp
-    Land.cpp
-    Land.hpp
-    LandMeshes.cpp
-    LandMeshes.hpp
     Ledger.cpp
     Ledger.hpp
     Lighting.cpp
@@ -55,8 +49,6 @@ target_sources(game_logic PRIVATE
     Minimap.hpp
     Player.cpp
     Player.hpp
-    Puddles.cpp
-    Puddles.hpp
     Round.cpp
     Round.hpp
     RoundMusic.cpp
@@ -73,24 +65,16 @@ target_sources(game_logic PRIVATE
     StartOptions.hpp
     Storybook.cpp
     Storybook.hpp
-    Terrain.cpp
-    Terrain.hpp
     Vignette.cpp
     Vignette.hpp
-    Village.cpp
-    Village.hpp
 )
 
 # The application and the classes that draw: they need a window and an OpenGL context.
 target_sources(night_maze PRIVATE
     GameplayRenderer.cpp
     GameplayRenderer.hpp
-    GrassRenderer.cpp
-    GrassRenderer.hpp
     InteractableRenderer.cpp
     InteractableRenderer.hpp
-    LandRenderer.cpp
-    LandRenderer.hpp
     MenuBackgroundRenderer.cpp
     MenuBackgroundRenderer.hpp
     MinimapRenderer.cpp
@@ -104,14 +88,9 @@ target_sources(night_maze PRIVATE
     NightMazeAppRound.cpp
     NightMazeAppScreens.cpp
     NightMazeAppShared.hpp
-    PuddleRenderer.cpp
-    PuddleRenderer.hpp
     StorybookRenderer.cpp
     StorybookRenderer.hpp
-    TerrainRenderer.cpp
-    TerrainRenderer.hpp
-    VillageRenderer.cpp
-    VillageRenderer.hpp
 )
 
+add_subdirectory(land)
 add_subdirectory(maze)

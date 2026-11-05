@@ -1,5 +1,5 @@
 # Builds the generated pieces of the land around the maze: the trees, the houses, the rick
-# and the landmarks (src/game/Land.hpp). None of them is built in this script. Their sources
+# and the landmarks (src/game/land/Land.hpp). None of them is built in this script. Their sources
 # are models that Tripo generated, tools/blender/sources/<source>_tripo.glb, one material
 # each with a colour picture and a normal map. This script scales each to its size in the
 # land, stands it on its origin, cuts it down to the triangles the land can pay for and
@@ -100,7 +100,7 @@ PIECES = (
     Piece("watch_hut", "watch_hut_tripo.glb", 5.0, 0, 3000, "watch_hut", 512),
     Piece("cairn", "stone_cairn_tripo.glb", 5.0, 0, 3000, "stone_cairn", 1024),
     # The far band: drawn around the eye on the ridge, like the village (game::FarSilhouette),
-    # and scaled up there (SILHOUETTE_PLACES in src/game/Land.cpp). The windows are found at
+    # and scaled up there (SILHOUETTE_PLACES in src/game/land/Land.cpp). The windows are found at
     # this size, where they are the size of the windows of a house.
     # The windmill has its sails on its back (+Y): turned, they face the eye.
     Piece("mill", "windmill_tripo.glb", 7.0, 0, 1500, "mill", 1024,
@@ -228,7 +228,7 @@ def write_model(mesh, file_name, picture):
     common.assign_textured_material(model, file_name, f"land_{picture}.png",
                                     f"land_{picture}_normal.png")
     common.export_obj(file_name)
-    # What MODEL_SHAPES in src/game/Land.cpp needs: the height and half of the wider side
+    # What MODEL_SHAPES in src/game/land/Land.cpp needs: the height and half of the wider side
     # on the ground (a test checks the height against the file).
     xs = [v.co.x for v in mesh.verts]
     ys = [v.co.y for v in mesh.verts]

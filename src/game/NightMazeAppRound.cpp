@@ -5,8 +5,8 @@
 #include "game/Exit.hpp"
 #include "game/GateLamp.hpp"
 #include "game/Interactables.hpp"
-#include "game/Puddles.hpp"
 #include "game/Shade.hpp"
+#include "game/land/Puddles.hpp"
 
 #include <GLFW/glfw3.h>
 

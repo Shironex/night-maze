@@ -1,6 +1,6 @@
 # Grass is lit per fragment with a fixed up normal, in one program for every mode
 Status: accepted (2026-10-05)
-Code: assets/shaders/grass.frag, src/game/GrassRenderer.cpp
+Code: assets/shaders/grass.frag, src/game/land/GrassRenderer.cpp
 
 Context: Blades are made in a geometry shader from one point per tuft, are flat, and are seen from both sides. The game has four shading modes.
 Decision: One grass program computes diffuse light per fragment with computeLighting and the normal (0, 1, 0), with no specular. Unlit turns the light off, and Gouraud looks the same as Phong.

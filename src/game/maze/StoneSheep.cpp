@@ -7,7 +7,7 @@
 #include "game/Exit.hpp"
 #include "game/Flasks.hpp"
 #include "game/GateLamp.hpp"
-#include "game/Puddles.hpp"
+#include "game/land/Puddles.hpp"
 #include "game/maze/MazeGenerator.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "scene/Transform.hpp"

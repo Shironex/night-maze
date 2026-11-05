@@ -172,7 +172,7 @@ enum class NightEndOffer {
 /// card and no result screen).
 NightEndOffer nightEndOffer(int campaignNight, int wonNight, bool counts);
 
-/// How many nights of light the village on the ridge shows (game/Village.hpp), 0 to
+/// How many nights of light the village on the ridge shows (game/land/Village.hpp), 0 to
 /// CAMPAIGN_NIGHT_COUNT: every night that is won lights a part of it, in the order the
 /// lines of the result screen name (CampaignNight::endLine).
 ///

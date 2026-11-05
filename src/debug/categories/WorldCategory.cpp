@@ -6,9 +6,9 @@
 #include "debug/MazePlan.hpp"
 #include "debug/Widgets.hpp"
 #include "game/EnvironmentMapping.hpp"
-#include "game/Grass.hpp"
 #include "game/Interactables.hpp"
-#include "game/Terrain.hpp"
+#include "game/land/Grass.hpp"
+#include "game/land/Terrain.hpp"
 #include "game/maze/MazeWorld.hpp"
 
 #include <imgui.h>

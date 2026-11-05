@@ -1,6 +1,6 @@
 # The heightmap tiles every 48 m of world and a height scale change rebuilds the terrain
 Status: accepted (2026-10-05)
-Code: src/game/Terrain.hpp, src/game/Terrain.cpp, tools/blender/make_heightmap.py
+Code: src/game/land/Terrain.hpp, src/game/land/Terrain.cpp, tools/blender/make_heightmap.py
 
 Context: One 256 by 256 image gives the heights, mazes range from 2 to 40 cells, and walls, crystals, grass and the player all stand on the ground.
 Decision: The image coordinate is metres divided by HEIGHTMAP_SPAN (48) and repeats. A height scale change sets a flag, and the next frame rebuilds heights, mesh, walls, crystals, player and grass on the CPU.

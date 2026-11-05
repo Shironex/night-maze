@@ -60,7 +60,7 @@ enum class GameMode {
     LedgerFromPause,
     /// The village on the ridge after the last night is won, for a few seconds before the
     /// ending card: the camera rises over the gate and the last window lights
-    /// (game/Village.hpp). It ends by itself, and any key ends it earlier.
+    /// (game/land/Village.hpp). It ends by itself, and any key ends it earlier.
     VillageBeat,
 };
 

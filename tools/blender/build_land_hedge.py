@@ -26,7 +26,7 @@ import make_textures
 SOURCE_FILE = "hedge_block_tripo.glb"
 
 # The picture, in pixels: twice as long as high. One repeat covers HEDGE_TEXTURE_SPAN
-# (src/game/Land.hpp) along the strip and the whole height of the hedge.
+# (src/game/land/Land.hpp) along the strip and the whole height of the hedge.
 WIDTH = 512
 HEIGHT = 256
 

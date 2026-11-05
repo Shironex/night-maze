@@ -1,5 +1,5 @@
 // Terrain: the ground of the game as a grid of heights read from a heightmap.
-#include "game/Terrain.hpp"
+#include "game/land/Terrain.hpp"
 
 #include "assets/Tangents.hpp"
 

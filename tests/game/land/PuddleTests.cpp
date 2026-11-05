@@ -1,10 +1,10 @@
 // Tests of game::Puddles: how many puddles a maze gets, which cells they lie in and the
 // mesh that lays their water on the ground.
-#include "game/Puddles.hpp"
+#include "game/land/Puddles.hpp"
 
 #include "assets/ImageLoader.hpp"
 #include "game/EnvironmentMapping.hpp"
-#include "game/Terrain.hpp"
+#include "game/land/Terrain.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "scene/Collider.hpp"

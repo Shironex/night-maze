@@ -3,10 +3,10 @@
 // the small helpers of the settings.
 #include "game/Shadows.hpp"
 
-#include "game/Land.hpp"
 #include "game/Lighting.hpp"
 #include "game/Player.hpp"
-#include "game/Terrain.hpp"
+#include "game/land/Land.hpp"
+#include "game/land/Terrain.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
 #include "scene/Camera.hpp"

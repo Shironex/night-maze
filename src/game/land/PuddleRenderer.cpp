@@ -1,9 +1,9 @@
 // PuddleRenderer: draws the puddles, thin films of water that lie on the ground.
-#include "game/PuddleRenderer.hpp"
+#include "game/land/PuddleRenderer.hpp"
 
 #include "assets/AssetCache.hpp"
 #include "core/GlCheck.hpp"
-#include "game/Puddles.hpp"
+#include "game/land/Puddles.hpp"
 #include "gfx/ColorSpace.hpp"
 #include "gfx/Shader.hpp"
 #include "gfx/Texture2D.hpp"

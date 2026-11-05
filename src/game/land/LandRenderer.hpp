@@ -1,7 +1,7 @@
 // LandRenderer: draws the land around the maze, its lit windows and the far silhouettes.
 #pragma once
 
-#include "game/Land.hpp"
+#include "game/land/Land.hpp"
 #include "gfx/Mesh.hpp"
 #include "scene/Collider.hpp"
 
@@ -44,7 +44,7 @@ void setLandLight(const gfx::Shader& shader, const MazeWorld& world);
 void clearLandLight(const gfx::Shader& shader);
 
 /// The OpenGL side of game::Land. The places are plain data (game::placeLand) and the
-/// triangles of what is built in code too (game/LandMeshes.hpp). This class owns the
+/// triangles of what is built in code too (game/land/LandMeshes.hpp). This class owns the
 /// meshes they are copied into, the model matrices and boxes of the pieces, and the meshes
 /// of the windows of every night.
 ///
