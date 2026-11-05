@@ -27,7 +27,7 @@ std::filesystem::path sourceRoot() {
 }
 
 // The folders of the engine and of the three libraries beside it: they never include the
-// game, the HUD or the debug UI.
+// game, the passes of src/render, the HUD or the debug UI.
 constexpr std::array<std::string_view, 7> ENGINE_FOLDERS = {"core",  "gfx", "scene", "assets",
                                                             "audio", "ui",  "video"};
 
@@ -60,6 +60,19 @@ constexpr std::array<std::string_view, 3> GFX_PLAIN_DATA = {"gfx/Vertex.hpp", "g
 // The headers of core/ that open the window or talk to OpenGL.
 constexpr std::array<std::string_view, 3> CORE_WINDOW = {"core/Application.hpp", "core/Window.hpp",
                                                          "core/GlCheck.hpp"};
+
+// The folders src/render may include besides itself. From src/game it may include only the
+// headers of game_logic, the plain data of the game, never a drawing file of src/game.
+constexpr std::array<std::string_view, 4> RENDER_MAY = {"core", "gfx", "scene", "assets"};
+
+// One include that is allowed against a rule, by name.
+struct AllowedInclude {
+    std::string_view file;
+    std::string_view path;
+};
+
+// Known exceptions to the rule of src/render above.
+constexpr std::array<AllowedInclude, 0> RENDER_INCLUDES_ALLOWED = {};
 
 // Known exception: the key bindings include GLFW only for the numbers of the keys
 // (GLFW_KEY_W and the others) as default bindings. Nothing in the file opens a window or
@@ -249,7 +262,8 @@ bool needsWindow(const Include& include, bool glfwAllowed) {
         return !contains(GFX_PLAIN_DATA, path);
     }
     return contains(CORE_WINDOW, path) || path == "assets/AssetCache.hpp" || folder == "debug" ||
-           folder == "hud" || folder == "ui" || folder == "video" || folder == "audio";
+           folder == "hud" || folder == "render" || folder == "ui" || folder == "video" ||
+           folder == "audio";
 }
 
 } // namespace
@@ -258,7 +272,7 @@ TEST_CASE("the layering check reads the sources and the lists") {
     const std::vector<Include> includes = readIncludes();
     CHECK(includes.size() > 1000);
     const std::set<std::string> folders = ourFolders();
-    for (const std::string_view folder : {"game", "hud", "debug"}) {
+    for (const std::string_view folder : {"game", "render", "hud", "debug"}) {
         CHECK(folders.contains(std::string(folder)));
     }
     for (const std::string_view folder : ENGINE_FOLDERS) {
@@ -272,12 +286,12 @@ TEST_CASE("the layering check reads the sources and the lists") {
     CHECK(filesOfTarget("night_maze_tests").contains("hud/HudRules.cpp"));
 }
 
-TEST_CASE("the engine's folders never include the game, the hud or the debug ui") {
+TEST_CASE("the engine's folders never include the game, render, the hud or the debug ui") {
     std::vector<std::string> broken;
     for (const Include& include : readIncludes()) {
         const std::string folder = topFolder(include.path);
         if (contains(ENGINE_FOLDERS, topFolder(include.file)) && include.quoted &&
-            (folder == "game" || folder == "hud" || folder == "debug")) {
+            (folder == "game" || folder == "render" || folder == "hud" || folder == "debug")) {
             broken.push_back(describe(include));
         }
     }
@@ -292,6 +306,34 @@ TEST_CASE("each folder of the engine includes only the folders below it") {
 TEST_CASE("the hud includes the game and the engine, never the debug ui") {
     const std::vector<std::string> broken = brokenFolderRules(VIEW_ALLOWED);
     CHECK_MESSAGE(broken.empty(), listed(broken));
+}
+
+TEST_CASE("render includes the engine and the plain data of game_logic only") {
+    const std::set<std::string> folders = ourFolders();
+    const std::set<std::string> logic = filesOfTarget("game_logic");
+    REQUIRE(!logic.empty());
+    std::vector<std::string> broken;
+    std::set<std::string> allowedSeen;
+    for (const Include& include : readIncludes()) {
+        const std::string to = topFolder(include.path);
+        if (topFolder(include.file) != "render" || !include.quoted || !folders.contains(to) ||
+            to == "render" || contains(RENDER_MAY, to) ||
+            (to == "game" && logic.contains(include.path))) {
+            continue;
+        }
+        const auto allowed = std::ranges::find_if(
+            RENDER_INCLUDES_ALLOWED, [&include](const AllowedInclude& exception) {
+                return exception.file == include.file && exception.path == include.path;
+            });
+        if (allowed != RENDER_INCLUDES_ALLOWED.end()) {
+            allowedSeen.insert(describe(include));
+        } else {
+            broken.push_back(describe(include));
+        }
+    }
+    CHECK_MESSAGE(broken.empty(), listed(broken));
+    // An exception that is no longer needed is taken off the list, so it cannot be reused.
+    CHECK(allowedSeen.size() == RENDER_INCLUDES_ALLOWED.size());
 }
 
 TEST_CASE("the game never includes the hud or the debug ui") {
