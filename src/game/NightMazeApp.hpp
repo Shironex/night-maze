@@ -6,8 +6,6 @@
 #include "core/Application.hpp"
 #include "game/EnvironmentMapping.hpp"
 #include "game/Lighting.hpp"
-#include "game/MenuBackgroundRenderer.hpp"
-#include "game/MenuCamera.hpp"
 #include "game/Minimap.hpp"
 #include "game/MinimapRenderer.hpp"
 #include "game/RoundMusic.hpp"
@@ -23,6 +21,8 @@
 #include "game/land/VillageRenderer.hpp"
 #include "game/maze/MazeRenderer.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/menu/MenuBackgroundRenderer.hpp"
+#include "game/menu/MenuCamera.hpp"
 #include "game/player/InteractableRenderer.hpp"
 #include "game/player/Interaction.hpp"
 #include "game/player/Player.hpp"
@@ -103,7 +103,7 @@ constexpr std::size_t NO_STORYBOOK_SOUND = static_cast<std::size_t>(-1);
 ///
 /// The game can also show itself: with the menu camera switched on (key F2, the Camera
 /// panel or the switch --menu-camera) the picture is taken by a camera that travels
-/// through the maze alone (game/MenuCamera.hpp). The round stands still meanwhile, and
+/// through the maze alone (game/menu/MenuCamera.hpp). The round stands still meanwhile, and
 /// the keys and the mouse of the round are ignored.
 ///
 /// The game is always on one screen (game/screens/GameState.hpp): the intro, the main menu, free

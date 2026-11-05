@@ -3,10 +3,10 @@
 #include "game/screens/Intro.hpp"
 
 #include "game/Lighting.hpp"
-#include "game/MenuCamera.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeLayout.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/menu/MenuCamera.hpp"
 #include "game/round/Difficulty.hpp"
 
 #include <doctest/doctest.h>

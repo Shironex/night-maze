@@ -4,7 +4,7 @@
 
 #include "debug/DebugContext.hpp"
 #include "debug/Widgets.hpp"
-#include "game/MenuCamera.hpp"
+#include "game/menu/MenuCamera.hpp"
 #include "game/player/Player.hpp"
 #include "scene/Camera.hpp"
 

@@ -3,10 +3,10 @@
 #include "game/round/Campaign.hpp"
 
 #include "game/Lighting.hpp"
-#include "game/MenuCamera.hpp"
 #include "game/Shadows.hpp"
 #include "game/maze/Maze.hpp"
 #include "game/maze/MazeWorld.hpp"
+#include "game/menu/MenuCamera.hpp"
 #include "game/player/Interactables.hpp"
 #include "game/round/Crystals.hpp"
 #include "game/round/Difficulty.hpp"

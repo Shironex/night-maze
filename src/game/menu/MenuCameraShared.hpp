@@ -2,7 +2,7 @@
 // a distance on the path.
 #pragma once
 
-#include "game/MenuCamera.hpp"
+#include "game/menu/MenuCamera.hpp"
 
 #include <glm/gtc/constants.hpp>
 

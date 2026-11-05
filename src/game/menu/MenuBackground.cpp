@@ -1,5 +1,5 @@
 // MenuBackground: what is shown behind the main menu, and the rule that chooses it.
-#include "game/MenuBackground.hpp"
+#include "game/menu/MenuBackground.hpp"
 
 namespace game {
 
