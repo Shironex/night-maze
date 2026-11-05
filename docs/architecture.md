@@ -156,6 +156,7 @@ The state of the class is held in one member per system, each a struct or a smal
 - `RenderSettings`: the settings of the picture that the debug UI edits live (clear colour, terrain, grass, shadows, debug views, culling, sky, village, reflections, the passes after the scene, the map). Plain data, declared first.
 - `FrameState`: what the drawing of a frame keeps for the passes, the HUD and the debug UI (the matrices of the walls, the shade as it is drawn, the picking, the spaces of the two shadow maps, the lit nights, the glow of the gate lamp), and the structs the parts of `onRender` hand each other (`FrameScreen`, `FrameView`, `GateLampFrame`, `NightLights`).
 - `MenuState`: the `ui::UiLayer` with the documents of the menus and of the card, whether they all loaded, and the wait for a key on the settings screen.
+- `StoryState`: the clocks of the intro, of the cards of the nights and of the reveal of the village, and the storybook with its pictures and sounds.
 
 `src/app/main.cpp` holds the only class that knows both the game and the debug code: `DebugNightMazeApp` derives from `NightMazeApp`, owns `debug::DebugUI`, and draws it after the frame of the game. It hands the debug window a `debug::DebugContext`, a struct of references.
 

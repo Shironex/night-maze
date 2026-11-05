@@ -320,9 +320,9 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
     // ponytail: every sound is decoded into memory at the start, the music of the
     // storybook too (about 23 MB per minute of stereo). Stream it if it gets long.
     if (options.introStyle == IntroStyle::Storybook) {
-        m_storybook = loadStorybook();
+        m_story.storybook = loadStorybook();
     }
-    if (m_storybook) {
+    if (m_story.storybook) {
         const std::filesystem::path folder = core::assetPath(STORYBOOK_FOLDER);
         const auto addSound = [&soundFiles, &folder](const std::string& file,
                                                      audio::SoundGroup group) {
@@ -332,20 +332,21 @@ NightMazeApp::NightMazeApp(const StartOptions& options)
             soundFiles.push_back({.path = folder / file, .group = group});
             return soundFiles.size() - 1;
         };
-        m_storybookMusicSound = addSound(m_storybook->music, audio::SoundGroup::Music);
+        m_story.storybookMusicSound = addSound(m_story.storybook->music, audio::SoundGroup::Music);
         // The spoken lines go with the effects: they tell something, like the cues.
-        for (const StorybookBeat& beat : m_storybook->beats) {
-            m_storybookVoiceSounds.push_back(addSound(beat.voice, audio::SoundGroup::Effects));
+        for (const StorybookBeat& beat : m_story.storybook->beats) {
+            m_story.storybookVoiceSounds.push_back(
+                addSound(beat.voice, audio::SoundGroup::Effects));
         }
     }
     m_audio.load(soundFiles);
     // A picture stays at least until its spoken line has ended. Without sound the
     // lines have no length, and the pictures keep their own times.
-    if (m_storybook) {
-        for (std::size_t i = 0; i < m_storybook->beats.size(); ++i) {
-            const std::size_t voice = m_storybookVoiceSounds.at(i);
-            m_storybookBeatSeconds.push_back(storybookBeatSeconds(
-                m_storybook->beats.at(i),
+    if (m_story.storybook) {
+        for (std::size_t i = 0; i < m_story.storybook->beats.size(); ++i) {
+            const std::size_t voice = m_story.storybookVoiceSounds.at(i);
+            m_story.storybookBeatSeconds.push_back(storybookBeatSeconds(
+                m_story.storybook->beats.at(i),
                 voice == NO_STORYBOOK_SOUND ? 0.0F : m_audio.lengthSeconds(voice)));
         }
     }
