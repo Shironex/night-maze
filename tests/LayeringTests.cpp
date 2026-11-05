@@ -37,13 +37,13 @@ struct AllowedFolders {
     std::array<std::string_view, 4> may;
 };
 constexpr std::array<AllowedFolders, 7> ENGINE_ALLOWED = {{
-    {"core", {}},
-    {"scene", {}},
-    {"gfx", {"core"}},
-    {"assets", {"core", "gfx", "scene"}},
-    {"ui", {"core", "gfx", "scene", "assets"}},
-    {"video", {"core", "gfx", "scene", "assets"}},
-    {"audio", {"core", "gfx", "scene", "assets"}},
+    {.folder = "core", .may = {}},
+    {.folder = "scene", .may = {}},
+    {.folder = "gfx", .may = {"core"}},
+    {.folder = "assets", .may = {"core", "gfx", "scene"}},
+    {.folder = "ui", .may = {"core", "gfx", "scene", "assets"}},
+    {.folder = "video", .may = {"core", "gfx", "scene", "assets"}},
+    {.folder = "audio", .may = {"core", "gfx", "scene", "assets"}},
 }};
 
 // The headers of gfx/ that hold plain data and math and no OpenGL call, which the rules may
