@@ -46,12 +46,13 @@ Directory map:
 - `src/game`: the rules, the renderers and the application class.
 - `src/debug`: the debug window, its seven categories in `src/debug/categories`, and the HUD.
 - `assets/shaders` (shared parts in `assets/shaders/common`, full screen passes in `assets/shaders/post`), `assets/ui` (RML documents and one style sheet), `assets/models`, `assets/textures`, `assets/skybox`, `assets/audio`, `assets/video`, `assets/fonts`.
-- `tools`: scripts that produce assets and releases: `tools/blender` (models and textures), `tools/make_sounds.py`, `tools/make_music.py`, `tools/record_menu_loop.py`, `tools/capture_showcase.py` (README pictures), `tools/build-notices.mjs` and `tools/release-notes.mjs`.
+- `tools`: scripts that produce assets and releases: `tools/blender` (models and textures), `tools/make_sounds.py`, `tools/make_music.py`, `tools/record_menu_loop.py`, `tools/capture_showcase.py` (README pictures), `tools/build-notices.mjs` and `tools/release-notes.mjs`, and `tools/move_module.py`, which moves a module between folders.
 
 Rules for new code:
 
 - A new system gets a folder of its own (or joins the folder of its layer) and a `CMakeLists.txt` there that lists its files, sorted, one per line, in the block of the right target. Rules that need no window go to `game_logic`, code that draws to `night_maze`.
 - Its test goes to the folder of `tests/` that mirrors the folder in `src/`, listed the same way.
+- To move a module, run `python3 tools/move_module.py [--dry-run] SOURCE ... FOLDER`. It moves the files with `git mv`, rewrites the `#include` lines and the mentions in `src/`, `tests/` and `tools/`, and moves the lines between the CMake lists. It prints what it leaves for a person in `docs/` and the root files.
 - `tests/LayeringTests.cpp` must stay green. An exception to a rule is added to its allowlist by name, with the reason.
 
 ## 2. Layers
