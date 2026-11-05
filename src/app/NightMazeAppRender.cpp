@@ -72,7 +72,7 @@ void NightMazeApp::onRender(double alpha) {
     // The map: on the screen while its key is held (mapShown). Asked once here for the
     // whole frame. While it is shown the mouse does not turn the camera and nothing can
     // be used: looking at the map is a stop, and the round goes on behind it.
-    const bool map = mapShown() && m_catchSeconds < 0.0F;
+    const bool map = mapShown() && m_roundClocks.catchSeconds < 0.0F;
     m_frameState.mapOnScreen = map;
 
     // Mouse look. It runs here, once per frame, and not in onUpdate: a mouse delta
@@ -307,7 +307,8 @@ FrameScreen NightMazeApp::frameScreen() const {
     // by the menu camera? While it is switched on, and in the main menu when the live
     // scene is its background (--menu-background scene, or neither the video nor the
     // still could be loaded).
-    const bool roundInput = updatesRound(m_mode) && !m_menuCamera.enabled && m_catchSeconds < 0.0F;
+    const bool roundInput =
+        updatesRound(m_mode) && !m_menuCamera.enabled && m_roundClocks.catchSeconds < 0.0F;
     // The intro takes its pictures with the menu camera too, but it says itself which
     // shot, at which moment and with which light (game::introCamera).
     const bool intro = isIntro(m_mode);
@@ -553,7 +554,8 @@ void NightMazeApp::placeShade(double alpha, const FrameScreen& screen, const Fra
         // second (the frame time, as the pose is a picture and not a rule).
         const float blendStep =
             static_cast<float>(time().deltaSeconds()) / SHADE_SWAY_BLEND_SECONDS;
-        const float target = shadeWalking(m_round.shade) && m_catchSeconds < 0.0F ? 1.0F : 0.0F;
+        const float target =
+            shadeWalking(m_round.shade) && m_roundClocks.catchSeconds < 0.0F ? 1.0F : 0.0F;
         m_frameState.shadeWalkAmount +=
             std::clamp(target - m_frameState.shadeWalkAmount, -blendStep, blendStep);
         applyShadeSway(shade, shadeSwayPose(m_frameState.shadeWalkAmount,
@@ -773,7 +775,7 @@ void NightMazeApp::finishPicture(core::Size framebuffer, const FrameView& frame)
     }
     // Right after the shade carried the player back the picture comes up from black: the
     // exposure multiplies every colour, so a factor of 0 is a black picture.
-    compositeSettings.exposure *= pictureBrightness(m_catchSeconds, m_round);
+    compositeSettings.exposure *= pictureBrightness(m_roundClocks.catchSeconds, m_round);
 
     // The bloom: the bright parts of the finished scene, blurred in targets of half the
     // size. It is called in every frame, also with the bloom switched off: it then
@@ -857,7 +859,7 @@ void NightMazeApp::handleInteraction(bool cursorCaptured) {
             measureExitDistances();
             playCue(SoundCue::LeverPull);
             // The shade may hear it, in the next fixed step.
-            m_leverPulled = true;
+            m_roundClocks.leverPulled = true;
         }
         // The round has changed, so the action is asked again: the lever that was just
         // pulled is not highlighted in this frame, and an opened card can be closed.

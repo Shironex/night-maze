@@ -197,27 +197,27 @@ void NightMazeApp::beginRound() {
     // The low battery pulse of the round before must not go on in this one. The cues of
     // a step need no reset: onUpdate compares every step with the moment right before
     // it, so a new round, also one that starts with its gate open, fires nothing.
-    m_lowBatteryPulse = {};
+    m_roundClocks.lowBatteryPulse = {};
     // The same for the breathing, and the stamina it follows: a round starts with a full
     // bar and a player who is not winded, and the tea of a flask of the round before
     // works no longer. Only the state is new. The numbers of the rule
     // (Player::staminaSettings), which the debug UI may have changed, stay.
-    m_windedBreath = {};
+    m_roundClocks.windedBreath = {};
     m_player.stamina = {};
     // The shade itself is part of the round: startRound has put it back in its start
     // cell, with its grace time ahead of it.
     // The bell of the gate is silent until the gate opens again, and every wall a lever
     // had opened is back, so the ways to the exit are counted anew.
-    m_gateBell = {};
-    m_bellSwing = {};
+    m_roundClocks.gateBell = {};
+    m_roundClocks.bellSwing = {};
     measureExitDistances();
     // A lever pulled in the round before is not a noise of this one.
-    m_leverPulled = false;
+    m_roundClocks.leverPulled = false;
     // A restart in the middle of a fade to black ends the fade.
-    m_catchSeconds = -1.0F;
+    m_roundClocks.catchSeconds = -1.0F;
     // The steps of the player and of the shade count their metres from the beginning.
-    m_footsteps = {};
-    m_shadeSteps = {};
+    m_roundClocks.footsteps = {};
+    m_roundClocks.shadeSteps = {};
 
     // The player goes to the start, feet on the ground there. After a regeneration the
     // old position may be inside a wall of the new maze, or outside of it.
@@ -236,8 +236,8 @@ void NightMazeApp::carryPlayerBack() {
     // start (crystals, battery, levers, discovery, stamina, flasks, the shade).
     beginRound();
     // The next line of the five, so the same one never shows twice in a row.
-    m_lastCaughtLine = nextCaughtLine(m_lastCaughtLine);
-    showCaughtLine(m_round, m_lastCaughtLine);
+    m_roundClocks.lastCaughtLine = nextCaughtLine(m_roundClocks.lastCaughtLine);
+    showCaughtLine(m_round, m_roundClocks.lastCaughtLine);
 }
 
 void NightMazeApp::onUpdate(double fixedDt) {
@@ -249,7 +249,7 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // bob: also behind the result screen, where the toll for walking through has just
     // pushed it. The pause stops it.
     if (animatesScene(m_mode)) {
-        advanceBellSwing(m_bellSwing, static_cast<float>(fixedDt));
+        advanceBellSwing(m_roundClocks.bellSwing, static_cast<float>(fixedDt));
     }
 
     // The round runs only while it is played (game::updatesRound). Under a menu, and
@@ -268,10 +268,10 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // player does not move, nothing is collected, the shade does not step and cannot catch
     // again, the battery does not drain. Only the animation clock goes on. At black the
     // round starts again. The pause stops this clock like the rest of the round.
-    if (m_catchSeconds >= 0.0F) {
+    if (m_roundClocks.catchSeconds >= 0.0F) {
         m_round.animationSeconds += static_cast<float>(fixedDt);
-        m_catchSeconds += static_cast<float>(fixedDt);
-        if (catchPhase(m_catchSeconds) == CatchPhase::Black) {
+        m_roundClocks.catchSeconds += static_cast<float>(fixedDt);
+        if (catchPhase(m_roundClocks.catchSeconds) == CatchPhase::Black) {
             carryPlayerBack();
         }
         return;
@@ -288,7 +288,7 @@ void NightMazeApp::onUpdate(double fixedDt) {
     // looking around) is left alone. The steps that may follow in the same frame play
     // the new round.
     if (caught && !m_player.noclip) {
-        m_catchSeconds = 0.0F;
+        m_roundClocks.catchSeconds = 0.0F;
         // The shade stands still from now on, so the picture of it must too: its last step
         // was drawn between two places (the frames blend them), and without this the
         // figure would swing between them for the whole fade.
@@ -304,7 +304,7 @@ void NightMazeApp::onUpdate(double fixedDt) {
         playCue(SoundCue::GateBell, GATE_BELL_NEAR_VOLUME);
         // And a moment later the sting of a won night (updateRoundMusic).
         armNightEndSting(m_sound.nightEndSting);
-        tollBellSwing(m_bellSwing);
+        tollBellSwing(m_roundClocks.bellSwing);
         finishRound();
     }
 }
@@ -348,7 +348,7 @@ float NightMazeApp::movePlayer(double fixedDt) {
     const glm::vec3 walked = m_player.position - m_previousPlayerPosition;
     const float walkedMetres = glm::length(glm::vec2{walked.x, walked.z});
     CuePlay step;
-    if (advanceFootsteps(m_footsteps,
+    if (advanceFootsteps(m_roundClocks.footsteps,
                          {.metres = walkedMetres,
                           .stepSeconds = static_cast<float>(fixedDt),
                           .walkSpeed = m_player.walkSpeed,
@@ -403,21 +403,22 @@ bool NightMazeApp::stepRoundRules(double fixedDt) {
     for (const SoundCue cue : roundStepCues(soundBefore, m_round, m_lighting.flashlightOn)) {
         playCue(cue);
     }
-    if (advanceLowBatteryPulse(m_lowBatteryPulse, m_round, m_lighting.flashlightOn, m_gameplay,
-                               static_cast<float>(fixedDt))) {
+    if (advanceLowBatteryPulse(m_roundClocks.lowBatteryPulse, m_round, m_lighting.flashlightOn,
+                               m_gameplay, static_cast<float>(fixedDt))) {
         playCue(SoundCue::LowBatteryPulse);
     }
     // The heavy breathing of a winded player: one breath, again and again on a clock
     // of the same kind, for as long as the stamina says winded.
-    if (advanceWindedBreath(m_windedBreath, m_player.stamina.winded, static_cast<float>(fixedDt))) {
+    if (advanceWindedBreath(m_roundClocks.windedBreath, m_player.stamina.winded,
+                            static_cast<float>(fixedDt))) {
         playCue(SoundCue::WindedBreath);
     }
     // The bell of the open gate, on a clock of the same kind: a toll every few seconds,
     // louder the fewer passages lie between the player and the exit.
-    if (advanceGateBell(m_gateBell, m_round, m_gameplay.gate.bellSeconds,
+    if (advanceGateBell(m_roundClocks.gateBell, m_round, m_gameplay.gate.bellSeconds,
                         static_cast<float>(fixedDt))) {
         playCue(SoundCue::GateBell, gateBellVolumeHere());
-        tollBellSwing(m_bellSwing);
+        tollBellSwing(m_roundClocks.bellSwing);
     }
     // The gate has just opened (the only change a step can make here): its box leaves
     // the obstacle list, and the way into the exit cell is free.
@@ -447,9 +448,9 @@ bool NightMazeApp::stepShade(double fixedDt, float walkedMetres, bool pickedUp) 
                                      .sprintSpeed = m_player.sprintSpeed,
                                      .flying = m_player.noclip,
                                      .pickedUp = pickedUp,
-                                     .pulledLever = m_leverPulled},
+                                     .pulledLever = m_roundClocks.leverPulled},
                                     m_gameplay.shade);
-    m_leverPulled = false;
+    m_roundClocks.leverPulled = false;
     const ShadeEvents shadeEvents =
         updateRoundShade(m_round, m_mazeWorld, m_gameplay, m_player.position,
                          roundShadeLamp(m_lighting, m_round, lampPose), m_obstacles,
@@ -466,14 +467,15 @@ bool NightMazeApp::stepShade(double fixedDt, float walkedMetres, bool pickedUp) 
     // Its hum is a loop, said in every frame (updateAmbience).
     // Its steps, while it walks and is near: quieter the farther it still has to go.
     CuePlay step;
-    if (advanceShadeSteps(m_shadeSteps, m_round, step)) {
+    if (advanceShadeSteps(m_roundClocks.shadeSteps, m_round, step)) {
         playCue(step.cue, step.volume);
     }
     return caught;
 }
 
 void NightMazeApp::measureExitDistances() {
-    m_exitDistances = passageDistances(roundMaze(m_mazeWorld, m_round), m_mazeWorld.exitCell);
+    m_roundClocks.exitDistances =
+        passageDistances(roundMaze(m_mazeWorld, m_round), m_mazeWorld.exitCell);
 }
 
 float NightMazeApp::gateBellVolumeHere() const {
@@ -486,7 +488,7 @@ float NightMazeApp::gateBellVolumeHere() const {
     const std::size_t index =
         static_cast<std::size_t>(cell.z) * static_cast<std::size_t>(maze.width()) +
         static_cast<std::size_t>(cell.x);
-    return gateBellVolume(m_exitDistances.at(index));
+    return gateBellVolume(m_roundClocks.exitDistances.at(index));
 }
 
 } // namespace game

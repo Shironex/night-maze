@@ -17,6 +17,7 @@ target_sources(night_maze PRIVATE
     NightMazeAppScreens.cpp
     NightMazeAppShared.hpp
     RenderSettings.hpp
+    RoundClocks.hpp
     SceneRenderers.cpp
     SceneRenderers.hpp
     SoundState.hpp
